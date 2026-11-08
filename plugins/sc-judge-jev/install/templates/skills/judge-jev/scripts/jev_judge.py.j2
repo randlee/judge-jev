@@ -7,12 +7,22 @@ required_variables:
   - version
 ---
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#   "pyyaml>=5.1",
+#   "sc-observability==1.5.0",
+# ]
+# ///
 """jev_judge.py
 
-Standard library only. Python 3.9+. One exception: a live Jev call reads the
-committed ``allow_remote_judge`` answer through ``judge_jev_settings.py``
-(PyYAML when the settings file exists), imported lazily inside that check, so
---dry-run, --answers-file and every offline subcommand stay stdlib-only.
+Run it with ``uv run --script jev_judge.py ...``: the inline metadata above
+supplies its two dependencies, each imported lazily where it is needed. The
+run log goes through the sc-observability logger (``sc-observability==1.5.0``,
+Python 3.10+; DEPENDENCY.SC_OBSERVABILITY when it does not import), and a live
+Jev call reads the committed ``allow_remote_judge`` answer through
+``judge_jev_settings.py`` (PyYAML when the settings file exists). Everything
+else is the standard library.
 
 Expected failures travel as values: a function that can fail returns
 ``Ok(value)`` or ``Err(JudgeError)`` (see ``result.py``) and its caller
@@ -22,7 +32,8 @@ reported there as SCRIPT.INTERNAL.
 
 Subcommands
   batch           low layer: JSONL request lines (stdin or --input) -> one JSONL result line per (item, candidate,
-                  repeat) on stdout as each answer arrives, teed to anchor-runs/tournament-<run>.jsonl; never writes beads
+                  repeat) on stdout as each answer arrives; each request, answer and result is also a log event in the
+                  sc-observability log <run-dir>/logs/judge-jev.log.jsonl; never writes beads
 
 Every subcommand prints JSON to stdout (or markdown with --format md where
 supported).
@@ -880,33 +891,102 @@ def batch_settings(args, prefix: str) -> Result[BatchSettings, JudgeError]:
                             args.max_workers, cap, bool(args.dry_run)))
 
 
-def batch_log_path(run_dir: str, run_name: str) -> Result[pathlib.Path, JudgeError]:
+LOG_SERVICE = "judge-jev"
+LOG_TARGET = "judge-jev.batch"
+SC_OBSERVABILITY_SPEC = "sc-observability==1.5.0"
+
+
+class RunLog:
+    """The run log (REQ-JEV-0008): one owned sc-observability logger per command, writing under
+    ``<log_root>/logs/judge-jev.log.jsonl``. Every event carries the run name plus the caller's ``fields``."""
+
+    def __init__(self, sco, logger, run: str, log_root: pathlib.Path):
+        self._sco = sco
+        self._logger = logger
+        self.run = run
+        self.log_root = log_root
+
+    def event(self, action: str, fields: dict, correlation_id=None) -> Result[None, JudgeError]:
+        """One log event, redacted like every emitted value; anything but an accepted admission is LOG.WRITE."""
+        got = self._logger.log(self._sco.LogEvent(level="info", target=LOG_TARGET, action=action,
+                                                  correlation_id=correlation_id,
+                                                  fields=redact_sensitive({"run": self.run, **fields})))
+        if isinstance(got, self._sco.Err) or got.value.kind != "accepted":
+            detail = getattr(got.error, "message", got.error) if isinstance(got, self._sco.Err) else got.value.kind
+            return fail("LOG.WRITE", f"the sc-observability logger refused the {action} event: {detail}",
+                        action="Read the message; the event was not recorded, so rerun once the cause is fixed.")
+        return Ok(None)
+
+    def flush(self) -> Result[None, JudgeError]:
+        got = self._logger.flush()
+        if isinstance(got, self._sco.Err):
+            return fail("LOG.WRITE", f"the sc-observability logger could not flush: {getattr(got.error, 'message', got.error)}")
+        return Ok(None)
+
+    def close(self) -> Result[None, JudgeError]:
+        got = self._logger.shutdown()
+        if isinstance(got, self._sco.Err):
+            return fail("LOG.WRITE", f"the sc-observability logger could not shut down: {getattr(got.error, 'message', got.error)}")
+        return Ok(None)
+
+
+def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
+    """Start the run's logger; the run name defaults to a UTC timestamp and must be a safe id."""
     name = run_name or stamp()
     checked = _safe_id(name, "--run-name")
     if isinstance(checked, Err):
         return checked
-    return Ok(pathlib.Path(run_dir) / f"tournament-{name}.jsonl")
+    try:
+        import sc_observability as sco  # lazy: only a command that logs needs it
+    except ImportError as exc:
+        return fail("DEPENDENCY.SC_OBSERVABILITY", f"the sc-observability logger is required for the run log and did not import: {exc}",
+                    action=f"Run with `uv run --script jev_judge.py ...` (its inline metadata pins {SC_OBSERVABILITY_SPEC}), "
+                           f"or python3 -m pip install '{SC_OBSERVABILITY_SPEC}' (Python 3.10+).")
+    root = pathlib.Path(log_root)
+    created = sco.create_logger(sco.LoggerConfig(service=LOG_SERVICE, log_root=str(root)))
+    if isinstance(created, sco.Err):
+        return fail("LOG.WRITE", f"the sc-observability logger could not start under {root}: {getattr(created.error, 'message', created.error)}",
+                    action="Check the run directory is writable.")
+    return Ok(RunLog(sco, created.value, name, root))
 
 
-def pump_batch(lines: list, settings: BatchSettings, api_key: str, fixture, log_path: pathlib.Path, echo: bool) -> Result[list, JudgeError]:
-    """Run the low layer over validated request lines; tee every result line, unchanged, to stdout (when ``echo``)
-    and to the append-only log, flushing both after every line so a crash keeps the evidence."""
+def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, JudgeError]:
+    """A result line as three events, each under the logger's 64 KiB event cap: the request, Jev's answer (not on a
+    dry run) and the result (the line without its request and raw response). ``fields`` goes on every event."""
+    ids = {"request_id": line["request_id"], "run_id": line["run_id"], **fields}
+    events = [("request", {**ids, "item_id": line["item_id"], "anchor_id": line["anchor_id"], "candidate_id": line["candidate_id"],
+                           "repeat": line["repeat"], "request_sha256": line["request_sha256"],
+                           "questions_sha256": line["questions_sha256"], "dry_run": line["dry_run"], "request": line["request"]})]
+    if not line["dry_run"]:
+        events.append(("answer", {**ids, "ok": line["ok"], "model_answered": line["model_answered"], "raw_response": line["raw_response"],
+                                  "attempts": line["attempts"], "error": line["error"]}))
+    events.append(("result", {**ids, **{k: v for k, v in line.items() if k not in ("request", "raw_response")}}))
+    for action, event_fields in events:
+        logged = log.event(action, event_fields, correlation_id=line["run_id"])
+        if isinstance(logged, Err):
+            return logged
+    return log.flush()
 
-    async def drive() -> list:
+
+def pump_batch(lines: list, settings: BatchSettings, api_key: str, fixture, log: RunLog, echo: bool,
+               fields=None) -> Result[list, JudgeError]:
+    """Run the low layer over validated request lines; each result line goes, unchanged, to stdout (when ``echo``)
+    and into the run log as its request, answer and result events, flushed after every line so a crash keeps the
+    evidence."""
+
+    async def drive() -> Result[list, JudgeError]:
         out = []
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(log_path, "a", encoding="utf-8", newline="\n") as log:
-            async for line in stream_batch(lines, settings, api_key, fixture):
-                text = encode_result_line(line)
-                log.write(text)
-                log.flush()
-                if echo:
-                    write_stdout_line(text)
-                out.append(line)
-        return out
+        async for line in stream_batch(lines, settings, api_key, fixture):
+            logged = log_result_line(log, line, fields or {})
+            if isinstance(logged, Err):
+                return logged
+            if echo:
+                write_stdout_line(encode_result_line(line))
+            out.append(line)
+        return Ok(out)
 
     try:
-        return Ok(asyncio.run(drive()))
+        return asyncio.run(drive())
     except BatchInputError as exc:
         return Err(exc.error)
 
@@ -947,18 +1027,25 @@ def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
     if not run_dir:
         return fail("VALIDATION.INPUT", "the result log needs a directory: pass --anchors (log under its anchor-runs/) or --run-dir",
                     action="Pass --anchors <plan>/anchors.json so the log lands in <plan>/anchor-runs/.")
-    log_path = batch_log_path(run_dir, args.run_name)
-    if isinstance(log_path, Err):
-        return log_path
+    run_name = args.run_name or stamp()
+    checked = _safe_id(run_name, "--run-name")  # refused before the logger creates anything
+    if isinstance(checked, Err):
+        return checked
     api_key = ""
     if not settings.dry_run and fixture is None:
         cleared = remote_preflight(args, "The anchor statements, scopes and item texts in the request stream")
         if isinstance(cleared, Err):
             return cleared
         api_key = cleared.value
-    pumped = pump_batch(lines, settings, api_key, fixture, log_path.value, echo=True)
+    log = open_run_log(run_dir, run_name)
+    if isinstance(log, Err):
+        return log
+    pumped = pump_batch(lines, settings, api_key, fixture, log.value, echo=True)
+    closed = log.value.close()
     if isinstance(pumped, Err):
         return pumped
+    if isinstance(closed, Err):
+        return closed
     return Ok(StreamedResult([x for x in pumped.value if not x["ok"] and not x["dry_run"]]))
 
 
@@ -976,8 +1063,8 @@ def cmd_batch(args) -> Result[Any, JudgeError]:
 
 def add_stream_options(parser) -> None:
     """Options shared by `batch` and `bead-batch`: both run the same low layer."""
-    parser.add_argument("--run-dir", default="", help="folder of the append-only result log tournament-<run>.jsonl; default <anchors dir>/anchor-runs")
-    parser.add_argument("--run-name", default="", help="log name: tournament-<run-name>.jsonl (appended to when it exists); default a UTC timestamp")
+    parser.add_argument("--run-dir", default="", help="log root of the sc-observability run log (<run-dir>/logs/judge-jev.log.jsonl, appended to); default <anchors dir>/anchor-runs")
+    parser.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     parser.add_argument("--repeat", type=int, default=1, help="identical requests per (item, candidate); default 1")
     parser.add_argument("--request-prefix", default="batch", help="request ids are <prefix>/<item>/<anchor>/<candidate>/r<n>")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="confidence threshold of each line's verdict")
