@@ -25,7 +25,7 @@ Each run has four steps:
 
 ## CLI
 
-Two primitives, each sending Jev one request, plus a profile run that
+Two primitives, each composing single Jev requests, plus a profile run that
 aggregates them. Full definitions: [docs/cli.md](docs/cli.md); prompt
 composition diagrams: [docs/diagrams/](docs/diagrams/).
 
@@ -69,7 +69,8 @@ Out of scope:
 - Parsing records or querying the record store. Raptor owns both
   (ADR-JEV-0002).
 - Structure checks that Raptor's import already makes (ADR-JEV-0003).
-- Changes to the Jev core other than defect fixes (ADR-JEV-0001).
+- Changes to the Jev core other than defect fixes or the logger move
+  (ADR-JEV-0001, REQ-JEV-0008).
 
 ## Install
 

@@ -1,6 +1,6 @@
 # judge-jev Requirements - Raptor Integration
 
-**ID Range:** REQ-JEV-0001 through REQ-JEV-0008  
+**ID Range:** REQ-JEV-0001 through REQ-JEV-0008, NFR-JEV-0001  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-07  
@@ -53,8 +53,9 @@ them and notify judge-jev without breaking it.
 
 - judge-jev MUST send every Jev request through one batch command that
   reads request lines and writes one result envelope per request, with
-  typed error codes, a fixed retry policy, request size limits and a run
-  file logging every request and answer.
+  typed error codes, a fixed retry policy, request size limits, and every
+  request and answer logged through the sc-observability logger
+  (REQ-JEV-0008).
 
 ### Rationale
 
@@ -66,7 +67,7 @@ replaces it (ADR-JEV-0001).
 **Acceptance Criteria:**
 
 - [ ] A request file of three lines produces three result envelopes and
-  one run file holding all three.
+  three log entries.
 
 ## REQ-JEV-0003: TypeSafe key lookup
 

@@ -54,7 +54,7 @@ violated in a different way.
 
 ### Rationale
 
-Jev judges one item at a time; packing records into one request hides
+Jev judges one record and location at a time; packing records into one request hides
 which one failed. Batching is streaming single requests, which the batch
 command already does.
 
@@ -75,8 +75,8 @@ command already does.
 - judge-jev MUST support the target modes `prompt`, `skill`, `task` and
   `code`.
 - In `task` mode judge-jev MUST judge both the raw template and an
-  assignment rendered by sc-compose in strict mode from the vars file the
-  profile names.
+  assignment rendered by sc-compose in strict mode from the vars file named
+  by `--vars` or by the profile.
 - In `code` mode judge-jev MUST resolve the location with the tree-sitter
   grammars sc-agent defines.
 
@@ -97,6 +97,7 @@ owns the grammars so every consumer selects code the same way.
   raw template and one for its rendered assignment.
 - [ ] A vars file missing a template variable fails the render with the
   variable named.
+- [ ] The repository contains no tree-sitter grammar definitions.
 
 ### Implementation Notes
 
@@ -258,6 +259,8 @@ paths in a profile are relative to the profile or to the repository root.
   text), the mode, the question set (shipped id or override path), for
   `task` mode the vars file and rendered text, the full composed request,
   and its size against the request limit.
+- For `quality`, the dry run MUST report the decision tree and the composed
+  wave-1 request; later waves depend on live answers.
 - A dry run MUST fail with a typed error on anything that would make the
   live request wrong: an unresolved record or location, a render failure,
   or an oversize request.
