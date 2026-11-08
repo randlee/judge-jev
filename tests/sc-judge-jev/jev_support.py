@@ -1,6 +1,6 @@
 """A fresh render of the judge-jev skill's scripts, so every script test runs what an install would run.
 
-``SCRIPTS`` is a strict sc-compose CLI render of every ``scripts/*.py.j2`` (the same
+``SCRIPTS`` is a strict sc-compose CLI render of every ``scripts/*.py.j2`` and ``references/*.md.j2`` (the same
 ``sc-compose render --strict`` call plan-anchor's ``layout_support.render_cli`` makes),
 laid out beside a copy of the skill's ``assets/`` exactly as installed. With no
 ``sc-compose`` on PATH importing this module fails: a script test never runs against
@@ -30,8 +30,11 @@ def _render(dest: Path) -> Path:
     shutil.copytree(SKILL_SRC / "assets", skill / "assets")
     scripts = skill / "scripts"
     scripts.mkdir(parents=True)
-    for template in sorted(SCRIPT_TEMPLATES.glob("*.py.j2")):
-        out = scripts / template.name[:-len(".j2")]
+    (skill / "references").mkdir()
+    templates = [(t, scripts) for t in sorted(SCRIPT_TEMPLATES.glob("*.py.j2"))]
+    templates += [(t, skill / "references") for t in sorted((SKILL_SRC / "references").glob("*.md.j2"))]
+    for template, target in templates:
+        out = target / template.name[:-len(".j2")]
         proc = subprocess.run([binary, "render", "--root", str(template.parent), "--strict",
                                "--var", f"version={RENDER_VERSION}", "--file", str(template), "--output", str(out)],
                               capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)

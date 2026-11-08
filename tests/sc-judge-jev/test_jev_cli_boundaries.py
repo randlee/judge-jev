@@ -11,7 +11,7 @@ import subprocess
 import sys
 import unittest
 
-from jev_support import SCRIPTS
+from jev_support import SCRIPTS, SKILL
 
 CLEAN_ENV = {k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"}
 
@@ -56,7 +56,19 @@ class RenderedTextTests(unittest.TestCase):
             text = (SCRIPTS / name).read_text(encoding="utf-8")
             with self.subTest(name=name):
                 self.assertIsNone(re.search(r"\{\{\s*\w|\{%-?\s*\w", text))
+                # the one plan-anchor name kept on purpose: the shared credential store entry
+                text = text.replace('CREDENTIAL_SERVICE = "plan-anchor"', "")
                 self.assertIsNone(re.search(r"plan[-_]anchor", text, re.IGNORECASE))
+
+
+    def test_rendered_jev_api_reference_names_only_the_kept_command(self):
+        text = (SKILL / "references" / "jev-api.md").read_text(encoding="utf-8")
+        self.assertIsNone(re.search(r"\{\{\s*\w|\{%-?\s*\w", text))
+        self.assertIsNone(re.search(r"plan[-_]anchor", text, re.IGNORECASE))
+        self.assertIn("version: 0.0.0-test", text)
+        for dropped in ("`judge`", "`tournament`", "`bead-batch`", "`rubric`", "`check-fixtures`", "`dedupe", "## Judging flags",
+                        "## Attempt policy", "## Other Jev-backed subcommands"):
+            self.assertNotIn(dropped, text)
 
 
 if __name__ == "__main__":

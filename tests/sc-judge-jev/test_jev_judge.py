@@ -9,6 +9,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 import unittest
 from unittest import mock
@@ -128,7 +129,35 @@ def result_lines(text):
     return [json.loads(x) for x in text.splitlines() if x.strip()]
 
 
+# The credential entry plan-anchor reads (randlee/plan-anchor@d104c2d, scripts/jev_judge.py.j2). judge-jev must read
+# the same entry so one stored key serves both. With PLAN_ANCHOR_ROOT set to a plan-anchor checkout the constants are
+# parsed from that source instead of these recorded values.
+PLAN_ANCHOR_JEV_JUDGE = "plugins/sc-plan-anchor/install/templates/skills/plan-anchoring/scripts/jev_judge.py.j2"
+PLAN_ANCHOR_CREDENTIAL_CONSTANTS = {"TYPESAFE_KEY_ENV": "TYPESAFE_API_KEY", "CREDENTIAL_SERVICE": "plan-anchor",
+                                    "CREDENTIAL_ACCOUNT": "typesafe-api-key"}
+
+
+def plan_anchor_credential_constants():
+    root = os.environ.get("PLAN_ANCHOR_ROOT")
+    if not root:
+        return dict(PLAN_ANCHOR_CREDENTIAL_CONSTANTS), "recorded from plan-anchor@d104c2d"
+    source = Path(root, PLAN_ANCHOR_JEV_JUDGE).read_text(encoding="utf-8")
+    found = {}
+    for name in PLAN_ANCHOR_CREDENTIAL_CONSTANTS:
+        match = re.search(rf'^{name} = "([^"]*)"$', source, re.MULTILINE)
+        if match is None:
+            raise AssertionError(f"{name} not found in {root}/{PLAN_ANCHOR_JEV_JUDGE}")
+        found[name] = match.group(1)
+    return found, f"parsed from {root}/{PLAN_ANCHOR_JEV_JUDGE}"
+
+
 class CredentialLookupTests(unittest.TestCase):
+    def test_reads_the_same_entry_as_plan_anchor(self):
+        expected, where = plan_anchor_credential_constants()
+        actual = {name: getattr(jj, name) for name in expected}
+        self.assertEqual(actual, expected, where)
+        self.assertEqual(jj.WINDOWS_CREDENTIAL_TARGET, f"{expected['CREDENTIAL_SERVICE']}:{expected['CREDENTIAL_ACCOUNT']}")
+
     def test_absent_environment_and_empty_store_have_no_key(self):
         with env(), mock.patch.object(jj, "credential_store_api_key", return_value="") as store:
             self.assertEqual(jj.resolved_api_key(), "")
@@ -149,7 +178,7 @@ class CredentialLookupTests(unittest.TestCase):
         with mock.patch.object(jj.sys, "platform", "darwin"), mock.patch.object(jj.subprocess, "run", return_value=completed) as run:
             self.assertEqual(jj.credential_store_api_key(), "mac-key")
         run.assert_called_once_with(
-            ["security", "find-generic-password", "-s", "judge-jev", "-a", "typesafe-api-key", "-w"],
+            ["security", "find-generic-password", "-s", jj.CREDENTIAL_SERVICE, "-a", jj.CREDENTIAL_ACCOUNT, "-w"],
             stdin=jj.subprocess.DEVNULL, stdout=jj.subprocess.PIPE, stderr=jj.subprocess.DEVNULL,
             text=True, encoding="utf-8", timeout=5, check=False,
         )
@@ -159,13 +188,13 @@ class CredentialLookupTests(unittest.TestCase):
         with mock.patch.object(jj.sys, "platform", "linux"), mock.patch.object(jj.subprocess, "run", return_value=completed) as run:
             self.assertEqual(jj.credential_store_api_key(), "linux-key")
         run.assert_called_once_with(
-            ["secret-tool", "lookup", "service", "judge-jev", "account", "typesafe-api-key"],
+            ["secret-tool", "lookup", "service", jj.CREDENTIAL_SERVICE, "account", jj.CREDENTIAL_ACCOUNT],
             stdin=jj.subprocess.DEVNULL, stdout=jj.subprocess.PIPE, stderr=jj.subprocess.DEVNULL,
             text=True, encoding="utf-8", timeout=5, check=False,
         )
 
     def test_windows_uses_credential_manager(self):
-        self.assertEqual(jj.WINDOWS_CREDENTIAL_TARGET, "judge-jev:typesafe-api-key")
+        self.assertEqual(jj.WINDOWS_CREDENTIAL_TARGET, f"{jj.CREDENTIAL_SERVICE}:{jj.CREDENTIAL_ACCOUNT}")
         with mock.patch.object(jj.sys, "platform", "win32"), mock.patch.object(jj, "_windows_credential", return_value="windows-key") as credential:
             self.assertEqual(jj.credential_store_api_key(), "windows-key")
         credential.assert_called_once_with()
