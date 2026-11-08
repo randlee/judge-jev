@@ -455,10 +455,10 @@ class ErrorHandlingTests(unittest.TestCase):
         self.assertEqual(set(ok(jj.load_question_set("dev"))["roles"]), {"relevance", "compliance", "conflict", "evidence"})
         self.assertEqual(failure(jj.load_question_set("plan", str(Path(__file__)))).code, "INPUT.MALFORMED")
 
-    def test_only_batch_is_a_subcommand(self):
+    def test_batch_and_quality_are_the_subcommands(self):
         parser = jj.build_parser()
         sub = next(a for a in parser._actions if a.dest == "cmd")
-        self.assertEqual(sorted(sub.choices), ["batch"])
+        self.assertEqual(sorted(sub.choices), ["batch", "quality"])
 
 
 if __name__ == "__main__":

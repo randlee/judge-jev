@@ -11,6 +11,15 @@
   unchanged. The script carries PEP 723 metadata (`uv run --script`) and needs
   Python 3.10; a missing package is `DEPENDENCY.SC_OBSERVABILITY`, a refused
   event `LOG.WRITE`.
+- `jev_judge.py quality --req|--adr|--nfr <id> --index <raptor index>
+  [--questions <file>] [--dry-run]` (REQ-JEV-0101, REQ-JEV-0209): judges one
+  record from a Raptor import index with its kind's decision tree,
+  `assets/questions/quality-{req,adr,nfr}.json` (drafts, `approved: false`), one
+  batch request per wave; answers pick the next wave, a leaf gives the verdict
+  and the path. Records with import diagnostics are refused. Every result and
+  log event carries the tree id and the file's sha256.
+- `batch` accepts a request line without `anchor`: it sends only the item,
+  needs no roles and gets a null verdict. Anchored lines are gated as before.
 
 ## 0.1.0 — 2026-11-07
 

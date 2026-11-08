@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://synaptic-canvas.dev/judge-jev/jev-batch-result.schema.json",
   "title": "jev_judge.py batch result line",
-  "description": "One JSON line per (item, candidate, repeat), written to stdout and logged as request, answer and result events in the sc-observability run log as soon as the line and every line before it have an answer. Lines come in request order, but consumers key them by item_id, anchor_id, candidate_id and repeat. request_id is <prefix>/<item_id>/<anchor_id>/<candidate_id>/r<repeat>; run_id is the first 16 hex digits of SHA-256 over it; request_sha256 is SHA-256 over the exact request bytes sent. verdict reads the answers at threshold; leaning reads them at 0. The runner writes no tracker record: choosing and sealing a candidate is the anchor-tuning agent's.",
+  "description": "One JSON line per (item, candidate, repeat), written to stdout and logged as request, answer and result events in the sc-observability run log as soon as the line and every line before it have an answer. Lines come in request order, but consumers key them by item_id, anchor_id, candidate_id and repeat. request_id is <prefix>/<item_id>/<anchor_id>/<candidate_id>/r<repeat> (<prefix>/<item_id>/<candidate_id>/r<repeat> and anchor_id null for a line without an anchor, whose verdict and leaning are null); run_id is the first 16 hex digits of SHA-256 over it; request_sha256 is SHA-256 over the exact request bytes sent. verdict reads the answers at threshold; leaning reads them at 0. The runner writes no tracker record: choosing and sealing a candidate is the anchor-tuning agent's.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -48,7 +48,10 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
     },
     "anchor_id": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
     },
     "candidate_id": {
