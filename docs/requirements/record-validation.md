@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-08  
 **Owner:** Rand Lee  
-**Version:** 0.3.0  
+**Version:** 0.2.1  
 
 ---
 

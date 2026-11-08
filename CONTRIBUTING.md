@@ -13,7 +13,7 @@
 
 A PR that changes shipped content (anything under `plugins/` or a marketplace manifest) raises `VERSION` (patch for a fix or addition, minor for a release-worthy change), sets every version above to it, and adds a `## X.Y.Z — date` section to `CHANGELOG.md`. A PR that touches only tests, `scripts/` or `docs/` needs no bump.
 
-`scripts/check_version_sync.py` enforces this: by default it checks that every declaration it finds by glob equals `VERSION` and that the changelog has the entry; with `--base <ref>` (CI runs it on every pull request) it also checks that a PR changing shipped content raised `VERSION` and changed `CHANGELOG.md`. `tests/sc-judge-jev/test_version_ssot.py` runs the same discovery in the suite. Template `metadata.version` and `schema_version` values are wire-contract versions pinned by the JSON schemas, not release versions.
+`scripts/check_version_sync.py` enforces this: by default it checks that every declaration it finds by glob equals `VERSION` and that the changelog has the entry; with `--base <ref>` (CI runs it on every pull request against `origin/main`, so a stacked PR is judged against what lands) it also checks that a PR changing shipped content raised `VERSION` and changed `CHANGELOG.md`. `tests/sc-judge-jev/test_version_ssot.py` runs the same discovery in the suite. Template `metadata.version` and `schema_version` values are wire-contract versions pinned by the JSON schemas, not release versions.
 
 ## Proposing a change as an agent
 

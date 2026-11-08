@@ -2,8 +2,11 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. A PR that changes shipped content raises `VERSION`, moves every version with it, and adds a `## X.Y.Z — date` section here. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
-## 0.3.0 — 2026-11-08
+## 0.2.1 — 2026-11-08
 
+- `quality` refuses, with `QUALITY.TREE` before any call: a `verdict_rules`
+  entry that is not an object, `modals` given as a string (it could match by
+  substring), and a `--questions` tree whose `kind` differs from the record's.
 - `quality`: every wave reports its reason, each question's `id`, `text`,
   Jev's `choice` and `confidence`, in `data.results[].waves[].reason` and the
   `wave` log event (REQ-JEV-0101). A wave may end the walk with

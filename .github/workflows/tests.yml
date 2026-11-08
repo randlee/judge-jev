@@ -40,7 +40,7 @@ jobs:
       - run: python -m unittest discover -v -s tests/sc-judge-jev
       - run: python scripts/check_version_sync.py
       - if: github.event_name == 'pull_request'
-        run: python scripts/check_version_sync.py --base origin/${{ github.base_ref }}
+        run: python scripts/check_version_sync.py --base origin/main
 
   dependency-floor:
     # Proves the scripts work without PyYAML (settings tests skip with a
