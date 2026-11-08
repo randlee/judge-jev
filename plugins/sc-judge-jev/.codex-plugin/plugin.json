@@ -1,0 +1,32 @@
+{
+  "name": "sc-judge-jev",
+  "version": "0.1.0",
+  "description": "Install judge-jev into a repository or a parent folder.",
+  "author": {
+    "name": "randlee",
+    "url": "https://github.com/randlee"
+  },
+  "homepage": "https://github.com/randlee/judge-jev",
+  "repository": "https://github.com/randlee/judge-jev",
+  "license": "MIT",
+  "keywords": [
+    "jev"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Judge Jev",
+    "shortDescription": "Install judge-jev into a folder.",
+    "longDescription": "Installs the judge-jev skill into a repository or a parent folder of repositories, and upgrades it by rerunning.",
+    "developerName": "randlee",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Skills"
+    ],
+    "websiteURL": "https://github.com/randlee/judge-jev",
+    "defaultPrompt": [
+      "Install judge-jev into this repository.",
+      "Upgrade judge-jev in this folder."
+    ],
+    "brandColor": "#4F7CAC"
+  }
+}
