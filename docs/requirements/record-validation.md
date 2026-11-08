@@ -23,8 +23,9 @@ judge-jev verifies that a REQ, NFR or ADR is well written.
 
 **MUST statements:**
 
-- judge-jev MUST provide a mode that asks whether one REQ, NFR or ADR is
-  well written.
+- judge-jev MUST provide a mode that reports, for one requirement (REQ),
+  non-functional requirement (NFR) or architecture decision record (ADR),
+  the verdict of that record kind's quality decision tree.
 - The mode MUST judge only records that Raptor imported without
   diagnostics.
 - The mode MUST run as a decision tree of prompts: each wave sends several

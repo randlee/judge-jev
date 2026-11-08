@@ -24,8 +24,11 @@ what the first version leaves out.
 
 judge-jev's Jev core (the batch command, request and result contracts,
 key lookup and remote-judge consent) is copied from an existing
-implementation. A Rust implementation, exposed through PyO3 bindings or a
-CLI, will replace that Python core.
+implementation, and a Rust implementation, exposed through PyO3 bindings or
+a command-line interface (CLI), will replace that Python core. The problem
+is whether the Python core may change before then: any change to its
+architecture or contracts is a change the Rust replacement must reproduce,
+or its callers break when the replacement lands.
 
 ### Decision
 
@@ -48,14 +51,27 @@ to its callers.
 
 - Improvements to the core wait for the Rust implementation.
 
+### Alternatives Considered
+
+#### Alternative 1: Improve the Python core before the Rust replacement
+
+**Description:** Change the copied core's architecture or contracts now.
+
+**Why Rejected:** The Rust implementation could then not replace the core
+without a change to its callers.
+
 ## ADR-JEV-0002: Query records through Raptor over local SQLite
 
 **Status:** Draft  
 
 ### Context
 
-Requirements move to a Dolt server as the single source of truth, with
-the Raptor CLI as the access path.
+judge-jev needs requirement records to judge, and their source is
+changing: requirements move from Markdown files to a Dolt server as the
+single source of truth, with the Raptor command-line interface (CLI) as
+the access path. Raptor owns the record schema and every conversion
+(REQ-JEV-0001). The problem is how judge-jev reads records so that neither
+the move to Dolt nor a Raptor schema change breaks it.
 
 ### Decision
 
@@ -79,6 +95,22 @@ without touching judge-jev.
 - judge-jev depends on Raptor's query contract; Raptor notifies judge-jev
   maintenance before changing it.
 
+### Alternatives Considered
+
+#### Alternative 1: Parse record Markdown directly
+
+**Description:** judge-jev reads the record Markdown files itself.
+
+**Why Rejected:** Raptor owns the schema and every conversion; a parser in
+judge-jev breaks when Raptor changes them (REQ-JEV-0001).
+
+#### Alternative 2: Query the record store with SQL directly
+
+**Description:** judge-jev runs its own SQL against the record store.
+
+**Why Rejected:** Raptor owns the schema; judge-jev's own queries break when
+Raptor changes it (REQ-JEV-0001).
+
 ## ADR-JEV-0003: Judge record quality instead of loosening the schema
 
 **Status:** Proposed  
@@ -86,7 +118,11 @@ without touching judge-jev.
 ### Context
 
 Raptor rejects records missing required sections, such as statements
-written as plain prose.
+written as plain prose, so corpora with prose-only records do not import.
+judge-jev can judge only records with typed statements and criteria. The
+problem is how such records get into a judgeable form: by loosening
+Raptor's schema to accept them, or by keeping it strict and explaining
+what to fix.
 
 ### Decision
 
@@ -110,13 +146,25 @@ records that cannot be judged.
 - Corpora with prose-only records need editing before import, guided by
   the import diagnostics.
 
+### Alternatives Considered
+
+#### Alternative 1: Loosen Raptor's schema
+
+**Description:** Accept records missing required sections, such as
+prose-only statements.
+
+**Why Rejected:** A looser schema stores records that cannot be judged.
+
 ## ADR-JEV-0004: Code references are outside the first version
 
 **Status:** Draft  
 
 ### Context
 
-Records will eventually govern code as well as prompts.
+Records will eventually govern code as well as prompts, but selecting code
+needs tree-sitter grammars, which sc-agent defines and which may not be
+complete yet. The problem is what the first version judges while those
+grammars are unfinished.
 
 ### Decision
 
@@ -139,3 +187,19 @@ tree-sitter work first.
 **Negative:**
 
 - Code is not judged until the tree-sitter extension exists.
+
+### Alternatives Considered
+
+#### Alternative 1: judge-jev defines its own tree-sitter grammars
+
+**Description:** Ship grammars inside judge-jev so code is judged now.
+
+**Why Rejected:** sc-agent owns the grammars so every consumer selects code
+the same way (REQ-JEV-0203).
+
+#### Alternative 2: Line-range locations for code
+
+**Description:** Reference code by file line ranges instead of symbols.
+
+**Why Rejected:** Line ranges drift on every edit; symbols survive
+(REQ-JEV-0207).

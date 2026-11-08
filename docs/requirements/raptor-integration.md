@@ -29,7 +29,8 @@ batch command.
 
 **MUST NOT statements:**
 
-- judge-jev MUST NOT parse record Markdown or run SQL against the record
+- judge-jev MUST NOT parse record Markdown itself.
+- judge-jev MUST NOT run SQL (Structured Query Language) against the record
   store itself.
 
 ### Rationale
@@ -51,11 +52,16 @@ them and notify judge-jev without breaking it.
 
 **MUST statements:**
 
-- judge-jev MUST send every Jev request through one batch command that
-  reads request lines and writes one result envelope per request, with
-  typed error codes, a fixed retry policy, request size limits, and every
-  request and answer logged through the sc-observability logger
-  (REQ-JEV-0008).
+- judge-jev MUST send every Jev request through one batch command.
+- The batch command MUST read request lines.
+- The batch command MUST write one result envelope per request.
+- The batch command MUST use typed error codes.
+- The batch command MUST apply a fixed retry policy.
+- The batch command MUST enforce request size limits.
+- The batch command MUST log every request through the sc-observability
+  logger (REQ-JEV-0008).
+- The batch command MUST log every answer through the sc-observability
+  logger (REQ-JEV-0008).
 
 ### Rationale
 
@@ -127,7 +133,9 @@ Text sent to Jev leaves the machine; the user decides once per repository.
 
 **MUST statements:**
 
-- judge-jev MUST ship as a marketplace plugin for Claude, Codex and Cursor.
+- judge-jev MUST ship as a marketplace plugin for Claude.
+- judge-jev MUST ship as a marketplace plugin for Codex.
+- judge-jev MUST ship as a marketplace plugin for Cursor.
 - An upgrade MUST update every harness that is locked, installed or present.
 
 ### Rationale
@@ -237,7 +245,9 @@ judge-jev.
 
 **MUST NOT statements:**
 
-- judge-jev tests MUST NOT depend on timing, sleeps or ordering.
+- judge-jev tests MUST NOT depend on timing.
+- judge-jev tests MUST NOT depend on sleeps.
+- judge-jev tests MUST NOT depend on ordering.
 
 ### Rationale
 
