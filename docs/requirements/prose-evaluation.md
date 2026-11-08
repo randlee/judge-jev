@@ -1,9 +1,9 @@
 # judge-jev Requirements - Prose Evaluation
 
-**ID Range:** REQ-JEV-0201 through REQ-JEV-0205  
+**ID Range:** REQ-JEV-0201 through REQ-JEV-0206  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-07  
+**Last Updated:** 2026-11-08  
 **Owner:** Rand Lee  
 **Version:** 0.1.0  
 
@@ -134,3 +134,45 @@ trust frontier agents to write them."
 **Acceptance Criteria:**
 
 - [ ] Each shipped question file names the approval that admitted its text.
+
+## REQ-JEV-0206: One judgment per record and location
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+
+- When a record is satisfied in more than one location (prompt, skill,
+  agent, template or code), judge-jev MUST judge the record separately at
+  each location.
+- judge-jev MUST report one result per (record, location) pair.
+
+**MUST NOT statements:**
+
+- judge-jev MUST NOT combine a record's locations into one judgment.
+
+### Rationale
+
+Rand (2026-11-07): "from raptor config standpoint for judge-jev, we must
+have single requirements mapped to multiple places in
+prompts/skills/agents/code I would expect a separate jev query for each
+location it is satisfied. We may be able to fan out a single jev call w/
+<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>
+| <question-4-req-2> | ... depending on how we can fit items in context"
+
+### Success Criteria
+
+**Acceptance Criteria:**
+
+- [ ] A record mapped to three locations produces three results, one per
+  location.
+- [ ] A failure at one location is reported against that location only.
+
+### Implementation Notes
+
+Open: the ruling's batching option (one call per location carrying the
+questions of several records, packed to fit context) conflicts with
+REQ-JEV-0202 (exactly one record per request). It needs a ruling before
+either record changes.
+
