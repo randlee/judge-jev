@@ -1,0 +1,20 @@
+{
+  "name": "judge-jev",
+  "interface": {
+    "displayName": "Judge Jev"
+  },
+  "plugins": [
+    {
+      "name": "sc-judge-jev",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sc-judge-jev"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

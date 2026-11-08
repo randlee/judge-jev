@@ -1,0 +1,90 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Ubuntu 26.04 (ubuntu-latest) no longer ships CPython 3.9. Keep the
+        # documented floor on 24.04 while current interpreters follow latest.
+        include:
+          - os: ubuntu-24.04
+            python: "3.9"
+          - os: ubuntu-latest
+            python: "3.x"
+          - os: macos-latest
+            python: "3.9"
+          - os: macos-latest
+            python: "3.x"
+          - os: windows-latest
+            python: "3.9"
+          - os: windows-latest
+            python: "3.x"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install "jsonschema>=4,<5" "pyyaml>=5.1"
+      - run: python scripts/install_sc_compose_ci.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - run: python -m unittest discover -v -s tests/sc-judge-jev
+      - run: python scripts/check_version_sync.py
+      - if: github.event_name == 'pull_request'
+        run: python scripts/check_version_sync.py --base origin/${{ github.base_ref }}
+
+  dependency-floor:
+    # Proves the stdlib-only scripts work without PyYAML (settings tests skip
+    # with a reason) and that settings reading works on the PyYAML floor.
+    # CPython 3.9 is intentionally the dependency floor; Ubuntu 26.04 no
+    # longer offers it through actions/setup-python.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.9"
+      - run: python -m pip install "jsonschema>=4,<5"
+      - run: python scripts/install_sc_compose_ci.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: suite without PyYAML
+        run: python -m unittest discover -v -s tests/sc-judge-jev
+      - run: python -m pip install "pyyaml==5.1"
+      - name: suite on the PyYAML floor
+        run: python -m unittest discover -v -s tests/sc-judge-jev
+
+  installer:
+    # sc-compose 1.7.0 publishes CPython 3.11 wheels; the rendering and install
+    # tests need it and fail here instead of skipping.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      JUDGE_JEV_REQUIRE_SC_COMPOSE: "1"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "jsonschema>=4,<5" "pyyaml>=5.1" "sc-compose>=1.7.0,<2"
+      - run: python scripts/install_sc_compose_ci.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - run: python scripts/gen_install_data.py --check
+      - run: python -m unittest discover -v -s tests/sc-judge-jev
