@@ -1,7 +1,9 @@
 {
   "documents": {
-    "DOC-JEV-001": {"path": "docs/requirements.md"},
-    "DOC-JEV-002": {"path": "docs/adr/adr-jev-product.md"}
+    "DOC-JEV-001": {"path": "docs/requirements/raptor-integration.md"},
+    "DOC-JEV-002": {"path": "docs/requirements/record-validation.md"},
+    "DOC-JEV-003": {"path": "docs/requirements/prose-evaluation.md"},
+    "DOC-JEV-004": {"path": "docs/adr/adr-jev-product.md"}
   },
   "identity_version": "1.0.0",
   "repository_id": "urn:raptor:repo:judge-jev"
