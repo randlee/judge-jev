@@ -9,7 +9,7 @@
   `anchor-runs/tournament-<run>.jsonl`: each result line is a `request`,
   `answer` and `result` event in `<run-dir>/logs/judge-jev.log.jsonl`. Stdout is
   unchanged. The script carries PEP 723 metadata (`uv run --script`) and needs
-  Python 3.10; a missing package is `DEPENDENCY.SC_OBSERVABILITY`, a refused
+  Python 3.11 or newer; a missing package is `DEPENDENCY.SC_OBSERVABILITY`, a refused
   event `LOG.WRITE`.
 - `jev_judge.py quality --req|--adr|--nfr <id> --index <raptor index>
   [--questions <file>] [--dry-run]` (REQ-JEV-0101, REQ-JEV-0209): judges one

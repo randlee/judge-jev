@@ -8,7 +8,7 @@ required_variables:
 ---
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "pyyaml>=5.1",
 #   "sc-observability==1.5.0",
@@ -19,7 +19,7 @@ required_variables:
 Run it with ``uv run --script jev_judge.py ...``: the inline metadata above
 supplies its two dependencies, each imported lazily where it is needed. The
 run log goes through the sc-observability logger (``sc-observability==1.5.0``,
-Python 3.10+; DEPENDENCY.SC_OBSERVABILITY when it does not import), and a live
+Python 3.11+; DEPENDENCY.SC_OBSERVABILITY when it does not import), and a live
 Jev call reads the committed ``allow_remote_judge`` answer through
 ``judge_jev_settings.py`` (PyYAML when the settings file exists). Everything
 else is the standard library.
@@ -957,7 +957,7 @@ def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
     except ImportError as exc:
         return fail("DEPENDENCY.SC_OBSERVABILITY", f"the sc-observability logger is required for the run log and did not import: {exc}",
                     action=f"Run with `uv run --script jev_judge.py ...` (its inline metadata pins {SC_OBSERVABILITY_SPEC}), "
-                           f"or python3 -m pip install '{SC_OBSERVABILITY_SPEC}' (Python 3.10+).")
+                           f"or python3 -m pip install '{SC_OBSERVABILITY_SPEC}' (Python 3.11+).")
     root = pathlib.Path(log_root)
     created = sco.create_logger(sco.LoggerConfig(service=LOG_SERVICE, log_root=str(root)))
     if isinstance(created, sco.Err):
