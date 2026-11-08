@@ -1117,6 +1117,7 @@ class QualityTree(NamedTuple):
     override: bool
     start: str
     nodes: dict
+    kind: Optional[str]  # the tree's record kind, when it names one
 
 
 def _tree_error(path: str, message: str) -> Err[JudgeError]:
@@ -1136,7 +1137,7 @@ def _check_rules(path: str, node_id: str, questions: dict, rules, key: str, cond
         return _tree_error(path, f"wave {node_id} needs a non-empty {key} list")
     for rule in rules:
         whens = [rule.get(cond, {}) for cond in conds] if isinstance(rule, dict) else [None]
-        ok_target = rule.get(target) in nodes if target == "goto" else isinstance(rule.get(target), str)
+        ok_target = isinstance(rule, dict) and (rule.get(target) in nodes if target == "goto" else isinstance(rule.get(target), str))
         if not ok_target or any(not isinstance(when, dict) or any(q not in questions or not _is_choices(c) for q, c in when.items())
                                 for when in whens):
             return _tree_error(path, f"wave {node_id} has a {key} rule that is not {' and/or '.join(conds)} "
@@ -1152,7 +1153,7 @@ def _check_per(path: str, node_id: str, node: dict):
     statements, modals = node.get("statements"), node.get("modals")
     if node["per"] != "statement" or not isinstance(statements, str) or not statements.strip():
         return _tree_error(path, f"wave {node_id}: per must be \"statement\" with statements naming the record field to split")
-    if modals is not None and not _is_choices(modals):
+    if modals is not None and not (isinstance(modals, list) and _is_choices(modals)):
         return _tree_error(path, f"wave {node_id}: modals must be a non-empty list of modal names")
     return None
 
@@ -1199,7 +1200,7 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
             return bad
     # CRLF is hashed as LF, so a Windows checkout (core.autocrlf) gives the same digest as any other.
     digest = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
-    return Ok(QualityTree(tree["id"], digest, path, bool(override_path), tree["start"], nodes))
+    return Ok(QualityTree(tree["id"], digest, path, bool(override_path), tree["start"], nodes, tree.get("kind")))
 
 
 def _got(choices: dict, qid: str, wanted) -> bool:
@@ -1329,6 +1330,8 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
     tree = tree.value
     refs = {"record": {"id": record_id, "kind": kind, "source": {"raptor_index": args.index}},
             "tree": {"id": tree.id, "sha256": tree.sha256, "source": "override" if tree.override else "shipped", "path": tree.path}}
+    if tree.kind is not None and tree.kind != kind:
+        return _with_refs(_tree_error(tree.path, f"is a {tree.kind!r} tree; {record_id} is a {kind!r} record"), refs)
     record = quality_record(args.index, kind, record_id)
     if isinstance(record, Err):
         return _with_refs(record, refs)

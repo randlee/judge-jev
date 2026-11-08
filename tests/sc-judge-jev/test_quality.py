@@ -355,6 +355,23 @@ class QaFindings(QualityCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(out["data"]["results"][0]["tree"]["sha256"], hashlib.sha256(lf).hexdigest())
 
+    def test_a_rule_that_is_not_an_object_is_quality_tree(self):
+        w1, w2 = TreeOverride.TREE["nodes"]["w1"], TreeOverride.TREE["nodes"]["w2"]
+        for name, nodes in (("next", {"w1": {**w1, "next": ["oops"]}}), ("verdict_rules", {"w2": {**w2, "verdict_rules": ["oops"]}})):
+            tree = {**TreeOverride.TREE, "nodes": {**TreeOverride.TREE["nodes"], **nodes}}
+            code, out = self.quality("--req", "REQ-T-0001", "--questions", write(self.d, "bad.json", tree), "--dry-run")
+            self.assertEqual((code, out["error"]["code"]), (2, "QUALITY.TREE"), name)
+
+    def test_modals_as_a_string_is_quality_tree(self):
+        tree = json.loads((QUESTIONS / "quality-req.json").read_text(encoding="utf-8"))
+        tree["nodes"]["wave-1"]["modals"] = "MustNot"  # a string: "Must" in "MustNot" would match by substring
+        code, out = self.quality("--req", "REQ-T-0001", "--questions", write(self.d, "bad.json", tree), "--dry-run")
+        self.assertEqual((code, out["error"]["code"]), (2, "QUALITY.TREE"), out)
+
+    def test_an_override_tree_of_another_kind_is_refused(self):
+        code, out = self.quality("--req", "REQ-T-0001", "--questions", str(QUESTIONS / "quality-adr.json"), "--dry-run")
+        self.assertEqual((code, out["error"]["code"]), (2, "QUALITY.TREE"), out)
+
     def test_an_empty_record_id_is_validation_input(self):
         # Python 3.12+ argparse accepts `--req ""` (3.11 refuses it), so cmd_quality gets every id empty
         args = jj.build_parser().parse_args(["quality", "--req", "REQ-T-0001", "--index", self.index, "--dry-run"])

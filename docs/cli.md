@@ -137,6 +137,8 @@ variations, run against the released tool:
 
 - A variation is a file. `--questions <file>` overrides a set or tree on the
   released build; no code change or rebuild.
+- A quality tree override whose `kind` differs from the record's kind is
+  refused with `QUALITY.TREE` before any call.
 - Every result and log entry carries the set id and the file's content
   digest, so variations of the same set are compared by digest in the
   sc-observability log.
