@@ -150,22 +150,29 @@ all kinds.
 - Question sets and quality decision trees MUST be data files shipped
   with the tool, so changing a question, a tree branch or a wave needs no
   code change.
-- A consumer MUST be able to override any shipped question set or tree
-  with its own file for development and tuning, and every result MUST
-  name the override.
+- The released tool MUST accept an override file for any question set or
+  tree, so a variation is tried by writing a file, never by changing or
+  rebuilding code.
+- Every result and log entry MUST carry the question-set id and the
+  content digest of the file used, so results from many variations of the
+  same set can be told apart and compared.
 
 ### Rationale
 
 Rand: "I do not trust non-frontier agents to write prompts. I do not even
 trust frontier agents to write them." The question sets are the tool's
-system prompts and will be tuned continuously as consumers adopt it;
-overrides let that tuning run without shipping unapproved text.
+system prompts. Getting them production-worthy means running thousands of
+question variations against the released tool; a variation that needs a
+code change cannot be run at that scale.
 
 ### Success Criteria
 
 **Acceptance Criteria:**
 - [ ] Each shipped question file names the approval that admitted its text.
-- [ ] A result produced with an override names the override file.
+- [ ] A result produced with an override names the override file and its
+  digest.
+- [ ] Two override files differing in one question produce results with
+  different digests, run on the same released build.
 - [ ] Adding a wave to a quality tree changes only the tree file.
 
 ---

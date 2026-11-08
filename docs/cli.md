@@ -105,10 +105,21 @@ Question sets are the tool's system prompts and ship with it
 - `check`: one per record kind × target class, 6 in total;
 - `quality`: one decision tree per record kind, 3 in total.
 
-Sets and trees are data files, so changing a question, branch or wave
-needs no code change. Rand approves shipped wording. `--questions <file>` overrides a set or tree
-for development and tuning, and every result names the override. Expect the sets to
-change continuously for weeks while consumers adopt the tool.
+Sets and trees are data files; no question, branch or wave is written in
+code. Rand approves shipped wording.
+
+### Tuning
+
+Making the questions production-worthy will take weeks and thousands of
+variations, run against the released tool:
+
+- A variation is a file. `--questions <file>` overrides a set or tree on the
+  released build; no code change or rebuild.
+- Every result and log entry carries the set id and the file's content
+  digest, so variations of the same set are compared by digest in the
+  sc-observability log.
+- Sweeping many variations is a loop over files calling `check` or
+  `quality`; judge-jev needs no sweep command.
 
 ## `--dry-run`
 
