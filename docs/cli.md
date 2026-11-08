@@ -88,6 +88,26 @@ Checks every pair the profile lists and aggregates the results
 
 Diagram: [diagrams/check-profile.md](diagrams/check-profile.md)
 
+## `judge-jev validate`
+
+```
+judge-jev validate --tree|--questions|--answers|--index|--requests <file>
+```
+
+Checks one input file with the model judge-jev applies to that input kind
+before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
+
+- Kinds: `--tree` (quality tree), `--questions` (question set), `--answers`
+  (answers file), `--index` (Raptor import index), `--requests` (batch
+  request stream). Exactly one.
+- Never calls Jev, needs no key, writes no log.
+- Output: one JSON object. Success names the kind, the path and the file's
+  sha256.
+- A refusal is the typed error (`QUALITY.TREE`, `INPUT.MALFORMED`,
+  `VALIDATION.INPUT`, ...) naming the field path and the rule it breaks.
+
+Diagram: [diagrams/validate.md](diagrams/validate.md)
+
 ## Locations
 
 REQ-JEV-0207:
@@ -139,7 +159,8 @@ variations, run against the released tool:
   released build; no code change or rebuild.
 - A quality tree override whose `kind` differs from the record's kind is
   refused with `QUALITY.TREE` before any call.
-- A variation is checked whole before any call, and `--dry-run` reports the
+- A variation is checked with `judge-jev validate --tree <file>`
+  (REQ-JEV-0210). It is checked whole before any call, and `--dry-run` reports the
   same error: a malformed question, a rule choice that is not an option, a
   wave without a final unconditional rule, or a cycle is `QUALITY.TREE`
   naming the wave, question or rule. No tree crashes the tool.
@@ -164,6 +185,11 @@ request a live run would send:
 
 Typed errors on an unresolved record or location, a render failure or an
 oversize request.
+
+Every input yields one JSON object, its result or a typed error. An invalid
+tree, question set, index, request stream or run directory, and a log event
+that exceeds the logger's size limit, are refused before the first Jev
+request (REQ-JEV-0211).
 
 ## Open
 
