@@ -1,6 +1,6 @@
 # judge-jev Requirements - Raptor Integration
 
-**ID Range:** REQ-JEV-0001 through REQ-JEV-0007  
+**ID Range:** REQ-JEV-0001 through REQ-JEV-0008  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-07  
@@ -187,6 +187,42 @@ first.
 **Acceptance Criteria:**
 
 - [ ] Raptor's import of this repository reports zero issues.
+
+## REQ-JEV-0008: Logging through the sc-observability logger
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+
+- judge-jev MUST write its run logs (requests, answers, quality-tree
+  branches, verdicts) through the sc-observability logger, the logger
+  sc-agent uses.
+
+**MUST NOT statements:**
+
+- judge-jev MUST NOT keep its own log format alongside it.
+
+### Rationale
+
+Rand (2026-11-08): "we will need to use sc-observability logger for both
+(this is what sc-agent uses). we should implement in judge-jev first then
+we can upgrade plan-anchor which is currently working solidly."
+
+### Success Criteria
+
+**Acceptance Criteria:**
+
+- [ ] A live `check` run's requests, answers and verdicts appear in the
+  sc-observability log.
+- [ ] No judge-jev command writes `anchor-runs/tournament-*.jsonl`.
+
+### Implementation Notes
+
+Today the copied core writes its own `anchor-runs/tournament-<run>.jsonl`
+(`jev_judge.py` `pump_batch`). plan-anchor moves to the same logger after
+judge-jev.
 
 ## NFR-JEV-0001: Deterministic offline tests
 

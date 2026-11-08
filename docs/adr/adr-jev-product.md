@@ -30,7 +30,8 @@ CLI, will replace that Python core.
 ### Decision
 
 The Jev core keeps its architecture and contracts unchanged. It changes
-only to fix a defect.
+only to fix a defect, or to replace its run log with the sc-observability
+logger (REQ-JEV-0008).
 
 ### Rationale
 
@@ -120,8 +121,9 @@ Records will eventually govern code as well as prompts.
 ### Decision
 
 The first version judges prompts, skills and task templates only. Code
-references come later through a tree-sitter grammar extension in
-sc-agent.
+references come later through tree-sitter grammars that sc-agent defines;
+judge-jev never defines its own grammars. sc-agent's grammars may not be
+complete yet.
 
 ### Rationale
 
