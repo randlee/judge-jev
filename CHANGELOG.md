@@ -10,9 +10,24 @@
   `verdict_rules` in the tree (`{any: {question: choice}, verdict}`, first
   match wins) instead of `next`; leaves still work. The leaf's fixed
   `reason` text is no longer reported.
-- The shipped trees (`quality-req`, `quality-adr`, `quality-nfr`) hold wave 1
-  only (wording unchanged, `approved: false`): `no` if any question answers
-  `no`, else `unclear` if any answers `unclear`, else `yes`.
+- Per-statement waves: a tree node with `"per": "statement"` sends one
+  request per statement of the record (`statements` names the record field,
+  `modals` the modals judged), item `<record>.s<index>` whose text is
+  `{statement, record}`. Its reason lists each statement (index, modal,
+  text) with every question's answer; its rules fire when any one statement
+  matches, and `matched_statements` names the statements that fired it. A
+  statement without an answer is named in the error. `--dry-run` shows every
+  statement's wave-1 request. A record with no judged statement is
+  `RECORD.STATEMENTS`.
+- `verdict_rules` take `all` beside `any`, and a listed choice may be a list
+  of choices. Every reason entry carries the chosen option's `criterion`,
+  which holds its fix hint.
+- The shipped trees hold wave 1 only (`approved: false`, draft pending Rand
+  approval). REQ and NFR ask per MUST / MUST NOT statement: `obligations`,
+  `joined_by`, `term`, `check`; `no` when a statement has 2+ obligations
+  joined by an and-list, alternatives or a rationale, an undefined or vague
+  term, or a check that needs a measure or none. ADR asks per record:
+  `context`, `alternatives`, `consequences`; `no` on any option with a fix.
 - `quality` takes repeated, mixed `--req/--adr/--nfr` ids and judges them all
   under one run name; output is `data.results`, one entry per record.
 - The `quality` log is `.sc/judge-jev/logs/judge-jev.log.jsonl` (default

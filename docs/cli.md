@@ -18,7 +18,8 @@ judges every named record under one run name.
   diagnostics are judged; every record is checked before the first request.
 - Runs the record kind's quality decision tree, in waves. Each wave is one
   request: record text + that wave's questions. Every wave reports its
-  reason: each question's id, text, Jev's choice and confidence. A wave's
+  reason: each question's id, text, Jev's choice, the chosen option's
+  criterion (which carries its fix hint) and confidence. A wave's
   answers select the next wave, which refines them; a wave with no next
   wave ends the walk, and a rule in the tree (`verdict_rules`) turns its
   answers into the verdict.
@@ -28,10 +29,23 @@ judges every named record under one run name.
   model chooses questions.
 - Output: per record, the verdict, the path through the tree and every
   wave's reason.
-- `--dry-run` reports each record's tree and composed wave-1 request; later
-  waves depend on live answers.
+- A per-statement wave (`"per": "statement"` in the tree) sends one request
+  per MUST / MUST NOT statement: the statement plus the whole record as
+  context, with all the wave's questions. The tree names the record field
+  holding the statements (`statements`) and the modals judged (`modals`).
+  Its reason lists each statement's index and text with every question's
+  answer; a rule fires when any one statement matches it, and
+  `matched_statements` names the statements that fired it. A statement that
+  gets no answer is named in the error.
+- `verdict_rules` match on `any` (one listed question got its choice) and
+  `all` (every listed question did); a choice may be a list of choices.
+- `--dry-run` reports each record's tree and composed wave-1 request, one
+  per statement for a per-statement wave; later waves depend on live
+  answers.
 - A live run logs every wave as output: composed request, answers, reason,
-  selected branch or verdict. Logging goes through the sc-observability
+  selected branch or verdict. A per-statement wave logs each statement's
+  request and a `statement` event (statement, answers, reason), then a
+  `wave` event with the request ids, matched statements and verdict. Logging goes through the sc-observability
   logger, the one sc-agent uses (REQ-JEV-0008), to
   `.sc/judge-jev/logs/judge-jev.log.jsonl`.
 

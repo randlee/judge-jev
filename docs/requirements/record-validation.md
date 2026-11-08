@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-08  
 **Owner:** Rand Lee  
-**Version:** 0.2.0  
+**Version:** 0.3.0  
 
 ---
 
@@ -31,6 +31,17 @@ judge-jev verifies that a REQ, NFR or ADR is well written.
   questions, and the answers to one wave select the next wave's questions.
 - Every wave MUST report, as its reason, each of its questions with the
   question's id and text, Jev's choice and Jev's confidence.
+- A wave the tree marks per statement MUST send one request for each MUST
+  and MUST NOT statement of the record, carrying that statement with the
+  whole record as context.
+- A per-statement wave's reason MUST list each statement's index and text
+  with each question's id, choice and confidence.
+- A per-statement wave's verdict rule MUST be able to fire when any one
+  statement's answers match it.
+- A per-statement wave's verdict MUST name the statements whose answers
+  fired its rule.
+- A per-statement request that gets no answer MUST fail with an error that
+  names its statement.
 - A wave after the first MUST refine the answers of the wave before it.
 - A wave after the first MUST be designed from the observed live results
   of the wave before it.
@@ -67,6 +78,10 @@ it. You can't design wave-2 until you see wave-1 results so you know what
 wave-2 should ask." The shipped trees therefore hold wave 1 only; a wave 2
 is designed from wave 1's observed answers.
 
+Rand (2026-11-08) approved per-statement waves: one request per MUST / MUST
+NOT statement, with that statement plus the whole record as context, so a
+failure names the statement to fix.
+
 ### Success Criteria
 
 **Acceptance Criteria:**
@@ -76,12 +91,20 @@ is designed from wave 1's observed answers.
   choice and confidence.
 - [ ] A live run's log holds each wave's request, answers, reason and
   selected branch or verdict.
-- [ ] A REQ whose wave-1 `testable` question answers `no` reports `no`,
-  with that answer in wave 1's reason.
+- [ ] A REQ with two MUST statements and one SHOULD statement sends two
+  wave-1 requests, one per MUST statement.
+- [ ] A REQ whose third statement answers `check: none` reports `no`, names
+  statement 3, and lists every statement's answers in wave 1's reason.
+- [ ] A dry run shows the composed wave-1 request for every statement.
 - [ ] A record Raptor rejected is not sent to Jev.
 
 ### Implementation Notes
 
-Logging goes through the sc-observability logger (REQ-JEV-0008). The
-shipped trees' wave-1 rule is: `no` when any question answers `no`, else
-`unclear` when any answers `unclear`, else `yes`.
+Logging goes through the sc-observability logger (REQ-JEV-0008). A
+per-statement node sets `"per": "statement"`, `statements` (the record
+field holding the statements) and `modals` (the modals judged); each
+statement is one request whose item text is `{statement, record}`. The
+shipped REQ and NFR trees ask, per statement, `obligations`, `joined_by`,
+`term` and `check`; the ADR tree asks, per record, `context`,
+`alternatives` and `consequences`. Each option's criterion carries its fix
+hint, and the reason reports it.

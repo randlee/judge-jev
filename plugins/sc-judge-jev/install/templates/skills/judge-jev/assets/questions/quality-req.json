@@ -2,57 +2,92 @@
   "schema": "judge-jev/quality-tree/1",
   "id": "quality-req",
   "kind": "req",
-  "version": 2,
+  "version": 3,
   "approved": false,
   "note": "draft, pending Rand approval",
   "start": "wave-1",
   "nodes": {
     "wave-1": {
+      "per": "statement",
+      "statements": "requirement_statement.statements",
+      "modals": [
+        "Must",
+        "MustNot"
+      ],
       "questions": {
-        "testable": {
+        "obligations": {
           "type": "choice",
-          "instructions": "`item.text` is one requirement record as JSON. Does every MUST and MUST NOT statement in it name an outcome an observer can check as pass or fail?",
+          "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
           "criteria": {
-            "yes": "Each statement names a result that a test, inspection or command can confirm or refute.",
-            "no": "At least one statement states an aim or quality with no result that could be checked.",
-            "unclear": "The statements are too vague to tell what would be checked."
+            "1": "One obligation.",
+            "2": "Two independent obligations.",
+            "3": "Three independent obligations.",
+            "4+": "Four or more independent obligations."
           }
         },
-        "atomic": {
+        "joined_by": {
           "type": "choice",
-          "instructions": "`item.text` is one requirement record as JSON. Does each MUST and MUST NOT statement impose exactly one constraint?",
+          "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?",
           "criteria": {
-            "yes": "Every statement asks for one thing.",
-            "no": "At least one statement joins two or more independent obligations.",
-            "unclear": "It is not possible to tell how many obligations a statement holds."
+            "none": "One obligation; nothing is joined.",
+            "and-list": "A list of items joined by and or commas. Fix: split into one statement per item.",
+            "condition+obligation": "A condition (when, if, unless) plus one obligation. Acceptable: a condition is not a second obligation.",
+            "alternatives": "Alternatives joined by or. Fix: split, or state the choice.",
+            "obligation+rationale": "An obligation plus its reason or purpose. Fix: move the rationale to Rationale."
           }
         },
-        "defined": {
+        "term": {
           "type": "choice",
-          "instructions": "`item.text` is one requirement record as JSON. Is every term in the statements either common usage or defined in the record or in a record it names?",
+          "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
           "criteria": {
-            "yes": "A reader can understand every term without guessing.",
-            "no": "A statement relies on a term that is neither common nor defined.",
-            "unclear": "Some term may or may not need a definition."
+            "none": "Every term is common usage or defined in the record.",
+            "project term defined in a linked record": "A project term defined in a record this one links. Acceptable.",
+            "project term defined nowhere": "A project term defined neither here nor in a linked record. Fix: define it or link the record.",
+            "vague qualifier": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure.",
+            "undefined acronym": "An acronym that is never expanded or defined. Fix: define the acronym."
+          }
+        },
+        "check": {
+          "type": "choice",
+          "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+          "criteria": {
+            "unit test": "A unit or integration test.",
+            "CLI run": "Running a command and reading its output or exit code.",
+            "inspection or grep": "Reading or searching files or output.",
+            "needs a measure": "A check exists only once a number is given. Fix: add a threshold.",
+            "none": "Nothing could check it. Fix: rewrite as an outcome."
           }
         }
       },
       "verdict_rules": [
         {
-          "any": {
-            "testable": "no",
-            "atomic": "no",
-            "defined": "no"
+          "all": {
+            "obligations": [
+              "2",
+              "3",
+              "4+"
+            ],
+            "joined_by": [
+              "and-list",
+              "alternatives",
+              "obligation+rationale"
+            ]
           },
           "verdict": "no"
         },
         {
           "any": {
-            "testable": "unclear",
-            "atomic": "unclear",
-            "defined": "unclear"
+            "term": [
+              "project term defined nowhere",
+              "vague qualifier",
+              "undefined acronym"
+            ],
+            "check": [
+              "needs a measure",
+              "none"
+            ]
           },
-          "verdict": "unclear"
+          "verdict": "no"
         },
         {
           "verdict": "yes"
