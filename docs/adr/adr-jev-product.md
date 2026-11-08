@@ -16,34 +16,36 @@ what the first version leaves out.
 
 ---
 
-## ADR-JEV-0001: plan-anchor's API is the model
+## ADR-JEV-0001: Keep the Jev core unchanged until its Rust replacement
 
 **Status:** Draft  
 
 ### Context
 
-The Python Jev layer will be replaced by a Rust CLI.
+judge-jev's Jev core (the batch command, request and result contracts,
+key lookup and remote-judge consent) is copied from an existing
+implementation. A Rust implementation, exposed through PyO3 bindings or a
+CLI, will replace that Python core.
 
 ### Decision
 
-judge-jev copies plan-anchor's Jev calling layer, license lookup, consent
-setting and installer unchanged apart from renames.
+The Jev core keeps its architecture and contracts unchanged. It changes
+only to fix a defect.
 
 ### Rationale
 
-One contract serves both tools, so the Rust replacement swaps in under
-both.
+An unchanged core lets the Rust implementation replace it with no change
+to its callers.
 
 ### Consequences
 
 **Positive:**
 
-- The Rust CLI replaces the Python layer with no caller change.
+- The Rust replacement is a drop-in.
 
 **Negative:**
 
-- Improvements to the copied layer wait for the Rust CLI or land in
-  plan-anchor first.
+- Improvements to the core wait for the Rust implementation.
 
 ## ADR-JEV-0002: Query records through Raptor over local SQLite
 

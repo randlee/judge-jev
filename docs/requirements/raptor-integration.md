@@ -12,7 +12,8 @@
 ## Overview
 
 judge-jev works with Raptor-parseable Markdown and Raptor's SQL store. It
-reads records only through Raptor and calls Jev through plan-anchor's layer.
+reads records only through Raptor and sends every Jev request through one
+batch command.
 
 ---
 
@@ -42,7 +43,7 @@ them and notify judge-jev without breaking it.
 
 - [ ] judge-jev contains no Markdown record parser and no SQL statement.
 
-## REQ-JEV-0002: Same Jev calling layer as plan-anchor
+## REQ-JEV-0002: One batch command calls Jev
 
 **Status:** Draft  
 
@@ -50,25 +51,24 @@ them and notify judge-jev without breaking it.
 
 **MUST statements:**
 
-- judge-jev MUST call Jev through plan-anchor's `jev_judge.py batch`
-  contract: the same request lines, result envelopes, typed error codes,
-  exit codes, retry policy, request size limits and run-file logging.
-- Code copied from plan-anchor MUST differ from its source only by
-  identifier renames.
+- judge-jev MUST send every Jev request through one batch command that
+  reads request lines and writes one result envelope per request, with
+  typed error codes, a fixed retry policy, request size limits and a run
+  file logging every request and answer.
 
 ### Rationale
 
-Rand will replace the Python Jev layer with a Rust CLI using plan-anchor's
-API as the model; identical contracts make the replacement a drop-in.
+One call path keeps the Jev core stable while a Rust implementation
+replaces it (ADR-JEV-0001).
 
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] A request file accepted by plan-anchor's `batch` produces the same
-  result envelope from judge-jev's `batch`.
+- [ ] A request file of three lines produces three result envelopes and
+  one run file holding all three.
 
-## REQ-JEV-0003: Same license lookup as plan-anchor
+## REQ-JEV-0003: TypeSafe key lookup
 
 **Status:** Draft  
 
@@ -77,17 +77,19 @@ API as the model; identical contracts make the replacement a drop-in.
 **MUST statements:**
 
 - judge-jev MUST read the TypeSafe API key from `TYPESAFE_API_KEY` first,
-  then from the same platform credential-store entry plan-anchor reads.
+  then from the platform credential store, service `plan-anchor`, account
+  `typesafe-api-key`.
 
 ### Rationale
 
-One key saved once serves both tools.
+Tools that call Jev share one stored key, saved once.
 
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] A key stored for plan-anchor is found by judge-jev with no other setup.
+- [ ] A key stored under that service and account is found with no other
+  setup.
 
 ## REQ-JEV-0004: Remote-judge consent
 
@@ -124,14 +126,12 @@ Text sent to Jev leaves the machine; the user decides once per repository.
 
 **MUST statements:**
 
-- judge-jev MUST ship as a marketplace plugin for Claude, Codex and Cursor
-  with plan-anchor's installer behaviour.
+- judge-jev MUST ship as a marketplace plugin for Claude, Codex and Cursor.
 - An upgrade MUST update every harness that is locked, installed or present.
 
 ### Rationale
 
-Users install it the same way as plan-anchor, and no harness is left on an
-old version.
+No harness is left on an old version.
 
 ### Success Criteria
 
