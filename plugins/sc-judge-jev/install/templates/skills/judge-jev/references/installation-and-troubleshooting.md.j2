@@ -54,7 +54,7 @@ allow_remote_judge: true
 
 ## Install the CLIs
 
-**python3** (3.9 or newer; the scripts are standard-library only, except `judge_jev_settings.py`, which needs PyYAML)
+**python3** (3.11 or newer; `jev_judge.py` also needs `sc-observability`, and `judge_jev_settings.py` needs PyYAML)
 
 - macOS: `brew install python` or the Xcode command line tools' `/usr/bin/python3`
 - Linux: `apt install python3` / `dnf install python3`
@@ -63,6 +63,10 @@ allow_remote_judge: true
 **PyYAML** (5.1 or newer; read only by `judge_jev_settings.py` for `.sc/judge-jev/settings.yaml`)
 
 - `python3 -m pip install pyyaml` (into the interpreter the skill runs). Without it `judge_jev_settings.py` returns `DEPENDENCY.PYYAML` and exits 2; it never falls back to defaults.
+
+**sc-observability** (1.5.0; the run log of `jev_judge.py`)
+
+- `uv run --script jev_judge.py ...` installs it from the script's inline metadata, or `python3 -m pip install 'sc-observability==1.5.0'`. Without it `jev_judge.py` returns `DEPENDENCY.SC_OBSERVABILITY` and exits 2.
 
 **TypeSafe API key**
 
@@ -101,7 +105,8 @@ Use the full path, or `export PATH="/opt/homebrew/bin:$PATH"` for the session.
 
 | Tool | Minimum | Why |
 | --- | --- | --- |
-| python3 | 3.9 | tested floor; standard library only, except `judge_jev_settings.py` |
+| python3 | 3.11 | tested floor; standard library only, except `judge_jev_settings.py` |
+| sc-observability | 1.5.0 | the run log of `jev_judge.py` (REQ-JEV-0008) |
 | PyYAML | 5.1 | `SafeLoader`-based strict reading of `.sc/judge-jev/settings.yaml`; CI tests 5.1 and the latest release |
 | Jev | `jev-latest` | pin a version once thresholds are tuned |
 

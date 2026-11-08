@@ -4,7 +4,7 @@
 
 - **Script and docs together.** A new flag, field, verdict, error code or exit code lands with its reference text and a test. Existing names are never renamed or removed in a patch; add only.
 - **Prompts and scripts are templates.** Every installed prompt (the skill, its references and assets templates, the agent bodies) and every script has its source in `plugins/sc-judge-jev/install/templates/` as a `<file>.md.j2` or `<script>.py.j2` (sc-compose, rendered with `version`) and is installed only by `install.py`. Agent frontmatter and registries live in `install/harness/<target>/`. The plugin itself exposes only `skills/judge-jev-installer/`. After a release, run `python3 scripts/gen_install_data.py` to refresh `install/legacy-owned.json` (the byte list of earlier releases).
-- **Tests green.** `python3 -m unittest discover -s tests/sc-judge-jev` and `python3 scripts/check_version_sync.py --base origin/main` both pass before you open the PR.
+- **Tests green.** `uv run --no-project --python 3.11 --with sc-observability==1.5.0 --with pyyaml --with 'jsonschema>=4,<5' --with 'sc-compose>=1.7.0,<2' python -m unittest discover -s tests/sc-judge-jev` (or `python3 -m unittest ...` in an interpreter that has those packages) and `python3 scripts/check_version_sync.py --base origin/main` both pass before you open the PR.
 - **Never a secret.** No keys, no live run output containing private plan text. Fixture answers and dry runs are how tests touch Jev.
 
 ## Versioning

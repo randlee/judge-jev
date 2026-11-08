@@ -15,7 +15,7 @@ import sys
 import tempfile
 import unittest
 
-from jev_support import SCRIPTS
+from jev_support import SCRIPTS, log_lines
 from test_jev_judge import jsonl, request_line
 
 JJ = SCRIPTS / "jev_judge.py"
@@ -96,7 +96,7 @@ class LiveBatchWithoutAnswers(unittest.TestCase):
         envelope = json.loads(proc.stderr)
         self.assertEqual((envelope["success"], set(envelope["error"]), envelope["error"]["code"]), (False, ERROR_KEYS, "JEV.NETWORK"))
         self.assertTrue(envelope["error"]["message"].startswith("2 request(s) got no answer; first batch/s1/ANC-001/cur/r1"))
-        self.assertEqual((self.d / "runs" / "tournament-r1.jsonl").read_text(encoding="utf-8"), proc.stdout)
+        self.assertEqual(log_lines(self.d / "runs"), lines)
         self.assertNotIn(DUMMY_KEY, proc.stdout + proc.stderr)
 
 

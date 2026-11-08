@@ -10,11 +10,12 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
 import tempfile
 import unittest
 from unittest import mock
 
-from jev_support import SCRIPTS, SKILL  # noqa: F401 - renders the scripts and puts them on sys.path
+from jev_support import SCRIPTS, SKILL, read_log  # noqa: F401 - renders the scripts and puts them on sys.path
 import jev_judge as jj  # noqa: E402
 
 PLAN_ROLES = {"relevance": "relevant", "compliance": "addressed", "conflict": "contradicted"}
@@ -353,7 +354,7 @@ class RedactionTests(unittest.TestCase):
             src = write(d, "in.jsonl", jsonl([request_line(text="token ts-secret-123456 in the item")]))
             with env(TYPESAFE_API_KEY="ts-secret-123456"), consented(), mock.patch.object(jj, "call_jev", Transport()):
                 code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--run-name", "r1"])
-            log = (Path(d) / "runs" / "tournament-r1.jsonl").read_text(encoding="utf-8")
+            log = json.dumps(read_log(Path(d) / "runs"), ensure_ascii=False)
         self.assertEqual(code, 0, out)
         self.assertNotIn("ts-secret-123456", json.dumps(out))
         self.assertNotIn("ts-secret-123456", log)
@@ -379,6 +380,14 @@ class ErrorHandlingTests(unittest.TestCase):
             code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--answers-file", missing])
             self.assertEqual((code, out["error"]["code"]), (2, "INPUT.MISSING"))
             self.assertFalse((Path(d) / "runs").exists())
+
+    def test_missing_sc_observability_is_a_typed_dependency_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = write(d, "in.jsonl", jsonl([request_line()]))
+            with mock.patch.dict(sys.modules, {"sc_observability": None}):
+                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--dry-run"])
+        self.assertEqual((code, out["error"]["code"]), (2, "DEPENDENCY.SC_OBSERVABILITY"))
+        self.assertIn("uv run --script", out["error"]["suggested_action"])
 
     def test_unexpected_exceptions_become_script_internal(self):
         with mock.patch.object(jj, "cmd_batch", side_effect=RuntimeError("boom")):
@@ -446,10 +455,10 @@ class ErrorHandlingTests(unittest.TestCase):
         self.assertEqual(set(ok(jj.load_question_set("dev"))["roles"]), {"relevance", "compliance", "conflict", "evidence"})
         self.assertEqual(failure(jj.load_question_set("plan", str(Path(__file__)))).code, "INPUT.MALFORMED")
 
-    def test_only_batch_is_a_subcommand(self):
+    def test_batch_and_quality_are_the_subcommands(self):
         parser = jj.build_parser()
         sub = next(a for a in parser._actions if a.dest == "cmd")
-        self.assertEqual(sorted(sub.choices), ["batch"])
+        self.assertEqual(sorted(sub.choices), ["batch", "quality"])
 
 
 if __name__ == "__main__":

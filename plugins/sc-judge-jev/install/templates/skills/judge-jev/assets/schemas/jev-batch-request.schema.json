@@ -2,12 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://synaptic-canvas.dev/judge-jev/jev-batch-request.schema.json",
   "title": "jev_judge.py batch request line",
-  "description": "One JSON object per line of the batch input (stdin or --input; the same parser reads both). Each line pairs one item with one anchor and the candidate question sets to judge it with; batch sends one Jev request per (item, candidate, repeat). The low layer is tracker-neutral: bead-batch builds these lines from beads, and the tournament builds them from its oracle and candidates.",
+  "description": "One JSON object per line of the batch input (stdin or --input; the same parser reads both). Each line pairs one item with one anchor and the candidate question sets to judge it with; batch sends one Jev request per (item, candidate, repeat). The low layer is tracker-neutral: bead-batch builds these lines from beads, and the tournament builds them from its oracle and candidates. A line without anchor (a judge-jev quality wave, where the record is the item) sends only the item, needs no roles and gets a null verdict.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "item",
-    "anchor",
     "questions"
   ],
   "properties": {

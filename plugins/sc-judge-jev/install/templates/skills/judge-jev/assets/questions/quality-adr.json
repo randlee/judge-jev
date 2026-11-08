@@ -1,0 +1,128 @@
+{
+  "schema": "judge-jev/quality-tree/1",
+  "id": "quality-adr",
+  "kind": "adr",
+  "version": 1,
+  "approved": false,
+  "note": "draft, pending Rand approval",
+  "start": "wave-1",
+  "nodes": {
+    "wave-1": {
+      "questions": {
+        "decision": {
+          "type": "choice",
+          "instructions": "`item.text` is one architecture decision record as JSON. Does its decision state one choice that was made, specific enough that a reader could tell whether later work follows it?",
+          "criteria": {
+            "yes": "The decision names one concrete choice that later work can follow or break.",
+            "no": "The decision is a goal, a list of options or a principle with no concrete choice.",
+            "unclear": "The decision may be a choice but is too vague to tell."
+          }
+        },
+        "context": {
+          "type": "choice",
+          "instructions": "`item.text` is one architecture decision record as JSON. Does its context state the problem or force that made a decision necessary?",
+          "criteria": {
+            "yes": "The context names the problem, constraint or need the decision answers.",
+            "no": "The context is missing in substance or only restates the decision.",
+            "unclear": "The context hints at a problem without stating it."
+          }
+        },
+        "consequences": {
+          "type": "choice",
+          "instructions": "`item.text` is one architecture decision record as JSON. Does it name at least one consequence of the decision?",
+          "criteria": {
+            "yes": "The record names an effect the decision has, good or bad.",
+            "no": "No consequence of the decision is named.",
+            "unclear": "Consequences are hinted at but not stated."
+          }
+        }
+      },
+      "next": [
+        {
+          "when": {
+            "decision": "no"
+          },
+          "goto": "decision"
+        },
+        {
+          "when": {
+            "context": "no"
+          },
+          "goto": "context"
+        },
+        {
+          "when": {
+            "consequences": "no"
+          },
+          "goto": "consequences"
+        },
+        {
+          "goto": "wave-2"
+        }
+      ]
+    },
+    "wave-2": {
+      "questions": {
+        "rationale": {
+          "type": "choice",
+          "instructions": "`item.text` is one architecture decision record as JSON. Does its rationale connect the decision to the problem in its context?",
+          "criteria": {
+            "yes": "The rationale explains why this choice answers the stated problem.",
+            "no": "The rationale is missing in substance or does not refer to the problem.",
+            "unclear": "The connection is implied but not stated."
+          }
+        },
+        "alternatives": {
+          "type": "choice",
+          "instructions": "`item.text` is one architecture decision record as JSON. Does it name an alternative that was considered, or say why none was?",
+          "criteria": {
+            "yes": "At least one alternative is named with why it was not chosen, or the absence is explained.",
+            "no": "No alternative is named and the absence is not explained.",
+            "unclear": "Alternatives are hinted at but not stated."
+          }
+        }
+      },
+      "next": [
+        {
+          "when": {
+            "rationale": "no"
+          },
+          "goto": "rationale"
+        },
+        {
+          "when": {
+            "alternatives": "no"
+          },
+          "goto": "alternatives"
+        },
+        {
+          "goto": "pass"
+        }
+      ]
+    },
+    "decision": {
+      "verdict": "no",
+      "reason": "The decision states no concrete choice."
+    },
+    "context": {
+      "verdict": "no",
+      "reason": "The context does not state the problem the decision answers."
+    },
+    "rationale": {
+      "verdict": "no",
+      "reason": "The rationale does not connect the decision to its context."
+    },
+    "alternatives": {
+      "verdict": "no",
+      "reason": "No alternative is named or explained."
+    },
+    "pass": {
+      "verdict": "yes",
+      "reason": "Every question in the path passed."
+    },
+    "consequences": {
+      "verdict": "no",
+      "reason": "No consequence of the decision is named."
+    }
+  }
+}

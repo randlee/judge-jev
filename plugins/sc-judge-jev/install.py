@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11,<3.12"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "pyyaml>=5.1",
 #   "sc-compose>=1.7.0,<2",
@@ -17,9 +17,8 @@ The marketplace plugin ships only the ``judge-jev-installer`` skill; it runs
 this script.
 
 The inline script metadata above lets ``uv run`` supply PyYAML and the
-sc-compose wheel. sc-compose 1.7.0 publishes CPython 3.11 wheels only, so the
-header pins 3.11 (uv downloads it when needed); the code itself runs on
-Python 3.9+, so ``python3 install.py`` works wherever both packages import.
+sc-compose wheel. judge-jev's floor is Python 3.11, with wheels for 3.11 or
+newer; ``python3 install.py`` works on 3.11+ wherever both packages import.
 
 What it reads:
   - Its package files, under this plugin directory: ``plugin.json`` (the

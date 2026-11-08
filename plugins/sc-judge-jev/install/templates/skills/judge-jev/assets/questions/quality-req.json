@@ -1,0 +1,138 @@
+{
+  "schema": "judge-jev/quality-tree/1",
+  "id": "quality-req",
+  "kind": "req",
+  "version": 1,
+  "approved": false,
+  "note": "draft, pending Rand approval",
+  "start": "wave-1",
+  "nodes": {
+    "wave-1": {
+      "questions": {
+        "testable": {
+          "type": "choice",
+          "instructions": "`item.text` is one requirement record as JSON. Does every MUST and MUST NOT statement in it name an outcome an observer can check as pass or fail?",
+          "criteria": {
+            "yes": "Each statement names a result that a test, inspection or command can confirm or refute.",
+            "no": "At least one statement states an aim or quality with no result that could be checked.",
+            "unclear": "The statements are too vague to tell what would be checked."
+          }
+        },
+        "atomic": {
+          "type": "choice",
+          "instructions": "`item.text` is one requirement record as JSON. Does each MUST and MUST NOT statement impose exactly one constraint?",
+          "criteria": {
+            "yes": "Every statement asks for one thing.",
+            "no": "At least one statement joins two or more independent obligations.",
+            "unclear": "It is not possible to tell how many obligations a statement holds."
+          }
+        },
+        "defined": {
+          "type": "choice",
+          "instructions": "`item.text` is one requirement record as JSON. Is every term in the statements either common usage or defined in the record or in a record it names?",
+          "criteria": {
+            "yes": "A reader can understand every term without guessing.",
+            "no": "A statement relies on a term that is neither common nor defined.",
+            "unclear": "Some term may or may not need a definition."
+          }
+        }
+      },
+      "next": [
+        {
+          "when": {
+            "testable": "no"
+          },
+          "goto": "testable"
+        },
+        {
+          "when": {
+            "atomic": "no"
+          },
+          "goto": "atomic"
+        },
+        {
+          "when": {
+            "defined": "no"
+          },
+          "goto": "defined"
+        },
+        {
+          "goto": "wave-2"
+        }
+      ]
+    },
+    "wave-2": {
+      "questions": {
+        "criteria": {
+          "type": "choice",
+          "instructions": "`item.text` is one requirement record as JSON. Do its acceptance criteria test what its statements require, and nothing the statements do not require?",
+          "criteria": {
+            "yes": "Each criterion checks a stated obligation, and each obligation has a criterion.",
+            "no": "A statement has no criterion, or a criterion checks something no statement requires.",
+            "unclear": "The criteria are too vague to match against the statements."
+          }
+        },
+        "rationale": {
+          "type": "choice",
+          "instructions": "`item.text` is one requirement record as JSON. Does its rationale say why the requirement exists?",
+          "criteria": {
+            "yes": "The rationale names the problem or need the requirement answers.",
+            "no": "The rationale is missing in substance or only restates the requirement.",
+            "unclear": "The rationale hints at a reason without stating it."
+          }
+        }
+      },
+      "next": [
+        {
+          "when": {
+            "criteria": "no"
+          },
+          "goto": "criteria"
+        },
+        {
+          "when": {
+            "criteria": "unclear"
+          },
+          "goto": "criteria-unclear"
+        },
+        {
+          "when": {
+            "rationale": "no"
+          },
+          "goto": "rationale"
+        },
+        {
+          "goto": "pass"
+        }
+      ]
+    },
+    "testable": {
+      "verdict": "no",
+      "reason": "A statement has no observable pass or fail outcome."
+    },
+    "atomic": {
+      "verdict": "no",
+      "reason": "A statement holds more than one constraint."
+    },
+    "defined": {
+      "verdict": "no",
+      "reason": "A statement uses an undefined term."
+    },
+    "criteria": {
+      "verdict": "no",
+      "reason": "The acceptance criteria do not match the statements."
+    },
+    "criteria-unclear": {
+      "verdict": "unclear",
+      "reason": "Jev could not match the acceptance criteria to the statements."
+    },
+    "rationale": {
+      "verdict": "no",
+      "reason": "The rationale does not say why the requirement exists."
+    },
+    "pass": {
+      "verdict": "yes",
+      "reason": "Every question in the path passed."
+    }
+  }
+}

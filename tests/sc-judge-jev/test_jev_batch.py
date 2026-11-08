@@ -1,4 +1,4 @@
-"""`batch`, the low layer: JSONL request lines in, JSONL result lines out on stdout and in the append-only log.
+"""`batch`, the low layer: JSONL request lines in, JSONL result lines out on stdout and in the sc-observability run log.
 
 Ported from plan-anchor's tests/sc-plan-anchor/test_tournament.py (BatchTests). Answers come from
 answers files or a stubbed transport; Jev is never called. Ordering is driven by events, not sleeps.
@@ -16,7 +16,7 @@ from unittest import mock
 import tempfile
 from pathlib import Path
 
-from jev_support import SCRIPTS, SKILL
+from jev_support import SCRIPTS, SKILL, log_lines, read_log
 import jev_judge as jj  # noqa: E402
 
 from test_jev_judge import STATEMENT, Transport, answer, consented, env, http, plan_answers, run_cli, write  # noqa: E402
@@ -55,7 +55,7 @@ class BatchCase(unittest.TestCase):
 
 
 class BatchTests(BatchCase):
-    """The low layer: JSONL request lines in, JSONL result lines out on stdout and in the append-only log."""
+    """The low layer: JSONL request lines in, JSONL result lines out on stdout and in the sc-observability run log."""
 
     LINES = [request_line("s1", "We copy the legacy crates.", ("cur", PLAN_QS["questions"]), ("alt", alt_set(1)), title="Sprint 1"),
              request_line("s3", "# Sprint 3\n\nCopy the legacy runtime crates.\n", ("cur", PLAN_QS["questions"]))]
@@ -69,7 +69,12 @@ class BatchTests(BatchCase):
         return proc
 
     def log(self, run_dir):
-        return (self.d / run_dir / "tournament-r1.jsonl").read_bytes()
+        """The result lines rebuilt from the run log's request, answer and result events."""
+        return log_lines(self.d / run_dir)
+
+    @staticmethod
+    def parsed(stdout):
+        return [json.loads(x) for x in stdout.decode("utf-8").splitlines()]
 
     def test_lines_are_keyed_by_id_with_verdicts_and_request_evidence(self):
         proc = self.subprocess_batch("runs", "--input", self.put("in.jsonl", jsonl(self.LINES)))
@@ -98,17 +103,36 @@ class BatchTests(BatchCase):
             for value in values:
                 validator.validate(value)
 
-    def test_log_matches_stdout_byte_for_byte_and_stdin_matches_file_input(self):
+    def test_log_holds_every_stdout_line_and_stdin_matches_file_input(self):
         from_file = self.subprocess_batch("a", "--input", self.put("in.jsonl", jsonl(self.LINES)))
         from_stdin = self.subprocess_batch("b", stdin=jsonl(self.LINES).encode("utf-8"))
         self.assertEqual((from_file.returncode, from_stdin.returncode), (0, 0))
         self.assertEqual(len(from_file.stdout.splitlines()), 6)
-        self.assertEqual(self.log("a"), from_file.stdout)
-        self.assertEqual(self.log("b"), from_stdin.stdout)
+        self.assertEqual(self.log("a"), self.parsed(from_file.stdout))
+        self.assertEqual(self.log("b"), self.parsed(from_stdin.stdout))
         self.assertEqual(from_stdin.stdout, from_file.stdout)
-        # the log is append-only: a second run with the same name adds its lines after the first run's
+        events = read_log(self.d / "a")
+        self.assertEqual([e["action"] for e in events], ["request", "answer", "result"] * 6)
+        self.assertEqual({e["fields"]["run"] for e in events}, {"r1"})
+        self.assertEqual([e["correlation_id"] for e in events if e["action"] == "result"], [x["run_id"] for x in self.parsed(from_file.stdout)])
+        self.assertEqual(list((self.d / "a").rglob("tournament-*.jsonl")), [])  # REQ-JEV-0008: no own log format
+        # the log is append-only: a second run with the same name adds its events after the first run's
         again = self.subprocess_batch("a", "--input", str(self.d / "in.jsonl"))
-        self.assertEqual(self.log("a"), from_file.stdout + again.stdout)
+        self.assertEqual(self.log("a"), self.parsed(from_file.stdout) + self.parsed(again.stdout))
+
+    def test_three_request_lines_are_three_results_and_three_result_events(self):
+        """REQ-JEV-0002: a request file of three lines produces three result envelopes and three log entries."""
+        three = [request_line(f"s{n}", "We copy the legacy crates.", ("cur", PLAN_QS["questions"])) for n in (1, 2, 3)]
+        proc = self.subprocess_batch("three", "--repeat", "1", "--input", self.put("three.jsonl", jsonl(three)))
+        self.assertEqual((proc.returncode, proc.stderr), (0, b""))
+        self.assertEqual(len(self.parsed(proc.stdout)), 3)
+        self.assertEqual(len(read_log(self.d / "three", action="result")), 3)
+
+    def test_dry_run_logs_requests_and_results_without_answers(self):
+        proc = self.subprocess_batch("dry", "--dry-run", "--repeat", "1", "--input", self.put("in.jsonl", jsonl(self.LINES[1:])))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual([e["action"] for e in read_log(self.d / "dry")], ["request", "result"])
+        self.assertEqual(self.log("dry"), self.parsed(proc.stdout))
 
     def test_stdout_lines_end_in_lf_where_text_stdout_writes_crlf(self):
         """On Windows a text-mode stdout turns "\n" into "\r\n"; the result lines must still match the log byte for byte.
@@ -122,7 +146,7 @@ class BatchTests(BatchCase):
         self.assertEqual((proc.returncode, proc.stderr), (0, b""))
         self.assertEqual(len(proc.stdout.splitlines()), 3)
         self.assertNotIn(b"\r", proc.stdout)
-        self.assertEqual(self.log("crlf"), proc.stdout)
+        self.assertEqual(self.log("crlf"), self.parsed(proc.stdout))
 
     def test_results_stream_in_request_order_as_each_answer_arrives(self):
         """Completion order is forced to c3, c1, c2 with events (no sleeps); lines still come out c1, c2, c3, and c1
@@ -168,7 +192,7 @@ class BatchTests(BatchCase):
         self.assertEqual((failed["ok"], failed["retry_count"], failed["error"]["code"], failed["verdict"]), (False, 1, "JEV.OVERLOADED", None))
         self.assertTrue(next(x for x in lines if x["candidate_id"] == "alt")["ok"])
         self.assertEqual(json.loads(proc.stderr)["error"]["code"], "JEV.OVERLOADED")
-        self.assertEqual(self.log("runs"), proc.stdout)
+        self.assertEqual(self.log("runs"), lines)
 
     def test_bad_input_is_refused_before_any_line(self):
         def refused(lines_text, *extra):
@@ -185,6 +209,12 @@ class BatchTests(BatchCase):
         self.assertFalse((self.d / "runs").exists())
         code, out = run_cli(["batch", "--input", self.put("ok.jsonl", good)])
         self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))  # no log directory
+
+    def test_max_request_bytes_over_the_loggable_ceiling_is_refused_before_any_line(self):
+        src = self.put("big.jsonl", jsonl([request_line("s1", "x" * 80000, ("cur", PLAN_QS["questions"]))]))
+        code, out = run_cli(["batch", "--input", src, "--run-dir", str(self.d / "runs"), "--dry-run", "--max-request-bytes", "200000"])
+        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
+        self.assertFalse((self.d / "runs").exists())
 
     def test_live_run_fails_closed_before_any_line(self):
         with mock.patch.dict(os.environ, {"TYPESAFE_API_KEY": ""}), mock.patch.object(jj, "credential_store_api_key", return_value=""):
@@ -243,11 +273,11 @@ class BatchRetryPolicyTests(BatchCase):
     def test_credentials_rejected_by_jev_stop_the_remaining_calls(self):
         t = Transport(http(401, "Bearer sk-test-0001 is wrong"))
         code, out, sleeps = self.live_batch(t, "--repeat", "3")
-        lines = [json.loads(x) for x in (self.d / "runs" / "tournament-r1.jsonl").read_text(encoding="utf-8").splitlines()]
+        lines = log_lines(self.d / "runs")
         self.assertEqual((code, len(t.bodies), sleeps, self.stderr_code), (2, 1, [], "AUTH.CREDENTIALS"))
         self.assertEqual([x["error"]["code"] for x in lines], ["AUTH.CREDENTIALS"] * 3)
         self.assertEqual([x["attempts"][0]["error"]["message"] for x in lines[1:]], ["not sent: the batch aborted"] * 2)
-        self.assertNotIn("sk-test-0001", json.dumps(lines))
+        self.assertNotIn("sk-test-0001", json.dumps(read_log(self.d / "runs")))
 
 
 if __name__ == "__main__":

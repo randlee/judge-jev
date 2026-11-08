@@ -52,3 +52,51 @@ SCRIPTS = _render(_scratch)
 SKILL = SCRIPTS.parent
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
+
+
+def _plain(value):
+    """An sc-observability stored value as plain JSON data; the binding's own ``sc_observability.*`` fields dropped."""
+    if hasattr(value, "items"):
+        return {k: _plain(v) for k, v in value.items() if not k.startswith("sc_observability.")}
+    if isinstance(value, (tuple, list)):
+        return [_plain(v) for v in value]
+    if getattr(value, "kind", None) == "null":
+        return None
+    if hasattr(value, "kind") and hasattr(value, "value"):
+        return _plain(value.value)
+    return value
+
+
+def read_log(log_root, action=None):
+    """The run log's events, oldest first, read back through sc-observability's own query API (never by parsing the
+    file): [{"action", "correlation_id", "fields"}]."""
+    import sc_observability as sco
+    created = sco.create_logger(sco.LoggerConfig(service="judge-jev", log_root=str(log_root)))
+    if isinstance(created, sco.Err):
+        raise AssertionError(f"could not open the log under {log_root}: {created.error}")
+    logger = created.value
+    try:
+        got = logger.query(sco.LogQuery(service="judge-jev", action=action, limit=1000))
+    finally:
+        logger.shutdown()
+    if isinstance(got, sco.Err):
+        raise AssertionError(f"log query failed: {got.error}")
+    return [{"action": e.action, "correlation_id": e.correlation_id, "fields": _plain(e.fields)} for e in got.value.events]
+
+
+def log_lines(log_root, extra_keys=("run",)):
+    """The batch result lines rebuilt from the log: each result event plus its request event's request and its answer
+    event's raw response (None when there is none, as on a dry run). ``extra_keys`` are fields the log adds."""
+    out, request, answer = [], None, None
+    for event in read_log(log_root):
+        fields = event["fields"]
+        if event["action"] == "request":
+            request, answer = fields, None
+        elif event["action"] == "answer":
+            answer = fields
+        elif event["action"] == "result":
+            line = {k: v for k, v in fields.items() if k not in extra_keys}
+            line["request"] = request["request"]
+            line["raw_response"] = answer["raw_response"] if answer is not None else None
+            out.append(line)
+    return out
