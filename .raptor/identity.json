@@ -1,0 +1,8 @@
+{
+  "documents": {
+    "DOC-JEV-001": {"path": "docs/requirements.md"},
+    "DOC-JEV-002": {"path": "docs/adr/adr-jev-product.md"}
+  },
+  "identity_version": "1.0.0",
+  "repository_id": "urn:raptor:repo:judge-jev"
+}
