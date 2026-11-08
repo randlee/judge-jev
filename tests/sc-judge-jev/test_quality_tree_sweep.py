@@ -6,7 +6,6 @@ not random, so each run checks the same inputs."""
 import copy
 import io
 import json
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -20,6 +19,8 @@ jj = tq.jj
 WRONG = [None, 0, True, "", "x", [], [1], ["x", 1], {}, {"x": 1}, [{"x": 1}], "wave-1", "missing", float("nan"), "\ud800"]
 DELETED = object()
 EXTRA_KEYS = ["next", "verdict_rules", "questions", "per", "goto", "x"]
+TREE_SWEEP_CODES = {None, "QUALITY.TREE", "INPUT.MALFORMED", "RECORD.STATEMENTS"}  # accepted, refused as JSON or as a tree, or by its record
+TREE_SWEEP_CODES = {None, "QUALITY.TREE", "INPUT.MALFORMED", "RECORD.STATEMENTS"}  # accepted, refused as JSON or as a tree, or by its record
 RAW = {"big int": "9" * 5000, "deep": "[" * 50000 + "]" * 50000, "Infinity": "Infinity"}
 
 
@@ -72,44 +73,60 @@ def first_option_answers(tree, record_id):
     return out
 
 
+def tree_cases(base):
+    """Every field of ``base`` replaced by each wrong value or deleted, and every object given each extra key:
+    (path, value, mutated tree)."""
+    cases = [(path, value, mutated(base, path, value)) for path in field_paths(base) if path for value in [*WRONG, DELETED]]
+    for path in field_paths(base):  # an extra key on every object: a leaf with next, a rule with questions, ...
+        parent = base
+        for key in path:
+            parent = parent[key]
+        if isinstance(parent, dict):
+            cases += [(path + (key,), value, mutated(base, path + (key,), value)) for key in EXTRA_KEYS
+                      if key not in parent for value in ([[{"goto": "wave-1"}], 5] if key == "next" else WRONG[:6])]
+    return cases
+
+
 class TreeSweep(unittest.TestCase):
     def sweep(self, base, flag, record_id):
         with tempfile.TemporaryDirectory() as td:
             d = Path(td)
             index = write(d, "index.json", tq.INDEX)
-            cases = [(path, value, mutated(base, path, value)) for path in field_paths(base) if path for value in [*WRONG, DELETED]]
-            for path in field_paths(base):  # an extra key on every object: a leaf with next, a rule with questions, ...
-                parent = base
-                for key in path:
-                    parent = parent[key]
-                if isinstance(parent, dict):
-                    cases += [(path + (key,), value, mutated(base, path + (key,), value)) for key in EXTRA_KEYS
-                              if key not in parent for value in ([[{"goto": "wave-1"}], 5] if key == "next" else WRONG[:6])]
-            for path, value, tree in cases:
+            for path, value, tree in tree_cases(base):
                 tree_file = write(d, "tree.json", tree)
-                if True:
-                    answers = write(d, "answers.json", first_option_answers(tree, record_id) or {"*": {}})
-                    outcomes = []
-                    for mode in (["--dry-run"], ["--answers-file", answers]):
-                        sent = []
-                        real = jj.pump_batch
+                answers = write(d, "answers.json", first_option_answers(tree, record_id) or {"*": {}})
+                outcomes = []
+                for mode in (["--dry-run"], ["--answers-file", answers]):
+                    sent = []
+                    real = jj.pump_batch
 
-                        def counting(lines, *args, **kwargs):
-                            sent.extend(lines)
-                            return real(lines, *args, **kwargs)
+                    def counting(lines, *args, **kwargs):
+                        sent.extend(lines)
+                        return real(lines, *args, **kwargs)
 
-                        with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
-                                mock.patch.object(jj, "pump_batch", counting):
-                            code, out = run_cli(["quality", flag, record_id, "--index", index, "--questions", tree_file,
-                                                 "--run-dir", str(d / "logs"), "--run-name", "sweep", *mode])
-                        where = f"{path} = {'<deleted>' if value is DELETED else repr(value)} ({mode[0]})"
-                        self.assertIsInstance(out, dict, where)
-                        error = out.get("error") or {}
-                        self.assertNotEqual(error.get("code"), "SCRIPT.INTERNAL", f"{where}: {error}")
-                        if error and mode[0] != "--dry-run":
-                            self.assertFalse(sent, f"{where}: refused after {len(sent)} request(s) were sent: {error}")
-                        outcomes.append(error.get("code"))
-                    self.assertEqual(outcomes[0], outcomes[1], f"{path} = {value!r}: dry run and live run disagree")
+                    with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
+                            mock.patch.object(jj, "pump_batch", counting):
+                        code, out = run_cli(["quality", flag, record_id, "--index", index, "--questions", tree_file,
+                                             "--run-dir", str(d / "logs"), "--run-name", "sweep", *mode])
+                    where = f"{path} = {'<deleted>' if value is DELETED else repr(value)} ({mode[0]})"
+                    self.assertIsInstance(out, dict, where)
+                    error = out.get("error") or {}
+                    self.assertNotEqual(error.get("code"), "SCRIPT.INTERNAL", f"{where}: {error}")
+                    self.assertIn(error.get("code"), TREE_SWEEP_CODES, f"{where}: {error}")
+                    if error and mode[0] != "--dry-run":
+                        self.assertFalse(sent, f"{where}: refused after {len(sent)} request(s) were sent: {error}")
+                    outcomes.append(error.get("code"))
+                self.assertEqual(outcomes[0], outcomes[1], f"{path} = {value!r}: dry run and live run disagree")
+                # `validate --tree` applies the tree's own checks: it refuses what quality refuses as a tree, with the same code,
+                # and accepts what quality accepts; only what needs the record (its statements) is left to quality
+                with env(), mock.patch.object(jj, "call_jev", tq.never_called):
+                    vcode, vout = run_cli(["validate", "--tree", tree_file])
+                verdict = (vout.get("error") or {}).get("code")
+                self.assertIsInstance(vout, dict, where)
+                if outcomes[0] in (None, "QUALITY.TREE", "INPUT.MALFORMED"):
+                    self.assertEqual(verdict, outcomes[0], f"{path} = {value!r}: validate and quality disagree: {vout}")
+                else:
+                    self.assertEqual(verdict, None, f"{path} = {value!r}: {vout}")
 
     def run_quality(self, d, argv, answer_side=False):
         """``answer_side``: the mutation is in Jev's answers (the answers file stands in for the response), so it can only

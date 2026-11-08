@@ -509,7 +509,7 @@ class ShippedTrees(unittest.TestCase):
         except ImportError:
             self.skipTest("jsonschema is not installed")
         record = INDEX["requirements"][0]
-        node = tree_node("quality-req.json")
+        node = jj.load_quality_tree("req").value.nodes["wave-1"]
         line = jj.wave_line(record, "wave-1", node, JUDGED[1])  # a per-statement line is a plain anchorless batch line
         settings = jj.quality_settings(False)
         job = jj.batch_jobs(line, 1, settings, {}).value[0]

@@ -4,6 +4,36 @@
 
 ## 0.2.1 — 2026-11-08
 
+- Every JSON input is parsed into a strict pydantic v2 model (ADR-JEV-0005;
+  `pydantic>=2.7,<3` joins the script's inline dependencies and CI): the quality
+  tree (tree, wave, leaf, choice question, `next` and `verdict_rules` rules),
+  the question set, the answers file and Jev's answers (choice and noul), the
+  Raptor import index (records stay open) and the batch request line (the
+  `jev-batch-request` wire contract is unchanged). The hand-written checks are
+  gone; every refusal keeps its code (`QUALITY.TREE`, `INPUT.MALFORMED`,
+  `VALIDATION.INPUT`, `QUESTIONS.ROLES`, `JEV.RESPONSE_INVALID`, `RECORD.*`) and
+  names pydantic's field path and rule, e.g.
+  `nodes.wave-1.questions.context.criteria: Dictionary should have at least 2
+  items`. `strict_loads` still parses first (NaN and Infinity, integers over
+  4300 digits, deep nesting and lone surrogates are `INPUT.MALFORMED`).
+  Stricter than before: a tree, question or rule with an unknown field, a
+  `version`, `approved` or `note` of the wrong type, or a Raptor record without
+  a string `id`; an anchor `kind` outside the schema's enum is refused.
+- New `validate` command (REQ-JEV-0210): exactly one of `--tree`, `--questions`,
+  `--answers`, `--index` or `--requests <file>` (`-` is stdin) runs the model
+  and checks the other commands apply before their first Jev request. It never
+  calls Jev, needs no API key and writes no log. It prints the kind, path and
+  sha256 of an accepted file, or the typed error with the field path.
+  `--requests` also takes `--gate` and `--max-request-bytes`, as `batch` does.
+- Invalid UTF-8 (or a closed stream) on stdin is `INPUT.MALFORMED` for every
+  command that reads stdin; it was `SCRIPT.INTERNAL`.
+- A request whose log events the sc-observability logger would refuse is
+  `JEV.CONTEXT_EXCEEDED` before any call, in `--dry-run` too (REQ-JEV-0211). The
+  request event, the largest answer event (every option with a probability), the
+  result event and, for `quality`, the statement, wave and verdict events are
+  each measured as the logger measures them (typed fields, compact JSON, 65536
+  bytes) and the message names the event and its size. A valid tree whose
+  request fitted `--max-request-bytes` was refused after Jev had answered.
 - No input crashes `jev_judge.py`. Every JSON input (tree, question set, index,
   answers file, request stream, Jev's response) is refused as `INPUT.MALFORMED`
   (or `JEV.RESPONSE_INVALID`) when it holds NaN or Infinity, an integer over
