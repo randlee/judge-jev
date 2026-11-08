@@ -154,9 +154,6 @@ all kinds.
   with its own file for development and tuning, and every result MUST
   name the override.
 
-**MUST NOT statements:**
-- Agents MUST NOT author shipped wording during development.
-
 ### Rationale
 
 Rand: "I do not trust non-frontier agents to write prompts. I do not even
