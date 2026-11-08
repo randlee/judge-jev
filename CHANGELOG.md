@@ -4,6 +4,18 @@
 
 ## 0.2.1 — 2026-11-08
 
+- No input crashes `jev_judge.py`. Every JSON input (tree, question set, index,
+  answers file, request stream, Jev's response) is refused as `INPUT.MALFORMED`
+  (or `JEV.RESPONSE_INVALID`) when it holds NaN or Infinity, an integer over
+  4300 digits, nesting too deep to parse, or a lone surrogate escape. A leaf
+  with `next`, `verdict_rules`, `per`, `statements` or `modals` is
+  `QUALITY.TREE`. An answer whose `choice` is not a string is
+  `JEV.RESPONSE_INVALID`, and the noul rule is one rule for validation and
+  reading. A non-UTF-8 argument is `VALIDATION.INPUT`. Output is JSON even when
+  a value holds a lone surrogate.
+- The run log must be writable before any call (`LOG.WRITE` otherwise). A run
+  whose log did not grow is `LOG.WRITE`, and that error still carries the
+  results.
 - `quality` checks the whole tree before any call (and in `--dry-run`): each
   question is a `choice` question with instructions and 2 to 255 criteria; each
   rule's choices are options of their question; each wave's last rule has no

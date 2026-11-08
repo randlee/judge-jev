@@ -171,12 +171,39 @@ def redact_sensitive(value):
     return BEARER_RE.sub(r"\1<redacted>", text)
 
 
+def _reject_constant(name: str):
+    raise ValueError(f"{name} is not a JSON number")
+
+
+def strict_loads(text: str):
+    """json.loads that also refuses what later breaks a request or the log: NaN and Infinity, a string that is not
+    encodable UTF-8 (a lone surrogate escape). Raises ValueError (oversized integers and malformed JSON included) or
+    RecursionError (nesting too deep); callers turn both into a typed error."""
+    value = json.loads(text, parse_constant=_reject_constant)
+    json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    return value
+
+
+def utf8_text(text: str) -> str:
+    """Text that encodes as UTF-8; JSON-escaped (ASCII) when it holds a lone surrogate, so output never fails."""
+    try:
+        text.encode("utf-8")
+        return text
+    except UnicodeEncodeError:
+        return text.encode("utf-8", "backslashreplace").decode("utf-8")
+
+
 def emit(obj, fmt: str = "json") -> None:
     obj = redact_sensitive(obj)
     if fmt == "json":
-        print(json.dumps(obj, indent=2, ensure_ascii=False))
+        text = json.dumps(obj, indent=2, ensure_ascii=False)
+        try:
+            text.encode("utf-8")
+        except UnicodeEncodeError:
+            text = json.dumps(obj, indent=2, ensure_ascii=True)
+        print(text)
     else:
-        print(obj)
+        print(utf8_text(str(obj)))
 
 
 def now_utc() -> _dt.datetime:
@@ -191,19 +218,19 @@ def load_json(path: str, what: str) -> Result[Any, JudgeError]:
     if path == "-":
         raw = sys.stdin.read()
         try:
-            return Ok(json.loads(raw))
-        except json.JSONDecodeError as exc:
-            return fail("INPUT.MALFORMED", f"{what} on stdin is not valid JSON: {exc}")
+            return Ok(strict_loads(raw))
+        except (ValueError, RecursionError) as exc:
+            return fail("INPUT.MALFORMED", f"{what} on stdin is not valid JSON: {type(exc).__name__}: {exc}")
     p = pathlib.Path(path) if path else None
     if p is None or not path.strip() or not p.is_file():
         return fail("INPUT.MISSING", f"{what} not found: {path!r}" + (" (not a regular file)" if p is not None and path.strip() and p.exists() else ""),
                     action=f"Pass the path of an existing file for the {what}.")
     try:
-        return Ok(json.loads(p.read_text(encoding="utf-8")))
-    except json.JSONDecodeError as exc:
-        return fail("INPUT.MALFORMED", f"{what} is not valid JSON: {exc}", action=f"Fix the JSON in {path}.")
+        return Ok(strict_loads(p.read_text(encoding="utf-8")))
     except (OSError, UnicodeDecodeError) as exc:
         return fail("INPUT.MALFORMED", f"{what} could not be read: {exc}", action=f"Check {path} is a readable UTF-8 file.")
+    except (ValueError, RecursionError) as exc:
+        return fail("INPUT.MALFORMED", f"{what} is not valid JSON: {type(exc).__name__}: {exc}", action=f"Fix the JSON in {path}.")
 
 
 def anchor_kind(a: dict) -> str:
@@ -328,8 +355,8 @@ def call_jev(body: dict, api_key: str, timeout: float) -> Result[dict, JudgeErro
     if len(raw) > MAX_RESPONSE_BYTES:
         return fail("JEV.RESPONSE_INVALID", "Jev response exceeded the size limit", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
     try:
-        parsed = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeError):
+        parsed = strict_loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeError, RecursionError):
         return fail("JEV.RESPONSE_INVALID", "Jev response was not JSON", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
     if not isinstance(parsed, dict):
         return fail("JEV.RESPONSE_INVALID", "Jev response was not a JSON object", recoverable=True, action="Check for a proxy rewriting the response.")
@@ -353,11 +380,16 @@ def noul_probability(ans: dict):
     return None
 
 
+def is_noul(ans: dict) -> bool:
+    """A noul answer: type "noul", or no type and a "noul" key. answer_problem and answer_choice both use this."""
+    return ans.get("type") == "noul" or ("type" not in ans and "noul" in ans)
+
+
 def answer_problem(ans, question) -> str:
     """Why an answer cannot be gated, or None when it can (modelled on process-porn's validator, minus the model check)."""
     if not isinstance(ans, dict):
         return "answer is not an object"
-    kind = ans.get("type", "choice")
+    kind = "noul" if is_noul(ans) else ans.get("type", "choice")
     if kind == "noul":
         if not is_probability(noul_probability(ans)):
             return "noul probability is missing or not in [0, 1]"
@@ -368,6 +400,8 @@ def answer_problem(ans, question) -> str:
     options = set(criteria) if isinstance(criteria, dict) else set()
     if "choice" not in ans:
         return "choice answer has no 'choice'"
+    if not isinstance(ans["choice"], str):
+        return f"choice {ans['choice']!r} is not a string"
     if options and ans["choice"] not in options:
         return f"choice {ans['choice']!r} is not one of {sorted(options)}"
     if not is_probability(ans.get("confidence")):
@@ -408,7 +442,7 @@ def validate_response(resp: dict, questions: dict, optional=frozenset()) -> Resu
 
 def answer_choice(ans: dict) -> tuple:
     """Return (choice, confidence) for a choice answer; tolerate noul answers."""
-    if ans.get("type") == "noul" or "noul" in ans:
+    if is_noul(ans):  # answer_problem checked its probability
         p = float(noul_probability(ans) or 0.0)
         return ("yes" if p >= 0.5 else "no", abs(p - 0.5) * 2)
     return (ans.get("choice", "unclear"), float(ans.get("confidence", 0.0)))
@@ -870,9 +904,9 @@ def read_request_lines(path: str) -> Result[list, JudgeError]:
         if not raw.strip():
             continue
         try:
-            lines.append(json.loads(raw))
-        except json.JSONDecodeError as exc:
-            return fail("INPUT.MALFORMED", f"request line {n} is not JSON: {exc}", action="Write one JSON object per line.")
+            lines.append(strict_loads(raw))
+        except (ValueError, RecursionError) as exc:
+            return fail("INPUT.MALFORMED", f"request line {n} is not JSON: {type(exc).__name__}: {exc}", action="Write one JSON object per line.")
     if not lines:
         return fail("INPUT.EMPTY", "the request stream has no lines")
     return Ok(lines)
@@ -924,11 +958,17 @@ class RunLog:
     """The run log (REQ-JEV-0008): one owned sc-observability logger per command, writing under
     ``<log_root>/logs/judge-jev.log.jsonl``. Every event carries the run name plus the caller's ``fields``."""
 
-    def __init__(self, sco, logger, run: str, log_root: pathlib.Path):
+    def __init__(self, sco, logger, run: str, log_root: pathlib.Path, size_at_open: int = 0):
         self._sco = sco
         self._logger = logger
         self.run = run
         self.log_root = log_root
+        self._size_at_open = size_at_open
+        self._events = 0
+
+    @property
+    def path(self) -> pathlib.Path:
+        return self.log_root / "logs" / f"{LOG_SERVICE}.log.jsonl"
 
     def event(self, action: str, fields: dict, correlation_id=None) -> Result[None, JudgeError]:
         """One log event, redacted like every emitted value; anything but an accepted admission is LOG.WRITE."""
@@ -939,6 +979,7 @@ class RunLog:
             detail = getattr(got.error, "message", got.error) if isinstance(got, self._sco.Err) else got.value.kind
             return fail("LOG.WRITE", f"the sc-observability logger refused the {action} event: {detail}",
                         action="Read the message; the event was not recorded, so rerun once the cause is fixed.")
+        self._events += 1
         return Ok(None)
 
     def flush(self) -> Result[None, JudgeError]:
@@ -951,6 +992,13 @@ class RunLog:
         got = self._logger.shutdown()
         if isinstance(got, self._sco.Err):
             return fail("LOG.WRITE", f"the sc-observability logger could not shut down: {getattr(got.error, 'message', got.error)}")
+        try:  # the logger admits events it later fails to write, so check the file grew
+            grew = self.path.stat().st_size > self._size_at_open
+        except OSError:
+            grew = False
+        if self._events and not grew:
+            return fail("LOG.WRITE", f"{self._events} event(s) were admitted but {self.path} did not grow; the run is not logged",
+                        action="Check the run directory is a writable directory, then rerun.")
         return Ok(None)
 
 
@@ -967,11 +1015,20 @@ def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
                     action=f"Run with `uv run --script jev_judge.py ...` (its inline metadata pins {SC_OBSERVABILITY_SPEC}), "
                            f"or python3 -m pip install '{SC_OBSERVABILITY_SPEC}' (Python 3.11+).")
     root = pathlib.Path(log_root)
+    log_file = root / "logs" / f"{LOG_SERVICE}.log.jsonl"
+    try:  # before any call: the log file must be appendable
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_file, "ab"):
+            pass
+        size_at_open = log_file.stat().st_size
+    except OSError as exc:
+        return fail("LOG.WRITE", f"the run log {log_file} is not writable: {exc}",
+                    action="Pass a --run-dir that is (or can be created as) a writable directory.")
     created = sco.create_logger(sco.LoggerConfig(service=LOG_SERVICE, log_root=str(root)))
     if isinstance(created, sco.Err):
         return fail("LOG.WRITE", f"the sc-observability logger could not start under {root}: {getattr(created.error, 'message', created.error)}",
                     action="Check the run directory is writable.")
-    return Ok(RunLog(sco, created.value, name, root))
+    return Ok(RunLog(sco, created.value, name, root, size_at_open))
 
 
 def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, JudgeError]:
@@ -1230,9 +1287,9 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
         return fail("INPUT.MISSING", f"quality tree not found: {path!r}", action="Pass the path of an existing tree file.")
     try:
         raw = p.read_bytes()
-        tree = json.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
-        return fail("INPUT.MALFORMED", f"quality tree {path} is not readable JSON: {exc}", action=f"Fix the JSON in {path}.")
+        tree = strict_loads(raw.decode("utf-8"))
+    except (OSError, ValueError, RecursionError) as exc:  # UnicodeDecodeError and JSONDecodeError are ValueErrors
+        return fail("INPUT.MALFORMED", f"quality tree {path} is not readable JSON: {type(exc).__name__}: {exc}", action=f"Fix the JSON in {path}.")
     if not isinstance(tree, dict) or not isinstance(tree.get("id"), str) or not isinstance(tree.get("nodes"), dict) or not tree["nodes"]:
         return _tree_error(path, "must be an object with id and a non-empty nodes object")
     nodes = tree["nodes"]
@@ -1246,6 +1303,9 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
         if "questions" not in node:
             if not isinstance(node.get("verdict"), str):
                 return _tree_error(path, f"leaf {node_id} needs a string verdict")
+            stray = sorted({"next", "verdict_rules", "per", "statements", "modals"} & set(node))
+            if stray:
+                return _tree_error(path, f"leaf {node_id} has {', '.join(stray)}; a leaf (no questions) holds only its verdict")
             continue
         questions = node["questions"]
         if not isinstance(questions, dict) or not questions or ("next" in node) == ("verdict_rules" in node):
@@ -1477,8 +1537,8 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
     closed = log.value.close()
     if failed is not None:
         return failed
-    if isinstance(closed, Err):
-        return _with_refs(closed, run_refs)
+    if isinstance(closed, Err):  # the answers were paid for: report them with the log error
+        return _with_refs(closed, {**run_refs, "results": results})
     return Ok({"success": True, "error": None, "data": {
         "dry_run": False, "results": results, "log": {"run": run_name, "log_root": args.run_dir}}})
 
@@ -1619,6 +1679,11 @@ def main(argv=None) -> int:
 
 
 def _main(argv=None) -> int:
+    bad = next((a for a in (sys.argv[1:] if argv is None else argv) if isinstance(a, str) and utf8_text(a) != a), None)
+    if bad is not None:
+        emit(JudgeError("VALIDATION.INPUT", f"argument {utf8_text(bad)!r} is not valid UTF-8",
+                        action="Pass ids, paths and names as UTF-8 text.").to_json())
+        return 2
     try:
         args = build_parser().parse_args(argv)
     except _UsageError as exc:
