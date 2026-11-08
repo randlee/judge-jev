@@ -85,6 +85,14 @@
 - The `quality` log is `.sc/judge-jev/logs/judge-jev.log.jsonl` (default
   `--run-dir` is now `.sc/judge-jev`; it was `.sc/judge-jev/logs`, which put
   the file under `logs/logs/`).
+- ADR-JEV-0007 seam: `jev_ports.py` holds the `Transport` port (only the batch request and
+  result JSON crosses it; `PythonCoreTransport` over `pump_batch`, `FixtureTransport` for
+  tests) and the `GraphStore` port (`OxigraphGraphStore` over `pyoxigraph` and `jev_graph`).
+- ADR-JEV-0006 run side: `jev_runs.py` projects a quality run onto the `jj:Run`, `jj:WaveRun`,
+  `jj:Answer` and `jj:OptionProbability` triples with deterministic IRIs (`run_triples`),
+  rebuilds the same triples from the sc-observability log alone (`rebuild_from_log`), and
+  carries `TRACE_QUERY`, which walks a verdict to its fired rule, each answer, its question
+  and the chosen option's label and criterion.
 
 ## 0.2.0 — 2026-11-08
 
