@@ -1,0 +1,1074 @@
+---
+name: sc-judge-jev-script-jev_judge
+version: 1.0.0
+format: python
+description: sc-judge-jev install-time script, rendered by install.py.
+required_variables:
+  - version
+---
+#!/usr/bin/env python3
+"""jev_judge.py
+
+Standard library only. Python 3.9+. One exception: a live Jev call reads the
+committed ``allow_remote_judge`` answer through ``judge_jev_settings.py``
+(PyYAML when the settings file exists), imported lazily inside that check, so
+--dry-run, --answers-file and every offline subcommand stay stdlib-only.
+
+Expected failures travel as values: a function that can fail returns
+``Ok(value)`` or ``Err(JudgeError)`` (see ``result.py``) and its caller
+propagates the ``Err`` explicitly. ``main`` is the only place an error becomes
+JSON on stdout and an exit code; anything unexpected that still raises is
+reported there as SCRIPT.INTERNAL.
+
+Subcommands
+  batch           low layer: JSONL request lines (stdin or --input) -> one JSONL result line per (item, candidate,
+                  repeat) on stdout as each answer arrives, teed to anchor-runs/tournament-<run>.jsonl; never writes beads
+
+Every subcommand prints JSON to stdout (or markdown with --format md where
+supported).
+
+Exit codes
+  A tool failure is an exit code; a negative answer from a command that ran
+  properly is not. There is no exit 1.
+  2  the command could not do its job: {"success": false, "data": null|{...},
+     "error": {code, message, recoverable, suggested_action}} (bad input or
+     arguments as VALIDATION.INPUT, a missing or unreadable file, a malformed
+     record or override, bad credentials, remote judging not allowed by
+     allow_remote_judge in .sc/judge-jev/settings.yaml as
+     POLICY.REMOTE_JUDGE_DISABLED, a missing dependency, an internal error as
+     SCRIPT.INTERNAL, and any Jev call that produced no answer: a Jev HTTP
+     error, a network or transport failure, an invalid response, or a missing
+     or malformed answers-file entry)
+  130 interrupted: the error envelope with code CANCELED (recoverable true)
+  `batch` stdout carries only result lines: exit 0 when every
+  line has an answer (or --dry-run); exit 2 with the error envelope on
+  stderr when any line has none (each such line has ok false and its error);
+  an error before the first line prints the envelope on stdout as usual.
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import collections
+import concurrent.futures
+import datetime as _dt
+import hashlib
+import http.client
+import json
+import math
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import threading
+import time
+import urllib.error
+import urllib.request
+from typing import Any, NamedTuple, Optional
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from result import Err, Ok, Result, utf8_stdio  # noqa: E402
+
+
+JEV_URL = "https://api.typesafe.ai/v1/systemone"  # tests redirect by patching this constant in-process
+TYPESAFE_KEY_ENV = "TYPESAFE_API_KEY"
+CREDENTIAL_SERVICE = "judge-jev"
+CREDENTIAL_ACCOUNT = "typesafe-api-key"
+WINDOWS_CREDENTIAL_TARGET = f"{CREDENTIAL_SERVICE}:{CREDENTIAL_ACCOUNT}"
+DEFAULT_MODEL = "jev-latest"
+DEFAULT_THRESHOLD = 0.6
+DEFAULT_MAX_REQUEST_BYTES = 24000  # plan gate: what Jev reads reliably (a planted contradiction 28k deep scored 0.46 vs 0.79 near the top)
+DEFAULT_MAX_REQUEST_BYTES_DEV = 64000  # dev gate: evidence is long; Jev accepted 107k bytes in one attempt, halving never fired in 245 requests
+MAX_RESPONSE_BYTES = 1048576
+RETRY_DELAYS = (1.0, 2.0)          # seconds before the second and third attempt; Retry-After overrides the first
+MAX_RETRY_AFTER = 30.0
+PROBABILITY_ROUNDING = 0.01        # Jev rounds each probability; the sum may be off by this per option
+HERE = pathlib.Path(__file__).resolve().parent
+QUESTIONS_DIR = HERE.parent / "assets" / "questions"
+KINDS = ("directive", "prohibition", "structural")  # how decide() gates: see decide(); structural anchors skip Jev at the plan gate
+REQUIRED_ROLES = ("relevance", "compliance", "conflict")
+ABORT_CODES = ("AUTH.CREDENTIALS", "POLICY.REMOTE_JUDGE_DISABLED")
+TRANSIENT_CODES = ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID")
+
+_sleep = time.sleep  # replaced in tests
+BEARER_RE = re.compile(r"(?i)(bearer\s+)[^\s\"']+")
+
+
+# --------------------------------------------------------------------------- #
+# plumbing
+# --------------------------------------------------------------------------- #
+class JudgeError:
+    """An expected failure, carried in Err. Never raised: main() turns it into the error envelope and exit 2."""
+
+    def __init__(self, code: str, message: str, recoverable: bool = False, action: str = "",
+                 status=None, retry_after=None):
+        self.code = code
+        self.message = message
+        self.recoverable = recoverable
+        self.action = action
+        self.status = status            # HTTP status when the error came from Jev
+        self.retry_after = retry_after  # parsed Retry-After header, seconds, or None
+        self.meta = {}                  # attempt / shortening bookkeeping, filled by judge_with_policy
+        self.data = None                # optional facts that explain the error (PLAN.TOO_LARGE carries the bead's shape)
+
+    def __str__(self) -> str:
+        return self.message
+
+    def __repr__(self) -> str:
+        return f"JudgeError({self.code!r}, {self.message!r})"
+
+    def to_json(self) -> dict:
+        return redact_sensitive({
+            "success": False,
+            "data": self.data,
+            "error": {
+                "code": self.code,
+                "message": str(self),
+                "recoverable": self.recoverable,
+                "suggested_action": self.action,
+            },
+        })
+
+
+def fail(code: str, message: str, **fields) -> Err[JudgeError]:
+    """An expected failure as a value: ``return fail(...)`` where the old code raised."""
+    return Err(JudgeError(code, message, **fields))
+
+
+def redact_sensitive(value):
+    """Remove the live TypeSafe credential and bearer tokens from every emitted value."""
+    if isinstance(value, dict):
+        return {key: redact_sensitive(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [redact_sensitive(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(redact_sensitive(item) for item in value)
+    if not isinstance(value, str):
+        return value
+    text = value
+    api_key = os.environ.get("TYPESAFE_API_KEY", "")
+    if api_key:
+        text = text.replace(api_key, "<redacted>")
+    return BEARER_RE.sub(r"\1<redacted>", text)
+
+
+def emit(obj, fmt: str = "json") -> None:
+    obj = redact_sensitive(obj)
+    if fmt == "json":
+        print(json.dumps(obj, indent=2, ensure_ascii=False))
+    else:
+        print(obj)
+
+
+def now_utc() -> _dt.datetime:
+    return _dt.datetime.now(_dt.timezone.utc)
+
+
+def stamp() -> str:
+    return now_utc().strftime("%Y%m%dT%H%M%SZ")
+
+
+def load_json(path: str, what: str) -> Result[Any, JudgeError]:
+    if path == "-":
+        raw = sys.stdin.read()
+        try:
+            return Ok(json.loads(raw))
+        except json.JSONDecodeError as exc:
+            return fail("INPUT.MALFORMED", f"{what} on stdin is not valid JSON: {exc}")
+    p = pathlib.Path(path) if path else None
+    if p is None or not path.strip() or not p.is_file():
+        return fail("INPUT.MISSING", f"{what} not found: {path!r}" + (" (not a regular file)" if p is not None and path.strip() and p.exists() else ""),
+                    action=f"Pass the path of an existing file for the {what}.")
+    try:
+        return Ok(json.loads(p.read_text(encoding="utf-8")))
+    except json.JSONDecodeError as exc:
+        return fail("INPUT.MALFORMED", f"{what} is not valid JSON: {exc}", action=f"Fix the JSON in {path}.")
+    except (OSError, UnicodeDecodeError) as exc:
+        return fail("INPUT.MALFORMED", f"{what} could not be read: {exc}", action=f"Check {path} is a readable UTF-8 file.")
+
+
+def anchor_kind(a: dict) -> str:
+    """directive (default), prohibition or structural; a record without `kind` is a directive."""
+    k = a.get("kind")
+    return k if k in KINDS else "directive"
+
+
+# --------------------------------------------------------------------------- #
+# judging
+# --------------------------------------------------------------------------- #
+def check_roles(qs: dict, where: str) -> Result[None, JudgeError]:
+    """Every required role, and the optional evidence role if present, must name a question in the set."""
+    questions = qs.get("questions")
+    if not isinstance(questions, dict) or not questions:
+        return fail("INPUT.MALFORMED", f"{where}: 'questions' must be a non-empty object keyed by question id",
+                    action="See assets/questions/plan.json for the shape.")
+    roles = qs.get("roles")
+    if not isinstance(roles, dict):
+        return fail("QUESTIONS.ROLES", f"{where}: 'roles' must map relevance, compliance and conflict to question ids",
+                    action="See references/verdict-gating.md for the role contract.")
+    for required in REQUIRED_ROLES:
+        if roles.get(required) not in questions:
+            return fail("QUESTIONS.ROLES", f"{where} must map role '{required}' to a question id in the set",
+                        action="See references/verdict-gating.md for the role contract.")
+    evidence = roles.get("evidence")
+    if evidence is not None and evidence not in questions:
+        return fail("QUESTIONS.ROLES", f"{where} maps role 'evidence' to '{evidence}', which is not a question in the set",
+                    action="Keep the default question ids, or update roles to match the renamed question.")
+    return Ok(None)
+
+
+def load_question_set(gate: str, override_path: str = "") -> Result[dict, JudgeError]:
+    path = override_path or str(QUESTIONS_DIR / f"{gate}.json")
+    loaded = load_json(path, f"question set for gate '{gate}'")
+    if isinstance(loaded, Err):
+        return loaded
+    qs = loaded.value
+    if not isinstance(qs, dict):
+        return fail("INPUT.MALFORMED", f"question set {path} must be a JSON object")
+    checked = check_roles(qs, f"question set {path}")
+    if isinstance(checked, Err):
+        return checked
+    return Ok(qs)
+
+
+def questions_digest(questions: dict) -> str:
+    canonical = json.dumps(questions, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def build_state(anchor: dict, item: dict) -> dict:
+    return {
+        "anchor": {
+            "id": anchor["id"],
+            "statement": anchor["statement"],
+            "scope": anchor.get("scope") or "",
+        },
+        "item": {
+            "id": item["id"],
+            "title": item.get("title") or "",
+            "text": item["text"],
+        },
+    }
+
+
+def encode_body(body: dict) -> bytes:
+    return json.dumps(body, allow_nan=False).encode("utf-8")
+
+
+def parse_retry_after(value):
+    if value is None:
+        return None
+    try:
+        delay = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(delay) or delay < 0:
+        return None
+    return min(delay, MAX_RETRY_AFTER)
+
+
+def http_error(status: int, text: str, retry_after=None) -> JudgeError:
+    """Map an HTTP failure to a JudgeError. Bodies are withheld except the first 300 chars of a 422."""
+    low = text.lower()
+    if 400 <= status < 500 and ("max_tokens" in low or ("token" in low and "exceed" in low)):
+        return JudgeError("JEV.CONTEXT_EXCEEDED", f"Jev HTTP {status}: request exceeds the model's context window", recoverable=True,
+                          action="Shorten the evidence for this item.", status=status)
+    if status == 401:
+        return JudgeError("AUTH.CREDENTIALS", "Jev HTTP 401; response body withheld", action="Check TYPESAFE_API_KEY.", status=status)
+    if status == 422:
+        return JudgeError("JEV.VALIDATION", f"Jev HTTP 422: {text[:300]}", action="Fix the named field; usually a malformed question override.", status=status)
+    code = {429: "JEV.RATE_LIMITED", 529: "JEV.OVERLOADED"}.get(status, "JEV.HTTP")
+    transient = status in (429, 529) or status >= 500
+    return JudgeError(code, f"Jev HTTP {status}; response body withheld", recoverable=transient,
+                      action="Retry with backoff" if transient else "Check the request body.",
+                      status=status, retry_after=retry_after)
+
+
+def call_jev(body: dict, api_key: str, timeout: float) -> Result[dict, JudgeError]:
+    """One POST to Jev. Returns Err(JudgeError) on failure; never retries or shortens (judge_with_policy does both)."""
+    data = encode_body(body)
+    req = urllib.request.Request(
+        JEV_URL, data=data, method="POST",
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "judge-jev/jev_judge"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read(MAX_RESPONSE_BYTES + 1)
+    except urllib.error.HTTPError as exc:
+        text = exc.read(4096).decode("utf-8", "replace")
+        retry_after = parse_retry_after(exc.headers.get("Retry-After") if exc.headers is not None else None)
+        return Err(http_error(exc.code, text, retry_after))
+    except urllib.error.URLError as exc:
+        return fail("JEV.NETWORK", f"Could not reach Jev: {exc.reason}", recoverable=True, action="Check network access and retry.")
+    except (OSError, http.client.HTTPException) as exc:
+        return fail("JEV.NETWORK", f"Jev connection failed: {type(exc).__name__}: {exc}", recoverable=True, action="Check network access and retry.")
+    if len(raw) > MAX_RESPONSE_BYTES:
+        return fail("JEV.RESPONSE_INVALID", "Jev response exceeded the size limit", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
+    try:
+        parsed = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeError):
+        return fail("JEV.RESPONSE_INVALID", "Jev response was not JSON", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
+    if not isinstance(parsed, dict):
+        return fail("JEV.RESPONSE_INVALID", "Jev response was not a JSON object", recoverable=True, action="Check for a proxy rewriting the response.")
+    return Ok(parsed)
+
+
+def is_transient(exc: JudgeError) -> bool:
+    if exc.code in TRANSIENT_CODES:
+        return True
+    return exc.code == "JEV.HTTP" and exc.status is not None and exc.status >= 500
+
+
+def is_probability(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and 0 <= value <= 1
+
+
+def noul_probability(ans: dict):
+    for key in ("noul", "probability", "p"):
+        if key in ans:
+            return ans[key]
+    return None
+
+
+def answer_problem(ans, question) -> str:
+    """Why an answer cannot be gated, or None when it can (modelled on process-porn's validator, minus the model check)."""
+    if not isinstance(ans, dict):
+        return "answer is not an object"
+    kind = ans.get("type", "choice")
+    if kind == "noul":
+        if not is_probability(noul_probability(ans)):
+            return "noul probability is missing or not in [0, 1]"
+        return None
+    if kind != "choice":
+        return f"answer type {kind!r} is not choice or noul"
+    criteria = question.get("criteria") if isinstance(question, dict) else None
+    options = set(criteria) if isinstance(criteria, dict) else set()
+    if "choice" not in ans:
+        return "choice answer has no 'choice'"
+    if options and ans["choice"] not in options:
+        return f"choice {ans['choice']!r} is not one of {sorted(options)}"
+    if not is_probability(ans.get("confidence")):
+        return "confidence is missing or not in [0, 1]"
+    probs = ans.get("probabilities")
+    if not isinstance(probs, dict):
+        return "probabilities missing"
+    if options and set(probs) != options:
+        return "probability keys differ from the options"
+    if not all(is_probability(p) for p in probs.values()):
+        return "a probability is out of range"
+    total = sum(probs.values())
+    if abs(total - 1) > PROBABILITY_ROUNDING * max(len(probs), 1):
+        return f"probabilities sum to {total:.4f}"
+    return None
+
+
+def validate_response(resp: dict, questions: dict, optional=frozenset()) -> Result[dict, JudgeError]:
+    """Every question must be answered except the ``optional`` (extra, never-gating) ones; no unknown ids."""
+    if not isinstance(resp, dict) or not isinstance(resp.get("answers"), dict):
+        return fail("JEV.RESPONSE_INVALID", "Jev response has no 'answers' object", recoverable=True,
+                    action="Retry; if it repeats, check the --model name.")
+    answers = resp["answers"]
+    required = set(questions) - set(optional)
+    if not required <= set(answers) or not set(answers) <= set(questions):
+        missing, extra = sorted(required - set(answers)), sorted(set(answers) - set(questions))
+        return fail("JEV.RESPONSE_INVALID", f"Jev answer ids differ from the questions (missing {missing}, unexpected {extra})", recoverable=True,
+                    action="Retry; if it repeats, check the question ids in the overrides.")
+    for qid, q in questions.items():
+        if qid not in answers:
+            continue  # an optional question left unanswered
+        problem = answer_problem(answers[qid], q)
+        if problem:
+            return fail("JEV.RESPONSE_INVALID", f"invalid answer for {qid}: {problem}", recoverable=True,
+                        action="Retry; if it repeats, the question set or the model changed shape.")
+    return Ok(resp)
+
+
+def answer_choice(ans: dict) -> tuple:
+    """Return (choice, confidence) for a choice answer; tolerate noul answers."""
+    if ans.get("type") == "noul" or "noul" in ans:
+        p = float(noul_probability(ans) or 0.0)
+        return ("yes" if p >= 0.5 else "no", abs(p - 0.5) * 2)
+    return (ans.get("choice", "unclear"), float(ans.get("confidence", 0.0)))
+
+
+def role_answers(answers: dict, roles: dict) -> dict:
+    """{role: (choice, confidence)} for every role that maps to an answered question."""
+    out = {}
+    for role, qid in (roles or {}).items():
+        if qid and qid in answers:
+            out[role] = answer_choice(answers[qid])
+    return out
+
+
+def decide(answers: dict, roles: dict, threshold: float, kind: str = "directive") -> tuple:
+    """Turn independent Jev answers into one verdict, gating in code (Jev cannot see its own answers).
+
+    directive (and structural at the dev gate): relevance, compliance and conflict all gate, as in the table in
+    references/verdict-gating.md. prohibition: the compliance role is ignored, because the default `addressed`
+    question answers no for every bead that simply refrains (10 of 10 beads in the measured experiments): not_applicable
+    when relevance is no, contradicted when conflict is yes, underspecified when relevance is unclear/low or the
+    conflict answer is not a confident no, else satisfied (the dev gate's evidence role still yields asserted_only).
+    With threshold 0 the result is the verdict by choices alone: the `leaning`.
+    """
+    got = role_answers(answers, roles)
+
+    def get(role):
+        return got.get(role, (None, 0.0))
+
+    rel, rel_c = get("relevance")
+    comp, comp_c = get("compliance")
+    conf, conf_c = get("conflict")
+    evid, evid_c = get("evidence")
+
+    if kind == "prohibition":
+        min_conf = min(rel_c, conf_c)
+        if rel == "no" and rel_c >= threshold:
+            return "not_applicable", min_conf
+        if conf == "yes" and conf_c >= threshold:
+            return "contradicted", min_conf
+        if rel == "unclear" or rel_c < threshold or conf != "no" or conf_c < threshold:
+            return "underspecified", min_conf
+        if roles.get("evidence") and evid == "no" and evid_c >= threshold:
+            return "asserted_only", min_conf
+        return "satisfied", min_conf
+
+    min_conf = min(rel_c, comp_c, conf_c)
+    if rel == "no" and rel_c >= threshold:
+        return "not_applicable", min_conf
+    if conf == "yes" and conf_c >= threshold:
+        return "contradicted", min_conf
+    if rel == "unclear" or rel_c < threshold or comp == "unclear" or comp_c < threshold:
+        return "underspecified", min_conf
+    if comp == "no":
+        return "not_addressed", min_conf
+    if comp == "yes" and conf == "no" and conf_c >= threshold:  # an unsure conflict answer never passes
+        if roles.get("evidence") and evid == "no" and evid_c >= threshold:
+            return "asserted_only", min_conf
+        return "satisfied", min_conf
+    return "underspecified", min_conf
+
+
+def _command_credential(argv: list[str]) -> str:
+    """Read a credential from a platform command without exposing its output on failure."""
+    try:
+        proc = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              text=True, encoding="utf-8", timeout=5, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return proc.stdout.strip() if proc.returncode == 0 else ""
+
+
+def _windows_credential() -> str:
+    """Read the documented generic credential target from Windows Credential Manager."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class Credential(ctypes.Structure):
+            _fields_ = [
+                ("Flags", wintypes.DWORD), ("Type", wintypes.DWORD), ("TargetName", wintypes.LPWSTR),
+                ("Comment", wintypes.LPWSTR), ("LastWritten", wintypes.FILETIME),
+                ("CredentialBlobSize", wintypes.DWORD), ("CredentialBlob", ctypes.c_void_p),
+                ("Persist", wintypes.DWORD), ("AttributeCount", wintypes.DWORD), ("Attributes", ctypes.c_void_p),
+                ("TargetAlias", wintypes.LPWSTR), ("UserName", wintypes.LPWSTR),
+            ]
+
+        credential = ctypes.POINTER(Credential)()
+        advapi = ctypes.windll.advapi32
+        advapi.CredReadW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                                     ctypes.POINTER(ctypes.POINTER(Credential)))
+        advapi.CredReadW.restype = wintypes.BOOL
+        advapi.CredFree.argtypes = (ctypes.c_void_p,)
+        if not advapi.CredReadW(WINDOWS_CREDENTIAL_TARGET, 1, 0, ctypes.byref(credential)):
+            return ""
+        try:
+            size = int(credential.contents.CredentialBlobSize)
+            if not size or not credential.contents.CredentialBlob:
+                return ""
+            return ctypes.string_at(credential.contents.CredentialBlob, size).decode("utf-16-le").strip()
+        finally:
+            advapi.CredFree(credential)
+    except (AttributeError, OSError, UnicodeDecodeError):
+        return ""
+
+
+def credential_store_api_key() -> str:
+    """Read the documented OS credential only when the environment has no key."""
+    if sys.platform == "darwin":
+        return _command_credential(["security", "find-generic-password", "-s", CREDENTIAL_SERVICE,
+                                    "-a", CREDENTIAL_ACCOUNT, "-w"])
+    if sys.platform == "win32":
+        return _windows_credential()
+    if sys.platform.startswith("linux"):
+        return _command_credential(["secret-tool", "lookup", "service", CREDENTIAL_SERVICE,
+                                    "account", CREDENTIAL_ACCOUNT])
+    return ""
+
+
+def resolved_api_key() -> str:
+    """Resolve the TypeSafe key from the environment first, then the platform credential store."""
+    environment_key = os.environ.get(TYPESAFE_KEY_ENV)
+    if environment_key is not None:
+        return environment_key.strip()
+    return credential_store_api_key()
+
+
+def check_api_key(api_key: str) -> Result[None, JudgeError]:
+    if not api_key:
+        return fail("AUTH.CREDENTIALS", "no TypeSafe API key was found", action="Export TYPESAFE_API_KEY or add the documented platform credential, or use --dry-run / --answers-file.")
+    if not api_key.isascii() or any(ord(c) <= 32 or ord(c) == 127 for c in api_key):
+        return fail("AUTH.CREDENTIALS", "the TypeSafe API key has invalid formatting (whitespace, control or non-ASCII characters)",
+                    action="Replace TYPESAFE_API_KEY or the platform credential with the key exactly as issued.")
+    return Ok(None)
+
+
+REMOTE_JUDGE_SETTING = ".sc/judge-jev/settings.yaml"
+REPO_ROOT_HELP = ("any path inside the repository; the nearest .sc/judge-jev/settings.yaml at or above it holds "
+                  "allow_remote_judge (read for live Jev calls only; default .)")
+REMOTE_JUDGE_SET = "python3 scripts/judge_jev_settings.py set allow_remote_judge true|false"
+
+
+def remote_judge_consent(args, what: str) -> Result[None, JudgeError]:
+    """The repository's committed answer to whether plan text may go to TypeSafe: ``allow_remote_judge`` in
+    .sc/judge-jev/settings.yaml. Only ``true`` passes; ``false`` and an absent answer refuse.
+
+    The settings module (and PyYAML behind it) is imported only here, so only a live call needs it.
+    """
+    import judge_jev_settings as settings  # lazy: dry runs and fixture answers stay stdlib-only
+
+    start = pathlib.Path(getattr(args, "repository_root", "") or ".")
+    root = settings.find_repo_root(start)  # consent is a repository's answer: outside one there is none
+    if not root.ok:
+        return Err(_from_tool_error(root.error))
+    # The nearest settings file at or above the given path wins (REQ-070), not the one at the git top level:
+    # an install in a folder inside the repository writes its settings there.
+    answer = settings.remote_judge_consent(start.resolve())
+    if answer.ok and answer.value is True:
+        return Ok(None)
+    disabled = f"Sending plan text to TypeSafe is disabled. {what} would leave this machine."
+    if answer.ok:  # False: the user said no
+        return fail("POLICY.REMOTE_JUDGE_DISABLED",
+                    f"{disabled} {REMOTE_JUDGE_SETTING} sets allow_remote_judge: false.",
+                    action="The user declined remote judging; only the user changes it (`python3 scripts/judge_jev_settings.py "
+                           "set allow_remote_judge true`, then commit). Use --dry-run to inspect the request instead.")
+    if answer.error.code == "SETTINGS.REMOTE_JUDGE_UNSET":
+        return fail("POLICY.REMOTE_JUDGE_DISABLED",
+                    f"{disabled} {REMOTE_JUDGE_SETTING} does not set allow_remote_judge.",
+                    action="Ask the user once whether plan text may be sent to TypeSafe (Jev) for judging, record the answer "
+                           f"with `{REMOTE_JUDGE_SET}`, and commit {REMOTE_JUDGE_SETTING}. Never infer consent from "
+                           "existing run files or past runs. Use --dry-run to inspect the request instead.")
+    return Err(_from_tool_error(answer.error))  # DEPENDENCY.PYYAML, SETTINGS.*: never a silent default
+
+
+def _from_tool_error(error) -> JudgeError:
+    out = JudgeError(error.code, error.message, action=error.action or "")
+    out.data = dict(error.data) if error.data is not None else None
+    return out
+
+
+def remote_preflight(args, what: str) -> Result[str, JudgeError]:
+    """Key and consent checks shared by every live Jev call; returns the API key. Nothing leaves the machine before this passes."""
+    api_key = resolved_api_key()
+    checked = check_api_key(api_key)
+    if isinstance(checked, Err):
+        return checked
+    consent = remote_judge_consent(args, what)
+    if isinstance(consent, Err):
+        return consent
+    return Ok(api_key)
+
+
+def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, JudgeError]:
+    """A fixture of Jev answers keyed by id (or '*'); Ok(None) when no path is given."""
+    if not path:
+        return Ok(None)
+    loaded = load_json(path, "answers fixture")
+    if isinstance(loaded, Err):
+        return loaded
+    fixture = loaded.value
+    if not isinstance(fixture, dict):
+        return fail("INPUT.MALFORMED", f"answers fixture must be an object keyed by {keyed_by} (or '*')")
+    return Ok(fixture)
+
+
+def check_threshold(value: float, name: str = "--threshold") -> Result[float, JudgeError]:
+    if not (0.0 <= value <= 1.0):
+        return fail("VALIDATION.INPUT", f"{name} must be between 0 and 1, got {value}")
+    return Ok(value)
+
+
+# --------------------------------------------------------------------------- #
+# cli
+# --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# batch (low layer, tracker-neutral): request lines in, one result line per (item, candidate, repeat) out
+# --------------------------------------------------------------------------- #
+BATCH_RESULT_SCHEMA = "judge-jev/jev-batch-result/1"
+BATCH_MAX_WORKERS = 4              # parallel Jev evaluators; the anchor-tuning protocol's cap
+BATCH_RETRIES = 1                  # one retry per failed call, recorded as retry_count on the line
+BATCH_FIXTURE_ERROR = "__error__"  # an answers-file attempt {"__error__": "<code>"} simulates a failed call
+BATCH_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+
+
+class BatchSettings(NamedTuple):
+    gate: str              # plan | dev: the default roles when a candidate carries none
+    model: str
+    repeat: int
+    prefix: str            # request ids are <prefix>/<item>/<anchor>/<candidate>/r<n>
+    threshold: float       # the line's verdict; leaning is the same answers at threshold 0
+    timeout: float
+    max_workers: int
+    max_request_bytes: int
+    dry_run: bool
+
+
+class BatchJob(NamedTuple):
+    item_id: str
+    anchor_id: str
+    candidate_id: str
+    repeat: int
+    request_id: str
+    body: dict
+    questions: dict
+    roles: dict
+    kind: str
+
+
+def batch_request_id(prefix: str, item_id: str, anchor_id: str, candidate_id: str, repeat: int) -> str:
+    return f"{prefix}/{item_id}/{anchor_id}/{candidate_id}/r{repeat}"
+
+
+def batch_run_id(request_id: str) -> str:
+    """Deterministic run id: the first 16 hex digits of SHA-256 over the request id."""
+    return hashlib.sha256(request_id.encode("utf-8")).hexdigest()[:16]
+
+
+def _safe_id(value, what: str) -> Result[str, JudgeError]:
+    if not isinstance(value, str) or not BATCH_ID_RE.match(value):
+        return fail("VALIDATION.INPUT", f"{what} {value!r} is not a safe id (letters, digits and _.:- only)",
+                    action="See assets/schemas/jev-batch-request.schema.json.")
+    return Ok(value)
+
+
+def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict) -> Result[list, JudgeError]:
+    """One request line -> its jobs (candidates x repeats, in order). Refuses a malformed line or an oversized request before any call."""
+    where = f"request line {number}"
+    if not isinstance(line, dict) or set(line) - {"item", "anchor", "questions"}:
+        return fail("VALIDATION.INPUT", f"{where} must be an object with item, anchor and questions",
+                    action="See assets/schemas/jev-batch-request.schema.json.")
+    item, anchor_rec, candidates = line.get("item"), line.get("anchor"), line.get("questions")
+    if not isinstance(item, dict) or not isinstance(item.get("text"), str) or not item["text"].strip():
+        return fail("VALIDATION.INPUT", f"{where}: item needs id and non-empty text")
+    checked = _safe_id(item.get("id"), f"{where}: item id")
+    if isinstance(checked, Err):
+        return checked
+    if not isinstance(anchor_rec, dict) or not isinstance(anchor_rec.get("statement"), str) or not anchor_rec["statement"].strip():
+        return fail("VALIDATION.INPUT", f"{where}: anchor needs id and statement")
+    checked = _safe_id(anchor_rec.get("id"), f"{where}: anchor id")
+    if isinstance(checked, Err):
+        return checked
+    if not isinstance(candidates, list) or not candidates:
+        return fail("VALIDATION.INPUT", f"{where}: questions must be a non-empty array of candidates")
+    jobs, seen = [], set()
+    state = build_state(anchor_rec, {"id": item["id"], "title": item.get("title") or "", "text": item["text"]})
+    kind = anchor_kind(anchor_rec)
+    for cand in candidates:
+        if not isinstance(cand, dict):
+            return fail("VALIDATION.INPUT", f"{where}: every candidate is an object with candidate_id, questions and optional roles")
+        cid = _safe_id(cand.get("candidate_id"), f"{where}: candidate_id")
+        if isinstance(cid, Err):
+            return cid
+        if cid.value in seen:
+            return fail("VALIDATION.INPUT", f"{where}: candidate {cid.value} is listed twice", action="Use --repeat for repeats.")
+        seen.add(cid.value)
+        qs = {"questions": cand.get("questions"), "roles": cand.get("roles") or base_roles}
+        checked = check_roles(qs, f"{where}: candidate {cid.value}")
+        if isinstance(checked, Err):
+            return checked
+        body = {"model": settings.model, "state": state, "questions": qs["questions"]}
+        size = len(encode_body(body))
+        if size > settings.max_request_bytes:
+            return fail("JEV.CONTEXT_EXCEEDED", f"{where}: the request for {item['id']}/{cid.value} is {size} bytes, over --max-request-bytes {settings.max_request_bytes}",
+                        action="Shorten the item (see references/plan-size-and-shape.md); never raise the cap to make it fit.")
+        for r in range(1, settings.repeat + 1):
+            rid = batch_request_id(settings.prefix, item["id"], anchor_rec["id"], cid.value, r)
+            jobs.append(BatchJob(item["id"], anchor_rec["id"], cid.value, r, rid, body, qs["questions"], qs["roles"], kind))
+    return Ok(jobs)
+
+
+def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int) -> Result[dict, JudgeError]:
+    keys = (f"{job.item_id}/{job.candidate_id}/r{job.repeat}", f"{job.item_id}/{job.candidate_id}", job.candidate_id, "*")
+    entry = next((fixture[k] for k in keys if k in fixture), None)
+    if entry is None:
+        return fail("FIXTURE.MISSING", f"answers fixture has no entry for {keys[0]} (or {keys[1]}, {keys[2]}, '*')",
+                    action=f"Add an entry for {keys[0]} to the answers file.")
+    if isinstance(entry, list):
+        if not entry:
+            return fail("FIXTURE.MISSING", f"answers fixture entry for {keys[0]} is an empty list")
+        entry = entry[min(attempt, len(entry)) - 1]
+    if isinstance(entry, dict) and BATCH_FIXTURE_ERROR in entry:
+        code = str(entry[BATCH_FIXTURE_ERROR])
+        return fail(code, f"fixture failure {code}", recoverable=code in TRANSIENT_CODES)
+    return Ok({"model": "fixture", "answers": entry})
+
+
+class _AbortFlag:
+    """Set once by the first call that must stop the batch (AUTH.CREDENTIALS, POLICY.*); later jobs send nothing."""
+
+    def __init__(self):
+        self._event = threading.Event()
+        self.error = None
+
+    def set(self, error: JudgeError) -> None:
+        self.error = error
+        self._event.set()
+
+    def is_set(self) -> bool:
+        return self._event.is_set()
+
+
+def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dry_run: bool) -> dict:
+    verdict = min_conf = leaning = None
+    if raw is not None:
+        verdict, min_conf = decide(raw["answers"], job.roles, settings.threshold, job.kind)
+        leaning = decide(raw["answers"], job.roles, 0.0, job.kind)[0]
+    return redact_sensitive({
+        "schema": BATCH_RESULT_SCHEMA, "request_id": job.request_id, "run_id": batch_run_id(job.request_id),
+        "item_id": job.item_id, "anchor_id": job.anchor_id, "candidate_id": job.candidate_id, "repeat": job.repeat,
+        "request_sha256": hashlib.sha256(encode_body(job.body)).hexdigest(), "questions_sha256": questions_digest(job.questions),
+        "request": job.body, "roles": job.roles, "kind": job.kind, "dry_run": dry_run, "ok": raw is not None,
+        "raw_response": raw, "answers": raw["answers"] if raw is not None else None,
+        "model_answered": raw.get("model") if raw is not None else None,
+        "threshold": settings.threshold, "verdict": verdict, "min_confidence": min_conf, "leaning": leaning,
+        "retry_count": max(len(attempts) - 1, 0), "attempts": attempts,
+        "error": None if error is None else {"code": error.code, "message": error.message, "recoverable": error.recoverable},
+    })
+
+
+def run_batch_job(job: BatchJob, settings: BatchSettings, api_key: str, fixture, abort: _AbortFlag) -> dict:
+    """One call with one retry on a recoverable failure; returns the result line (raw evidence, redacted)."""
+    if settings.dry_run:
+        return _line(job, settings, None, [], None, True)
+    attempts, raw, error = [], None, None
+    for attempt in range(1, BATCH_RETRIES + 2):
+        if abort.is_set():
+            error = abort.error
+            attempts.append({"attempt": attempt, "ok": False, "error": {"code": error.code, "message": "not sent: the batch aborted", "recoverable": False}})
+            break
+        got = _fixture_attempt(job, fixture, attempt) if fixture is not None else call_jev(job.body, api_key, settings.timeout)
+        if isinstance(got, Ok):
+            got = validate_response(got.value, job.questions)
+        if isinstance(got, Ok):
+            raw, error = got.value, None
+            attempts.append({"attempt": attempt, "ok": True})
+            break
+        error = got.error
+        attempts.append({"attempt": attempt, "ok": False, "error": {"code": error.code, "message": error.message, "recoverable": error.recoverable}})
+        if error.code in ABORT_CODES:
+            abort.set(error)
+            break
+        if not (error.recoverable or is_transient(error)) or attempt > BATCH_RETRIES:
+            break
+        if fixture is None:
+            _sleep(error.retry_after if error.retry_after is not None else RETRY_DELAYS[0])
+    return _line(job, settings, raw, attempts, error, False)
+
+
+async def _aiter(source):
+    if hasattr(source, "__aiter__"):
+        async for value in source:
+            yield value
+    else:
+        for value in source:
+            yield value
+
+
+class BatchInputError(Exception):
+    """A request line the async API cannot judge; carries the typed JudgeError. The CLI validates every line first, so it never sees one."""
+
+    def __init__(self, error: JudgeError):
+        super().__init__(error.message)
+        self.error = error
+
+
+async def stream_batch(source, settings: BatchSettings, api_key: str = "", fixture=None):
+    """Library API: an async iterator of result lines for an (async) iterable of request-line dicts.
+
+    At most ``settings.max_workers`` Jev calls run at once. Lines are yielded in request order (candidates,
+    then repeats, within each request line) as soon as each one and every line before it has an answer, so
+    the stream is deterministic for the same input; consumers still key lines by id, never by position.
+    Raises BatchInputError for an invalid request line.
+    """
+    loop = asyncio.get_running_loop()
+    base = load_question_set(settings.gate)
+    if isinstance(base, Err):
+        raise BatchInputError(base.error)
+    abort = _AbortFlag()
+    pending = collections.deque()
+    window = settings.max_workers * 2
+    with concurrent.futures.ThreadPoolExecutor(max_workers=settings.max_workers) as pool:
+        number = 0
+        async for line in _aiter(source):
+            number += 1
+            jobs = batch_jobs(line, number, settings, base.value["roles"])
+            if isinstance(jobs, Err):
+                raise BatchInputError(jobs.error)
+            for job in jobs.value:
+                pending.append(loop.run_in_executor(pool, run_batch_job, job, settings, api_key, fixture, abort))
+                while len(pending) >= window:
+                    yield await pending.popleft()
+        while pending:
+            yield await pending.popleft()
+
+
+def read_request_lines(path: str) -> Result[list, JudgeError]:
+    """Request lines from a file or stdin (``-``): the same parser for both, one JSON object per non-empty line."""
+    if path == "-":
+        text = sys.stdin.read()
+    else:
+        p = pathlib.Path(path)
+        if not p.is_file():
+            return fail("INPUT.MISSING", f"request stream not found: {path!r}", action="Pass a JSONL file, or - for stdin.")
+        try:
+            text = p.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            return fail("INPUT.MALFORMED", f"request stream could not be read: {exc}")
+    lines = []
+    for n, raw in enumerate(text.splitlines(), start=1):
+        if not raw.strip():
+            continue
+        try:
+            lines.append(json.loads(raw))
+        except json.JSONDecodeError as exc:
+            return fail("INPUT.MALFORMED", f"request line {n} is not JSON: {exc}", action="Write one JSON object per line.")
+    if not lines:
+        return fail("INPUT.EMPTY", "the request stream has no lines")
+    return Ok(lines)
+
+
+def write_stdout_line(text: str) -> None:
+    """One JSONL line to stdout, byte for byte as written to the log: through the binary buffer, because a text-mode
+    stdout on Windows turns "\n" into "\r\n". A stream without a buffer (a test's StringIO) gets the text."""
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is None:
+        sys.stdout.write(text)
+        sys.stdout.flush()
+        return
+    sys.stdout.flush()
+    buffer.write(text.encode("utf-8"))
+    buffer.flush()
+
+
+def encode_result_line(line: dict) -> str:
+    return json.dumps(line, ensure_ascii=False) + "\n"  # key order kept: request_sha256 hashes the request as sent
+
+
+def batch_settings(args, prefix: str) -> Result[BatchSettings, JudgeError]:
+    if getattr(args, "repeat", 1) < 1:
+        return fail("VALIDATION.INPUT", "--repeat must be at least 1")
+    if not 1 <= args.max_workers <= BATCH_MAX_WORKERS:
+        return fail("VALIDATION.INPUT", f"--max-workers must be between 1 and {BATCH_MAX_WORKERS}")
+    if not prefix.strip() or any(c.isspace() for c in prefix):
+        return fail("VALIDATION.INPUT", "--request-prefix must be non-empty and contain no whitespace")
+    threshold = check_threshold(getattr(args, "threshold", DEFAULT_THRESHOLD))
+    if isinstance(threshold, Err):
+        return threshold
+    gate = getattr(args, "gate", "plan")
+    cap = getattr(args, "max_request_bytes", None) or (DEFAULT_MAX_REQUEST_BYTES if gate == "plan" else DEFAULT_MAX_REQUEST_BYTES_DEV)
+    return Ok(BatchSettings(gate, args.model, getattr(args, "repeat", 1), prefix, threshold.value, args.timeout,
+                            args.max_workers, cap, bool(args.dry_run)))
+
+
+def batch_log_path(run_dir: str, run_name: str) -> Result[pathlib.Path, JudgeError]:
+    name = run_name or stamp()
+    checked = _safe_id(name, "--run-name")
+    if isinstance(checked, Err):
+        return checked
+    return Ok(pathlib.Path(run_dir) / f"tournament-{name}.jsonl")
+
+
+def pump_batch(lines: list, settings: BatchSettings, api_key: str, fixture, log_path: pathlib.Path, echo: bool) -> Result[list, JudgeError]:
+    """Run the low layer over validated request lines; tee every result line, unchanged, to stdout (when ``echo``)
+    and to the append-only log, flushing both after every line so a crash keeps the evidence."""
+
+    async def drive() -> list:
+        out = []
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8", newline="\n") as log:
+            async for line in stream_batch(lines, settings, api_key, fixture):
+                text = encode_result_line(line)
+                log.write(text)
+                log.flush()
+                if echo:
+                    write_stdout_line(text)
+                out.append(line)
+        return out
+
+    try:
+        return Ok(asyncio.run(drive()))
+    except BatchInputError as exc:
+        return Err(exc.error)
+
+
+def validate_request_lines(lines: list, settings: BatchSettings) -> Result[int, JudgeError]:
+    """Every line checked before any call: a bad line late in the stream never leaves earlier requests half-sent."""
+    base = load_question_set(settings.gate)
+    if isinstance(base, Err):
+        return base
+    total, keys = 0, set()
+    for number, line in enumerate(lines, start=1):
+        jobs = batch_jobs(line, number, settings, base.value["roles"])
+        if isinstance(jobs, Err):
+            return jobs
+        for job in jobs.value:
+            if job.request_id in keys:
+                return fail("VALIDATION.INPUT", f"request {job.request_id} appears twice in the stream",
+                            action="Pair each item, anchor and candidate once; use --repeat for repeats.")
+            keys.add(job.request_id)
+        total += len(jobs.value)
+    return Ok(total)
+
+
+def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
+    """The shared CLI path for `batch` and `bead-batch`: validate, consent, stream, log. Stdout carries only result lines."""
+    settings = batch_settings(args, args.request_prefix)
+    if isinstance(settings, Err):
+        return settings
+    settings = settings.value
+    checked = validate_request_lines(lines, settings)
+    if isinstance(checked, Err):
+        return checked
+    loaded = load_answers_fixture(args.answers_file, "'<item>/<candidate>/r<n>', '<item>/<candidate>', '<candidate>'")
+    if isinstance(loaded, Err):
+        return loaded
+    fixture = loaded.value
+    run_dir = args.run_dir or (str(pathlib.Path(args.anchors).parent / "anchor-runs") if getattr(args, "anchors", "") else "")
+    if not run_dir:
+        return fail("VALIDATION.INPUT", "the result log needs a directory: pass --anchors (log under its anchor-runs/) or --run-dir",
+                    action="Pass --anchors <plan>/anchors.json so the log lands in <plan>/anchor-runs/.")
+    log_path = batch_log_path(run_dir, args.run_name)
+    if isinstance(log_path, Err):
+        return log_path
+    api_key = ""
+    if not settings.dry_run and fixture is None:
+        cleared = remote_preflight(args, "The anchor statements, scopes and item texts in the request stream")
+        if isinstance(cleared, Err):
+            return cleared
+        api_key = cleared.value
+    pumped = pump_batch(lines, settings, api_key, fixture, log_path.value, echo=True)
+    if isinstance(pumped, Err):
+        return pumped
+    return Ok(StreamedResult([x for x in pumped.value if not x["ok"] and not x["dry_run"]]))
+
+
+class StreamedResult(NamedTuple):
+    """A command whose stdout was the result lines: main prints nothing more; exit 2 when any line has no answer."""
+    failed: list
+
+
+def cmd_batch(args) -> Result[Any, JudgeError]:
+    lines = read_request_lines(args.input)
+    if isinstance(lines, Err):
+        return lines
+    return run_low_layer(args, lines.value)
+
+
+def add_stream_options(parser) -> None:
+    """Options shared by `batch` and `bead-batch`: both run the same low layer."""
+    parser.add_argument("--run-dir", default="", help="folder of the append-only result log tournament-<run>.jsonl; default <anchors dir>/anchor-runs")
+    parser.add_argument("--run-name", default="", help="log name: tournament-<run-name>.jsonl (appended to when it exists); default a UTC timestamp")
+    parser.add_argument("--repeat", type=int, default=1, help="identical requests per (item, candidate); default 1")
+    parser.add_argument("--request-prefix", default="batch", help="request ids are <prefix>/<item>/<anchor>/<candidate>/r<n>")
+    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="confidence threshold of each line's verdict")
+    parser.add_argument("--max-workers", type=int, default=BATCH_MAX_WORKERS, help=f"parallel Jev calls, 1 to {BATCH_MAX_WORKERS}")
+    parser.add_argument("--max-request-bytes", type=int, default=None, help="refuse any request over this before sending; default the gate's cap")
+    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument("--dry-run", action="store_true", help="emit the result lines with the requests only; call nothing")
+    parser.add_argument("--answers-file", default="", help="fixture answers keyed '<item>/<candidate>/r<n>', '<item>/<candidate>', '<candidate>' or '*'; no network")
+    parser.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
+
+
+class _UsageError(Exception):
+    pass
+
+
+class _JsonArgumentParser(argparse.ArgumentParser):
+    """Usage errors become a VALIDATION.INPUT envelope (exit 2) instead of argparse's text on stderr."""
+
+    def error(self, message):  # argparse hook; never returns
+        raise _UsageError(f"{self.prog}: {message}")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = _JsonArgumentParser(prog="jev_judge.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="cmd", required=True, parser_class=_JsonArgumentParser)
+    bt = sub.add_parser("batch", help="low layer: JSONL request lines in (stdin or --input), one JSONL result line per (item, candidate, repeat) out, logged")
+    bt.add_argument("--input", default="-", help="request stream, one JSON object per line (assets/schemas/jev-batch-request.schema.json); - or omitted reads stdin")
+    add_stream_options(bt)
+    bt.add_argument("--anchors", default="", help="anchors.json; the result log goes to its anchor-runs/ folder unless --run-dir is given")
+    bt.add_argument("--gate", choices=("plan", "dev"), default="plan", help="default roles and request cap when a candidate carries no roles")
+    bt.set_defaults(func=cmd_batch)
+    return p
+
+
+CANCELED_EXIT = 130
+
+
+def canceled_envelope() -> dict:
+    """The interrupt envelope: typed like every error, plus the canceled / aborted_by flags."""
+    out = JudgeError("CANCELED", "interrupted before the command finished", recoverable=True,
+                     action="Rerun the command; a judge run is written only when it completes, so nothing partial was recorded.").to_json()
+    out.update({"canceled": True, "aborted_by": "user"})
+    return out
+
+
+def main(argv=None) -> int:
+    """0 when the command ran (its outcome, negative or not, is in data); 2 when it could not; 130 on interrupt."""
+    try:
+        return _main(argv)
+    except KeyboardInterrupt:
+        emit(canceled_envelope())
+        return CANCELED_EXIT
+
+
+def _main(argv=None) -> int:
+    try:
+        args = build_parser().parse_args(argv)
+    except _UsageError as exc:
+        emit(JudgeError("VALIDATION.INPUT", str(exc), action="Run 'jev_judge.py <subcommand> --help' for the accepted arguments.").to_json())
+        return 2
+    fmt = getattr(args, "format", "json")
+    try:
+        outcome = args.func(args)
+    except Exception as exc:  # noqa: BLE001 - a JSON error object beats a traceback for the calling agent
+        emit(JudgeError("SCRIPT.INTERNAL", f"{type(exc).__name__}: {exc}",
+                        action="Report this with the command line; check the JSON inputs against references/anchor-document.md.").to_json())
+        return 2
+    if isinstance(outcome, Err):
+        emit(outcome.error.to_json())
+        return 2
+    if isinstance(outcome.value, StreamedResult):  # stdout already carried the result lines and nothing else
+        failed = outcome.value.failed
+        if not failed:
+            return 0
+        first = failed[0]["error"] or {}
+        error = JudgeError(first.get("code") or "EXECUTION.JEV",
+                           f"{len(failed)} request(s) got no answer; first {failed[0]['request_id']}: {first.get('message')}",
+                           recoverable=bool(first.get("recoverable")),
+                           action="Read each failed line's error field; rerun only those requests once the cause is fixed.")
+        sys.stderr.write(json.dumps(error.to_json(), sort_keys=True) + "\n")  # stdout stays pure result lines
+        return 2
+    emit(outcome.value, fmt)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        utf8_stdio()
+        code = main()
+    except KeyboardInterrupt:  # between the imports and main's own handler
+        emit(canceled_envelope())
+        code = CANCELED_EXIT
+    sys.exit(code)
