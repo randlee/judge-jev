@@ -89,8 +89,9 @@ written as plain prose.
 
 ### Decision
 
-judge-jev's quality mode explains why a record is not well written;
-Raptor's schema stays strict.
+Raptor's schema stays strict. Raptor's import diagnostics explain why a
+record does not fit the schema; judge-jev's quality mode then explains why
+an imported record is not well written.
 
 ### Rationale
 
@@ -105,7 +106,8 @@ records that cannot be judged.
 
 **Negative:**
 
-- Corpora with prose-only records need editing before import.
+- Corpora with prose-only records need editing before import, guided by
+  the import diagnostics.
 
 ## ADR-JEV-0004: Code references are outside the first version
 
