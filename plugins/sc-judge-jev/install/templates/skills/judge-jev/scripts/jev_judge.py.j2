@@ -1130,18 +1130,73 @@ def _is_choices(value) -> bool:
     return isinstance(value, str) or (isinstance(value, list) and bool(value) and all(isinstance(c, str) for c in value))
 
 
+def _check_questions(path: str, node_id: str, questions: dict):
+    """None when every question is a Jev choice question: a safe id, type "choice", non-empty instructions and 2 to 255
+    criteria (option name -> description, both non-empty text); else the QUALITY.TREE error naming the question."""
+    for qid, question in questions.items():
+        where = f"wave {node_id} question {qid!r}"
+        if isinstance(_safe_id(qid, "question id"), Err):
+            return _tree_error(path, f"{where}: the id must be letters, digits and _.:- only")
+        if not isinstance(question, dict) or question.get("type") != "choice":
+            return _tree_error(path, f"{where} must be an object with type \"choice\" (rules match choices): {question!r}")
+        if not isinstance(question.get("instructions"), str) or not question["instructions"].strip():
+            return _tree_error(path, f"{where} needs non-empty instructions text")
+        criteria = question.get("criteria")
+        if not isinstance(criteria, dict) or not 2 <= len(criteria) <= 255 or not all(
+                isinstance(o, str) and o.strip() and isinstance(t, str) and t.strip() for o, t in criteria.items()):
+            return _tree_error(path, f"{where}: criteria must map 2 to 255 option names to descriptions, all non-empty text: {criteria!r}")
+    return None
+
+
+def _unknown_choices(questions: dict, when: dict) -> list:
+    """The (question id, choice) pairs of a rule condition that name no option of their question."""
+    return [(q, c) for q, cs in when.items() for c in ([cs] if isinstance(cs, str) else cs) if c not in questions[q]["criteria"]]
+
+
 def _check_rules(path: str, node_id: str, questions: dict, rules, key: str, conds: tuple, target: str, nodes: dict):
     """None when ``rules`` is a non-empty list of {cond: {question id: choice or [choices]}, ..., target: ...} with each
-    cond in ``conds``; else the QUALITY.TREE error."""
+    cond in ``conds``, every listed choice an option of its question, and a last rule without conditions (so every
+    combination of answers has an outcome before anything is sent); else the QUALITY.TREE error."""
     if not isinstance(rules, list) or not rules:
         return _tree_error(path, f"wave {node_id} needs a non-empty {key} list")
     for rule in rules:
         whens = [rule.get(cond, {}) for cond in conds] if isinstance(rule, dict) else [None]
-        ok_target = isinstance(rule, dict) and (rule.get(target) in nodes if target == "goto" else isinstance(rule.get(target), str))
+        goal = rule.get(target) if isinstance(rule, dict) else None
+        ok_target = isinstance(goal, str) and (goal in nodes if target == "goto" else True)
         if not ok_target or any(not isinstance(when, dict) or any(q not in questions or not _is_choices(c) for q, c in when.items())
                                 for when in whens):
             return _tree_error(path, f"wave {node_id} has a {key} rule that is not {' and/or '.join(conds)} "
-                                     f"(question id -> choice or [choices]) plus {target}: {rule!r}")
+                                     f"(question id -> choice or [choices]) plus {target}"
+                                     f"{' naming a node' if target == 'goto' else ''}: {rule!r}")
+        unknown = [pair for when in whens for pair in _unknown_choices(questions, when)]
+        if unknown:
+            return _tree_error(path, f"wave {node_id} has a {key} rule whose choices are not options of their question "
+                                     f"(question, choice): {unknown}")
+    if any(rules[-1].get(cond) for cond in conds):
+        return _tree_error(path, f"wave {node_id}: the last {key} rule must have no {' or '.join(conds)}, so every "
+                                 f"combination of answers has an outcome: {rules[-1]!r}")
+    return None
+
+
+def _goto_cycle(nodes: dict):
+    """A node that can reach itself through ``next`` rules, or None (the rules are already checked)."""
+    color = {}
+    for root in nodes:
+        if root in color:
+            continue
+        color[root] = 1
+        stack = [(root, iter([r["goto"] for r in nodes[root].get("next", [])]))]
+        while stack:
+            node_id, targets = stack[-1]
+            nxt = next(targets, None)
+            if nxt is None:
+                color[node_id] = 2
+                stack.pop()
+            elif color.get(nxt) == 1:
+                return nxt
+            elif nxt not in color:
+                color[nxt] = 1
+                stack.append((nxt, iter([r["goto"] for r in nodes[nxt].get("next", [])])))
     return None
 
 
@@ -1176,13 +1231,15 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
     try:
         raw = p.read_bytes()
         tree = json.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         return fail("INPUT.MALFORMED", f"quality tree {path} is not readable JSON: {exc}", action=f"Fix the JSON in {path}.")
     if not isinstance(tree, dict) or not isinstance(tree.get("id"), str) or not isinstance(tree.get("nodes"), dict) or not tree["nodes"]:
         return _tree_error(path, "must be an object with id and a non-empty nodes object")
     nodes = tree["nodes"]
-    if tree.get("start") not in nodes:
+    if not isinstance(tree.get("start"), str) or tree["start"] not in nodes:
         return _tree_error(path, f"start {tree.get('start')!r} is not a node")
+    if tree.get("kind") not in (None, "req", "adr", "nfr"):
+        return _tree_error(path, f"kind {tree['kind']!r} must be req, adr or nfr")
     for node_id, node in nodes.items():
         if isinstance(_safe_id(node_id, "node id"), Err) or not isinstance(node, dict):
             return _tree_error(path, f"node {node_id!r} must have a safe id (letters, digits and _.:-) and be an object")
@@ -1193,11 +1250,16 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
         questions = node["questions"]
         if not isinstance(questions, dict) or not questions or ("next" in node) == ("verdict_rules" in node):
             return _tree_error(path, f"wave {node_id} needs a non-empty questions object and exactly one of next or verdict_rules")
-        bad = (_check_rules(path, node_id, questions, node["next"], "next", ("when",), "goto", nodes) if "next" in node
-               else _check_rules(path, node_id, questions, node["verdict_rules"], "verdict_rules", ("any", "all"), "verdict", nodes))
+        bad = _check_questions(path, node_id, questions)
+        if bad is None:
+            bad = (_check_rules(path, node_id, questions, node["next"], "next", ("when",), "goto", nodes) if "next" in node
+                   else _check_rules(path, node_id, questions, node["verdict_rules"], "verdict_rules", ("any", "all"), "verdict", nodes))
         bad = bad if bad is not None else _check_per(path, node_id, node)
         if bad is not None:
             return bad
+    looped = _goto_cycle(nodes)
+    if looped is not None:
+        return _tree_error(path, f"node {looped} can lead back to itself: the tree has a cycle")
     # CRLF is hashed as LF, so a Windows checkout (core.autocrlf) gives the same digest as any other.
     digest = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
     return Ok(QualityTree(tree["id"], digest, path, bool(override_path), tree["start"], nodes, tree.get("kind")))
@@ -1347,6 +1409,16 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
         if isinstance(first, Err):
             return _with_refs(first, refs)
         jobs.append((statement, first.value[0]))
+    for node_id, node in tree.nodes.items():  # every later wave's statements and size, before any call
+        if node_id == tree.start or "questions" not in node:
+            continue
+        later = wave_lines(record.value, node_id, node)
+        if isinstance(later, Err):
+            return _with_refs(later, refs)
+        for line in later.value[0]:
+            checked = batch_jobs(line, 1, settings, {})
+            if isinstance(checked, Err):
+                return _with_refs(checked, refs)
     return Ok((tree, record.value, refs, jobs))
 
 

@@ -4,6 +4,13 @@
 
 ## 0.2.1 — 2026-11-08
 
+- `quality` checks the whole tree before any call (and in `--dry-run`): each
+  question is a `choice` question with instructions and 2 to 255 criteria; each
+  rule's choices are options of their question; each wave's last rule has no
+  condition; no cycle through `next`; every later wave's statements and size.
+  A tree that crashed the script (`start` a list, a question not an object) or
+  failed only after paid calls is now `QUALITY.TREE` naming the wave, question or
+  rule.
 - `quality` refuses, with `QUALITY.TREE` before any call: a `verdict_rules`
   entry that is not an object, `modals` given as a string (it could match by
   substring), and a `--questions` tree whose `kind` differs from the record's.

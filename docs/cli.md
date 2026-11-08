@@ -139,6 +139,10 @@ variations, run against the released tool:
   released build; no code change or rebuild.
 - A quality tree override whose `kind` differs from the record's kind is
   refused with `QUALITY.TREE` before any call.
+- A variation is checked whole before any call, and `--dry-run` reports the
+  same error: a malformed question, a rule choice that is not an option, a
+  wave without a final unconditional rule, or a cycle is `QUALITY.TREE`
+  naming the wave, question or rule. No tree crashes the tool.
 - Every result and log entry carries the set id and the file's content
   digest, so variations of the same set are compared by digest in the
   sc-observability log.
