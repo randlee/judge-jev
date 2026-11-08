@@ -68,9 +68,9 @@ allow_remote_judge: true
 
 The live judge looks for the key in this order: `TYPESAFE_API_KEY` in the process environment, then the platform credential store. An invalid environment value fails closed; it does not silently select another credential. The platform entry is local-interactive convenience only—cloud, CI, and remote agents should use their platform secret injection.
 
-- macOS: Keychain generic-password item with service `judge-jev` and account `typesafe-api-key`.
-- Windows: Credential Manager generic credential with target `judge-jev:typesafe-api-key`.
-- Linux: Secret Service item returned by `secret-tool lookup service judge-jev account typesafe-api-key`. Create it without putting the key on a command line with `secret-tool store --label="judge-jev TypeSafe API key" service judge-jev account typesafe-api-key` and enter the value on standard input.
+- macOS: Keychain generic-password item with service `plan-anchor` and account `typesafe-api-key`.
+- Windows: Credential Manager generic credential with target `plan-anchor:typesafe-api-key`.
+- Linux: Secret Service item returned by `secret-tool lookup service plan-anchor account typesafe-api-key`. Create it without putting the key on a command line with `secret-tool store --label="plan-anchor TypeSafe API key" service plan-anchor account typesafe-api-key` and enter the value on standard input.
 
 - Create a key at typesafe.ai. Read it silently so it does not appear in the command line, shell history, or terminal output, then export it in the shell that launches Claude Code or Codex:
   ```bash
