@@ -1,0 +1,16 @@
+{
+  "name": "sc-judge-jev",
+  "displayName": "Judge Jev",
+  "version": "0.1.0",
+  "description": "Install judge-jev into a repository or a parent folder.",
+  "author": {
+    "name": "randlee"
+  },
+  "homepage": "https://github.com/randlee/judge-jev",
+  "repository": "https://github.com/randlee/judge-jev",
+  "license": "MIT",
+  "keywords": [
+    "jev"
+  ],
+  "skills": "./skills/"
+}

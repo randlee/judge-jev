@@ -1,0 +1,12 @@
+{
+  "name": "judge-jev",
+  "owner": {
+    "name": "randlee"
+  },
+  "plugins": [
+    {
+      "name": "sc-judge-jev",
+      "source": "./plugins/sc-judge-jev"
+    }
+  ]
+}

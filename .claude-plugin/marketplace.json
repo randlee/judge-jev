@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "judge-jev",
+  "owner": {
+    "name": "randlee"
+  },
+  "plugins": [
+    {
+      "name": "sc-judge-jev",
+      "displayName": "Judge Jev",
+      "version": "0.1.0",
+      "author": {
+        "name": "randlee"
+      },
+      "category": "workflow",
+      "source": "./plugins/sc-judge-jev",
+      "homepage": "https://github.com/randlee/judge-jev"
+    }
+  ]
+}
