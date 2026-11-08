@@ -210,6 +210,12 @@ class BatchTests(BatchCase):
         code, out = run_cli(["batch", "--input", self.put("ok.jsonl", good)])
         self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))  # no log directory
 
+    def test_max_request_bytes_over_the_loggable_ceiling_is_refused_before_any_line(self):
+        src = self.put("big.jsonl", jsonl([request_line("s1", "x" * 80000, ("cur", PLAN_QS["questions"]))]))
+        code, out = run_cli(["batch", "--input", src, "--run-dir", str(self.d / "runs"), "--dry-run", "--max-request-bytes", "200000"])
+        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
+        self.assertFalse((self.d / "runs").exists())
+
     def test_live_run_fails_closed_before_any_line(self):
         with mock.patch.dict(os.environ, {"TYPESAFE_API_KEY": ""}), mock.patch.object(jj, "credential_store_api_key", return_value=""):
             code, out = run_cli(["batch", "--input", self.put("in.jsonl", jsonl(self.LINES)), "--run-dir", str(self.d / "runs")])

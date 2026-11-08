@@ -94,6 +94,7 @@ DEFAULT_MODEL = "jev-latest"
 DEFAULT_THRESHOLD = 0.6
 DEFAULT_MAX_REQUEST_BYTES = 24000  # plan gate: what Jev reads reliably (a planted contradiction 28k deep scored 0.46 vs 0.79 near the top)
 DEFAULT_MAX_REQUEST_BYTES_DEV = 64000  # dev gate: evidence is long; Jev accepted 107k bytes in one attempt, halving never fired in 245 requests
+MAX_REQUEST_BYTES_CEILING = 64000  # every request is logged whole, and the sc-observability logger refuses events over 64 KiB
 MAX_RESPONSE_BYTES = 1048576
 RETRY_DELAYS = (1.0, 2.0)          # seconds before the second and third attempt; Retry-After overrides the first
 MAX_RETRY_AFTER = 30.0
@@ -903,6 +904,10 @@ def batch_settings(args, prefix: str) -> Result[BatchSettings, JudgeError]:
         return threshold
     gate = getattr(args, "gate", "plan")
     cap = getattr(args, "max_request_bytes", None) or (DEFAULT_MAX_REQUEST_BYTES if gate == "plan" else DEFAULT_MAX_REQUEST_BYTES_DEV)
+    if cap > MAX_REQUEST_BYTES_CEILING:
+        return fail("VALIDATION.INPUT", f"--max-request-bytes {cap} is over {MAX_REQUEST_BYTES_CEILING}: every request is logged whole "
+                    "and the run log refuses events over 64 KiB",
+                    action=f"Pass --max-request-bytes {MAX_REQUEST_BYTES_CEILING} or less, or shorten the item text.")
     return Ok(BatchSettings(gate, args.model, getattr(args, "repeat", 1), prefix, threshold.value, args.timeout,
                             args.max_workers, cap, bool(args.dry_run)))
 
@@ -967,8 +972,9 @@ def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
 
 
 def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, JudgeError]:
-    """A result line as three events, each under the logger's 64 KiB event cap: the request, Jev's answer (not on a
-    dry run) and the result (the line without its request and raw response). ``fields`` goes on every event."""
+    """A result line as three events: the request, Jev's answer (not on a dry run) and the result (the line without its
+    request and raw response). ``fields`` goes on every event. The logger refuses events over 64 KiB; the request event
+    fits because batch_settings caps --max-request-bytes at MAX_REQUEST_BYTES_CEILING."""
     ids = {"request_id": line["request_id"], "run_id": line["run_id"], **fields}
     events = [("request", {**ids, "item_id": line["item_id"], "anchor_id": line["anchor_id"], "candidate_id": line["candidate_id"],
                            "repeat": line["repeat"], "request_sha256": line["request_sha256"],
@@ -1085,7 +1091,7 @@ def add_stream_options(parser) -> None:
     parser.add_argument("--request-prefix", default="batch", help="request ids are <prefix>/<item>/<anchor>/<candidate>/r<n>")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="confidence threshold of each line's verdict")
     parser.add_argument("--max-workers", type=int, default=BATCH_MAX_WORKERS, help=f"parallel Jev calls, 1 to {BATCH_MAX_WORKERS}")
-    parser.add_argument("--max-request-bytes", type=int, default=None, help="refuse any request over this before sending; default the gate's cap")
+    parser.add_argument("--max-request-bytes", type=int, default=None, help=f"refuse any request over this before sending; at most {MAX_REQUEST_BYTES_CEILING} (requests are logged whole); default the gate's cap")
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--dry-run", action="store_true", help="emit the result lines with the requests only; call nothing")
@@ -1103,7 +1109,7 @@ QUALITY_LOG_DIR = ".sc/judge-jev/logs"
 
 class QualityTree(NamedTuple):
     id: str
-    sha256: str          # of the file's bytes: variations of one tree are compared by digest
+    sha256: str          # of the file's bytes, CRLF as LF: variations of one tree are compared by digest
     path: str
     override: bool
     start: str
@@ -1147,7 +1153,8 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
             if not isinstance(when, dict) or rule.get("goto") not in nodes \
                     or any(q not in questions or not isinstance(c, str) for q, c in when.items()):
                 return _tree_error(path, f"wave {node_id} has a branch that is not when (question id -> choice) plus goto (a node): {rule!r}")
-    digest = hashlib.sha256(raw).hexdigest()
+    # CRLF is hashed as LF, so a Windows checkout (core.autocrlf) gives the same digest as any other.
+    digest = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
     return Ok(QualityTree(tree["id"], digest, path, bool(override_path), tree["start"], nodes))
 
 
@@ -1191,24 +1198,34 @@ def quality_settings(dry_run: bool) -> BatchSettings:
 
 
 def cmd_quality(args) -> Result[Any, JudgeError]:
-    kind, record_id = next((k, getattr(args, k)) for k in ("req", "adr", "nfr") if getattr(args, k))
+    kind, record_id = next(((k, getattr(args, k)) for k in ("req", "adr", "nfr") if getattr(args, k)), (None, ""))
+    if kind is None:
+        return fail("VALIDATION.INPUT", "the record id is empty: pass one non-empty --req, --adr or --nfr id")
     tree = load_quality_tree(kind, args.questions)
     if isinstance(tree, Err):
         return tree
     tree = tree.value
-    record = quality_record(args.index, kind, record_id)
-    if isinstance(record, Err):
-        return record
-    record = record.value
-    settings = quality_settings(args.dry_run)
     tree_ref = {"id": tree.id, "sha256": tree.sha256, "source": "override" if tree.override else "shipped", "path": tree.path}
     record_ref = {"id": record_id, "kind": kind, "source": {"raptor_index": args.index}}
+
+    def refs(failed: Err) -> Err:
+        """Every error after the tree loads names the record and the tree."""
+        if failed.error.data is None:
+            failed.error.data = {}
+        failed.error.data.update({"record": record_ref, "tree": tree_ref})
+        return failed
+
+    record = quality_record(args.index, kind, record_id)
+    if isinstance(record, Err):
+        return refs(record)
+    record = record.value
+    settings = quality_settings(args.dry_run)
     start = tree.nodes[tree.start]
     if "verdict" in start:
-        return _tree_error(tree.path, f"start {tree.start} is a leaf; the first node must be a wave")
+        return refs(_tree_error(tree.path, f"start {tree.start} is a leaf; the first node must be a wave"))
     first = batch_jobs(wave_line(record, tree.start, start), 1, settings, {})  # the size check: JEV.CONTEXT_EXCEEDED
     if isinstance(first, Err):
-        return first
+        return refs(first)
     if settings.dry_run:
         body = first.value[0].body
         return Ok({"success": True, "error": None, "data": {
@@ -1217,31 +1234,28 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
                      "max_request_bytes": settings.max_request_bytes}}})
     loaded = load_answers_fixture(args.answers_file, "'<record>/<node>/r1', '<record>/<node>', '<node>'")
     if isinstance(loaded, Err):
-        return loaded
+        return refs(loaded)
     fixture = loaded.value
     run_name = args.run_name or stamp()
     checked = _safe_id(run_name, "--run-name")
     if isinstance(checked, Err):
-        return checked
+        return refs(checked)
     api_key = ""
     if fixture is None:
         cleared = remote_preflight(args, "The record text")
         if isinstance(cleared, Err):
-            return cleared
+            return refs(cleared)
         api_key = cleared.value
     log = open_run_log(args.run_dir, run_name)
     if isinstance(log, Err):
-        return log
+        return refs(log)
     walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
                        {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record_id, "record_kind": kind})
     closed = log.value.close()
     if isinstance(walked, Err):
-        if walked.error.data is None:
-            walked.error.data = {}
-        walked.error.data.update({"record": record_ref, "tree": tree_ref})
-        return walked
+        return refs(walked)
     if isinstance(closed, Err):
-        return closed
+        return refs(closed)
     verdict, path, waves = walked.value
     leaf = tree.nodes[path[-1]]
     return Ok({"success": True, "error": None, "data": {

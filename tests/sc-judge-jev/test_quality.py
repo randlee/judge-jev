@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from jev_support import SKILL, read_log
+from jev_support import ROOT, SKILL, read_log
 import jev_judge as jj  # noqa: E402
 
 from test_jev_judge import answer, env, run_cli, write  # noqa: E402
@@ -209,6 +209,46 @@ class TreeOverride(QualityCase):
         narrow = {**self.TREE, "nodes": {**self.TREE["nodes"], "w1": {**self.TREE["nodes"]["w1"], "next": [{"when": {"q1": "no"}, "goto": "long"}]}}}
         code, out = self.quality("--req", "REQ-T-0001", "--questions", write(self.d, "narrow.json", narrow), answers={"w1": {"q1": answer("yes")}})
         self.assertEqual((code, out["error"]["code"]), (2, "QUALITY.TREE"))
+
+
+class QaFindings(QualityCase):
+    def test_every_error_after_the_tree_loads_names_the_record_and_the_tree(self):
+        tree = {"id": "quality-req", "sha256": hashlib.sha256((QUESTIONS / "quality-req.json").read_bytes()).hexdigest(),
+                "source": "shipped", "path": str(jj.QUESTIONS_DIR / "quality-req.json")}
+
+        def refs(rid):
+            return {"record": {"id": rid, "kind": "req", "source": {"raptor_index": self.index}}, "tree": tree}
+
+        code, out = self.quality("--req", "REQ-T-0002", "--dry-run")
+        self.assertEqual((code, out["error"]["code"]), (2, "RECORD.DIAGNOSTICS"))
+        self.assertEqual({k: out["data"][k] for k in ("record", "tree")}, refs("REQ-T-0002"))
+        code, out = self.quality("--req", "REQ-T-9999", "--dry-run")
+        self.assertEqual((code, out["error"]["code"], out["data"]), (2, "RECORD.NOT_FOUND", refs("REQ-T-9999")))
+        self.index = write(self.d, "big.json", {**INDEX, "requirements": [requirement("REQ-T-0001", "x" * 30000)]})
+        code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
+        self.assertEqual((code, out["error"]["code"], out["data"]), (2, "JEV.CONTEXT_EXCEEDED", refs("REQ-T-0001")))
+        self.index = write(self.d, "index.json", INDEX)
+        refused = jj.fail("LOG.WRITE", "the sc-observability logger could not start")
+        with mock.patch.object(jj, "open_run_log", return_value=refused):
+            code, out = self.quality("--req", "REQ-T-0001", answers={"*": tree_answers("quality-req.json", "wave-1")})
+        self.assertEqual((code, out["error"]["code"], out["data"]), (2, "LOG.WRITE", refs("REQ-T-0001")))
+
+    def test_a_crlf_checkout_of_a_tree_has_the_lf_digest(self):
+        self.assertIn("*.json text eol=lf", (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines())
+        lf = (QUESTIONS / "quality-req.json").read_bytes().replace(b"\r\n", b"\n")
+        crlf = self.d / "crlf.json"
+        crlf.write_bytes(lf.replace(b"\n", b"\r\n"))
+        code, out = self.quality("--req", "REQ-T-0001", "--questions", str(crlf), "--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["data"]["tree"]["sha256"], hashlib.sha256(lf).hexdigest())
+
+    def test_an_empty_record_id_is_validation_input(self):
+        # Python 3.12+ argparse accepts `--req ""` (3.11 refuses it), so cmd_quality gets every id empty
+        args = jj.build_parser().parse_args(["quality", "--req", "REQ-T-0001", "--index", self.index, "--dry-run"])
+        args.req = ""
+        got = jj.cmd_quality(args)
+        self.assertIsInstance(got, jj.Err)
+        self.assertEqual(got.error.code, "VALIDATION.INPUT")
 
 
 class ShippedTrees(unittest.TestCase):
