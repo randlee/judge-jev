@@ -100,6 +100,11 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
 - Kinds: `--tree` (quality tree), `--questions` (question set), `--answers`
   (answers file), `--index` (Raptor import index), `--requests` (batch
   request stream). Exactly one.
+- `--requests` also takes `--gate` and `--max-request-bytes`, as `batch`
+  does, so a stream is checked against the same set and size limit.
+- `--tree` checks the tree alone; the checks that need a record (its
+  statements, request size, log-event size) run in `quality`, before the
+  first call and in `--dry-run`.
 - Never calls Jev, needs no key, writes no log.
 - Output: one JSON object. Success names the kind, the path and the file's
   sha256.
