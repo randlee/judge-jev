@@ -1,10 +1,10 @@
 # adr-jev-product - judge-jev Product Decisions
 
-**ID Range:** ADR-JEV-0001 through ADR-JEV-0004  
+**ID Range:** ADR-JEV-0001 through ADR-JEV-0005  
 **Version:** 0.1.0  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-07  
+**Last Updated:** 2026-11-08  
 **Decision Date:** 2026-11-07  
 **Owner:** Rand Lee  
 
@@ -203,3 +203,64 @@ the same way (REQ-JEV-0203).
 
 **Why Rejected:** Line ranges drift on every edit; symbols survive
 (REQ-JEV-0207).
+
+---
+
+## ADR-JEV-0005: Pydantic models validate every JSON input
+
+**Status:** Draft  
+
+### Context
+
+judge-jev reads JSON written by people and agents (quality trees, question
+sets, answers files, request streams), by Raptor (the import index) and by
+Jev (responses). Quality trees will be varied thousands of times
+(REQ-JEV-0205). Hand-written type checks let fourteen input shapes crash
+the script or fail only after a paid Jev call, found by review of PRs #13
+and #14. The problem is how to make every input either accepted, or refused
+with the exact field, before the first call.
+
+### Decision
+
+Every JSON input is parsed into a pydantic v2 model in strict mode before
+it is used, and code after parsing receives model instances, not
+dictionaries. Each model is the single definition of its input's shape.
+Rules that span fields (a rule's choices are options of its question, a
+`goto` names a node, no cycle, a final rule without conditions) are model
+validators. `judge-jev validate` (REQ-JEV-0210) runs the same models
+without calling Jev. The JSON shapes of the Jev core's contracts do not
+change (ADR-JEV-0001); only how they are checked does.
+
+### Rationale
+
+One model per input replaces scattered checks that each had to anticipate
+every wrong type, and pydantic reports the field path of every refusal.
+
+### Consequences
+
+**Positive:**
+
+- Every refusal names the field and the rule it breaks.
+- Tree authors check a variation with `judge-jev validate` before a run.
+
+**Negative:**
+
+- pydantic (with its compiled core) becomes a dependency, pinned in the
+  script's PEP 723 header and in CI.
+- Refusal wording follows pydantic's messages.
+
+### Alternatives Considered
+
+#### Alternative 1: Keep hand-written checks
+
+**Description:** Extend the `isinstance` checks for each new crash found.
+
+**Why Rejected:** Each new shape needs a new check; review of #13 and #14
+found fourteen that were missed.
+
+#### Alternative 2: JSON Schema validated by `jsonschema`
+
+**Description:** One schema file per input, validated at load.
+
+**Why Rejected:** Rules that span fields stay hand-written, and code after
+validation still handles untyped dictionaries.

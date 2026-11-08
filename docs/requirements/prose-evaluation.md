@@ -1,6 +1,6 @@
 # judge-jev Requirements - Prose Evaluation
 
-**ID Range:** REQ-JEV-0201 through REQ-JEV-0209  
+**ID Range:** REQ-JEV-0201 through REQ-JEV-0211  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-08  
@@ -347,3 +347,67 @@ log.
 **Acceptance Criteria:**
 - [ ] Every request `judge-jev quality --req <id>` sends carries only the
   record and questions from the REQ quality tree.
+
+---
+
+## REQ-JEV-0210: Validate command
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- `judge-jev validate` MUST take one input file with one input-kind flag:
+  `--tree` (quality tree), `--questions` (question set), `--answers`
+  (answers file), `--index` (Raptor import index) or `--requests` (batch
+  request stream).
+- `judge-jev validate` MUST check the file with the model `judge-jev`
+  applies to that input kind before its first Jev request (ADR-JEV-0005).
+- Every refusal from `judge-jev validate` MUST name the field path and the
+  rule the field breaks.
+
+**MUST NOT statements:**
+- `judge-jev validate` MUST NOT call Jev.
+
+### Rationale
+
+A tree variation checked before a run costs nothing; one refused after a
+paid call wastes it.
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] Every input the sweep tests refuse in `quality` is refused by
+  `judge-jev validate` with the same field path.
+- [ ] The shipped trees and question sets pass `judge-jev validate`.
+
+---
+
+## REQ-JEV-0211: A typed result for every input
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- For every input, every `judge-jev` command MUST print exactly one JSON
+  object: its result or a typed error.
+- `judge-jev` MUST refuse an invalid tree, question set, index, request
+  stream or run directory before its first Jev request.
+- `judge-jev` MUST check that every log event of a request (the request,
+  Jev's largest possible answer and the result) fits the logger's event
+  size limit before sending the request.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "Crash is not acceptable for any input." A refusal
+after a paid call wastes the call; a crash loses its answer.
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] The sweep tests (every field of a tree, index and answers file
+  replaced by each of a fixed list of wrong values, deleted or given an
+  extra key, and raw JSON no value expresses) produce no `SCRIPT.INTERNAL`
+  and no refusal after a request is sent.
+- [ ] Invalid UTF-8 on stdin is refused with `INPUT.MALFORMED`.
