@@ -34,9 +34,11 @@ Subcommands
   batch           low layer: JSONL request lines (stdin or --input) -> one JSONL result line per (item, candidate,
                   repeat) on stdout as each answer arrives; each request, answer and result is also a log event in the
                   sc-observability log <run-dir>/logs/judge-jev.log.jsonl; never writes beads
-  quality         one REQ, ADR or NFR (--req|--adr|--nfr <id>) from a Raptor import index (--index), judged with its
-                  kind's decision tree (assets/questions/quality-<kind>.json or --questions): one batch request per
-                  wave, answers pick the next wave, a leaf gives the verdict; every wave is logged
+  quality         one or more REQs, ADRs or NFRs (repeated --req|--adr|--nfr <id>) from a Raptor import index
+                  (--index), each judged with its kind's decision tree (assets/questions/quality-<kind>.json or
+                  --questions): one batch request per wave; every wave reports each question's answer as its reason;
+                  answers pick the next wave, and the last wave's verdict_rules (or a leaf) give the verdict; every
+                  wave is logged, all records under one run name
 
 Every subcommand prints JSON to stdout (or markdown with --format md where
 supported).
@@ -1100,11 +1102,11 @@ def add_stream_options(parser) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# quality (REQ-JEV-0101, REQ-JEV-0209): one record, its kind's decision tree, one batch request per wave
+# quality (REQ-JEV-0101, REQ-JEV-0209): records, each kind's decision tree, one batch request per wave
 # --------------------------------------------------------------------------- #
 QUALITY_TABLES = {"req": "requirements", "nfr": "requirements", "adr": "decisions"}  # Raptor import index tables
 QUALITY_PREFIX = "quality"
-QUALITY_LOG_DIR = ".sc/judge-jev/logs"
+QUALITY_LOG_DIR = ".sc/judge-jev"  # the logger writes <log root>/logs/judge-jev.log.jsonl
 
 
 class QualityTree(NamedTuple):
@@ -1121,9 +1123,24 @@ def _tree_error(path: str, message: str) -> Err[JudgeError]:
                 action="Fix the tree file; see assets/questions/quality-req.json for the shape.")
 
 
+def _check_rules(path: str, node_id: str, questions: dict, rules, key: str, cond: str, target: str, nodes: dict):
+    """None when ``rules`` is a non-empty list of {cond: {question id: choice}, target: ...}; else the QUALITY.TREE error."""
+    if not isinstance(rules, list) or not rules:
+        return _tree_error(path, f"wave {node_id} needs a non-empty {key} list")
+    for rule in rules:
+        when = rule.get(cond, {}) if isinstance(rule, dict) else None
+        ok_target = rule.get(target) in nodes if target == "goto" else isinstance(rule.get(target), str)
+        if not isinstance(when, dict) or not ok_target or any(q not in questions or not isinstance(c, str) for q, c in when.items()):
+            return _tree_error(path, f"wave {node_id} has a {key} rule that is not {cond} (question id -> choice) plus {target}: {rule!r}")
+    return None
+
+
 def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree, JudgeError]:
-    """The record kind's shipped tree, or the --questions override. A node is a wave ({questions, next}) or a leaf
-    ({verdict}); ``next`` is an ordered list of {when: {question id: choice}, goto: node}, the first match wins."""
+    """The record kind's shipped tree, or the --questions override. A node is a wave or a leaf ({verdict}). A wave has
+    questions and exactly one of: ``next``, an ordered list of {when: {question id: choice}, goto: node} (every pair
+    must match; the first matching rule wins), or ``verdict_rules``, an ordered list of {any: {question id: choice},
+    verdict} (a rule matches when any listed question got its listed choice, or always when ``any`` is absent; the
+    first matching rule gives the verdict and the walk ends at that wave)."""
     path = override_path or str(QUESTIONS_DIR / f"quality-{kind}.json")
     p = pathlib.Path(path)
     if not path.strip() or not p.is_file():
@@ -1141,18 +1158,17 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
     for node_id, node in nodes.items():
         if isinstance(_safe_id(node_id, "node id"), Err) or not isinstance(node, dict):
             return _tree_error(path, f"node {node_id!r} must have a safe id (letters, digits and _.:-) and be an object")
-        if "verdict" in node:
-            if not isinstance(node["verdict"], str):
+        if "questions" not in node:
+            if not isinstance(node.get("verdict"), str):
                 return _tree_error(path, f"leaf {node_id} needs a string verdict")
             continue
-        questions, rules = node.get("questions"), node.get("next")
-        if not isinstance(questions, dict) or not questions or not isinstance(rules, list) or not rules:
-            return _tree_error(path, f"wave {node_id} needs a non-empty questions object and a non-empty next list")
-        for rule in rules:
-            when = rule.get("when", {}) if isinstance(rule, dict) else None
-            if not isinstance(when, dict) or rule.get("goto") not in nodes \
-                    or any(q not in questions or not isinstance(c, str) for q, c in when.items()):
-                return _tree_error(path, f"wave {node_id} has a branch that is not when (question id -> choice) plus goto (a node): {rule!r}")
+        questions = node["questions"]
+        if not isinstance(questions, dict) or not questions or ("next" in node) == ("verdict_rules" in node):
+            return _tree_error(path, f"wave {node_id} needs a non-empty questions object and exactly one of next or verdict_rules")
+        bad = (_check_rules(path, node_id, questions, node["next"], "next", "when", "goto", nodes) if "next" in node
+               else _check_rules(path, node_id, questions, node["verdict_rules"], "verdict_rules", "any", "verdict", nodes))
+        if bad is not None:
+            return bad
     # CRLF is hashed as LF, so a Windows checkout (core.autocrlf) gives the same digest as any other.
     digest = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
     return Ok(QualityTree(tree["id"], digest, path, bool(override_path), tree["start"], nodes))
@@ -1161,6 +1177,21 @@ def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree,
 def select_branch(rules: list, choices: dict):
     """The first rule whose every {question: choice} matches; None when none does."""
     return next((r["goto"] for r in rules if all(choices.get(q) == c for q, c in r.get("when", {}).items())), None)
+
+
+def select_verdict(rules: list, choices: dict):
+    """The first rule with no ``any``, or with a question that got its listed choice; None when none does."""
+    return next((r["verdict"] for r in rules
+                 if not r.get("any") or any(choices.get(q) == c for q, c in r["any"].items())), None)
+
+
+def wave_reason(node: dict, answers: dict) -> list:
+    """The wave's reason: every question in tree order with its id, text, Jev's choice and confidence."""
+    out = []
+    for qid, question in node["questions"].items():
+        choice, confidence = answer_choice(answers[qid])
+        out.append({"id": qid, "text": question.get("instructions", ""), "choice": choice, "confidence": confidence})
+    return out
 
 
 def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, JudgeError]:
@@ -1197,82 +1228,108 @@ def quality_settings(dry_run: bool) -> BatchSettings:
     return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, DEFAULT_MAX_REQUEST_BYTES, dry_run)
 
 
-def cmd_quality(args) -> Result[Any, JudgeError]:
-    kind, record_id = next(((k, getattr(args, k)) for k in ("req", "adr", "nfr") if getattr(args, k)), (None, ""))
-    if kind is None:
-        return fail("VALIDATION.INPUT", "the record id is empty: pass one non-empty --req, --adr or --nfr id")
-    tree = load_quality_tree(kind, args.questions)
+def _with_refs(failed: Err, refs: dict) -> Err:
+    """Every error after a tree loads names the record and the tree."""
+    if failed.error.data is None:
+        failed.error.data = {}
+    failed.error.data.update(refs)
+    return failed
+
+
+def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: BatchSettings) -> Result[tuple, JudgeError]:
+    """Load (once per kind) the tree, the record and its wave-1 job (the size check). Ok((tree, record, refs, job))."""
+    if kind not in trees:
+        trees[kind] = load_quality_tree(kind, args.questions)
+    tree = trees[kind]
     if isinstance(tree, Err):
         return tree
     tree = tree.value
-    tree_ref = {"id": tree.id, "sha256": tree.sha256, "source": "override" if tree.override else "shipped", "path": tree.path}
-    record_ref = {"id": record_id, "kind": kind, "source": {"raptor_index": args.index}}
-
-    def refs(failed: Err) -> Err:
-        """Every error after the tree loads names the record and the tree."""
-        if failed.error.data is None:
-            failed.error.data = {}
-        failed.error.data.update({"record": record_ref, "tree": tree_ref})
-        return failed
-
+    refs = {"record": {"id": record_id, "kind": kind, "source": {"raptor_index": args.index}},
+            "tree": {"id": tree.id, "sha256": tree.sha256, "source": "override" if tree.override else "shipped", "path": tree.path}}
     record = quality_record(args.index, kind, record_id)
     if isinstance(record, Err):
-        return refs(record)
-    record = record.value
-    settings = quality_settings(args.dry_run)
+        return _with_refs(record, refs)
     start = tree.nodes[tree.start]
-    if "verdict" in start:
-        return refs(_tree_error(tree.path, f"start {tree.start} is a leaf; the first node must be a wave"))
-    first = batch_jobs(wave_line(record, tree.start, start), 1, settings, {})  # the size check: JEV.CONTEXT_EXCEEDED
+    if "questions" not in start:
+        return _with_refs(_tree_error(tree.path, f"start {tree.start} is a leaf; the first node must be a wave"), refs)
+    first = batch_jobs(wave_line(record.value, tree.start, start), 1, settings, {})  # the size check: JEV.CONTEXT_EXCEEDED
     if isinstance(first, Err):
-        return refs(first)
+        return _with_refs(first, refs)
+    return Ok((tree, record.value, refs, first.value[0]))
+
+
+def cmd_quality(args) -> Result[Any, JudgeError]:
+    """Every record named by a repeated --req/--adr/--nfr (REQs, then ADRs, then NFRs, each in the order given), under one
+    run name and one run log. Every record is
+    loaded and size-checked before the first call; a wave without an answer stops the run with the results so far."""
+    wanted = [(kind, rid) for kind in ("req", "adr", "nfr") for rid in (getattr(args, kind) or [])]
+    if not wanted or any(not rid for _, rid in wanted):
+        return fail("VALIDATION.INPUT", "a record id is missing or empty: pass one or more non-empty --req, --adr or --nfr ids")
+    settings = quality_settings(args.dry_run)
+    trees, prepared = {}, []
+    for kind, rid in wanted:
+        got = _prepare_record(args, kind, rid, trees, settings)
+        if isinstance(got, Err):
+            return got
+        prepared.append(got.value)
     if settings.dry_run:
-        body = first.value[0].body
-        return Ok({"success": True, "error": None, "data": {
-            "dry_run": True, "record": record_ref, "tree": tree_ref,
-            "wave": {"node": tree.start, "request": body, "request_bytes": len(encode_body(body)),
-                     "max_request_bytes": settings.max_request_bytes}}})
+        results = []
+        for tree, _record, refs, job in prepared:
+            results.append({**refs, "wave": {"node": tree.start, "request": job.body, "request_bytes": len(encode_body(job.body)),
+                                             "max_request_bytes": settings.max_request_bytes}})
+        return Ok({"success": True, "error": None, "data": {"dry_run": True, "results": results}})
+    run_refs = prepared[0][2] if len(prepared) == 1 else {"records": [refs for _t, _r, refs, _j in prepared]}
     loaded = load_answers_fixture(args.answers_file, "'<record>/<node>/r1', '<record>/<node>', '<node>'")
     if isinstance(loaded, Err):
-        return refs(loaded)
+        return _with_refs(loaded, run_refs)
     fixture = loaded.value
     run_name = args.run_name or stamp()
     checked = _safe_id(run_name, "--run-name")
     if isinstance(checked, Err):
-        return refs(checked)
+        return _with_refs(checked, run_refs)
     api_key = ""
     if fixture is None:
         cleared = remote_preflight(args, "The record text")
         if isinstance(cleared, Err):
-            return refs(cleared)
+            return _with_refs(cleared, run_refs)
         api_key = cleared.value
     log = open_run_log(args.run_dir, run_name)
     if isinstance(log, Err):
-        return refs(log)
-    walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
-                       {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record_id, "record_kind": kind})
+        return _with_refs(log, run_refs)
+    results, failed = [], None
+    for tree, record, refs, _job in prepared:
+        walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
+                           {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record["id"], "record_kind": refs["record"]["kind"]})
+        if isinstance(walked, Err):
+            failed = _with_refs(walked, {**refs, "results": results})
+            break
+        verdict, path, waves = walked.value
+        results.append({**refs, "verdict": verdict, "path": path, "waves": waves})
     closed = log.value.close()
-    if isinstance(walked, Err):
-        return refs(walked)
+    if failed is not None:
+        return failed
     if isinstance(closed, Err):
-        return refs(closed)
-    verdict, path, waves = walked.value
-    leaf = tree.nodes[path[-1]]
+        return _with_refs(closed, run_refs)
     return Ok({"success": True, "error": None, "data": {
-        "dry_run": False, "record": record_ref, "tree": tree_ref, "verdict": verdict, "reason": leaf.get("reason"),
-        "path": path, "waves": waves, "log": {"run": run_name, "log_root": args.run_dir}}})
+        "dry_run": False, "results": results, "log": {"run": run_name, "log_root": args.run_dir}}})
 
 
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key: str, fixture, log: RunLog,
               fields: dict) -> Result[tuple, JudgeError]:
-    """Send one wave per node from the start until a leaf; answers pick each next node. Every wave is logged with its
-    composed request, answers and selected branch; the leaf's verdict is logged with the path."""
+    """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
+    Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
+    request, answers and selected branch or verdict; the verdict is logged with the path."""
     node_id, path, waves = tree.start, [], []
-    while "verdict" not in tree.nodes[node_id]:
+    verdict = None
+    while verdict is None:
+        node = tree.nodes[node_id]
+        if "questions" not in node:  # a leaf
+            path.append(node_id)
+            verdict = node["verdict"]
+            break
         if node_id in path:
             return _tree_error(tree.path, f"the answers lead back to {node_id}: the tree has a cycle")
         path.append(node_id)
-        node = tree.nodes[node_id]
         pumped = pump_batch([wave_line(record, node_id, node)], settings, api_key, fixture, log, echo=False,
                             fields={**fields, "node": node_id})
         if isinstance(pumped, Err):
@@ -1284,18 +1341,24 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
             error.data = {"path": path, "waves": waves}
             return Err(error)
         choices = {qid: answer_choice(ans)[0] for qid, ans in result["answers"].items()}
-        nxt = select_branch(node["next"], choices)
-        if nxt is None:
-            return _tree_error(tree.path, f"no branch of wave {node_id} matches the answers {choices}")
+        nxt = None
+        if "next" in node:
+            nxt = select_branch(node["next"], choices)
+            if nxt is None:
+                return _tree_error(tree.path, f"no branch of wave {node_id} matches the answers {choices}")
+        else:
+            verdict = select_verdict(node["verdict_rules"], choices)
+            if verdict is None:
+                return _tree_error(tree.path, f"no verdict rule of wave {node_id} matches the answers {choices}")
+        reason = wave_reason(node, result["answers"])
         logged = log.event("wave", {**fields, "node": node_id, "request_id": result["request_id"], "request": result["request"],
-                                    "answers": result["answers"], "choices": choices, "next": nxt},
+                                    "answers": result["answers"], "choices": choices, "reason": reason, "next": nxt,
+                                    "verdict": verdict},
                            correlation_id=result["run_id"])
         if isinstance(logged, Err):
             return logged
-        waves.append({"node": node_id, "request_id": result["request_id"], "choices": choices, "next": nxt})
+        waves.append({"node": node_id, "request_id": result["request_id"], "reason": reason, "next": nxt, "verdict": verdict})
         node_id = nxt
-    path.append(node_id)
-    verdict = tree.nodes[node_id]["verdict"]
     logged = log.event("verdict", {**fields, "verdict": verdict, "path": path})
     if isinstance(logged, Err):
         return logged
@@ -1325,15 +1388,15 @@ def build_parser() -> argparse.ArgumentParser:
     bt.add_argument("--anchors", default="", help="anchors.json; the result log goes to its anchor-runs/ folder unless --run-dir is given")
     bt.add_argument("--gate", choices=("plan", "dev"), default="plan", help="default roles and request cap when a candidate carries no roles")
     bt.set_defaults(func=cmd_batch)
-    q = sub.add_parser("quality", help="judge whether one REQ, ADR or NFR is well written with its kind's decision tree, one Jev request per wave")
-    which = q.add_mutually_exclusive_group(required=True)
+    q = sub.add_parser("quality", help="judge whether each named REQ, ADR or NFR is well written with its kind's decision tree, one Jev request per wave")
     for kind in ("req", "adr", "nfr"):
-        which.add_argument(f"--{kind}", metavar="ID", default="", help=f"the {kind.upper()} record id")
+        q.add_argument(f"--{kind}", metavar="ID", action="append", default=[],
+                       help=f"a {kind.upper()} record id; repeat it (and mix kinds) to judge several records under one run name")
     q.add_argument("--index", required=True, help="the Raptor import index (JSON written by Raptor's scripts/extract.py --output)")
     q.add_argument("--questions", default="", help="a decision-tree file overriding the shipped assets/questions/quality-<kind>.json")
-    q.add_argument("--dry-run", action="store_true", help="report the tree, the record and the composed wave-1 request; call nothing")
+    q.add_argument("--dry-run", action="store_true", help="report each record's tree and composed wave-1 request; call nothing")
     q.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/<node>/r1', '<record>/<node>', '<node>' or '*'; no network")
-    q.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log; default {QUALITY_LOG_DIR}")
+    q.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log (<run-dir>/logs/judge-jev.log.jsonl); default {QUALITY_LOG_DIR}")
     q.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     q.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
     q.set_defaults(func=cmd_quality)

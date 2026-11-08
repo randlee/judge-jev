@@ -7,25 +7,33 @@ Every command takes `--dry-run`.
 ## `judge-jev quality`
 
 ```
-judge-jev quality --req|--adr|--nfr <id> [--questions <file>] [--dry-run]
+judge-jev quality (--req|--adr|--nfr <id>)... [--questions <file>] [--dry-run]
 ```
 
-Judges whether one record is well written (REQ-JEV-0101, REQ-JEV-0209).
+Judges whether each named record is well written (REQ-JEV-0101,
+REQ-JEV-0209). `--req`, `--adr` and `--nfr` repeat and mix; one invocation
+judges every named record under one run name.
 
 - Input: the record text from Raptor. Only records Raptor imported without
-  diagnostics are judged.
+  diagnostics are judged; every record is checked before the first request.
 - Runs the record kind's quality decision tree, in waves. Each wave is one
-  request: record text + that wave's questions. The wave's answers select
-  the next wave's questions, narrowing in until a leaf verdict.
-- The tree ships with the tool; answers pick the branch, no model chooses
-  questions.
-- Output: one verdict. A failure reports the path through the tree that
-  failed.
-- `--dry-run` reports the tree and the composed wave-1 request; later waves
-  depend on live answers.
-- A live run logs every wave as output: composed request, answers, selected
-  branch. Logging goes through the sc-observability logger, the one sc-agent uses
-  (REQ-JEV-0008).
+  request: record text + that wave's questions. Every wave reports its
+  reason: each question's id, text, Jev's choice and confidence. A wave's
+  answers select the next wave, which refines them; a wave with no next
+  wave ends the walk, and a rule in the tree (`verdict_rules`) turns its
+  answers into the verdict.
+- The shipped trees hold wave 1 only. A wave 2 is designed from wave 1's
+  observed live answers.
+- The tree ships with the tool; answers pick the branch and the verdict, no
+  model chooses questions.
+- Output: per record, the verdict, the path through the tree and every
+  wave's reason.
+- `--dry-run` reports each record's tree and composed wave-1 request; later
+  waves depend on live answers.
+- A live run logs every wave as output: composed request, answers, reason,
+  selected branch or verdict. Logging goes through the sc-observability
+  logger, the one sc-agent uses (REQ-JEV-0008), to
+  `.sc/judge-jev/logs/judge-jev.log.jsonl`.
 
 Diagram: [diagrams/quality.md](diagrams/quality.md)
 

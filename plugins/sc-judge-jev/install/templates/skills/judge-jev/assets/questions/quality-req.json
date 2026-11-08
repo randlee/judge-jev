@@ -2,7 +2,7 @@
   "schema": "judge-jev/quality-tree/1",
   "id": "quality-req",
   "kind": "req",
-  "version": 1,
+  "version": 2,
   "approved": false,
   "note": "draft, pending Rand approval",
   "start": "wave-1",
@@ -37,102 +37,27 @@
           }
         }
       },
-      "next": [
+      "verdict_rules": [
         {
-          "when": {
-            "testable": "no"
-          },
-          "goto": "testable"
-        },
-        {
-          "when": {
-            "atomic": "no"
-          },
-          "goto": "atomic"
-        },
-        {
-          "when": {
+          "any": {
+            "testable": "no",
+            "atomic": "no",
             "defined": "no"
           },
-          "goto": "defined"
+          "verdict": "no"
         },
         {
-          "goto": "wave-2"
+          "any": {
+            "testable": "unclear",
+            "atomic": "unclear",
+            "defined": "unclear"
+          },
+          "verdict": "unclear"
+        },
+        {
+          "verdict": "yes"
         }
       ]
-    },
-    "wave-2": {
-      "questions": {
-        "criteria": {
-          "type": "choice",
-          "instructions": "`item.text` is one requirement record as JSON. Do its acceptance criteria test what its statements require, and nothing the statements do not require?",
-          "criteria": {
-            "yes": "Each criterion checks a stated obligation, and each obligation has a criterion.",
-            "no": "A statement has no criterion, or a criterion checks something no statement requires.",
-            "unclear": "The criteria are too vague to match against the statements."
-          }
-        },
-        "rationale": {
-          "type": "choice",
-          "instructions": "`item.text` is one requirement record as JSON. Does its rationale say why the requirement exists?",
-          "criteria": {
-            "yes": "The rationale names the problem or need the requirement answers.",
-            "no": "The rationale is missing in substance or only restates the requirement.",
-            "unclear": "The rationale hints at a reason without stating it."
-          }
-        }
-      },
-      "next": [
-        {
-          "when": {
-            "criteria": "no"
-          },
-          "goto": "criteria"
-        },
-        {
-          "when": {
-            "criteria": "unclear"
-          },
-          "goto": "criteria-unclear"
-        },
-        {
-          "when": {
-            "rationale": "no"
-          },
-          "goto": "rationale"
-        },
-        {
-          "goto": "pass"
-        }
-      ]
-    },
-    "testable": {
-      "verdict": "no",
-      "reason": "A statement has no observable pass or fail outcome."
-    },
-    "atomic": {
-      "verdict": "no",
-      "reason": "A statement holds more than one constraint."
-    },
-    "defined": {
-      "verdict": "no",
-      "reason": "A statement uses an undefined term."
-    },
-    "criteria": {
-      "verdict": "no",
-      "reason": "The acceptance criteria do not match the statements."
-    },
-    "criteria-unclear": {
-      "verdict": "unclear",
-      "reason": "Jev could not match the acceptance criteria to the statements."
-    },
-    "rationale": {
-      "verdict": "no",
-      "reason": "The rationale does not say why the requirement exists."
-    },
-    "pass": {
-      "verdict": "yes",
-      "reason": "Every question in the path passed."
     }
   }
 }

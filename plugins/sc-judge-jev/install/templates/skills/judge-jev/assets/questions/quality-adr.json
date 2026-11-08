@@ -2,7 +2,7 @@
   "schema": "judge-jev/quality-tree/1",
   "id": "quality-adr",
   "kind": "adr",
-  "version": 1,
+  "version": 2,
   "approved": false,
   "note": "draft, pending Rand approval",
   "start": "wave-1",
@@ -37,92 +37,27 @@
           }
         }
       },
-      "next": [
+      "verdict_rules": [
         {
-          "when": {
-            "decision": "no"
-          },
-          "goto": "decision"
-        },
-        {
-          "when": {
-            "context": "no"
-          },
-          "goto": "context"
-        },
-        {
-          "when": {
+          "any": {
+            "decision": "no",
+            "context": "no",
             "consequences": "no"
           },
-          "goto": "consequences"
+          "verdict": "no"
         },
         {
-          "goto": "wave-2"
+          "any": {
+            "decision": "unclear",
+            "context": "unclear",
+            "consequences": "unclear"
+          },
+          "verdict": "unclear"
+        },
+        {
+          "verdict": "yes"
         }
       ]
-    },
-    "wave-2": {
-      "questions": {
-        "rationale": {
-          "type": "choice",
-          "instructions": "`item.text` is one architecture decision record as JSON. Does its rationale connect the decision to the problem in its context?",
-          "criteria": {
-            "yes": "The rationale explains why this choice answers the stated problem.",
-            "no": "The rationale is missing in substance or does not refer to the problem.",
-            "unclear": "The connection is implied but not stated."
-          }
-        },
-        "alternatives": {
-          "type": "choice",
-          "instructions": "`item.text` is one architecture decision record as JSON. Does it name an alternative that was considered, or say why none was?",
-          "criteria": {
-            "yes": "At least one alternative is named with why it was not chosen, or the absence is explained.",
-            "no": "No alternative is named and the absence is not explained.",
-            "unclear": "Alternatives are hinted at but not stated."
-          }
-        }
-      },
-      "next": [
-        {
-          "when": {
-            "rationale": "no"
-          },
-          "goto": "rationale"
-        },
-        {
-          "when": {
-            "alternatives": "no"
-          },
-          "goto": "alternatives"
-        },
-        {
-          "goto": "pass"
-        }
-      ]
-    },
-    "decision": {
-      "verdict": "no",
-      "reason": "The decision states no concrete choice."
-    },
-    "context": {
-      "verdict": "no",
-      "reason": "The context does not state the problem the decision answers."
-    },
-    "rationale": {
-      "verdict": "no",
-      "reason": "The rationale does not connect the decision to its context."
-    },
-    "alternatives": {
-      "verdict": "no",
-      "reason": "No alternative is named or explained."
-    },
-    "pass": {
-      "verdict": "yes",
-      "reason": "Every question in the path passed."
-    },
-    "consequences": {
-      "verdict": "no",
-      "reason": "No consequence of the decision is named."
     }
   }
 }

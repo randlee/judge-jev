@@ -30,7 +30,7 @@ aggregates them. Full definitions: [docs/cli.md](docs/cli.md); prompt
 composition diagrams: [docs/diagrams/](docs/diagrams/).
 
 ```
-judge-jev quality --req|--adr|--nfr <id>
+judge-jev quality (--req|--adr|--nfr <id>)...
 judge-jev check   --req|--adr|--nfr <id> --location <loc> --mode prompt|skill|task|code
 judge-jev check   --profile <profile>
 # every command: [--questions <file>] [--dry-run]

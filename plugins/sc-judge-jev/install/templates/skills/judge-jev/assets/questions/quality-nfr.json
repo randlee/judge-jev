@@ -2,7 +2,7 @@
   "schema": "judge-jev/quality-tree/1",
   "id": "quality-nfr",
   "kind": "nfr",
-  "version": 1,
+  "version": 2,
   "approved": false,
   "note": "draft, pending Rand approval",
   "start": "wave-1",
@@ -37,102 +37,27 @@
           }
         }
       },
-      "next": [
+      "verdict_rules": [
         {
-          "when": {
-            "measurable": "no"
-          },
-          "goto": "measurable"
-        },
-        {
-          "when": {
-            "testable": "no"
-          },
-          "goto": "testable"
-        },
-        {
-          "when": {
+          "any": {
+            "measurable": "no",
+            "testable": "no",
             "atomic": "no"
           },
-          "goto": "atomic"
+          "verdict": "no"
         },
         {
-          "goto": "wave-2"
+          "any": {
+            "measurable": "unclear",
+            "testable": "unclear",
+            "atomic": "unclear"
+          },
+          "verdict": "unclear"
+        },
+        {
+          "verdict": "yes"
         }
       ]
-    },
-    "wave-2": {
-      "questions": {
-        "criteria": {
-          "type": "choice",
-          "instructions": "`item.text` is one non-functional requirement record as JSON. Do its acceptance criteria test the measures its statements set?",
-          "criteria": {
-            "yes": "Each criterion checks a stated measure, and each measure has a criterion.",
-            "no": "A measure has no criterion, or a criterion checks something no statement sets.",
-            "unclear": "The criteria are too vague to match against the statements."
-          }
-        },
-        "scope": {
-          "type": "choice",
-          "instructions": "`item.text` is one non-functional requirement record as JSON. Does it say which system, component or condition the measures apply to?",
-          "criteria": {
-            "yes": "The record names where and when each measure applies.",
-            "no": "A reader cannot tell what the measures apply to.",
-            "unclear": "The scope is implied but not stated."
-          }
-        }
-      },
-      "next": [
-        {
-          "when": {
-            "criteria": "no"
-          },
-          "goto": "criteria"
-        },
-        {
-          "when": {
-            "criteria": "unclear"
-          },
-          "goto": "criteria-unclear"
-        },
-        {
-          "when": {
-            "scope": "no"
-          },
-          "goto": "scope"
-        },
-        {
-          "goto": "pass"
-        }
-      ]
-    },
-    "measurable": {
-      "verdict": "no",
-      "reason": "A statement has no measure."
-    },
-    "testable": {
-      "verdict": "no",
-      "reason": "A statement has no observable pass or fail outcome."
-    },
-    "atomic": {
-      "verdict": "no",
-      "reason": "A statement holds more than one constraint."
-    },
-    "criteria": {
-      "verdict": "no",
-      "reason": "The acceptance criteria do not match the measures."
-    },
-    "criteria-unclear": {
-      "verdict": "unclear",
-      "reason": "Jev could not match the acceptance criteria to the measures."
-    },
-    "scope": {
-      "verdict": "no",
-      "reason": "The record does not say what the measures apply to."
-    },
-    "pass": {
-      "verdict": "yes",
-      "reason": "Every question in the path passed."
     }
   }
 }

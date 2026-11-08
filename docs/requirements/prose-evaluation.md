@@ -291,13 +291,17 @@ leaves the machine.
 ### Requirement Statement
 
 **MUST statements:**
-- `judge-jev quality` MUST take exactly one of `--req`, `--adr` or `--nfr`
-  with one record id and judge that record with its kind's quality
-  decision tree (REQ-JEV-0101).
+- `judge-jev quality` MUST take one or more record ids, each given with
+  `--req`, `--adr` or `--nfr` (repeatable), and judge each record with its
+  kind's quality decision tree (REQ-JEV-0101).
+- All records of one `judge-jev quality` invocation MUST be logged under
+  one run name.
 
 ### Rationale
 
-Quality and compliance are separate questions about separate inputs.
+Quality and compliance are separate questions about separate inputs. One
+run name per invocation groups a measurement over many records in the
+log.
 
 ### Success Criteria
 

@@ -5,6 +5,7 @@ fails the test). The run log is read back through sc-observability's query API.
 """
 import hashlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -67,7 +68,7 @@ class DryRun(QualityCase):
     def test_dry_run_reports_the_tree_record_and_wave_1_request_and_writes_nothing(self):
         code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
         self.assertEqual((code, out["success"], out["error"]), (0, True, None), out)
-        data = out["data"]
+        (data,) = out["data"]["results"]
         shipped = QUESTIONS / "quality-req.json"
         self.assertEqual(data["tree"], {"id": "quality-req", "sha256": hashlib.sha256(shipped.read_bytes()).hexdigest(),
                                         "source": "shipped", "path": str(jj.QUESTIONS_DIR / "quality-req.json")})
@@ -86,7 +87,8 @@ class DryRun(QualityCase):
     def test_each_kind_uses_its_own_tree_and_table(self):
         for flag, rid, tree_id in (("--nfr", "NFR-T-0001", "quality-nfr"), ("--adr", "ADR-T-0001", "quality-adr")):
             code, out = self.quality(flag, rid, "--dry-run")
-            self.assertEqual((code, out["data"]["tree"]["id"], out["data"]["record"]["id"]), (0, tree_id, rid), out)
+            (data,) = out["data"]["results"]
+            self.assertEqual((code, data["tree"]["id"], data["record"]["id"]), (0, tree_id, rid), out)
         code, out = self.quality("--adr", "REQ-T-0001", "--dry-run")
         self.assertEqual((code, out["error"]["code"]), (2, "RECORD.NOT_FOUND"))
 
@@ -96,9 +98,7 @@ class DryRun(QualityCase):
         code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
         self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"))
 
-    def test_exactly_one_record_flag(self):
-        code, out = run_cli(["quality", "--req", "A", "--adr", "B", "--index", self.index, "--dry-run"])
-        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))
+    def test_at_least_one_record_flag(self):
         code, out = run_cli(["quality", "--index", self.index, "--dry-run"])
         self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))
 
@@ -114,55 +114,66 @@ class RecordsWithDiagnostics(QualityCase):
         self.assertEqual((code, out["error"]["code"]), (2, "RECORD.DIAGNOSTICS"))
 
 
-class Waves(QualityCase):
-    PASS = {"REQ-T-0001/wave-1": tree_answers("quality-req.json", "wave-1"),
-            "REQ-T-0001/wave-2": tree_answers("quality-req.json", "wave-2")}
+class WaveReasons(QualityCase):
+    """Every wave reports each question's answer as its reason; a wave without next ends with its tree's verdict_rules."""
 
-    def test_fixed_wave_1_answers_select_the_same_wave_2_every_run(self):
-        runs = []
+    def test_every_wave_1_question_is_in_the_result_with_its_text_choice_and_confidence(self):
+        for flag, rid, kind in (("--req", "REQ-T-0001", "req"), ("--nfr", "NFR-T-0001", "nfr"), ("--adr", "ADR-T-0001", "adr")):
+            questions = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))["nodes"]["wave-1"]["questions"]
+            first, *rest = questions
+            answers = {f"{rid}/wave-1": {qid: answer("no" if qid == first else "yes", p=0.6 if qid == first else 0.8)
+                                         for qid in questions}}
+            code, out = self.quality(flag, rid, answers=answers)
+            self.assertEqual(code, 0, out)
+            (result,) = out["data"]["results"]
+            (wave,) = result["waves"]
+            self.assertEqual(wave["reason"], [{"id": qid, "text": q["instructions"], "choice": "no" if qid == first else "yes",
+                                               "confidence": 0.6 if qid == first else 0.8} for qid, q in questions.items()])
+            self.assertEqual((wave["node"], wave["next"], wave["verdict"]), ("wave-1", None, "no"))
+            self.assertEqual((result["verdict"], result["path"]), ("no", ["wave-1"]))
+
+    def test_the_verdict_comes_from_the_trees_rule(self):
+        cases = (({}, "yes"), ({"testable": "no"}, "no"), ({"defined": "unclear"}, "unclear"),
+                 ({"atomic": "unclear", "defined": "no"}, "no"))
+        for choices, verdict in cases:
+            answers = {"REQ-T-0001/wave-1": tree_answers("quality-req.json", "wave-1", **choices)}
+            code, out = self.quality("--req", "REQ-T-0001", answers=answers)
+            self.assertEqual(code, 0, out)
+            self.assertEqual(out["data"]["results"][0]["verdict"], verdict, choices)
+
+    def test_fixed_answers_compose_the_same_request_every_run(self):
+        answers = {"REQ-T-0001/wave-1": tree_answers("quality-req.json", "wave-1")}
+        logs = []
         for name in ("a", "b"):
             with env(), mock.patch.object(jj, "call_jev", never_called):
                 code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / name),
-                                     "--answers-file", write(self.d, "answers.json", self.PASS)])
+                                     "--answers-file", write(self.d, "answers.json", answers)])
             self.assertEqual(code, 0, out)
-            runs.append((out["data"], read_log(self.d / name, action="request")))
-        (first, first_log), (second, second_log) = runs
-        self.assertEqual((first["verdict"], first["path"]), ("yes", ["wave-1", "wave-2", "pass"]))
-        self.assertEqual(first["path"], second["path"])
-        self.assertEqual([e["fields"]["request"] for e in first_log], [e["fields"]["request"] for e in second_log])
-        wave_2 = json.loads((QUESTIONS / "quality-req.json").read_text(encoding="utf-8"))["nodes"]["wave-2"]["questions"]
-        self.assertEqual(first_log[1]["fields"]["request"]["questions"], wave_2)
+            logs.append([e["fields"]["request"] for e in read_log(self.d / name, action="request")])
+        self.assertEqual(logs[0], logs[1])
 
-    def test_no_observable_outcome_reports_no_with_the_testable_node(self):
-        answers = {"REQ-T-0001/wave-1": tree_answers("quality-req.json", "wave-1", testable="no")}
+    def test_the_log_holds_the_wave_with_its_request_answers_reason_verdict_tree_id_and_digest(self):
+        answers = {"REQ-T-0001/wave-1": tree_answers("quality-req.json", "wave-1", atomic="no")}
         code, out = self.quality("--req", "REQ-T-0001", answers=answers)
-        self.assertEqual((code, out["success"]), (0, True), out)
-        self.assertEqual((out["data"]["verdict"], out["data"]["path"]), ("no", ["wave-1", "testable"]))
-        self.assertEqual(out["data"]["waves"][0]["choices"]["testable"], "no")
-
-    def test_the_log_holds_every_wave_with_its_request_answers_branch_tree_id_and_digest(self):
-        code, out = self.quality("--req", "REQ-T-0001", answers=self.PASS)
         self.assertEqual(code, 0, out)
         events = read_log(self.d / "logs")
-        self.assertEqual([e["action"] for e in events],
-                         ["request", "answer", "result", "wave"] * 2 + ["verdict"])
-        digest = out["data"]["tree"]["sha256"]
+        self.assertEqual([e["action"] for e in events], ["request", "answer", "result", "wave", "verdict"])
+        digest = out["data"]["results"][0]["tree"]["sha256"]
         for event in events:
             self.assertEqual((event["fields"]["tree_id"], event["fields"]["tree_sha256"], event["fields"]["run"]),
                              ("quality-req", digest, "q1"), event["action"])
-        waves = [e["fields"] for e in events if e["action"] == "wave"]
-        self.assertEqual([(w["node"], w["next"]) for w in waves], [("wave-1", "wave-2"), ("wave-2", "pass")])
-        self.assertEqual(waves[0]["answers"], self.PASS["REQ-T-0001/wave-1"])
-        self.assertEqual(waves[0]["request"]["questions"], json.loads((QUESTIONS / "quality-req.json").read_text(encoding="utf-8"))["nodes"]["wave-1"]["questions"])
-        self.assertEqual(events[-1]["fields"]["path"], ["wave-1", "wave-2", "pass"])
-        results = [e["fields"] for e in events if e["action"] == "result"]
-        self.assertEqual([(r["anchor_id"], r["verdict"]) for r in results], [(None, None), (None, None)])
+        wave = events[3]["fields"]
+        self.assertEqual((wave["node"], wave["next"], wave["verdict"]), ("wave-1", None, "no"))
+        self.assertEqual(wave["answers"], answers["REQ-T-0001/wave-1"])
+        self.assertEqual(wave["reason"], out["data"]["results"][0]["waves"][0]["reason"])
+        self.assertEqual(wave["request"]["questions"], json.loads((QUESTIONS / "quality-req.json").read_text(encoding="utf-8"))["nodes"]["wave-1"]["questions"])
+        self.assertEqual((events[-1]["fields"]["verdict"], events[-1]["fields"]["path"]), ("no", ["wave-1"]))
 
     def test_a_wave_without_an_answer_is_exit_2_with_the_path_so_far(self):
-        answers = {**self.PASS, "REQ-T-0001/wave-2": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}]}
+        answers = {"REQ-T-0001/wave-1": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}]}
         code, out = self.quality("--req", "REQ-T-0001", answers=answers)
         self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "JEV.OVERLOADED"))
-        self.assertEqual(out["data"]["path"], ["wave-1", "wave-2"])
+        self.assertEqual((out["data"]["path"], out["data"]["results"]), (["wave-1"], []))
         self.assertEqual(out["data"]["tree"]["id"], "quality-req")
 
     def test_a_live_run_needs_a_key_before_anything_is_logged(self):
@@ -172,29 +183,89 @@ class Waves(QualityCase):
         self.assertFalse((self.d / "logs").exists())
 
 
+class LogPath(QualityCase):
+    def test_the_default_log_is_sc_judge_jev_logs_judge_jev_log_jsonl(self):
+        cwd = os.getcwd()
+        self.addCleanup(os.chdir, cwd)
+        os.chdir(self.d)
+        answers = write(self.d, "answers.json", {"*": tree_answers("quality-req.json", "wave-1")})
+        with env(), mock.patch.object(jj, "call_jev", never_called):
+            code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", answers])
+        self.assertEqual((code, out["data"]["log"]["log_root"]), (0, ".sc/judge-jev"), out)
+        files = sorted(str(p.relative_to(self.d)) for p in (self.d / ".sc").rglob("*.jsonl"))
+        self.assertEqual(files, [str(Path(".sc", "judge-jev", "logs", "judge-jev.log.jsonl"))])
+
+
+class SeveralRecords(QualityCase):
+    def test_one_invocation_judges_every_named_record_under_one_run_name(self):
+        answers = {"*": tree_answers("quality-req.json", "wave-1"),
+                   "NFR-T-0001/wave-1": tree_answers("quality-nfr.json", "wave-1", measurable="no"),
+                   "ADR-T-0001/wave-1": tree_answers("quality-adr.json", "wave-1")}
+        code, out = self.quality("--req", "REQ-T-0001", "--adr", "ADR-T-0001", "--nfr", "NFR-T-0001", answers=answers)
+        self.assertEqual(code, 0, out)
+        results = out["data"]["results"]
+        self.assertEqual([(r["record"]["id"], r["tree"]["id"], r["verdict"]) for r in results],
+                         [("REQ-T-0001", "quality-req", "yes"), ("ADR-T-0001", "quality-adr", "yes"), ("NFR-T-0001", "quality-nfr", "no")])
+        self.assertEqual(out["data"]["log"]["run"], "q1")
+        events = read_log(self.d / "logs")
+        self.assertEqual({e["fields"]["run"] for e in events}, {"q1"})
+        self.assertEqual([e["fields"]["record_id"] for e in events if e["action"] == "verdict"], ["REQ-T-0001", "ADR-T-0001", "NFR-T-0001"])
+
+    def test_every_record_is_checked_before_the_first_call(self):
+        answers = {"*": tree_answers("quality-req.json", "wave-1")}
+        code, out = self.quality("--req", "REQ-T-0001", "--req", "REQ-T-0002", answers=answers)
+        self.assertEqual((code, out["error"]["code"], out["data"]["record"]["id"]), (2, "RECORD.DIAGNOSTICS", "REQ-T-0002"))
+        self.assertFalse((self.d / "logs").exists())
+
+
 class TreeOverride(QualityCase):
     TREE = {"id": "variant-7", "start": "w1", "nodes": {
         "w1": {"questions": {"q1": {"type": "choice", "instructions": "Is `item.text` short?",
                                     "criteria": {"yes": "short", "no": "long", "unclear": "cannot tell"}}},
-               "next": [{"when": {"q1": "no"}, "goto": "long"}, {"goto": "fine"}]},
-        "long": {"verdict": "no"}, "fine": {"verdict": "yes"}}}
+               "next": [{"when": {"q1": "no"}, "goto": "long"}, {"goto": "w2"}]},
+        "w2": {"questions": {"q2": {"type": "choice", "instructions": "Is `item.text` plain?",
+                                    "criteria": {"yes": "plain", "no": "dense", "unclear": "cannot tell"}}},
+               "verdict_rules": [{"any": {"q2": "no"}, "verdict": "no"}, {"verdict": "yes"}]},
+        "long": {"verdict": "no"}}}
 
     def test_a_variation_is_a_file(self):
         path = write(self.d, "variant.json", self.TREE)
         code, out = self.quality("--req", "REQ-T-0001", "--questions", path, "--dry-run")
         self.assertEqual(code, 0, out)
-        self.assertEqual(out["data"]["tree"], {"id": "variant-7", "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
-                                               "source": "override", "path": path})
-        self.assertEqual(out["data"]["wave"]["request"]["questions"], self.TREE["nodes"]["w1"]["questions"])
+        (data,) = out["data"]["results"]
+        self.assertEqual(data["tree"], {"id": "variant-7", "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest(),
+                                        "source": "override", "path": path})
+        self.assertEqual(data["wave"]["request"]["questions"], self.TREE["nodes"]["w1"]["questions"])
         code, out = self.quality("--req", "REQ-T-0001", "--questions", path, answers={"w1": {"q1": answer("no")}})
-        self.assertEqual((code, out["data"]["verdict"], out["data"]["path"]), (0, "no", ["w1", "long"]), out)
+        (data,) = out["data"]["results"]
+        self.assertEqual((code, data["verdict"], data["path"]), (0, "no", ["w1", "long"]), out)
+
+    def test_answers_select_the_next_wave_and_every_wave_reports_its_reason(self):
+        path = write(self.d, "variant.json", self.TREE)
+        code, out = self.quality("--req", "REQ-T-0001", "--questions", path,
+                                 answers={"w1": {"q1": answer("yes")}, "w2": {"q2": answer("no", p=0.7)}})
+        self.assertEqual(code, 0, out)
+        (data,) = out["data"]["results"]
+        self.assertEqual((data["verdict"], data["path"]), ("no", ["w1", "w2"]))
+        self.assertEqual([(w["node"], w["next"], w["verdict"], w["reason"]) for w in data["waves"]], [
+            ("w1", "w2", None, [{"id": "q1", "text": "Is `item.text` short?", "choice": "yes", "confidence": 0.9}]),
+            ("w2", None, "no", [{"id": "q2", "text": "Is `item.text` plain?", "choice": "no", "confidence": 0.7}])])
 
     def test_malformed_trees_are_typed_errors(self):
+        w1, w2 = self.TREE["nodes"]["w1"], self.TREE["nodes"]["w2"]
+
+        def nodes(**changed):
+            return {**self.TREE, "nodes": {**self.TREE["nodes"], **changed}}
+
         bad = {
             "start missing": {**self.TREE, "start": "nope"},
-            "goto missing": {**self.TREE, "nodes": {**self.TREE["nodes"], "w1": {**self.TREE["nodes"]["w1"], "next": [{"goto": "nope"}]}}},
-            "when names no question": {**self.TREE, "nodes": {**self.TREE["nodes"], "w1": {**self.TREE["nodes"]["w1"], "next": [{"when": {"zz": "no"}, "goto": "fine"}]}}},
-            "start is a leaf": {**self.TREE, "start": "fine"},
+            "goto missing": nodes(w1={**w1, "next": [{"goto": "nope"}]}),
+            "when names no question": nodes(w1={**w1, "next": [{"when": {"zz": "no"}, "goto": "long"}]}),
+            "start is a leaf": {**self.TREE, "start": "long"},
+            "next and verdict_rules": nodes(w2={**w2, "next": [{"goto": "long"}]}),
+            "neither next nor verdict_rules": nodes(w2={"questions": w2["questions"]}),
+            "verdict rule names no question": nodes(w2={**w2, "verdict_rules": [{"any": {"zz": "no"}, "verdict": "no"}]}),
+            "verdict rule without a verdict": nodes(w2={**w2, "verdict_rules": [{"any": {"q2": "no"}}]}),
         }
         for name, tree in bad.items():
             code, out = self.quality("--req", "REQ-T-0001", "--questions", write(self.d, "bad.json", tree), "--dry-run")
@@ -202,12 +273,17 @@ class TreeOverride(QualityCase):
         code, out = self.quality("--req", "REQ-T-0001", "--questions", str(self.d / "none.json"), "--dry-run")
         self.assertEqual((code, out["error"]["code"]), (2, "INPUT.MISSING"))
 
-    def test_answers_that_loop_or_match_no_branch_are_typed_errors(self):
-        loop = {**self.TREE, "nodes": {**self.TREE["nodes"], "w1": {**self.TREE["nodes"]["w1"], "next": [{"goto": "w1"}]}}}
+    def test_answers_that_loop_or_match_no_rule_are_typed_errors(self):
+        w1, w2 = self.TREE["nodes"]["w1"], self.TREE["nodes"]["w2"]
+        loop = {**self.TREE, "nodes": {**self.TREE["nodes"], "w1": {**w1, "next": [{"goto": "w1"}]}}}
         code, out = self.quality("--req", "REQ-T-0001", "--questions", write(self.d, "loop.json", loop), answers={"w1": {"q1": answer("yes")}})
         self.assertEqual((code, out["error"]["code"]), (2, "QUALITY.TREE"))
-        narrow = {**self.TREE, "nodes": {**self.TREE["nodes"], "w1": {**self.TREE["nodes"]["w1"], "next": [{"when": {"q1": "no"}, "goto": "long"}]}}}
+        narrow = {**self.TREE, "nodes": {**self.TREE["nodes"], "w1": {**w1, "next": [{"when": {"q1": "no"}, "goto": "long"}]}}}
         code, out = self.quality("--req", "REQ-T-0001", "--questions", write(self.d, "narrow.json", narrow), answers={"w1": {"q1": answer("yes")}})
+        self.assertEqual((code, out["error"]["code"]), (2, "QUALITY.TREE"))
+        no_verdict = {**self.TREE, "nodes": {**self.TREE["nodes"], "w2": {**w2, "verdict_rules": [{"any": {"q2": "no"}, "verdict": "no"}]}}}
+        code, out = self.quality("--req", "REQ-T-0001", "--questions", write(self.d, "nv.json", no_verdict),
+                                 answers={"w1": {"q1": answer("yes")}, "w2": {"q2": answer("yes")}})
         self.assertEqual((code, out["error"]["code"]), (2, "QUALITY.TREE"))
 
 
@@ -240,24 +316,25 @@ class QaFindings(QualityCase):
         crlf.write_bytes(lf.replace(b"\n", b"\r\n"))
         code, out = self.quality("--req", "REQ-T-0001", "--questions", str(crlf), "--dry-run")
         self.assertEqual(code, 0, out)
-        self.assertEqual(out["data"]["tree"]["sha256"], hashlib.sha256(lf).hexdigest())
+        self.assertEqual(out["data"]["results"][0]["tree"]["sha256"], hashlib.sha256(lf).hexdigest())
 
     def test_an_empty_record_id_is_validation_input(self):
         # Python 3.12+ argparse accepts `--req ""` (3.11 refuses it), so cmd_quality gets every id empty
         args = jj.build_parser().parse_args(["quality", "--req", "REQ-T-0001", "--index", self.index, "--dry-run"])
-        args.req = ""
+        args.req = [""]
         got = jj.cmd_quality(args)
         self.assertIsInstance(got, jj.Err)
         self.assertEqual(got.error.code, "VALIDATION.INPUT")
 
 
 class ShippedTrees(unittest.TestCase):
-    def test_one_draft_tree_per_kind_that_loads(self):
+    def test_one_draft_wave_1_only_tree_per_kind_that_loads(self):
         for kind in ("req", "adr", "nfr"):
             tree = jj.load_quality_tree(kind)
             self.assertIsInstance(tree, jj.Ok, kind)
             raw = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))
             self.assertEqual((raw["id"], raw["approved"], raw["note"]), (f"quality-{kind}", False, "draft, pending Rand approval"))
+            self.assertEqual((raw["start"], list(raw["nodes"])), ("wave-1", ["wave-1"]))
             for node in raw["nodes"].values():
                 for q in node.get("questions", {}).values():
                     self.assertEqual(set(q["criteria"]), {"yes", "no", "unclear"})
