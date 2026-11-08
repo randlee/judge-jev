@@ -34,6 +34,20 @@
   each measured as the logger measures them (typed fields, compact JSON, 65536
   bytes) and the message names the event and its size. A valid tree whose
   request fitted `--max-request-bytes` was refused after Jev had answered.
+- Quality trees can be written in Turtle (ADR-JEV-0006): `assets/ontology/judge-jev.ttl`
+  (the `jj:` vocabulary), `assets/shapes/quality-tree.shacl.ttl` (SHACL shapes for
+  the graph and its edges: one start that is a node, a wave's questions and
+  same-kind rules, 2 to 255 options with a label and criterion, choices that are
+  options of their question and asked by the same wave, `goto` inside the tree,
+  integer unique ranks, an unconditional last rule, a leaf with only a verdict,
+  no cycle through `goto`) and `assets/questions/quality-adr.ttl`, the shipped ADR
+  tree with the same content as `quality-adr.json`, its questions IRIs any tree
+  can ask.
+- `scripts/jev_graph.py` is the tree side of the graph store port:
+  `load_tree`, `validate_tree` (SHACL, refused as `QUALITY.TREE` with each
+  violation's focus node, path and shape), `tree_to_quality_json`,
+  `compile_wave` and `tree_digest` (SHA-256 of the RDFC-1.0 canonical N-Quads).
+  It needs `pyoxigraph>=0.5,<0.6` and `pyshacl>=0.30,<1`.
 - No input crashes `jev_judge.py`. Every JSON input (tree, question set, index,
   answers file, request stream, Jev's response) is refused as `INPUT.MALFORMED`
   (or `JEV.RESPONSE_INVALID`) when it holds NaN or Infinity, an integer over

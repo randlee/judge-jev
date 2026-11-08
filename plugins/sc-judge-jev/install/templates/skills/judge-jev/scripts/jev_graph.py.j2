@@ -1,0 +1,304 @@
+---
+name: sc-judge-jev-script-jev_graph
+version: 1.0.0
+format: python
+description: sc-judge-jev install-time script, rendered by install.py.
+required_variables:
+  - version
+---
+"""The graph store port, tree side (ADR-JEV-0006, ADR-JEV-0007): a quality tree written in Turtle.
+
+A tree is TTL against the judge-jev ontology (``assets/ontology/judge-jev.ttl``, prefix
+``jj: <urn:judge-jev:ontology#>``): waves, questions, options and rules are resources linked by edges, and a question
+is one resource with an IRI that any wave may ask. This module is imported by ``jev_judge.py``'s directory and has
+exactly this API:
+
+  - ``load_tree(path)``: parse the TTL into a ``TreeGraph`` (``INPUT.MALFORMED`` when it does not parse).
+  - ``validate_tree(tree)``: SHACL (``assets/shapes/quality-tree.shacl.ttl``); ``QUALITY.TREE`` listing every violation
+    with its focus node, path, shape and message.
+  - ``tree_to_quality_json(tree)``: the equivalent JSON quality tree (today's format), rules and questions by rank, so
+    the existing walker and the pydantic models run on it unchanged. The tree must have passed ``validate_tree``.
+  - ``compile_wave(tree, node_id)``: that wave's JSON ``questions`` object, exactly as sent to Jev.
+  - ``tree_digest(tree)``: SHA-256 of the tree's RDFC-1.0 canonical N-Quads.
+
+``TreeGraph.store`` is the ``pyoxigraph.Store`` holding the tree, for queries. The SHACL validator (pyshacl) reads
+rdflib graphs, not an Oxigraph store: ``validate_tree`` serialises the store to N-Triples and parses that into rdflib,
+for validation only. Everything else uses the store.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import pathlib
+import sys
+from dataclasses import dataclass
+from typing import Any, Optional
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import pyoxigraph as ox  # noqa: E402
+from result import Err, Ok, Result  # noqa: E402
+
+HERE = pathlib.Path(__file__).resolve().parent
+SHAPES_PATH = HERE.parent / "assets" / "shapes" / "quality-tree.shacl.ttl"
+JJ = "urn:judge-jev:ontology#"
+JJS = "urn:judge-jev:shapes#"
+TREE_SCHEMA = "judge-jev/quality-tree/1"
+MAX_LISTED_VIOLATIONS = 25
+
+
+class JudgeError:
+    """An expected failure, carried in Err; the same shape as ``jev_judge.JudgeError`` (code, message, action, data)."""
+
+    def __init__(self, code: str, message: str, recoverable: bool = False, action: str = ""):
+        self.code = code
+        self.message = message
+        self.recoverable = recoverable
+        self.action = action
+        self.status = None
+        self.retry_after = None
+        self.meta = {}
+        self.data = None
+
+    def __str__(self) -> str:
+        return self.message
+
+
+def _fail(code: str, message: str, action: str = "", data: Optional[dict] = None) -> Err[JudgeError]:
+    error = JudgeError(code, message, action=action)
+    error.data = data
+    return Err(error)
+
+
+@dataclass(frozen=True)
+class TreeGraph:
+    """A parsed quality tree: ``store`` is the pyoxigraph store holding its triples (the default graph)."""
+
+    store: ox.Store
+    path: str
+
+
+def _jj(name: str) -> ox.NamedNode:
+    return ox.NamedNode(JJ + name)
+
+
+def load_tree(path: str) -> Result[TreeGraph, JudgeError]:
+    """Parse the TTL file at ``path`` into a TreeGraph. Nothing is checked beyond the syntax: see ``validate_tree``."""
+    p = pathlib.Path(path)
+    if not str(path).strip() or not p.is_file():
+        return _fail("INPUT.MISSING", f"quality tree not found: {path!r}", "Pass the path of an existing tree file.")
+    try:
+        data = p.read_bytes().decode("utf-8")
+        store = ox.Store()
+        store.load(input=data, format=ox.RdfFormat.TURTLE)
+    except (OSError, ValueError, SyntaxError) as exc:  # UnicodeDecodeError is a ValueError
+        return _fail("INPUT.MALFORMED", f"quality tree {path} is not readable Turtle: {type(exc).__name__}: {exc}",
+                     f"Fix the Turtle in {path}.")
+    return Ok(TreeGraph(store, str(path)))
+
+
+# --------------------------------------------------------------------------- #
+# reading the graph
+# --------------------------------------------------------------------------- #
+def _objects(tree: TreeGraph, subject, name: str) -> list:
+    return [q.object for q in tree.store.quads_for_pattern(subject, _jj(name), None, ox.DefaultGraph())]
+
+
+def _value(term):
+    """A literal as a Python str, int or bool; an IRI as its string."""
+    if isinstance(term, ox.Literal):
+        datatype = term.datatype.value
+        if datatype.endswith("#integer"):
+            return int(term.value)
+        if datatype.endswith("#boolean"):
+            return term.value in ("true", "1")
+    return term.value
+
+
+def _one(tree: TreeGraph, subject, name: str, default=None):
+    found = _objects(tree, subject, name)
+    return _value(found[0]) if found else default
+
+
+def _by_rank(tree: TreeGraph, terms: list) -> list:
+    return sorted(terms, key=lambda t: (_one(tree, t, "rank", 0), str(t)))
+
+
+def _trees(tree: TreeGraph) -> list:
+    rdf_type = ox.NamedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    return sorted((q.subject for q in tree.store.quads_for_pattern(None, rdf_type, _jj("Tree"), ox.DefaultGraph())), key=str)
+
+
+def _is_a(tree: TreeGraph, subject, cls: str) -> bool:
+    rdf_type = ox.NamedNode("http://www.w3.org/1999/02/22-rdf-syntax-ns#type")
+    return any(True for _ in tree.store.quads_for_pattern(subject, rdf_type, _jj(cls), ox.DefaultGraph()))
+
+
+def _question_json(tree: TreeGraph, question) -> dict:
+    options = _by_rank(tree, _objects(tree, question, "option"))
+    return {"type": "choice", "instructions": _one(tree, question, "instructions"),
+            "criteria": {_one(tree, o, "label"): _one(tree, o, "criterion") for o in options}}
+
+
+def _questions_json(tree: TreeGraph, wave) -> dict:
+    return {_one(tree, q, "id"): _question_json(tree, q) for q in _by_rank(tree, _objects(tree, wave, "asks"))}
+
+
+def _conditions_json(tree: TreeGraph, rule, prop: str, intersect: bool) -> dict:
+    """``{question id: choice or [choices]}``, questions by rank: one choice as a string, several as a list in option
+    rank order. Two conditions on one question are merged (union for whenAny, intersection for whenAll)."""
+    merged: dict = {}
+    for condition in _objects(tree, rule, prop):
+        question = _objects(tree, condition, "question")[0]
+        choices = set(_objects(tree, condition, "choice"))
+        merged[question] = merged[question] & choices if intersect and question in merged else merged.get(question, set()) | choices
+    out = {}
+    for question in _by_rank(tree, list(merged)):
+        labels = [_one(tree, o, "label") for o in _by_rank(tree, list(merged[question]))]
+        out[_one(tree, question, "id")] = labels[0] if len(labels) == 1 else labels
+    return out
+
+
+def _rules_json(tree: TreeGraph, wave) -> tuple:
+    rules = _by_rank(tree, _objects(tree, wave, "rule"))
+    if rules and _is_a(tree, rules[0], "BranchRule"):
+        out = []
+        for rule in rules:
+            item: dict = {}
+            when = _conditions_json(tree, rule, "whenAll", True)
+            if when:
+                item["when"] = when
+            item["goto"] = _one(tree, _objects(tree, rule, "goto")[0], "id")
+            out.append(item)
+        return "next", out
+    out = []
+    for rule in rules:
+        item = {}
+        for key, prop, intersect in (("any", "whenAny", False), ("all", "whenAll", True)):
+            conditions = _conditions_json(tree, rule, prop, intersect)
+            if conditions:
+                item[key] = conditions
+        item["verdict"] = _one(tree, rule, "verdict")
+        out.append(item)
+    return "verdict_rules", out
+
+
+def _node_json(tree: TreeGraph, node) -> dict:
+    if _is_a(tree, node, "Leaf"):
+        return {"verdict": _one(tree, node, "verdict")}
+    out: dict = {}
+    if _one(tree, node, "per") is not None:
+        out["per"] = _one(tree, node, "per")
+        out["statements"] = _one(tree, node, "statements")
+    modals = sorted(_value(m) for m in _objects(tree, node, "modal"))
+    if modals:
+        out["modals"] = modals
+    out["questions"] = _questions_json(tree, node)
+    key, rules = _rules_json(tree, node)
+    out[key] = rules
+    return out
+
+
+def tree_to_quality_json(tree: TreeGraph) -> dict:
+    """The JSON quality tree equivalent to the graph, in the format of ``assets/questions/quality-*.json``."""
+    root = _trees(tree)[0]
+    out: dict = {"schema": TREE_SCHEMA, "id": _one(tree, root, "id")}
+    for key in ("kind", "version", "approved", "note"):
+        found = _one(tree, root, key)
+        if found is not None:
+            out[key] = found
+    out["start"] = _one(tree, _objects(tree, root, "start")[0], "id")
+    nodes = _objects(tree, root, "node")
+    out["nodes"] = {_one(tree, n, "id"): _node_json(tree, n) for n in sorted(nodes, key=lambda n: _one(tree, n, "id"))}
+    return out
+
+
+def compile_wave(tree: TreeGraph, node_id: str) -> dict:
+    """The ``questions`` object of wave ``node_id``, questions in rank order, exactly as sent to Jev.
+
+    Raises ``KeyError`` when the tree has no wave with that id (a bug in the caller: the walker takes ids from the tree).
+    """
+    for node in _objects(tree, _trees(tree)[0], "node"):
+        if _one(tree, node, "id") == node_id and _is_a(tree, node, "Wave"):
+            return _questions_json(tree, node)
+    raise KeyError(f"no wave {node_id!r} in the tree")
+
+
+def tree_digest(tree: TreeGraph) -> str:
+    """SHA-256 (lower-case hex) of the tree's RDFC-1.0 canonical N-Quads, one quad per line in sorted order.
+
+    Blank nodes are relabelled by pyoxigraph's RDFC-1.0 (``CanonicalizationAlgorithm.RDFC_1_0``), so triple order,
+    prefixes, whitespace and blank node names do not change the digest; any change to a triple does.
+    """
+    dataset = ox.Dataset(tree.store)
+    dataset.canonicalize(ox.CanonicalizationAlgorithm.RDFC_1_0)
+    lines = sorted(line for line in ox.serialize(dataset, format=ox.RdfFormat.N_QUADS).decode("utf-8").splitlines() if line)
+    return hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+
+
+# --------------------------------------------------------------------------- #
+# SHACL
+# --------------------------------------------------------------------------- #
+def _short(term: Any) -> str:
+    text = str(term)
+    return text.replace(JJ, "jj:").replace(JJS, "jjs:")
+
+
+def _path_text(graph, path) -> str:
+    from rdflib import BNode
+    from rdflib.namespace import SH
+
+    if isinstance(path, BNode):
+        inverse = graph.value(path, SH.inversePath)
+        if inverse is not None:
+            return "^" + _short(inverse)
+    return _short(path) if path is not None else ""
+
+
+def _violations(report) -> list:
+    from rdflib.namespace import RDF, SH
+
+    out = []
+    for result in report.subjects(RDF.type, SH.ValidationResult):
+        message = report.value(result, SH.resultMessage)
+        out.append({
+            "focus": _short(report.value(result, SH.focusNode)),
+            "path": _path_text(report, report.value(result, SH.resultPath)),
+            "shape": _short(report.value(result, SH.sourceShape)) if report.value(result, SH.sourceShape) is not None else "",
+            "constraint": _short(report.value(result, SH.sourceConstraint)) if report.value(result, SH.sourceConstraint) is not None else "",
+            "component": _short(report.value(result, SH.sourceConstraintComponent)).rsplit("#", 1)[-1],
+            "value": _short(report.value(result, SH.value)) if report.value(result, SH.value) is not None else "",
+            "message": str(message) if message is not None else "",
+        })
+    return sorted(out, key=lambda v: (v["focus"], v["path"], v["constraint"], v["shape"], v["message"]))
+
+
+def _violation_text(v: dict) -> str:
+    source = v["constraint"] or (f"{v['shape']} {v['component']}".strip())
+    where = f" path {v['path']}" if v["path"] else ""
+    return f"{v['focus']}{where} [{source}]: {v['message']}".strip()
+
+
+def validate_tree(tree: TreeGraph) -> Result[None, JudgeError]:
+    """Ok(None) when the graph conforms to the shapes; else ``QUALITY.TREE`` with each violation (``data["violations"]``)."""
+    action = "Fix the tree's Turtle; see assets/questions/quality-adr.ttl for the shape and assets/shapes/quality-tree.shacl.ttl for the rules."
+    trees = _trees(tree)
+    if len(trees) != 1:
+        return _fail("QUALITY.TREE", f"quality tree {tree.path}: the file must define exactly one jj:Tree, it defines {len(trees)}", action)
+    try:
+        import pyshacl
+        from rdflib import Graph
+    except ImportError as exc:
+        return _fail("DEPENDENCY.MISSING", f"validating a tree needs pyshacl: {exc}", "Install pyshacl (pip install 'pyshacl>=0.30,<1').")
+    data = Graph()
+    data.parse(data=tree.store.dump(format=ox.RdfFormat.N_TRIPLES, from_graph=ox.DefaultGraph()), format="nt")
+    shapes = Graph()
+    shapes.parse(str(SHAPES_PATH), format="turtle")
+    conforms, report, _text = pyshacl.validate(data, shacl_graph=shapes, inference="none", abort_on_first=False,
+                                               allow_infos=False, allow_warnings=False, meta_shacl=False)
+    if conforms:
+        return Ok(None)
+    violations = _violations(report)
+    listed = "; ".join(_violation_text(v) for v in violations[:MAX_LISTED_VIOLATIONS])
+    more = f"; and {len(violations) - MAX_LISTED_VIOLATIONS} more" if len(violations) > MAX_LISTED_VIOLATIONS else ""
+    return _fail("QUALITY.TREE", f"quality tree {tree.path}: {len(violations)} SHACL violation(s): {listed}{more}", action,
+                 {"violations": violations})
