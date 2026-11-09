@@ -374,22 +374,18 @@ log.
   or a non-empty list of objects.
 - The answers-file envelope MUST require an object with `__error__` to hold
   only a string code of at most 64 characters.
-- With `--answers-file`, `judge-jev` MUST check what an answer holds (its
-  questions, choices and probabilities) after the send, as
-  `JEV.RESPONSE_INVALID`.
 
 **MUST NOT statements:**
 - `judge-jev validate` MUST NOT call Jev.
-- The answers-file envelope MUST NOT cover what an answer holds (its
-  questions, choices and probabilities).
 
 ### Rationale
 
 A tree variation checked before a run costs nothing; one refused after a
 paid call wastes it.
 
-The answers file stands in for Jev's response, so what an answer holds is
-checked after the send, not in the envelope.
+The answers file stands in for Jev's response, so what an answer holds
+(its questions, choices and probabilities) is not part of the envelope; it
+is checked after the send as `JEV.RESPONSE_INVALID`.
 
 ### Success Criteria
 
@@ -409,10 +405,8 @@ checked after the send, not in the envelope.
 **MUST statements:**
 - For every input, every `judge-jev` command MUST print exactly one JSON
   object.
-- When a `judge-jev` command completes, the JSON object it prints MUST be
-  its result.
-- When a `judge-jev` command does not complete, the JSON object it prints
-  MUST be a typed error.
+- The JSON object a `judge-jev` command prints MUST be its result or a
+  typed error.
 - `judge-jev` MUST refuse an invalid tree, question set, index, request
   stream or run directory before its first Jev request.
 - `judge-jev` MUST check that every log event of a request (the request,
