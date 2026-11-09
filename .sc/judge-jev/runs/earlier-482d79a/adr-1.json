@@ -1,0 +1,75 @@
+{
+  "success": false,
+  "data": {
+    "record_id": "ADR-JEV-0008",
+    "diagnostics": [
+      {
+        "file": "docs/adr/adr-jev-product.md",
+        "line": 474,
+        "column": 3,
+        "rule": "UNKNOWN_LABEL",
+        "id": "ADR-JEV-0008",
+        "section": "Decision",
+        "label": "Request",
+        "value": "Request",
+        "allowed": [
+          "Chosen Approach",
+          "Key Principles"
+        ],
+        "message": "Found 'Request' under 'Decision'; expected a label defined at this level.",
+        "remedy": "Remove the label or use an allowed label."
+      },
+      {
+        "file": "docs/adr/adr-jev-product.md",
+        "line": 487,
+        "column": 3,
+        "rule": "UNKNOWN_LABEL",
+        "id": "ADR-JEV-0008",
+        "section": "Decision",
+        "label": "Tuning",
+        "value": "Tuning",
+        "allowed": [
+          "Chosen Approach",
+          "Key Principles"
+        ],
+        "message": "Found 'Tuning' under 'Decision'; expected a label defined at this level.",
+        "remedy": "Remove the label or use an allowed label."
+      },
+      {
+        "file": "docs/adr/adr-jev-product.md",
+        "line": 504,
+        "column": 3,
+        "rule": "UNKNOWN_LABEL",
+        "id": "ADR-JEV-0008",
+        "section": "Decision",
+        "label": "Question naming",
+        "value": "Question naming",
+        "allowed": [
+          "Chosen Approach",
+          "Key Principles"
+        ],
+        "message": "Found 'Question naming' under 'Decision'; expected a label defined at this level.",
+        "remedy": "Remove the label or use an allowed label."
+      }
+    ],
+    "record": {
+      "id": "ADR-JEV-0008",
+      "kind": "adr",
+      "source": {
+        "raptor_index": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/dogfood-0.3.0/index.json"
+      }
+    },
+    "tree": {
+      "id": "quality-adr",
+      "sha256": "9ee55fe19d4adeba078b8f6e680db33fca186883fbc3c5362c583b2462101b01",
+      "source": "shipped",
+      "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/dogfood-0.3.0/skill/assets/questions/quality-adr.json"
+    }
+  },
+  "error": {
+    "code": "RECORD.DIAGNOSTICS",
+    "message": "ADR-JEV-0008 has 3 Raptor import diagnostic(s); only records imported without diagnostics are judged",
+    "recoverable": false,
+    "suggested_action": "Fix each diagnostic (its remedy says how), rebuild the index, then rerun."
+  }
+}
