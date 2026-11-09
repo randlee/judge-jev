@@ -19,6 +19,11 @@ def questions_of(response):
     return wave["request"]["questions"] if "request" in wave else wave["requests"][0]["request"]["questions"]
 
 
+
+def tree_digest(path):
+    """The documented tree digest: SHA-256 of the file's bytes with CRLF read as LF."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
 class QualityTtl(QualityCase):
     def test_dry_run_with_a_ttl_tree_sends_the_json_trees_questions(self):
         for kind, flag, record in KINDS[:2]:
@@ -28,7 +33,7 @@ class QualityTtl(QualityCase):
                 self.assertEqual((code, out["success"], out["error"]), (0, True, None), out)
                 tree = out["data"]["results"][0]["tree"]
                 self.assertEqual(tree, {"id": f"quality-{kind}", "source": "override", "path": str(ttl),
-                                        "sha256": hashlib.sha256(ttl.read_bytes()).hexdigest()})
+                                        "sha256": tree_digest(ttl)})
                 self.assertEqual(questions_of(out), tree_node(f"quality-{kind}.json")["questions"])
 
     def test_a_ttl_tree_judges_a_record_like_its_json_tree(self):
@@ -67,7 +72,15 @@ class ValidateTtl(unittest.TestCase):
                 code, out = validate("--tree", str(path))
                 self.assertEqual((code, out["success"], out["error"]), (0, True, None), out)
                 self.assertEqual(out["data"], {"kind": "tree", "path": str(path),
-                                               "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+                                               "sha256": tree_digest(path)})
+
+    def test_a_crlf_copy_of_a_ttl_tree_has_the_lf_digest(self):
+        lf = QUESTIONS / "quality-adr.ttl"
+        crlf = self.d / "quality-adr.ttl"
+        crlf.write_bytes(lf.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+        code, out = validate("--tree", str(crlf))
+        self.assertEqual((code, out["success"]), (0, True), out)
+        self.assertEqual(out["data"]["sha256"], tree_digest(lf))
 
     def test_a_shacl_invalid_ttl_is_quality_tree(self):
         path = self.d / "bad.ttl"
