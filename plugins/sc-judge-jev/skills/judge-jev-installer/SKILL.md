@@ -2,7 +2,7 @@
 name: judge-jev-installer
 description: Install or upgrade judge-jev (the judge-jev skill) into a repository or a parent folder of repositories. Use when the user asks to install, set up, upgrade or reinstall judge-jev, or when the session-start notice says a newer judge-jev is available. Never installs globally.
 metadata:
-  version: "0.0.0"
+  version: "0.1.0"
 ---
 
 # judge-jev installer

@@ -15,7 +15,7 @@ Consistency:
   paths, manifest identities and marketplace sources are checked too, and the
   plugin must expose only the judge-jev-installer skill.
 
-There is no pull-request bump rule: nothing is published, VERSION stays 0.0.0, and
+There is no pull-request bump rule: nothing is published, VERSION stays 0.1.0, and
 no PR raises it. Changes accumulate under "## Unreleased" in CHANGELOG.md.
 
 Not release metadata, so not checked: `schema_version` fields and the

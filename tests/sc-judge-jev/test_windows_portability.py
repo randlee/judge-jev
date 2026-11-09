@@ -30,7 +30,6 @@ from unittest import mock
 
 import test_remote_judge_setting as trs  # also puts scripts/ on sys.path
 from layout_support import PLUGIN, SCRIPTS
-from test_install import staged_plugin
 
 import judge_jev_paths as paths  # noqa: E402
 import judge_jev_settings as settings_mod  # noqa: E402
@@ -167,14 +166,11 @@ class NoHomeDirectoryTests(Scratch):
         (repo / "src").mkdir(parents=True)
         lock = repo / ".sc" / "judge-jev" / "install-lock.json"
         lock.parent.mkdir(parents=True)
-        lock.write_text(json.dumps({"version": "0.0.0"}), encoding="utf-8")
-        stage = tempfile.TemporaryDirectory()
-        self.addCleanup(stage.cleanup)
-        hook.PLUGIN_DIR = staged_plugin(Path(stage.name) / "plugin", "0.0.1")  # nothing is older than the shipped 0.0.0
+        lock.write_text(json.dumps({"version": "0.0.1"}), encoding="utf-8")
         with no_home():
             line = hook.message(repo / "src")
         self.assertIsNotNone(line)
-        self.assertTrue(line.startswith("judge-jev 0.0.0 installed, "), line)
+        self.assertTrue(line.startswith("judge-jev 0.0.1 installed, "), line)
 
 
 # ------------------------------------------------------------------ output encoding
@@ -226,12 +222,11 @@ class Utf8OutputTests(Scratch):
         repo.mkdir()
         lock = repo / ".sc" / "judge-jev" / "install-lock.json"
         lock.parent.mkdir(parents=True)
-        lock.write_text(json.dumps({"version": "0.0.0"}), encoding="utf-8")
-        ahead = staged_plugin(self.tmp / "ahead", "0.0.1")  # nothing is older than the shipped 0.0.0
+        lock.write_text(json.dumps({"version": "0.0.1"}), encoding="utf-8")
         payload = json.dumps({"cwd": str(repo), "hook_event_name": "SessionStart"}, ensure_ascii=False)
-        code, out, err = self.run_cp1252([ahead / "hooks" / "check_install.py"], input=payload.encode("utf-8"))
+        code, out, err = self.run_cp1252([HOOK], input=payload.encode("utf-8"))
         self.assertEqual((code, err), (0, ""))
-        self.assertTrue(out.startswith("judge-jev 0.0.0 installed, "), out)
+        self.assertTrue(out.startswith("judge-jev 0.0.1 installed, "), out)
         self.assertIn(f"({repo})", out)
 
 
