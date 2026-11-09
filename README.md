@@ -31,16 +31,27 @@ Full definitions: [docs/cli.md](docs/cli.md); prompt
 composition diagrams: [docs/diagrams/](docs/diagrams/).
 
 ```
-judge-jev quality (--req|--adr|--nfr <id>)...
+judge-jev quality (--req|--adr|--nfr <id>)... [--definitions <file>]...
 judge-jev check   --req|--adr|--nfr <id> --location <loc> --mode prompt|skill|task|code
 judge-jev check   --profile <profile>
 judge-jev validate --tree|--questions|--answers|--index|--requests <file>   # '-' = stdin
+judge-jev compare-definition (--req|--adr|--nfr <id>) --index <file> --definition <iri>...
+judge-jev doctor [<path>...] [--index <file>]
 # check, quality: [--questions <file>] [--dry-run]
 ```
 
 `validate` checks a file with the model judge-jev applies to it before its
 first request: no Jev call, no key, no log (REQ-JEV-0210). Check a tree
 variation with `judge-jev validate --tree <file>` before a run.
+
+A **definition** (`.sc/judge-jev/*.definitions.ttl`) tells Jev what a term
+means for a record, or for a record and a location, and travels in the request
+state without changing a question (ADR-JEV-0008). `compare-definition` runs a
+record without and with candidate definitions and says whether they are
+material: an answer's choice flips or its confidence crosses the decision
+threshold. `doctor` checks every tree and definitions file in the repository
+and calls nothing: errors for invalid files, warnings for an unattached
+definition, a record the index lacks, or a missing location or source.
 
 ## Modes
 

@@ -2,6 +2,53 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. A PR that changes shipped content raises `VERSION`, moves every version with it, and adds a `## X.Y.Z — date` section here. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
+## 0.3.0 — 2026-11-08
+
+- `quality` logs the rank of the rule that fired (`rule_rank` on the wave and
+  verdict events) and the record's Raptor IRI (`record_iri` on every event);
+  the run triples carry the fired rule's `jj:rank` beside `jj:fired`.
+  For a TTL tree that rank is the rule's own `jj:rank` (ranks are unique, not
+  consecutive), not its position among the wave's rules.
+- `doctor` docs: a directory argument is searched through its subfolders
+  (except `logs`, `anchor-runs`, `node_modules` and `.git`); `.sc/judge-jev/`
+  is read at the top level only.
+- One `JudgeError`, defined in `jev_errors.py` and imported by `jev_judge` and
+  `jev_graph`: graph errors reach the CLI envelope as built, with no rewrapping;
+  codes and the envelope are unchanged.
+- Fixes in definitions and doctor: `compare-definition` tests no longer read the
+  real key or settings; a source path too long for the file system is a
+  `DEFINITION.SOURCE_MISSING` warning, not `SCRIPT.INTERNAL`; doctor warns
+  (`DEFINITION.REPOSITORY_UNKNOWN`) when definitions exist and the index names no
+  repository; `.sc/judge-jev/` is read directly, not in subfolders, by doctor,
+  `quality` and `compare-definition` alike.
+- The shipped quality trees (`quality-adr`, `quality-req`, `quality-nfr`, JSON
+  and `quality-adr.ttl`) carry `approved: true`: Rand Lee approved the wave-1
+  wording on 2026-11-08.
+- `quality-req.ttl` and `quality-nfr.ttl` join `quality-adr.ttl`: the same
+  trees as the JSON files (kept), wording byte-identical, validated by the
+  SHACL shapes and compiled back to the same JSON in tests.
+- `quality --questions <file>` and `validate --tree <file>` accept a `.ttl`
+  tree as well as `.json` (by extension): it is loaded and SHACL-checked by
+  `jev_graph`, so a refusal is `QUALITY.TREE` (with the violations) or
+  `INPUT.MALFORMED` as before; the tree digest is that of the file's bytes.
+- Definitions (ADR-JEV-0008, REQ-JEV-0212): `jj:Definition` and `jj:Attachment`
+  in the ontology, closed shapes in `assets/shapes/definitions.shacl.ttl`
+  (a definition with no attachment is a warning), a pydantic body model,
+  `jev_definitions.py`. `.sc/judge-jev/*.definitions.ttl` loads as its own
+  named graph, so a tree's digest never changes. `quality --definitions`
+  puts `{term, text}` (sorted by term, never truncated) in the request state;
+  a request no definition reaches is byte-identical. Request, answer,
+  result, wave and verdict events carry each definition's digest, and run
+  triples link a run to its definitions (`jj:carriedDefinition`).
+- `compare-definition` (REQ-JEV-0213): one record's walk without and with one
+  or more candidate definitions, material when an answer's choice flips or
+  its confidence crosses the decision threshold; the threshold applied is
+  recorded. Works with `--answers-file` (arm-prefixed keys) and `--dry-run`.
+- `doctor` (REQ-JEV-0214, REQ-JEV-0215): checks trees, question sets and
+  definitions without calling Jev; errors for invalid files and duplicate
+  question IRIs declared in more than one tree file and duplicate `jj:id` within a tree, warnings for unattached definitions and
+  missing records, locations or sources.
+
 ## 0.2.1 — 2026-11-08
 
 - Every JSON input is parsed into a strict pydantic v2 model (ADR-JEV-0005;

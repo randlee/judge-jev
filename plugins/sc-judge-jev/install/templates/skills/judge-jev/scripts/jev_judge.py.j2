@@ -12,15 +12,17 @@ required_variables:
 # dependencies = [
 #   "pydantic>=2.7,<3",
 #   "pyyaml>=5.1",
+#   "pyoxigraph>=0.5,<0.6",
+#   "pyshacl>=0.30,<1",
 #   "sc-observability==1.5.0",
 # ]
 # ///
 """jev_judge.py
 
 Run it with ``uv run --script jev_judge.py ...``: the inline metadata above
-supplies its three dependencies. pydantic (v2) defines the model of every JSON
+supplies its five dependencies. pydantic (v2) defines the model of every JSON
 input (ADR-JEV-0005) and is imported at the top (DEPENDENCY.PYDANTIC when it
-does not import); the other two are imported lazily where they are needed. The
+does not import); the others are imported lazily where they are needed (pyoxigraph and pyshacl only when a definitions file is read). The
 run log goes through the sc-observability logger (``sc-observability==1.5.0``,
 Python 3.11+; DEPENDENCY.SC_OBSERVABILITY when it does not import), and a live
 Jev call reads the committed ``allow_remote_judge`` answer through
@@ -48,7 +50,14 @@ Subcommands
                   --questions): one batch request per wave, or per statement of a per-statement wave; every wave
                   reports each question's answer (per statement) as its reason;
                   answers pick the next wave, and the last wave's verdict_rules (or a leaf) give the verdict; every
-                  wave is logged, all records under one run name
+                  wave is logged, all records under one run name; a record's definitions (--definitions, default the
+                  .sc/judge-jev/ definitions files) ride in the request state (ADR-JEV-0008)
+  compare-definition
+                  runs the requests one or more candidate definitions reach, without them and with them, and
+                  reports each answer's choice and confidence on both sides and whether the definitions are material:
+                  an answer flips or its confidence crosses the decision threshold (REQ-JEV-0213)
+  doctor          checks every tree, question set and definitions file of the repository scope, calls nothing
+                  (REQ-JEV-0214, REQ-JEV-0215)
 
 Every subcommand prints JSON to stdout (or markdown with --format md where
 supported).
@@ -95,6 +104,9 @@ from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, utf8_stdio  # noqa: E402
+from jev_errors import BEARER_RE, JudgeError, redact_sensitive, _redact_text  # noqa: E402,F401  (standard library only)
+import jev_definitions  # noqa: E402  (standard library only)
+import jev_runs  # noqa: E402  (standard library at import)
 
 try:
     from pydantic import (AfterValidator, BaseModel, ConfigDict, Discriminator, Field, PrivateAttr, RootModel, Tag,
@@ -132,7 +144,6 @@ ABORT_CODES = ("AUTH.CREDENTIALS", "POLICY.REMOTE_JUDGE_DISABLED")
 TRANSIENT_CODES = ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID")
 
 _sleep = time.sleep  # replaced in tests
-BEARER_RE = re.compile(r"(?i)(bearer\s+)[^\s\"']+")
 BATCH_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")  # matched whole (fullmatch): a trailing newline is not part of an id
 MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
@@ -145,84 +156,9 @@ WORST_PROBABILITY = 1.2345678901234567e-300  # the longest repr a probability in
 # --------------------------------------------------------------------------- #
 # plumbing
 # --------------------------------------------------------------------------- #
-class JudgeError:
-    """An expected failure, carried in Err. Never raised: main() turns it into the error envelope and exit 2."""
-
-    def __init__(self, code: str, message: str, recoverable: bool = False, action: str = "",
-                 status=None, retry_after=None):
-        self.code = code
-        self.message = message
-        self.recoverable = recoverable
-        self.action = action
-        self.status = status            # HTTP status when the error came from Jev
-        self.retry_after = retry_after  # parsed Retry-After header, seconds, or None
-        self.meta = {}                  # attempt / shortening bookkeeping, filled by judge_with_policy
-        self.data = None                # optional facts that explain the error (PLAN.TOO_LARGE carries the bead's shape)
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __repr__(self) -> str:
-        return f"JudgeError({self.code!r}, {self.message!r})"
-
-    def to_json(self) -> dict:
-        return redact_sensitive({
-            "success": False,
-            "data": self.data,
-            "error": {
-                "code": self.code,
-                "message": str(self),
-                "recoverable": self.recoverable,
-                "suggested_action": self.action,
-            },
-        })
-
-
 def fail(code: str, message: str, **fields) -> Err[JudgeError]:
     """An expected failure as a value: ``return fail(...)`` where the old code raised."""
     return Err(JudgeError(code, message, **fields))
-
-
-def _redact_text(value):
-    if not isinstance(value, str):
-        return value
-    text = value
-    api_key = os.environ.get("TYPESAFE_API_KEY", "")
-    if api_key:
-        text = text.replace(api_key, "<redacted>")
-    return BEARER_RE.sub(r"\1<redacted>", text)
-
-
-def redact_sensitive(value):
-    """Remove the live TypeSafe credential and bearer tokens from every emitted value. Iterative (an explicit stack, no
-    recursion): a container nested a thousand deep is walked like any other and never raises RecursionError."""
-    if not isinstance(value, (dict, list, tuple)):
-        return _redact_text(value)
-    # a frame is [source container, iterator over its items, output container, key under which it joins its parent]
-    stack = [[value, iter(value.items() if isinstance(value, dict) else value), {} if isinstance(value, dict) else [], None]]
-    while True:
-        frame = stack[-1]
-        source, items, out, key = frame
-        try:
-            item = next(items)
-        except StopIteration:
-            stack.pop()
-            done = tuple(out) if isinstance(source, tuple) else out
-            if not stack:
-                return done
-            parent = stack[-1]
-            if isinstance(parent[2], dict):
-                parent[2][key] = done
-            else:
-                parent[2].append(done)
-            continue
-        child_key, child = item if isinstance(source, dict) else (None, item)
-        if isinstance(child, (dict, list, tuple)):
-            stack.append([child, iter(child.items() if isinstance(child, dict) else child), {} if isinstance(child, dict) else [], child_key])
-        elif isinstance(source, dict):
-            out[child_key] = _redact_text(child)
-        else:
-            out.append(_redact_text(child))
 
 
 EMIT_MAX_DEPTH = 100  # containers nested deeper than this are replaced by a marker in emitted output (json.dumps(indent=) recurses)
@@ -546,6 +482,67 @@ def _check_role_map(questions: dict, roles: dict, required: tuple) -> None:
         raise PydanticCustomError("roles", "maps role 'evidence' to '{evidence}', which is not a question in the set", {"evidence": evidence})
 
 
+MAX_TERM, MAX_DEFINITION_TEXT, MAX_SOURCE, MAX_LOCATION = 128, 2000, 512, 512  # characters; a definition is short, never truncated
+IRI_TEXT = re.compile(r"[A-Za-z][A-Za-z0-9+.-]+:\S+")  # two or more scheme characters: "C:/x" is a drive path, not an IRI
+RECORD_IRI = re.compile(r"[^#\s]+#[^#\s]+")  # <repository URN>#<record id>
+
+
+def _single_line(value: str) -> str:
+    if "\n" in value or "\r" in value:
+        raise ValueError("must be one line")
+    return value
+
+
+def _repo_relative(value: str) -> str:
+    """A repo-relative path, optionally followed by ``#Heading`` or ``::Symbol``: not absolute, no ``..`` step, no NUL."""
+    path = value.partition("::")[0].partition("#")[0]
+    steps = path.replace("\\", "/").split("/")
+    if "\x00" in value or path.startswith(("/", "\\")) or re.match(r"[A-Za-z]:", path) or ".." in steps or not path.strip():
+        raise ValueError("must be a path relative to the repository (no leading slash or drive, no '..')")
+    return value
+
+
+def _source_text(value: str) -> str:
+    return value if IRI_TEXT.fullmatch(value) else _repo_relative(value)
+
+
+def _record_iri_text(value: str) -> str:
+    if not RECORD_IRI.fullmatch(value):
+        raise ValueError("must be a Raptor record IRI, <repository URN>#<record id> (see jev_runs.record_iri)")
+    return value
+
+
+LocationText = Annotated[str, AfterValidator(_non_blank), AfterValidator(_repo_relative), Field(max_length=MAX_LOCATION)]
+
+
+class LocationBody(RootModel[LocationText]):
+    """A location string (docs/cli.md, Locations): ``path``, ``path#Heading`` or ``path::Symbol``, relative to the repository."""
+
+
+class AttachmentBody(Closed):
+    """One ``jj:Attachment`` of a definition: the record (a Raptor record IRI) and optionally one location."""
+
+    record: Annotated[str, AfterValidator(_record_iri_text), Field(max_length=MAX_SOURCE)]
+    location: Optional[LocationText] = None
+
+
+class DefinitionBody(Closed):
+    """The body of a ``jj:Definition`` (ADR-JEV-0008): a non-blank one-line term, a non-blank text, and the source
+    (a repo-relative path or a record IRI as a string); the attachments are the graph's edges, checked again here."""
+
+    term: Annotated[str, AfterValidator(_non_blank), AfterValidator(_single_line), Field(max_length=MAX_TERM)]
+    text: Annotated[str, AfterValidator(_non_blank), Field(max_length=MAX_DEFINITION_TEXT)]
+    source: Annotated[str, AfterValidator(_non_blank), AfterValidator(_source_text), Field(max_length=MAX_SOURCE)]
+    attachments: list[AttachmentBody] = []
+
+
+class DefinitionEntry(Closed):
+    """A definition as a request carries it in its state: the term and its text, nothing else."""
+
+    term: Annotated[str, AfterValidator(_non_blank), AfterValidator(_single_line), Field(max_length=MAX_TERM)]
+    text: Annotated[str, AfterValidator(_non_blank), Field(max_length=MAX_DEFINITION_TEXT)]
+
+
 class BatchItem(Open):
     id: SafeId
     title: str = None
@@ -586,6 +583,8 @@ class RequestLine(Closed):
 
     item: BatchItem
     anchor: BatchAnchor = None
+    location: Annotated[str, AfterValidator(_non_blank), Field(max_length=MAX_LOCATION)] = None
+    definitions: Annotated[list[DefinitionEntry], Field(min_length=1)] = None
     questions: Annotated[list[BatchCandidate], Field(min_length=1)]
 
     @model_validator(mode="after")
@@ -1206,6 +1205,10 @@ def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict, log
     jobs = []
     item_state = {"id": item.id, "title": item.title or "", "text": item.text}
     state = build_state({"id": anchor.id, "statement": anchor.statement, "scope": anchor.scope}, item_state) if anchored else {"item": item_state}
+    if request.location is not None:
+        state["location"] = request.location
+    if request.definitions is not None:  # ADR-JEV-0008: absent when nothing matched, so such a request is as before
+        state["definitions"] = [{"term": d.term, "text": d.text} for d in request.definitions]
     kind = anchor.kind or "directive" if anchored else "directive"
     anchor_id = anchor.id if anchored else None
     for cand in request.questions:
@@ -1754,6 +1757,13 @@ class QualityTree(NamedTuple):
     start: str
     nodes: dict          # node id -> Wave or Leaf
     kind: Optional[str]  # the tree's record kind, when it names one
+    rule_ranks: Optional[dict] = None  # TTL tree: {wave id: [jj:rank of each rule, in list order]}; JSON: rank = position
+
+    def rule_rank(self, node_id: str, position: int) -> int:
+        """The rank of the rule at 1-based ``position`` in wave ``node_id``'s rules: the tree's own ``jj:rank`` for a
+        TTL tree (unique, not necessarily consecutive), the position for a JSON tree, whose list order is its rank."""
+        ranks = (self.rule_ranks or {}).get(node_id)
+        return ranks[position - 1] if ranks else position
 
 
 def _tree_error(path: str, message: str) -> Err[JudgeError]:
@@ -1783,13 +1793,37 @@ def parse_quality_tree(raw: str, path: str, override: bool = False) -> Result[Qu
     return Ok(QualityTree(tree.id, content_sha256(raw), path, override, tree.start, tree.nodes, tree.kind))
 
 
+def parse_quality_tree_ttl(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+    """A tree file in Turtle: loaded and SHACL-validated by jev_graph (its errors as they are), compiled to the quality JSON,
+    then parsed as a JSON tree. The digest is that of the file's bytes."""
+    import jev_graph
+
+    loaded = jev_graph.load_tree(path)
+    if isinstance(loaded, Err):
+        return loaded
+    checked = jev_graph.validate_tree(loaded.value)
+    if isinstance(checked, Err):
+        return checked
+    parsed = parse_quality_tree(json.dumps(jev_graph.tree_to_quality_json(loaded.value)), path, override)
+    if isinstance(parsed, Err):
+        return parsed
+    return Ok(parsed.value._replace(sha256=content_sha256(raw), rule_ranks=jev_graph.rule_ranks(loaded.value)))
+
+
+def parse_quality_tree_file(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+    """``parse_quality_tree`` for a .json tree, ``parse_quality_tree_ttl`` for a .ttl tree (by the path's extension)."""
+    if path.lower().endswith(".ttl"):
+        return parse_quality_tree_ttl(raw, path, override)
+    return parse_quality_tree(raw, path, override)
+
+
 def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree, JudgeError]:
-    """The record kind's shipped tree, or the --questions override (see parse_quality_tree)."""
+    """The record kind's shipped tree, or the --questions override (.json or .ttl; see parse_quality_tree)."""
     path = override_path or str(QUESTIONS_DIR / f"quality-{kind}.json")
     raw = read_source(path, "quality tree", action="Pass the path of an existing tree file.")
     if isinstance(raw, Err):
         return raw
-    return parse_quality_tree(raw.value, path, bool(override_path))
+    return parse_quality_tree_file(raw.value, path, bool(override_path))
 
 
 def _got(choices: dict, qid: str, wanted) -> bool:
@@ -1858,6 +1892,76 @@ def parse_index(data, index_path: str) -> Result[RaptorIndex, JudgeError]:
     return parsed
 
 
+def index_repository(index_path: str) -> Optional[str]:
+    """The Raptor repository URN of an import index (``metadata.repository``), or None when it has none or is unreadable."""
+    loaded = load_json(index_path, "Raptor import index")
+    parsed = parse_index(loaded.value, index_path) if isinstance(loaded, Ok) else None
+    repository = (parsed.value.metadata or {}).get("repository") if isinstance(parsed, Ok) else None
+    return repository if isinstance(repository, str) and repository else None
+
+
+def index_record_iri(index_path: str, record_id: str) -> str:
+    """The Raptor record IRI ``<repository URN>#<record id>`` that definitions attach to (as ``jev_runs.record_iri``)."""
+    return jev_runs.record_iri({"repository": index_repository(index_path), "record_id": record_id})
+
+
+def _graph_module() -> Result[Any, JudgeError]:
+    """``jev_graph`` (imported lazily: it needs pyoxigraph, and pyshacl to validate)."""
+    try:
+        import jev_graph
+    except ImportError as exc:
+        return fail("DEPENDENCY.MISSING", f"reading definitions needs pyoxigraph and pyshacl and they did not import: {exc}",
+                    action="Run with `uv run --script jev_judge.py ...` (its inline metadata pins them), or "
+                           "python3 -m pip install 'pyoxigraph>=0.5,<0.6' 'pyshacl>=0.30,<1'.")
+    return Ok(jev_graph)
+
+
+def load_definitions_file(path) -> Result[tuple, JudgeError]:
+    """One definitions file: size, UTF-8 and Turtle (``jev_graph.load_definitions``), the closed SHACL shapes, then the pydantic
+    body of every definition. ``Ok((rows, warnings))``: the validated rows (``jev_graph.definition_rows``) and the SHACL
+    warnings (a definition with no attachment). Every refusal is typed and names the file, the definition and the rule."""
+    module = _graph_module()
+    if isinstance(module, Err):
+        return module
+    graph = module.value
+    loaded = graph.load_definitions(path)
+    if isinstance(loaded, Err):
+        return loaded
+    checked = graph.validate_definitions(loaded.value)
+    if isinstance(checked, Err):
+        return checked
+    rows = graph.definition_rows(loaded.value)
+    for row in rows:
+        body = validate_model(DefinitionBody, {"term": row["term"], "text": row["text"], "source": row["source"],
+                                               "attachments": row["attachments"]})
+        if isinstance(body, Err):
+            return fail("DEFINITIONS.INVALID", f"definitions file {path}: definition {row['iri']}: {body.error.text}",
+                        action="Fix the definition; see docs/cli.md (Definitions) for the fields and their limits.")
+    return Ok((rows, checked.value))
+
+
+def load_definition_set(paths: list) -> Result[Any, JudgeError]:
+    """Every file in ``paths`` loaded and validated; a ``jev_definitions.DefinitionSet`` of all their definitions. The first
+    bad file is the error. The definitions are data of their own: they are never loaded into a tree's graph."""
+    loaded = []
+    for path in paths:
+        got = load_definitions_file(path)
+        if isinstance(got, Err):
+            return got
+        loaded.append((str(path), got.value[0]))
+    built, problem = jev_definitions.build_set(loaded)
+    if built is None:
+        return fail("DEFINITIONS.INVALID", problem, action="Keep each definition IRI in one file.")
+    return Ok(built)
+
+
+def definitions_for_args(args) -> Result[Any, JudgeError]:
+    """The definitions a command uses: the files named by ``--definitions`` (repeatable), else every definitions file in
+    ``<--repository-root>/.sc/judge-jev/``. ``Ok(None)`` when there are none: the requests are then exactly as before."""
+    paths = list(getattr(args, "definitions", None) or []) or jev_definitions.discover(getattr(args, "repository_root", "."))
+    return load_definition_set(paths) if paths else Ok(None)
+
+
 def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, JudgeError]:
     """One record from a Raptor import index (scripts/extract.py output). A record with import diagnostics is refused."""
     loaded = load_json(index_path, "Raptor import index")
@@ -1884,25 +1988,33 @@ def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, J
     return Ok(record)
 
 
-def wave_line(record: dict, node_id: str, node: Wave, statement=None) -> dict:
+def wave_line(record: dict, node_id: str, node: Wave, statement=None, definitions=(), location=None) -> dict:
     """One wave request as one batch request line, no anchor. The item is the record (as Raptor's JSON); for one
-    statement of a per-statement wave, item ``<record id>.s<index>`` whose text is {statement, record} as JSON."""
+    statement of a per-statement wave, item ``<record id>.s<index>`` whose text is {statement, record} as JSON.
+    ``definitions`` (``jev_definitions.Definition`` objects) go into the state as ``[{term, text}]`` and ``location`` as
+    ``location``; both are left out of the line, and so out of the request, when empty (REQ-JEV-0212)."""
     if statement is None:
         item = {"id": record["id"], "title": record.get("title") or "", "text": json.dumps(record, indent=2, ensure_ascii=False)}
     else:
         item = {"id": f"{record['id']}.s{statement['index']}", "title": record.get("title") or "",
                 "text": json.dumps({"statement": statement, "record": record}, indent=2, ensure_ascii=False)}
-    return {"item": item, "questions": [{"candidate_id": node_id, "questions": {qid: q.model_dump() for qid, q in node.questions.items()}}]}
+    line = {"item": item}
+    if location is not None:
+        line["location"] = location
+    if definitions:
+        line["definitions"] = jev_definitions.state_entries(list(definitions))
+    line["questions"] = [{"candidate_id": node_id, "questions": {qid: q.model_dump() for qid, q in node.questions.items()}}]
+    return line
 
 
-def wave_lines(record: dict, node_id: str, node: Wave) -> Result[tuple, JudgeError]:
+def wave_lines(record: dict, node_id: str, node: Wave, definitions=(), location=None) -> Result[tuple, JudgeError]:
     """The wave's request lines and their statements: one line (statements [None]), or one per statement."""
     if node.per != "statement":
-        return Ok(([wave_line(record, node_id, node)], [None]))
+        return Ok(([wave_line(record, node_id, node, None, definitions, location)], [None]))
     statements = record_statements(record, node)
     if isinstance(statements, Err):
         return statements
-    return Ok(([wave_line(record, node_id, node, s) for s in statements.value], statements.value))
+    return Ok(([wave_line(record, node_id, node, s, definitions, location) for s in statements.value], statements.value))
 
 
 def quality_settings(dry_run: bool) -> BatchSettings:
@@ -1917,9 +2029,15 @@ def _with_refs(failed: Err, refs: dict) -> Err:
     return failed
 
 
-def quality_fields(tree: QualityTree, record_id: str, kind: str) -> dict:
-    """The fields every log event of a record's walk carries."""
-    return {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record_id, "record_kind": kind}
+def quality_fields(tree: QualityTree, record_id: str, kind: str, definitions=(), record_iri: str = "") -> dict:
+    """The fields every log event of a record's walk carries; with definitions, each one's IRI, term and digest (REQ-JEV-0212);
+    with ``record_iri``, the record's Raptor IRI (``jev_runs.record_iri``), which the rebuilt run triples use."""
+    fields = {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record_id, "record_kind": kind}
+    if record_iri:
+        fields["record_iri"] = record_iri
+    if definitions:
+        fields["definitions"] = jev_definitions.log_entries(list(definitions))
+    return fields
 
 
 def _longest(values: list):
@@ -1927,7 +2045,7 @@ def _longest(values: list):
 
 
 def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statements: list,
-                      settings: BatchSettings) -> Result[None, JudgeError]:
+                      settings: BatchSettings, rank: int) -> Result[None, JudgeError]:
     """REQ-JEV-0211: the statement, wave and verdict events a wave's walk logs, with the largest answers and the longest
     next or verdict, fit the logger's event limit. (The request, answer and result events were sized with the request.)"""
     where = f"wave {node_id}"
@@ -1940,14 +2058,17 @@ def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statem
     nxt = _longest([r.goto for r in node.next]) if node.next is not None else None
     verdict = _longest([r.verdict for r in node.verdict_rules]) if node.verdict_rules is not None else None
     events, _wave = wave_log_events({**fields, "node": node_id}, node_id, node, statements, results, per_choices,
-                                    list(range(len(results))), nxt, verdict)
+                                    list(range(len(results))), nxt, verdict, rank=rank)
     return check_event_sizes(events, where)
 
 
-def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: BatchSettings) -> Result[tuple, JudgeError]:
+def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: BatchSettings, definitions=None,
+                    location=None, extra_fields=None) -> Result[tuple, JudgeError]:
     """Load (once per kind) the tree, the record and its wave-1 jobs, one per statement for a per-statement wave (the size
-    check). Every wave's statements, request sizes and log events are checked here, before any call.
-    Ok((tree, record, refs, [(statement or None, job)]))."""
+    check). Every wave's statements, request sizes and log events are checked here, before any call, with the record's
+    definitions in every request and log event (``definitions``: a DefinitionSet or None; ``location``: the location
+    under evaluation, None for ``quality``).
+    Ok((tree, record, refs, [(statement or None, job)], carried definitions))."""
     if kind not in trees:
         trees[kind] = load_quality_tree(kind, args.questions)
     tree = trees[kind]
@@ -1961,12 +2082,17 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
     record = quality_record(args.index, kind, record_id)
     if isinstance(record, Err):
         return _with_refs(record, refs)
-    fields = quality_fields(tree, record_id, kind)
+    carried = definitions.for_request(index_record_iri(args.index, record_id), location) if definitions is not None else []
+    if carried:
+        refs["definitions"] = jev_definitions.log_entries(carried)
+    if location is not None:
+        refs["location"] = location
+    fields = {**quality_fields(tree, record_id, kind, carried, index_record_iri(args.index, record_id)), **(extra_fields or {})}
     start_jobs = None
     for node_id, node in tree.nodes.items():  # the start wave first (its jobs are returned), then every later wave
         if isinstance(node, Leaf):
             continue
-        lines = wave_lines(record.value, node_id, node)
+        lines = wave_lines(record.value, node_id, node, carried, location)
         if isinstance(lines, Err):
             return _with_refs(lines, refs)
         wave_jobs = []
@@ -1975,7 +2101,9 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
             if isinstance(first, Err):
                 return _with_refs(first, refs)
             wave_jobs.append((statement, first.value[0]))
-        checked = check_wave_events(fields, node_id, node, [j for _s, j in wave_jobs], lines.value[1], settings)
+        last = len(node.next or node.verdict_rules)  # rules are in rank order: the last has the largest rank
+        checked = check_wave_events(fields, node_id, node, [j for _s, j in wave_jobs], lines.value[1], settings,
+                                    tree.rule_rank(node_id, last))
         if isinstance(checked, Err):
             return _with_refs(checked, refs)
         if node_id == tree.start:
@@ -1986,7 +2114,18 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
                                               "path": list(tree.nodes)}, None)], "the verdict")
     if isinstance(checked, Err):
         return _with_refs(checked, refs)
-    return Ok((tree, record.value, refs, start_jobs))
+    return Ok((tree, record.value, refs, start_jobs, carried))
+
+
+def dry_run_wave(tree: QualityTree, jobs: list, settings: BatchSettings) -> dict:
+    """The composed start-wave request(s) of a dry run, with their sizes (one per statement for a per-statement wave)."""
+    if tree.nodes[tree.start].per == "statement":
+        wave = {"node": tree.start, "per": "statement",
+                "requests": [{"statement": s, "request": job.body, "request_bytes": len(encode_body(job.body))} for s, job in jobs]}
+    else:
+        (_s, job), = jobs
+        wave = {"node": tree.start, "request": job.body, "request_bytes": len(encode_body(job.body))}
+    return {**wave, "max_request_bytes": settings.max_request_bytes}
 
 
 def cmd_quality(args) -> Result[Any, JudgeError]:
@@ -1997,24 +2136,19 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
     if not wanted or any(not rid for _, rid in wanted):
         return fail("VALIDATION.INPUT", "a record id is missing or empty: pass one or more non-empty --req, --adr or --nfr ids")
     settings = quality_settings(args.dry_run)
+    loaded_definitions = definitions_for_args(args)
+    if isinstance(loaded_definitions, Err):
+        return loaded_definitions
     trees, prepared = {}, []
     for kind, rid in wanted:
-        got = _prepare_record(args, kind, rid, trees, settings)
+        got = _prepare_record(args, kind, rid, trees, settings, loaded_definitions.value)
         if isinstance(got, Err):
             return got
         prepared.append(got.value)
     if settings.dry_run:
-        results = []
-        for tree, _record, refs, jobs in prepared:
-            if tree.nodes[tree.start].per == "statement":
-                wave = {"node": tree.start, "per": "statement",
-                        "requests": [{"statement": s, "request": job.body, "request_bytes": len(encode_body(job.body))} for s, job in jobs]}
-            else:
-                (_s, job), = jobs
-                wave = {"node": tree.start, "request": job.body, "request_bytes": len(encode_body(job.body))}
-            results.append({**refs, "wave": {**wave, "max_request_bytes": settings.max_request_bytes}})
+        results = [{**refs, "wave": dry_run_wave(tree, jobs, settings)} for tree, _record, refs, jobs, _carried in prepared]
         return Ok({"success": True, "error": None, "data": {"dry_run": True, "results": results}})
-    run_refs = prepared[0][2] if len(prepared) == 1 else {"records": [refs for _t, _r, refs, _j in prepared]}
+    run_refs = prepared[0][2] if len(prepared) == 1 else {"records": [refs for _t, _r, refs, _j, _c in prepared]}
     loaded = load_answers_fixture(args.answers_file, "'<record>/<node>/r1', '<record>/<node>', '<node>'")
     if isinstance(loaded, Err):
         return _with_refs(loaded, run_refs)
@@ -2033,9 +2167,10 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
     if isinstance(log, Err):
         return _with_refs(log, run_refs)
     results, failed = [], None
-    for tree, record, refs, _job in prepared:
+    for tree, record, refs, _job, carried in prepared:
         walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
-                           quality_fields(tree, record["id"], refs["record"]["kind"]))
+                           quality_fields(tree, record["id"], refs["record"]["kind"], carried,
+                                         index_record_iri(args.index, record["id"])), carried)
         if isinstance(walked, Err):
             failed = _with_refs(walked, {**refs, "results": results})
             break
@@ -2051,10 +2186,11 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
 
 
 def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, results: list, per_choices: list,
-                    matched: list, nxt, verdict) -> tuple:
+                    matched: list, nxt, verdict, rank=None) -> tuple:
     """The events a wave logs, as (action, fields, correlation_id), and the wave's entry of the command's result.
     A per-statement wave logs one statement event per statement (its request is the request event with the same
     request_id), then a compact wave event: a single event holding every statement exceeds the logger's event size limit."""
+    rank_field = {} if rank is None else {"rule_rank": rank}  # the 1-based rank of the rule that fired (jj:rank in the tree)
     if node.per == "statement":
         reason, events = [], []
         for s, r, c in zip(statements, results, per_choices):
@@ -2064,7 +2200,7 @@ def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, re
         matched_statements = [statements[i]["index"] for i in matched]
         request_ids = [r["request_id"] for r in results]
         events.append(("wave", {**fields, "node": node_id, "per": "statement", "request_ids": request_ids,
-                                "matched_statements": matched_statements, "next": nxt, "verdict": verdict}, None))
+                                "matched_statements": matched_statements, "next": nxt, "verdict": verdict, **rank_field}, None))
         wave = {"node": node_id, "per": "statement", "request_ids": request_ids, "reason": reason,
                 "matched_statements": matched_statements, "next": nxt, "verdict": verdict}
         return events, wave
@@ -2072,17 +2208,22 @@ def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, re
     reason = wave_reason(node, result["answers"])
     events = [("wave", {**fields, "node": node_id, "request_id": result["request_id"], "request": result["request"],
                         "answers": result["answers"], "choices": choices, "reason": reason, "next": nxt,
-                        "verdict": verdict}, result["run_id"])]
+                        "verdict": verdict, **rank_field}, result["run_id"])]
     return events, {"node": node_id, "request_id": result["request_id"], "reason": reason, "next": nxt, "verdict": verdict}
 
 
+def _position(rules: list, rule) -> int:
+    """The 1-based position of ``rule`` in ``rules``, by identity: two rules with equal bodies are still two rules."""
+    return next(i for i, r in enumerate(rules, 1) if r is rule)
+
+
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key: str, fixture, log: RunLog,
-              fields: dict) -> Result[tuple, JudgeError]:
+              fields: dict, definitions=(), location=None) -> Result[tuple, JudgeError]:
     """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
     Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
     request, answers and selected branch or verdict; the verdict is logged with the path."""
     node_id, path, waves = tree.start, [], []
-    verdict = None
+    verdict, decided_rank = None, None
     while verdict is None:
         node = tree.nodes[node_id]
         if isinstance(node, Leaf):
@@ -2092,7 +2233,7 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
         if node_id in path:
             return _tree_error(tree.path, f"the answers lead back to {node_id}: the tree has a cycle")
         path.append(node_id)
-        lines = wave_lines(record, node_id, node)
+        lines = wave_lines(record, node_id, node, definitions, location)
         if isinstance(lines, Err):
             return lines
         lines, statements = lines.value
@@ -2115,20 +2256,22 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
             rule, matched = select_rule(node.next, branch_matches, per_choices)
             if rule is None:
                 return _tree_error(tree.path, f"no branch of wave {node_id} matches the answers {per_choices}")
-            nxt = rule.goto
+            nxt, rank = rule.goto, tree.rule_rank(node_id, _position(node.next, rule))
         else:
             rule, matched = select_rule(node.verdict_rules, verdict_matches, per_choices)
             if rule is None:
                 return _tree_error(tree.path, f"no verdict rule of wave {node_id} matches the answers {per_choices}")
-            verdict = rule.verdict
-        events, wave = wave_log_events(fields, node_id, node, statements, pumped.value, per_choices, matched, nxt, verdict)
+            verdict, rank = rule.verdict, tree.rule_rank(node_id, _position(node.verdict_rules, rule))
+            decided_rank = rank
+        events, wave = wave_log_events(fields, node_id, node, statements, pumped.value, per_choices, matched, nxt, verdict, rank)
         for action, event_fields, correlation_id in events:
             logged = log.event(action, event_fields, correlation_id=correlation_id)
             if isinstance(logged, Err):
                 return logged
         waves.append(wave)
         node_id = nxt
-    logged = log.event("verdict", {**fields, "verdict": verdict, "path": path})
+    logged = log.event("verdict", {**fields, "verdict": verdict, "path": path,
+                                   **({} if decided_rank is None else {"rule_rank": decided_rank})})
     if isinstance(logged, Err):
         return logged
     flushed = log.flush()
@@ -2148,7 +2291,7 @@ def validate_input(kind: str, raw: str, path: str, args) -> Result[None, JudgeEr
     """``raw`` (the text of an input of ``kind``) accepted or refused exactly as the command that reads it would."""
     what = dict(VALIDATE_KINDS)[kind]
     if kind == "tree":
-        parsed = parse_quality_tree(raw, path)
+        parsed = parse_quality_tree_file(raw, path)
         return Ok(None) if isinstance(parsed, Ok) else parsed
     if kind == "requests":
         lines = parse_request_lines(raw, path)
@@ -2185,6 +2328,413 @@ def cmd_validate(args) -> Result[Any, JudgeError]:
     return Ok({"success": True, "error": None, "data": {"kind": kind, "path": path, "sha256": content_sha256(raw.value)}})
 
 
+# --------------------------------------------------------------------------- #
+# compare-definition (REQ-JEV-0213, ADR-JEV-0008): keep definitions only when, together, they change an answer
+# --------------------------------------------------------------------------- #
+COMPARE_ARMS = ("without", "with")
+COMPARE_FIXTURE_KEYS = "'with/<record>/<node>', 'without/<record>/<node>', or unprefixed '<record>/<node>', '<node>', '*' for both arms"
+
+
+def arm_fixture(fixture, arm: str):
+    """The answers fixture one arm reads: keys prefixed ``<arm>/`` are that arm's alone and win; unprefixed keys serve both
+    arms (so a fixture of only unprefixed keys gives identical answers, hence not material). ``None`` stays ``None``."""
+    if fixture is None:
+        return None
+    own = {k[len(arm) + 1:]: v for k, v in fixture.items() if k.startswith(arm + "/")}
+    shared = {k: v for k, v in fixture.items() if not any(k.startswith(a + "/") for a in COMPARE_ARMS)}
+    return {**shared, **own}
+
+
+def answer_table(waves: list) -> dict:
+    """``{(node, statement index or None, question id): (choice, confidence)}`` of a walk's waves."""
+    table = {}
+    for wave in waves:
+        if wave.get("per") == "statement":
+            for item in wave["reason"]:
+                for a in item["answers"]:
+                    table[(wave["node"], item["statement"]["index"], a["id"])] = (a["choice"], a["confidence"])
+        else:
+            for a in wave["reason"]:
+                table[(wave["node"], None, a["id"])] = (a["choice"], a["confidence"])
+    return table
+
+
+def compare_answers(without: dict, with_: dict, threshold: float) -> list:
+    """One entry per answer either arm gave, in the order the arms asked them: each side's choice and confidence (None when that
+    arm never asked the question, because its answers led down another branch), whether the choice changed (an answer only one
+    arm has counts as changed), the confidence change (with minus without, rounded to 9 places), whether the confidence
+    crossed ``threshold`` (one side at or above it, the other below) and whether the answer is material: its choice changed
+    or its confidence crossed the threshold. A move on the same side of the threshold (0.90 to 0.95) is not material."""
+    out = []
+    for key in list(without) + [k for k in with_ if k not in without]:
+        a, b = without.get(key), with_.get(key)
+        changed = a is None or b is None or a[0] != b[0]
+        delta = None if a is None or b is None else round(b[1] - a[1], 9)
+        crossed = a is not None and b is not None and (a[1] >= threshold) != (b[1] >= threshold)
+        out.append({"node": key[0], "statement": key[1], "question": key[2],
+                    "without": None if a is None else {"choice": a[0], "confidence": a[1]},
+                    "with": None if b is None else {"choice": b[0], "confidence": b[1]},
+                    "choice_changed": changed, "confidence_change": delta, "crosses_threshold": crossed,
+                    "material": changed or crossed})
+    return out
+
+
+def compare_event_fields(record_id: str, definitions: list, location, threshold: float, answers: list, runs: dict) -> dict:
+    """The fields of the ``compare`` log event: the summary, not the answers (each arm's own events hold those)."""
+    fields = {"record_id": record_id, "definitions": [d.reference() for d in definitions], "threshold": threshold,
+              "material": any(a["material"] for a in answers), "answers_compared": len(answers),
+              "answers_material": sum(1 for a in answers if a["material"]),
+              "max_confidence_change": max([abs(a["confidence_change"]) for a in answers if a["confidence_change"] is not None] or [0.0]),
+              "runs": runs}
+    if location is not None:
+        fields["location"] = location
+    return fields
+
+
+def cmd_compare_definition(args) -> Result[Any, JudgeError]:
+    """Run the requests one or more candidate definitions reach without them and with them, and report each answer's choice and
+    confidence on both sides. The candidates are named by ``--definition`` (IRIs, repeatable; from ``--definitions`` or the
+    repository's files) and are compared together: the ``without`` arm drops all of them, the ``with`` arm keeps all of them,
+    and each must be attached to the record (and to ``--location`` when given). The record's other definitions are in both
+    arms. Each arm walks the record's tree and is logged under its own run name ``<run>.without`` and ``<run>.with``; the
+    summary is a ``compare`` event under ``<run>``. The candidates are material when an answer's choice flips or its
+    confidence crosses ``--threshold`` (REQ-JEV-0213); the threshold applied is in the output and the log."""
+    threshold = check_threshold(args.threshold)
+    if isinstance(threshold, Err):
+        return threshold
+    threshold = threshold.value
+    wanted = [(kind, rid) for kind in ("req", "adr", "nfr") for rid in (getattr(args, kind) or [])]
+    if len(wanted) != 1 or not wanted[0][1]:
+        return fail("VALIDATION.INPUT", "pass exactly one non-empty --req, --adr or --nfr id to compare definitions on")
+    kind, rid = wanted[0]
+    location = None
+    if args.location is not None:
+        parsed = validate_model(LocationBody, args.location)
+        if isinstance(parsed, Err):
+            return fail("VALIDATION.INPUT", f"--location: {parsed.error.text}", action="Pass the location as path, path#Heading or path::Symbol, relative to the repository.")
+        location = parsed.value.root
+    loaded = definitions_for_args(args)
+    if isinstance(loaded, Err):
+        return loaded
+    candidates = []
+    for iri in dict.fromkeys(args.definition):
+        found = loaded.value.by_iri(iri) if loaded.value is not None else None
+        if found is None:
+            return fail("DEFINITIONS.NOT_FOUND", f"{iri!r} is not a definition of "
+                        + (", ".join(loaded.value.files) if loaded.value is not None else "any definitions file (there is none)"),
+                        action="Pass --definition <the definition's IRI> and --definitions <file> (or add a definitions file under .sc/judge-jev/).")
+        candidates.append(found)
+    drop = {c.iri for c in candidates}
+    with_set = loaded.value
+    without_set = jev_definitions.DefinitionSet(tuple(d for d in with_set.definitions if d.iri not in drop), with_set.files)
+    settings = quality_settings(args.dry_run)
+    trees, prepared = {}, {}
+    for arm, arm_set in (("with", with_set), ("without", without_set)):
+        got = _prepare_record(args, kind, rid, trees, settings, arm_set, location, {"arm": arm})
+        if isinstance(got, Err):
+            return got
+        prepared[arm] = got.value
+    carried = {d.iri for d in prepared["with"][4]}
+    missing = [c.iri for c in candidates if c.iri not in carried]
+    if missing:
+        where = f" at location {location!r}" if location is not None else " (record only: pass --location for a definition attached to a record and a location)"
+        return _with_refs(fail("DEFINITIONS.NOT_ATTACHED", f"definition(s) {', '.join(missing)} not attached to {rid}{where}; "
+                               "a comparison runs only the requests the definitions would reach",
+                               action="Attach each definition to the record (jj:attachedTo), or name the location it is attached to."),
+                          prepared["with"][2])
+    head = {"record": prepared["with"][2]["record"], "tree": prepared["with"][2]["tree"],
+            "definitions": [{**c.reference(), "source": c.source} for c in candidates], "threshold": threshold,
+            **({} if location is None else {"location": location})}
+    if settings.dry_run:
+        arms = {arm: {"definitions": jev_definitions.log_entries(prepared[arm][4]), "wave": dry_run_wave(prepared[arm][0], prepared[arm][3], settings)}
+                for arm in COMPARE_ARMS}
+        return Ok({"success": True, "error": None, "data": {"dry_run": True, **head, "arms": arms}})
+    loaded_answers = load_answers_fixture(args.answers_file, COMPARE_FIXTURE_KEYS)
+    if isinstance(loaded_answers, Err):
+        return _with_refs(loaded_answers, head)
+    fixture = loaded_answers.value
+    run_name = args.run_name or stamp()
+    runs = {arm: f"{run_name}.{arm}" for arm in COMPARE_ARMS}
+    for name in (run_name, *runs.values()):
+        checked = _safe_id(name, "--run-name")
+        if isinstance(checked, Err):
+            return _with_refs(checked, head)
+    worst = compare_event_fields(rid, candidates, location, threshold,
+                                 [{"material": True, "confidence_change": WORST_PROBABILITY}] * 1000, runs)  # the largest summary: counts of 4 digits
+    sized = check_event_sizes([("compare", {"tree_id": prepared["with"][0].id, **worst}, None)], "the compare event")
+    if isinstance(sized, Err):
+        return _with_refs(sized, head)
+    api_key = ""
+    if fixture is None:
+        cleared = remote_preflight(args, "The record text and the definitions")
+        if isinstance(cleared, Err):
+            return _with_refs(cleared, head)
+        api_key = cleared.value
+    walks = {}
+    for arm in COMPARE_ARMS:
+        tree, record, _refs, _jobs, arm_carried = prepared[arm]
+        log = open_run_log(args.run_dir, runs[arm])
+        if isinstance(log, Err):
+            return _with_refs(log, head)
+        walked = walk_tree(tree, record, settings, api_key, arm_fixture(fixture, arm), log.value,
+                           {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
+        closed = log.value.close()
+        if isinstance(walked, Err):
+            return _with_refs(walked, {**head, "arm": arm})
+        if isinstance(closed, Err):
+            return _with_refs(closed, {**head, "arm": arm})
+        walks[arm] = walked.value
+    answers = compare_answers(answer_table(walks["without"][2]), answer_table(walks["with"][2]), threshold)
+    log = open_run_log(args.run_dir, run_name)
+    if isinstance(log, Err):
+        return _with_refs(log, head)
+    logged = log.value.event("compare", {"tree_id": prepared["with"][0].id,
+                                         **compare_event_fields(rid, candidates, location, threshold, answers, runs)})
+    closed = log.value.close()
+    for failed in (logged, closed):
+        if isinstance(failed, Err):  # the answers were paid for: report them with the log error
+            return _with_refs(failed, {**head, "answers": answers})
+    return Ok({"success": True, "error": None, "data": {
+        "dry_run": False, **head, "material": any(a["material"] for a in answers),
+        "answers_compared": len(answers), "answers_material": sum(1 for a in answers if a["material"]), "answers": answers,
+        "arms": {arm: {"verdict": walks[arm][0], "path": walks[arm][1], "run": runs[arm],
+                       "definitions": jev_definitions.log_entries(prepared[arm][4])} for arm in COMPARE_ARMS},
+        "log": {"run": run_name, "log_root": args.run_dir}}})
+
+
+# --------------------------------------------------------------------------- #
+# doctor (REQ-JEV-0214, REQ-JEV-0215): check everything judge-jev loads in a repository, call nothing
+# --------------------------------------------------------------------------- #
+def _issue(severity: str, code: str, file, message: str, **extra) -> dict:
+    return {"severity": severity, "code": code, "file": None if file is None else str(file), "message": message, **extra}
+
+
+def _error_issue(file, error, **extra) -> dict:
+    data = getattr(error, "data", None)
+    violations = data.get("violations") if isinstance(data, dict) else None
+    return _issue("error", error.code, file, error.message, **({"violations": violations} if violations else {}), **extra)
+
+
+def _heading_texts(text: str) -> set:
+    return {m.group(1).strip() for m in (re.match(r"^ {0,3}#{1,6}\s+(.*?)\s*#*\s*$", line) for line in text.splitlines()) if m}
+
+
+def location_problem(root: pathlib.Path, location: str) -> Optional[str]:
+    """Why a location string (``path``, ``path#Heading`` or ``path::Symbol``) does not exist in the repository, or None. A
+    symbol is not resolved (that needs sc-agent's grammars): only its file."""
+    path, kind, detail = jev_definitions.split_location(location)
+    try:
+        target = (root / path).resolve()
+        inside = root.resolve() in target.parents
+        is_file = target.is_file()
+        headings = _heading_texts(target.read_text(encoding="utf-8", errors="replace")) if kind == "heading" and is_file else set()
+    except (OSError, ValueError, RuntimeError):
+        return f"{path} cannot be read in the repository"
+    if not inside:
+        return f"{path} is outside the repository"
+    if not is_file:
+        return f"{path} does not exist in the repository"
+    if kind == "heading" and detail.strip() not in headings:
+        return f"{path} has no heading {detail!r}"
+    return None
+
+
+def definition_warnings(file: str, rows: list, root: pathlib.Path, index) -> list:
+    """The warnings (never failures) of one definitions file: no attachment, an attachment to a record the Raptor index does not
+    hold (``index`` is ``(repository, record ids)`` or None to skip), an attachment to a location that does not exist, a source
+    path that does not exist."""
+    out = []
+    for row in rows:
+        who = f"definition {row['iri']} ({row['term']!r})"
+        if not row["attachments"]:
+            out.append(_issue("warning", "DEFINITION.UNATTACHED", file, f"{who} has no jj:attachedTo: no request carries it", definition=row["iri"]))
+        for att in row["attachments"]:
+            repository, _hash, record_id = att["record"].partition("#")
+            if index is not None and (record_id not in index[1] or (index[0] is not None and repository != index[0])):
+                out.append(_issue("warning", "DEFINITION.RECORD_UNKNOWN", file, f"{who} is attached to {att['record']}, which the Raptor index does not hold",
+                                  definition=row["iri"], record=att["record"]))
+            if att["location"] is not None:
+                problem = location_problem(root, att["location"])
+                if problem is not None:
+                    out.append(_issue("warning", "DEFINITION.LOCATION_MISSING", file, f"{who} is attached to location {att['location']!r}: {problem}",
+                                      definition=row["iri"], location=att["location"]))
+        if not jev_definitions_source_is_iri(row["source"]):
+            path = row["source"].partition("::")[0].partition("#")[0]
+            try:
+                present = (root / path).is_file()
+            except OSError:  # a component too long for the file system is a source that does not exist
+                present = False
+            if not present:
+                out.append(_issue("warning", "DEFINITION.SOURCE_MISSING", file, f"{who} has source {row['source']!r}: {path} does not exist in the repository",
+                                  definition=row["iri"], source=row["source"]))
+    return out
+
+
+def jev_definitions_source_is_iri(source: str) -> bool:
+    return bool(IRI_TEXT.fullmatch(source))
+
+
+class DoctorScope:
+    """What one doctor run has seen: the files checked, the issues, the questions by id, the definition rows by file."""
+
+    def __init__(self):
+        self.checked, self.issues, self.notes = [], [], []
+        self.questions: dict = {}   # question IRI -> [tree files declaring it]
+        self.definition_rows: list = []  # [(file, rows)]
+
+
+def _doctor_tree_json(scope: DoctorScope, path: str, raw: str, data) -> None:
+    if isinstance(data, dict) and "nodes" in data:
+        scope.checked.append({"kind": "quality tree", "path": path})
+        parsed = parse_quality_tree(raw, path)
+        if isinstance(parsed, Err):
+            scope.issues.append(_error_issue(path, parsed.error))
+    elif isinstance(data, dict) and "questions" in data:
+        scope.checked.append({"kind": "question set", "path": path})
+        parsed = parse_question_set(data, f"question set {path}")
+        if isinstance(parsed, Err):
+            scope.issues.append(_error_issue(path, parsed.error))
+    else:
+        scope.checked.append({"kind": "unknown", "path": path})
+        scope.issues.append(_issue("error", "INPUT.MALFORMED", path, f"{path} is JSON but neither a quality tree (it needs nodes) nor a question set (it needs questions)"))
+
+
+def _doctor_json(scope: DoctorScope, path: str) -> None:
+    raw = read_source(path, f"file {path}")
+    if isinstance(raw, Err):
+        scope.checked.append({"kind": "unknown", "path": path})
+        return scope.issues.append(_error_issue(path, raw.error))
+    data = decode_json(raw.value, path, f"file {path}")
+    if isinstance(data, Err):
+        scope.checked.append({"kind": "unknown", "path": path})
+        return scope.issues.append(_error_issue(path, data.error))
+    _doctor_tree_json(scope, path, raw.value, data.value)
+
+
+def _doctor_tree_ttl(scope: DoctorScope, path: str) -> None:
+    scope.checked.append({"kind": "quality tree", "path": path})
+    module = _graph_module()
+    if isinstance(module, Err):
+        return scope.issues.append(_error_issue(path, module.error))
+    graph = module.value
+    loaded = graph.load_tree(path)
+    checked = graph.validate_tree(loaded.value) if isinstance(loaded, Ok) else loaded
+    if isinstance(checked, Err):
+        return scope.issues.append(_error_issue(path, checked.error))
+    by_id: dict = {}
+    for row in loaded.value.store.query("PREFIX jj: <urn:judge-jev:ontology#> SELECT ?q ?id WHERE { ?q a jj:Question ; jj:id ?id }"):
+        scope.questions.setdefault(row["q"].value, []).append(path)
+        by_id.setdefault(row["id"].value, set()).add(row["q"].value)
+    for qid, iris in sorted(by_id.items()):
+        if len(iris) > 1:
+            scope.issues.append(_issue("error", "QUESTIONS.DUPLICATE_ID", path, f"{path}: question id {qid!r} is used by {len(iris)} questions of one tree: "
+                                       f"{', '.join(sorted(iris))}; a jj:id is unique within its tree", question_id=qid, iris=sorted(iris)))
+
+def _doctor_definitions(scope: DoctorScope, path: str, root: pathlib.Path, index) -> None:
+    scope.checked.append({"kind": "definitions", "path": path})
+    got = load_definitions_file(path)
+    if isinstance(got, Err):
+        return scope.issues.append(_error_issue(path, got.error))
+    rows = got.value[0]
+    scope.definition_rows.append((path, rows))
+    scope.issues.extend(definition_warnings(path, rows, root, index))
+
+
+def _doctor_file(scope: DoctorScope, path: str, root: pathlib.Path, index) -> None:
+    """One file, whatever it holds: an expected failure is an issue, and so is an unexpected one (never a traceback)."""
+    name = pathlib.Path(path).name
+    try:
+        if name.endswith(".ttl"):
+            if jev_definitions.is_definitions_file(name):
+                _doctor_definitions(scope, path, root, index)
+            else:
+                _doctor_tree_ttl(scope, path)
+        elif name.endswith(".json"):
+            _doctor_json(scope, path)
+        else:
+            scope.checked.append({"kind": "unknown", "path": path})
+            scope.issues.append(_issue("error", "VALIDATION.INPUT", path, f"{path} is not a .ttl or .json file: doctor checks trees, question sets and definitions files"))
+    except Exception as exc:  # noqa: BLE001 - a typed issue beats a traceback; the rest of the scope is still checked
+        scope.issues.append(_issue("error", "SCRIPT.INTERNAL", path, f"{type(exc).__name__}: {exc}"))
+
+
+def doctor_scope_files(args) -> list:
+    """The files of the scope, in order, each once: the shipped trees and question sets, the trees and definitions under
+    ``<root>/.sc/judge-jev/`` (top level only) and the paths given as arguments (a directory is searched through all
+    its subfolders except ``jev_definitions.SKIPPED_DIRS``)."""
+    root = pathlib.Path(args.repository_root or ".")
+    files = sorted(str(p) for p in QUESTIONS_DIR.iterdir() if p.is_file() and p.suffix in (".json", ".ttl"))
+    for found in jev_definitions.scan(root / jev_definitions.DEFINITIONS_DIR, recursive=False):  # as quality's discover: top level only
+        files += found
+    for given in args.paths:
+        p = pathlib.Path(given)
+        if p.is_dir():
+            for found in jev_definitions.scan(p):
+                files += found
+        else:
+            files.append(given)
+    seen, out = set(), []
+    for f in files:
+        key = os.path.abspath(f)
+        if key not in seen:
+            seen.add(key)
+            out.append(f)
+    return out
+
+
+def cmd_doctor(args) -> Result[Any, JudgeError]:
+    """Check the repository scope and call nothing (no Jev, no key, no log): every tree, question set and definitions file
+    against its model and shapes (errors, exit 2 with the report in ``data``), the question ids of the scope for
+    duplicates (errors), and the warnings of ``definition_warnings`` (exit 0 when nothing else is wrong)."""
+    root = pathlib.Path(args.repository_root or ".")
+    scope = DoctorScope()
+    index = None
+    if args.index:
+        loaded = load_json(args.index, "Raptor import index")
+        parsed = parse_index(loaded.value, args.index) if isinstance(loaded, Ok) else loaded
+        if isinstance(parsed, Err):
+            scope.checked.append({"kind": "Raptor import index", "path": args.index})
+            scope.issues.append(_error_issue(args.index, parsed.error))
+        else:
+            scope.checked.append({"kind": "Raptor import index", "path": args.index})
+            records = {r["id"] for table in (parsed.value.requirements, parsed.value.decisions) for r in (table or [])}
+            repository = (parsed.value.metadata or {}).get("repository")
+            index = (repository if isinstance(repository, str) and repository else None, records)
+    else:
+        scope.notes.append({"code": "DOCTOR.INDEX_SKIPPED", "message": "no --index given: attachments were not checked against a Raptor index"})
+    for path in doctor_scope_files(args):
+        if not pathlib.Path(path).exists():
+            scope.issues.append(_issue("error", "INPUT.MISSING", path, f"{path} does not exist"))
+            continue
+        _doctor_file(scope, path, root, index)
+    if index is not None and index[0] is None and any(rows for _f, rows in scope.definition_rows):
+        scope.issues.append(_issue("warning", "DEFINITION.REPOSITORY_UNKNOWN", args.index,
+                                   "the Raptor index names no metadata.repository, so a record IRI is urn:raptor:repo:unknown#<id> and no attachment "
+                                   "of these definitions can match: quality and compare-definition carry none of them"))
+    built, problem = jev_definitions.build_set([(f, rows) for f, rows in scope.definition_rows])
+    if built is None:
+        scope.issues.append(_issue("error", "DEFINITIONS.INVALID", None, problem))
+    if any(a["location"] is not None and "::" in a["location"] for _f, rows in scope.definition_rows for row in rows for a in row["attachments"]):
+        scope.notes.append({"code": "DOCTOR.SYMBOL_UNCHECKED", "message": "a path::Symbol location was checked for its file only: symbols resolve with sc-agent's grammars"})
+    for question, files in sorted(scope.questions.items()):
+        if len(files) > 1:  # one IRI declared in several files would merge silently in the store
+            scope.issues.append(_issue("error", "QUESTIONS.DUPLICATE_IRI", None,
+                                       f"question {question} is declared in {len(files)} tree files: {', '.join(files)}; a question IRI is declared in one file only",
+                                       question=question, files=files))
+    errors = [i for i in scope.issues if i["severity"] == "error"]
+    warnings = [i for i in scope.issues if i["severity"] == "warning"]
+    data = {"ok": not errors, "errors": errors, "warnings": warnings, "notes": scope.notes, "checked": scope.checked,
+            "counts": {"files": len(scope.checked), "errors": len(errors), "warnings": len(warnings)}}
+    if errors:
+        first = errors[0]
+        error = JudgeError("DOCTOR.FAILED", f"{len(errors)} error(s) and {len(warnings)} warning(s); first: {first['code']}"
+                           + (f" in {first['file']}" if first["file"] else "") + f": {_clip(first['message'])}",
+                           action="Fix each error in data.errors (each names its file and the rule), then rerun doctor.")
+        error.data = data
+        return Err(error)
+    return Ok({"success": True, "error": None, "data": data})
+
+
 class _UsageError(Exception):
     pass
 
@@ -2194,6 +2744,11 @@ class _JsonArgumentParser(argparse.ArgumentParser):
 
     def error(self, message):  # argparse hook; never returns
         raise _UsageError(f"{self.prog}: {message}")
+
+
+DEFINITIONS_HELP = ("a definitions file (Turtle, ADR-JEV-0008); repeat it for several. Default: every definitions.ttl and "
+                    "*.definitions.ttl in <--repository-root>/.sc/judge-jev/ when there are any. A request carries the "
+                    "definitions attached to its record (and location); with none attached it is exactly as without definitions")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2210,16 +2765,17 @@ def build_parser() -> argparse.ArgumentParser:
         q.add_argument(f"--{kind}", metavar="ID", action="append", default=[],
                        help=f"a {kind.upper()} record id; repeat it (and mix kinds) to judge several records under one run name")
     q.add_argument("--index", required=True, help="the Raptor import index (JSON written by Raptor's scripts/extract.py --output)")
-    q.add_argument("--questions", default="", help="a decision-tree file overriding the shipped assets/questions/quality-<kind>.json")
+    q.add_argument("--questions", default="", help="a decision-tree file (.json or .ttl) overriding the shipped assets/questions/quality-<kind>.json")
     q.add_argument("--dry-run", action="store_true", help="report each record's tree and composed wave-1 request (one per statement for a per-statement wave); call nothing")
     q.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/<node>/r1', '<record>/<node>', '<node>' or '*'; no network")
     q.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log (<run-dir>/logs/judge-jev.log.jsonl); default {QUALITY_LOG_DIR}")
     q.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     q.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
+    q.add_argument("--definitions", metavar="FILE", action="append", default=[], help=DEFINITIONS_HELP)
     q.set_defaults(func=cmd_quality)
     v = sub.add_parser("validate", help="check one input file with the model the other commands apply before their first Jev request; calls nothing, needs no key, writes no log")
     group = v.add_mutually_exclusive_group(required=True)
-    group.add_argument("--tree", metavar="FILE", default=None, help="a quality decision tree (assets/questions/quality-<kind>.json); - is stdin")
+    group.add_argument("--tree", metavar="FILE", default=None, help="a quality decision tree (assets/questions/quality-<kind>.json or .ttl); - is stdin (JSON)")
     group.add_argument("--questions", metavar="FILE", default=None, help="a question set (assets/questions/plan.json); - is stdin")
     group.add_argument("--answers", metavar="FILE", default=None, help="an answers file (--answers-file); - is stdin")
     group.add_argument("--index", metavar="FILE", default=None, help="a Raptor import index (Raptor's scripts/extract.py --output); - is stdin")
@@ -2227,6 +2783,26 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--gate", choices=("plan", "dev"), default="plan", help="with --requests: the gate whose roles and request cap apply, as for batch")
     v.add_argument("--max-request-bytes", type=int, default=None, help="with --requests: refuse any request over this, as for batch")
     v.set_defaults(func=cmd_validate)
+    cd = sub.add_parser("compare-definition", help="run the requests one or more candidate definitions reach without them and with them; report each answer's choice and confidence on both sides and whether they are material")
+    for kind in ("req", "adr", "nfr"):
+        cd.add_argument(f"--{kind}", metavar="ID", action="append", default=[], help=f"the {kind.upper()} record id to compare on (exactly one record in all)")
+    cd.add_argument("--index", required=True, help="the Raptor import index (JSON written by Raptor's scripts/extract.py --output)")
+    cd.add_argument("--definition", required=True, action="append", metavar="IRI", help="the IRI of a candidate definition; repeat it to compare several together. Each must be attached to the record (and to --location when given)")
+    cd.add_argument("--definitions", metavar="FILE", action="append", default=[], help=DEFINITIONS_HELP)
+    cd.add_argument("--location", default=None, help="the location the candidate is attached to together with the record (path, path#Heading or path::Symbol); omit for a record-only definition")
+    cd.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="the decision threshold: the candidates are material when an answer's choice flips or its confidence crosses it (default %s); recorded in the output and the log" % DEFAULT_THRESHOLD)
+    cd.add_argument("--questions", default="", help="a decision-tree file overriding the shipped assets/questions/quality-<kind>.json")
+    cd.add_argument("--dry-run", action="store_true", help="report the start-wave request of each arm, without and with the definitions; call nothing")
+    cd.add_argument("--answers-file", default="", help="fixture answers keyed " + COMPARE_FIXTURE_KEYS + "; no network")
+    cd.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log; default {QUALITY_LOG_DIR}")
+    cd.add_argument("--run-name", default="", help="run name of the compare event; the arms log as <run name>.without and <run name>.with; default a UTC timestamp")
+    cd.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
+    cd.set_defaults(func=cmd_compare_definition)
+    dr = sub.add_parser("doctor", help="check every tree, question set and definitions file of the repository scope; calls nothing, needs no key, writes no log")
+    dr.add_argument("paths", nargs="*", metavar="PATH", help="more trees, question sets or definitions files, or folders of them, to check besides the shipped ones and those under .sc/judge-jev/")
+    dr.add_argument("--index", default="", help="a Raptor import index: attachments to records it does not hold are warnings; without it that check is skipped and doctor says so")
+    dr.add_argument("--repository-root", default=".", help="the repository: its .sc/judge-jev/ holds the trees and definitions, and attachment locations and source paths are relative to it (default .)")
+    dr.set_defaults(func=cmd_doctor)
     return p
 
 

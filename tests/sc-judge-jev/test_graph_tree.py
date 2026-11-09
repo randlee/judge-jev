@@ -104,6 +104,18 @@ class ShippedTreeTests(GraphCase):
         self.assertEqual(converted, ADR_JSON)
         self.assertEqual(json.dumps(converted, sort_keys=False), json.dumps(ADR_JSON, sort_keys=False))
 
+    def test_every_shipped_ttl_passes_shacl_and_compiles_to_its_json_tree(self):
+        for kind in ("adr", "req", "nfr"):
+            with self.subTest(kind):
+                loaded = jev_graph.load_tree(str(QUESTIONS / f"quality-{kind}.ttl"))
+                self.assertIsInstance(loaded, Ok)
+                self.assertEqual(jev_graph.validate_tree(loaded.value), Ok(None))
+                expected = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))
+                converted = jev_graph.tree_to_quality_json(loaded.value)
+                self.assertEqual(converted, expected)
+                self.assertEqual(json.dumps(jev_graph.compile_wave(loaded.value, "wave-1"), sort_keys=False),
+                                 json.dumps(expected["nodes"]["wave-1"]["questions"], sort_keys=False))
+
     def test_compile_wave_is_the_json_waves_questions_object_in_order(self):
         tree = jev_graph.load_tree(str(QUESTIONS / "quality-adr.ttl")).value
         compiled = jev_graph.compile_wave(tree, "wave-1")

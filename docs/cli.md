@@ -7,7 +7,7 @@ Every command takes `--dry-run`.
 ## `judge-jev quality`
 
 ```
-judge-jev quality (--req|--adr|--nfr <id>)... [--questions <file>] [--dry-run]
+judge-jev quality (--req|--adr|--nfr <id>)... [--questions <file>] [--definitions <file>]... [--dry-run]
 ```
 
 Judges whether each named record is well written (REQ-JEV-0101,
@@ -48,6 +48,11 @@ judges every named record under one run name.
   `wave` event with the request ids, matched statements and verdict. Logging goes through the sc-observability
   logger, the one sc-agent uses (REQ-JEV-0008), to
   `.sc/judge-jev/logs/judge-jev.log.jsonl`.
+
+- `--definitions <file>` (repeatable) adds the definitions attached to each
+  record to its requests (see Definitions); with no flag the repository's
+  `.sc/judge-jev/` files are used. A record no definition reaches gets a
+  request byte-identical to one without the feature.
 
 Diagram: [diagrams/quality.md](diagrams/quality.md)
 
@@ -119,6 +124,130 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
   `VALIDATION.INPUT`, ...) naming the field path and the rule it breaks.
 
 Diagram: [diagrams/validate.md](diagrams/validate.md)
+
+## Definitions
+
+ADR-JEV-0008, REQ-JEV-0212. A definition tells Jev what a term means for one
+record, or for one place in it, without changing a question. It is data in the
+request state: `state.definitions` is a list of `{term, text}` sorted by term.
+
+A definitions file is Turtle (the closed shapes are
+`assets/shapes/definitions.shacl.ttl`, the classes `jj:Definition` and
+`jj:Attachment` are in the ontology):
+
+```turtle
+@prefix jj: <urn:judge-jev:ontology#> .
+@prefix d:  <urn:judge-jev:definition:> .
+@prefix a:  <urn:judge-jev:attachment:> .
+
+d:fast a jj:Definition ; jj:term "fast" ; jj:text "Finishes within 5 s on the reference host." ;
+    jj:source "docs/requirements/perf.md" ;
+    jj:attachedTo a:fast-1 , a:fast-2 .
+a:fast-1 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0042> .
+a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
+    jj:location "docs/requirements/perf.md#Fast" .
+```
+
+- A definition has exactly one `jj:term` (one line, at most 128 characters),
+  `jj:text` (at most 2000 characters) and `jj:source` (a path relative to the
+  repository), and zero or more `jj:attachedTo` attachments. One with none is
+  valid but unused: `doctor` warns.
+- An attachment has exactly one IRI `jj:record` (the Raptor record IRI,
+  `<repository URN>#<record id>`) and at most one `jj:location`.
+- A record-only attachment puts the definition in every request about that
+  record. A record-and-location attachment puts it only in a request made at
+  that location (`compare-definition --location`); `quality` judges a whole
+  record, so it carries record-only definitions.
+- Files are `definitions.ttl` or `<name>.definitions.ttl` under
+  `.sc/judge-jev/` (directly in that folder, not in a subfolder). They load as their own named graph: a tree's digest
+  never changes because a definitions file exists. The same definition IRI
+  in two files is `DEFINITIONS.INVALID` naming both.
+- Definitions are never truncated. They count toward the 24000-byte request
+  limit and the log-event size check, before any call
+  (`JEV.CONTEXT_EXCEEDED`).
+- Every request, answer, result, wave and verdict event, and each record's
+  result, carries `definitions: [{iri, term, digest}]` (the digest is the
+  SHA-256 of term, text and source); the run's triples link the run to each
+  definition IRI with `jj:carriedDefinition`.
+- A bad file is a typed error before the first request, never a traceback:
+  `INPUT.MISSING`, `INPUT.MALFORMED` (not Turtle, not UTF-8), or
+  `DEFINITIONS.INVALID` (oversize, a blank-node definition, a literal
+  record, an attachment with two records, a term over its limit, an
+  absolute or `..` path, any shape violation).
+
+Locations use the forms in Locations below.
+
+Diagram: [diagrams/definitions.md](diagrams/definitions.md)
+
+## `judge-jev compare-definition`
+
+```
+judge-jev compare-definition (--req|--adr|--nfr <id>) --index <file> --definition <iri>...
+    [--definitions <file>]... [--location <loc>] [--threshold <p>] [--questions <file>]
+    [--dry-run | --answers-file <file>] [--run-dir <dir>] [--run-name <name>]
+```
+
+REQ-JEV-0213. Runs one record's walk twice, without and with the named
+candidate definitions (one or more, compared together), and reports every
+answer's choice and confidence on both sides. Each candidate must be
+attached to the record (and to `--location` when it is attached with one);
+a candidate that no request reaches is `DEFINITIONS.NOT_ATTACHED`, an unknown
+IRI `DEFINITIONS.NOT_FOUND`. The record's other definitions are in both arms.
+
+- The candidates are **material** when an answer's choice flips, or its
+  confidence crosses the decision threshold (`--threshold`, default 0.6: a
+  confidence at or above it decides). A move on the same side (0.90 to
+  0.95) is not material. The threshold applied is in `data.threshold` and in
+  the `compare` log event, so a ruling is reproducible.
+- Output: `material`, `answers_compared`, `answers_material`, one `answers`
+  entry per question (node, statement, question, both choices and
+  confidences, `choice_changed`, `confidence_change`, `crosses_threshold`,
+  `material`), and each arm's verdict, path, run name and definitions.
+- Each arm is logged under its own run name, `<run>.without` and
+  `<run>.with`; a `compare` event under `<run>` holds the summary.
+- `--dry-run` shows both arms' composed requests and calls nothing.
+- `--answers-file` keys tell the arms apart: `with/<record>/<node>` and
+  `without/<record>/<node>` (and `with/*`, `without/*`) belong to one arm
+  and win; unprefixed `<record>/<node>`, `<node>` and `*` serve both arms,
+  so a fixture of only unprefixed keys gives identical answers and is never
+  material. A live comparison needs the same key and `allow_remote_judge`
+  as `quality`, checked before the first call.
+
+Diagram: [diagrams/compare.md](diagrams/compare.md)
+
+## `judge-jev doctor`
+
+```
+judge-jev doctor [<path>...] [--index <raptor index>] [--repository-root <dir>]
+```
+
+REQ-JEV-0214, REQ-JEV-0215. Checks everything judge-jev loads in a
+repository and calls nothing: no Jev, no key, no log, no file written.
+The scope is the shipped trees and question sets, every tree and definitions
+file at the top level of `<repository root>/.sc/judge-jev/` (its subfolders
+are not searched), and each argument: a file, or a directory searched through
+all its subfolders except `logs`, `anchor-runs`, `node_modules` and `.git`.
+
+- **Errors** (exit 2; the report is `data`, each entry has `severity`,
+  `code`, `file`, `message`): a schema or pydantic failure, a SHACL
+  violation (an edge to nothing, a cycle, a closed shape), a definitions
+  file that does not load, a definition IRI in two files, and
+  `QUESTIONS.DUPLICATE_IRI` and `QUESTIONS.DUPLICATE_ID`.
+- **Warnings** (exit 0): `DEFINITION.UNATTACHED`, `DEFINITION.RECORD_UNKNOWN`
+  (the index does not hold the record; with `--index` only),
+  `DEFINITION.LOCATION_MISSING` and `DEFINITION.SOURCE_MISSING`.
+- **Notes**: `DOCTOR.INDEX_SKIPPED` when no `--index` is given (attachments
+  were then not checked against an index); `DOCTOR.SYMBOL_UNCHECKED` for a
+  `path::Symbol` location, whose file is checked but not the symbol.
+- A question's identity is its IRI. A question IRI declared in more than one
+  tree file of the scope (judge-jev's or a consumer extension's) is
+  `QUESTIONS.DUPLICATE_IRI` naming every file: the declarations would merge
+  silently in the store. Within one tree a `jj:id` is unique
+  (`QUESTIONS.DUPLICATE_ID`). The shipped IRIs are
+  `urn:judge-jev:question:<kind>.<id>`, so they never collide. JSON trees are
+  not checked for this.
+- `data` holds `ok`, `errors`, `warnings`, `notes`, `checked` (file and kind)
+  and `counts`.
 
 ## Locations
 

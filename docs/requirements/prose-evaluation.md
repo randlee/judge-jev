@@ -1,6 +1,6 @@
 # judge-jev Requirements - Prose Evaluation
 
-**ID Range:** REQ-JEV-0201 through REQ-JEV-0211  
+**ID Range:** REQ-JEV-0201 through REQ-JEV-0215  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-08  
@@ -357,21 +357,23 @@ log.
 ### Requirement Statement
 
 **MUST statements:**
-- `judge-jev validate` MUST take one input file with one input-kind flag:
+- `judge-jev validate` MUST take one input file.
+- `judge-jev validate` MUST take one input-kind flag with that file:
   `--tree` (quality tree), `--questions` (question set), `--answers`
   (answers file), `--index` (Raptor import index) or `--requests` (batch
   request stream).
 - `judge-jev validate` MUST check the file with the model `judge-jev`
   applies to that input kind before its first Jev request (ADR-JEV-0005).
-- Every refusal from `judge-jev validate` MUST name the field path and the
-  rule the field breaks.
+- Every refusal from `judge-jev validate` MUST name the field path.
+- Every refusal from `judge-jev validate` MUST name the rule the field
+  breaks.
 - `judge-jev validate --answers` MUST apply the answers-file envelope that
-  `--answers-file` applies before the first request: an object of string keys,
-  each an object or a non-empty list of objects, an object with `__error__`
-  holding only a string code of at most 64 characters. The answers file
-  stands in for Jev's response, so what an answer holds (its questions,
-  choices and probabilities) is not part of the envelope; it is checked after
-  the send as `JEV.RESPONSE_INVALID`.
+  `--answers-file` applies before the first request.
+- The answers-file envelope MUST require an object of string keys.
+- The answers-file envelope MUST require each key's value to be an object
+  or a non-empty list of objects.
+- The answers-file envelope MUST require an object with `__error__` to hold
+  only a string code of at most 64 characters.
 
 **MUST NOT statements:**
 - `judge-jev validate` MUST NOT call Jev.
@@ -380,6 +382,10 @@ log.
 
 A tree variation checked before a run costs nothing; one refused after a
 paid call wastes it.
+
+The answers file stands in for Jev's response, so what an answer holds
+(its questions, choices and probabilities) is not part of the envelope; it
+is checked after the send as `JEV.RESPONSE_INVALID`.
 
 ### Success Criteria
 
@@ -398,7 +404,9 @@ paid call wastes it.
 
 **MUST statements:**
 - For every input, every `judge-jev` command MUST print exactly one JSON
-  object: its result or a typed error.
+  object.
+- The JSON object a `judge-jev` command prints MUST be its result or a
+  typed error.
 - `judge-jev` MUST refuse an invalid tree, question set, index, request
   stream or run directory before its first Jev request.
 - `judge-jev` MUST check that every log event of a request (the request,
@@ -418,3 +426,162 @@ after a paid call wastes the call; a crash loses its answer.
   extra key, and raw JSON no value expresses) produce no `SCRIPT.INTERNAL`
   and no refusal after a request is sent.
 - [ ] Invalid UTF-8 on stdin is refused with `INPUT.MALFORMED`.
+
+---
+
+## REQ-JEV-0212: Targeted definitions
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- A definition MUST be attachable to a record alone, or to a record and
+  one location under evaluation.
+- A request about a record MUST carry, in its state next to the record, only
+  the definitions attached to that record alone, plus those attached to
+  that record and the request's location.
+- A request with no matching definition MUST be identical to the request
+  sent without definitions.
+- `judge-jev` MUST refuse, before sending, a request whose definitions take
+  it over the size limit.
+- Every request's log event MUST record the digest of each definition it
+  carried.
+
+**MUST NOT statements:**
+- `judge-jev` MUST NOT truncate a definition.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "we can NOT write a single definition file and add it
+to every prompt" when running over 1000 to 2000 records with 1 to 200
+locations each. A record-only definition "makes the req/nfr/adr w/ confusing
+term carry the definition w/ it for all jev calls"; a record-and-location
+definition "would only be added to specific data (code/prompt/skill) which
+requires clarification".
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] With definitions linked to record A only, the requests for record B
+  are byte-identical to a run without definitions.
+- [ ] The requests for record A carry exactly A's definitions, and their log
+  events list those definitions' digests.
+- [ ] A definition attached to record A and location X is carried by A's
+  request for X and by no other request about A.
+
+---
+
+## REQ-JEV-0213: A definition is kept only when it changes an answer
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- `judge-jev` MUST provide a comparison of one or more candidate
+  definitions.
+- The comparison MUST run the requests the candidate definitions would
+  reach with the candidates.
+- The comparison MUST run the same requests without the candidates.
+- The comparison MUST report each answer's choice with and without the
+  candidates.
+- The comparison MUST report each answer's confidence with and without the
+  candidates.
+- The comparison MUST report the candidates as material when an answer's
+  choice flips or its confidence crosses the decision threshold, and as not
+  material when every change stays on the same side of the threshold.
+- The comparison MUST record the threshold it applied.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "if adding the definition does not impact the scores
+used in the rubric, they aren't necessary to add"; "Moving from 90->95
+confidence doesn't matter. A change from 20%->50% would be material if
+other changes get it over the threshold."
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] With fixture answers where the definition flips one answer, the
+  comparison reports it as material.
+- [ ] With fixture answers that are the same with and without the
+  definition, the comparison reports it as not material.
+- [ ] A confidence move from 0.90 to 0.95 on the same side of the threshold
+  is not material. Two candidates that each move an answer part of the way,
+  and together across the threshold, are material when compared together.
+
+---
+
+## REQ-JEV-0214: Question ids are unique within a scope
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- Every question IRI in one scope (by default the repository) MUST be
+  declared in one tree file only, across judge-jev's trees and every
+  consumer extension's.
+- Every `jj:id` in judge-jev's trees and in every consumer extension's
+  MUST be unique within its tree.
+
+### Rationale
+
+A question's identity is its IRI.
+
+Rand Lee, 2026-11-08: "We would need to make sure all questions in
+judge-jev AND in consumer extensions follow a naming policy for uniqueness
+w/in that scope (repo is typical scope)."
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] A question IRI declared in two tree files of one scope is reported
+  as an error naming both files; two questions of one tree with the same
+  `jj:id` are an error.
+
+---
+
+## REQ-JEV-0215: Doctor command
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- `judge-jev doctor` MUST validate every tree in the scope against its
+  schema.
+- `judge-jev doctor` MUST validate every question set in the scope against
+  its schema.
+- `judge-jev doctor` MUST validate every definitions file in the scope
+  against its schema.
+- `judge-jev doctor` MUST validate every tree, question set and definitions
+  file in the scope against the ontology's shapes, including edges and
+  cycles.
+- `judge-jev doctor` MUST report each validation failure as an error.
+- `judge-jev doctor` MUST report a definition with no attachment as a
+  warning.
+- `judge-jev doctor` MUST report an attachment to a record the Raptor index
+  does not hold as a warning.
+- `judge-jev doctor` MUST report an attachment to a location that does not
+  exist as a warning.
+- `judge-jev doctor` MUST report a definition whose source does not exist
+  as a warning.
+
+**MUST NOT statements:**
+- `judge-jev doctor` MUST NOT call Jev.
+- A `judge-jev doctor` warning MUST NOT fail the command.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "I would expect judge-jev doctor to report orphans/dead
+links as warnings, it would also run schema validation and verify ontology
+followed and no cycles."
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] A scope with one orphan definition exits 0 with one warning naming it.
+- [ ] A scope with a tree that has a cycle exits non-zero with an error
+  naming the cycle.

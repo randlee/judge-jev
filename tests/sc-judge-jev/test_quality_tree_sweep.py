@@ -170,7 +170,7 @@ class TreeSweep(unittest.TestCase):
             tree_text = (tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8")
             index_text = json.dumps(tq.INDEX)
             for name, raw in [*RAW.items(), ("lone surrogate", '"\\ud800"')]:
-                bad_tree = write(d, "tree.json", tree_text.replace('"approved": false', f'"approved": {raw}', 1))
+                bad_tree = write(d, "tree.json", tree_text.replace('"approved": true', f'"approved": {raw}', 1))
                 bad_index = write(d, "bad-index.json", index_text.replace('"Because."', raw, 1))
                 bad_answers = write(d, "bad-answers.json", '{"ADR-T-0001/wave-1": ' + raw + "}")
                 for argv in (["--questions", bad_tree, "--index", index, "--dry-run"],
