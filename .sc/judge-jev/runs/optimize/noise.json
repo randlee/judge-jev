@@ -1,0 +1,7430 @@
+[
+ {
+  "NFR-JEV-0001": {
+   "fails": 0,
+   "margin": 0.75875,
+   "n": 4,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev tests MUST run offline against recorded Jev answers.",
+     "a": {
+      "obligations": [
+       "1",
+       0.75
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.73
+    },
+    {
+     "i": 2,
+     "text": "judge-jev tests MUST NOT depend on timing.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.46
+      ],
+      "check": [
+       "inspection or grep",
+       0.3
+      ]
+     },
+     "fired": [],
+     "m": 0.6799999999999999
+    },
+    {
+     "i": 3,
+     "text": "judge-jev tests MUST NOT depend on sleeps.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.77
+      ],
+      "check": [
+       "inspection or grep",
+       0.92
+      ]
+     },
+     "fired": [],
+     "m": 0.9175
+    },
+    {
+     "i": 4,
+     "text": "judge-jev tests MUST NOT depend on ordering.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.44
+      ],
+      "check": [
+       "inspection or grep",
+       0.4
+      ]
+     },
+     "fired": [],
+     "m": 0.7075
+    }
+   ]
+  },
+  "REQ-JEV-0001": {
+   "fails": 0,
+   "margin": 0.8716666666666667,
+   "n": 3,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST obtain records through Raptor's query interface.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "inspection or grep",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.75
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST NOT parse record Markdown itself.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "inspection or grep",
+       0.99
+      ]
+     },
+     "fired": [],
+     "m": 0.935
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.77
+      ],
+      "check": [
+       "inspection or grep",
+       0.99
+      ]
+     },
+     "fired": [],
+     "m": 0.9299999999999999
+    }
+   ]
+  },
+  "REQ-JEV-0002": {
+   "fails": 0,
+   "margin": 0.7946875,
+   "n": 8,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST send every Jev request through one batch command.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "inspection or grep",
+       0.56
+      ]
+     },
+     "fired": [],
+     "m": 0.8125
+    },
+    {
+     "i": 2,
+     "text": "The batch command MUST read request lines.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.27
+      ]
+     },
+     "fired": [],
+     "m": 0.7875
+    },
+    {
+     "i": 3,
+     "text": "The batch command MUST write one result envelope per request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.8474999999999999
+    },
+    {
+     "i": 4,
+     "text": "The batch command MUST use typed error codes.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.96
+      ],
+      "check": [
+       "inspection or grep",
+       0.44
+      ]
+     },
+     "fired": [],
+     "m": 0.85
+    },
+    {
+     "i": 5,
+     "text": "The batch command MUST apply a fixed retry policy.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.81
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "unit test",
+       0.49
+      ]
+     },
+     "fired": [],
+     "m": 0.7775
+    },
+    {
+     "i": 6,
+     "text": "The batch command MUST enforce request size limits.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "CLI run",
+       0.45
+      ]
+     },
+     "fired": [],
+     "m": 0.835
+    },
+    {
+     "i": 7,
+     "text": "The batch command MUST log every request through the sc-observability\nlogger (REQ-JEV-0008).",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.62
+      ],
+      "check": [
+       "inspection or grep",
+       0.35
+      ]
+     },
+     "fired": [],
+     "m": 0.7025
+    },
+    {
+     "i": 8,
+     "text": "The batch command MUST log every answer through the sc-observability\nlogger (REQ-JEV-0008).",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.66
+      ],
+      "check": [
+       "inspection or grep",
+       0.44
+      ]
+     },
+     "fired": [],
+     "m": 0.745
+    }
+   ]
+  },
+  "REQ-JEV-0003": {
+   "fails": 0,
+   "margin": 0.6375,
+   "n": 1,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST read the TypeSafe API key from `TYPESAFE_API_KEY` first,\nthen from the platform credential store, service `plan-anchor`, account\n`typesafe-api-key`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.43
+      ],
+      "joined_by": [
+       "and-list",
+       0.32
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "unit test",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.6375
+    }
+   ]
+  },
+  "REQ-JEV-0004": {
+   "fails": 0,
+   "margin": 0.72,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST refuse every live Jev call with\n`POLICY.REMOTE_JUDGE_DISABLED` unless the committed\n`.sc/judge-jev/settings.yaml` sets `allow_remote_judge: true`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.81
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "CLI run",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.775
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST NOT write that setting without the user's answer.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.82
+      ],
+      "term": [
+       "none",
+       0.45
+      ],
+      "check": [
+       "inspection or grep",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.665
+    }
+   ]
+  },
+  "REQ-JEV-0005": {
+   "fails": 0,
+   "margin": 0.74125,
+   "n": 4,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST ship as a marketplace plugin for Claude.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.86
+      ],
+      "term": [
+       "none",
+       0.69
+      ],
+      "check": [
+       "inspection or grep",
+       0.71
+      ]
+     },
+     "fired": [],
+     "m": 0.8049999999999999
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST ship as a marketplace plugin for Codex.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.68
+      ],
+      "check": [
+       "inspection or grep",
+       0.75
+      ]
+     },
+     "fired": [],
+     "m": 0.8475
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST ship as a marketplace plugin for Cursor.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "inspection or grep",
+       0.71
+      ]
+     },
+     "fired": [],
+     "m": 0.835
+    },
+    {
+     "i": 4,
+     "text": "An upgrade MUST update every harness that is locked, installed or present.",
+     "a": {
+      "obligations": [
+       "1",
+       0.35
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.39
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "CLI run",
+       0.37
+      ]
+     },
+     "fired": [],
+     "m": 0.47750000000000004
+    }
+   ]
+  },
+  "REQ-JEV-0006": {
+   "fails": 0,
+   "margin": 0.6875,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST obtain its record database by asking Raptor to build a\nlocal SQLite database from the repository's Raptor-parseable Markdown on\neach run.",
+     "a": {
+      "obligations": [
+       "1",
+       0.47
+      ],
+      "joined_by": [
+       "none",
+       0.9
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "CLI run",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.6275
+    },
+    {
+     "i": 2,
+     "text": "When Raptor supplies a SQLite snapshot of a Dolt branch, judge-jev MUST\nquery it through the same Raptor interface.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "unit test",
+       0.34
+      ]
+     },
+     "fired": [],
+     "m": 0.7474999999999999
+    }
+   ]
+  },
+  "REQ-JEV-0007": {
+   "fails": 0,
+   "margin": 0.67,
+   "n": 1,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev's requirements, non-functional requirements and decisions MUST\nimport through Raptor with no issues.",
+     "a": {
+      "obligations": [
+       "1",
+       0.43
+      ],
+      "joined_by": [
+       "none",
+       0.64
+      ],
+      "term": [
+       "none",
+       0.66
+      ],
+      "check": [
+       "CLI run",
+       0.95
+      ]
+     },
+     "fired": [],
+     "m": 0.67
+    }
+   ]
+  },
+  "REQ-JEV-0008": {
+   "fails": 0,
+   "margin": 0.75125,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST write its run logs (requests, answers, quality-tree\nbranches, verdicts) through the sc-observability logger, the logger\nsc-agent uses.",
+     "a": {
+      "obligations": [
+       "1",
+       0.87
+      ],
+      "joined_by": [
+       "none",
+       0.69
+      ],
+      "term": [
+       "none",
+       0.52
+      ],
+      "check": [
+       "inspection or grep",
+       0.52
+      ]
+     },
+     "fired": [],
+     "m": 0.65
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST NOT keep its own log format alongside it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.55
+      ],
+      "check": [
+       "inspection or grep",
+       0.91
+      ]
+     },
+     "fired": [],
+     "m": 0.8525
+    }
+   ]
+  },
+  "REQ-JEV-0101": {
+   "fails": 0,
+   "margin": 0.58859375,
+   "n": 16,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST provide a mode that reports, for one requirement (REQ),\nnon-functional requirement (NFR) or architecture decision record (ADR),\nthe verdict of that record kind's quality decision tree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.61
+      ],
+      "joined_by": [
+       "none",
+       0.59
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "CLI run",
+       0.69
+      ]
+     },
+     "fired": [],
+     "m": 0.6074999999999999
+    },
+    {
+     "i": 2,
+     "text": "The mode MUST judge only records that Raptor imported without\ndiagnostics.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.57
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "unit test",
+       0.66
+      ]
+     },
+     "fired": [],
+     "m": 0.755
+    },
+    {
+     "i": 3,
+     "text": "The mode MUST run as a decision tree of prompts: each wave sends several\nquestions, and the answers to one wave select the next wave's questions.",
+     "a": {
+      "obligations": [
+       "3",
+       0.16
+      ],
+      "joined_by": [
+       "none",
+       0.62
+      ],
+      "term": [
+       "none",
+       0.59
+      ],
+      "check": [
+       "unit test",
+       0.26
+      ]
+     },
+     "fired": [],
+     "m": 0.5775
+    },
+    {
+     "i": 4,
+     "text": "Every wave MUST report, as its reason, each of its questions with the\nquestion's id and text, Jev's choice and Jev's confidence.",
+     "a": {
+      "obligations": [
+       "1",
+       0.6
+      ],
+      "joined_by": [
+       "none",
+       0.52
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "inspection or grep",
+       0.25
+      ]
+     },
+     "fired": [],
+     "m": 0.5325
+    },
+    {
+     "i": 5,
+     "text": "A wave the tree marks per statement MUST send one request for each MUST\nand MUST NOT statement of the record, carrying that statement with the\nwhole record as context.",
+     "a": {
+      "obligations": [
+       "1",
+       0.2
+      ],
+      "joined_by": [
+       "and-list",
+       0.4
+      ],
+      "term": [
+       "none",
+       0.77
+      ],
+      "check": [
+       "unit test",
+       0.44
+      ]
+     },
+     "fired": [],
+     "m": 0.5025
+    },
+    {
+     "i": 6,
+     "text": "A per-statement wave's reason MUST list each statement's index and text\nwith each question's id, choice and confidence.",
+     "a": {
+      "obligations": [
+       "1",
+       0.56
+      ],
+      "joined_by": [
+       "none",
+       0.36
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "inspection or grep",
+       0.31
+      ]
+     },
+     "fired": [],
+     "m": 0.505
+    },
+    {
+     "i": 7,
+     "text": "A per-statement wave's verdict rule MUST be able to fire when any one\nstatement's answers match it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.41
+      ],
+      "term": [
+       "none",
+       0.62
+      ],
+      "check": [
+       "unit test",
+       0.44
+      ]
+     },
+     "fired": [],
+     "m": 0.6074999999999999
+    },
+    {
+     "i": 8,
+     "text": "A per-statement wave's verdict MUST name the statements whose answers\nfired its rule.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.82
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "unit test",
+       0.24
+      ]
+     },
+     "fired": [],
+     "m": 0.7025
+    },
+    {
+     "i": 9,
+     "text": "A per-statement request that gets no answer MUST fail with an error that\nnames its statement.",
+     "a": {
+      "obligations": [
+       "2",
+       0.31
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.62
+      ],
+      "term": [
+       "none",
+       0.61
+      ],
+      "check": [
+       "CLI run",
+       0.45
+      ]
+     },
+     "fired": [],
+     "m": 0.5925
+    },
+    {
+     "i": 10,
+     "text": "A wave after the first MUST refine the answers of the wave before it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.75
+      ],
+      "term": [
+       "none",
+       0.4
+      ],
+      "check": [
+       "unit test",
+       0.21
+      ]
+     },
+     "fired": [],
+     "m": 0.5625
+    },
+    {
+     "i": 11,
+     "text": "A wave after the first MUST be designed from the observed live results\nof the wave before it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.75
+      ],
+      "term": [
+       "none",
+       0.49
+      ],
+      "check": [
+       "inspection or grep",
+       0.18
+      ]
+     },
+     "fired": [],
+     "m": 0.585
+    },
+    {
+     "i": 12,
+     "text": "A wave with no next wave MUST end the walk, with its verdict given by a\nrule in the tree file over that wave's answers.",
+     "a": {
+      "obligations": [
+       "2",
+       0.52
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.41
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "CLI run",
+       0.27
+      ]
+     },
+     "fired": [],
+     "m": 0.48
+    },
+    {
+     "i": 13,
+     "text": "The tree MUST ship with the tool as a data file a consumer can override\n(REQ-JEV-0205); answers select the branch and the verdict, never a model\nchoosing the next questions.",
+     "a": {
+      "obligations": [
+       "3",
+       0.31
+      ],
+      "joined_by": [
+       "none",
+       0.31
+      ],
+      "term": [
+       "none",
+       0.45
+      ],
+      "check": [
+       "inspection or grep",
+       0.45
+      ]
+     },
+     "fired": [],
+     "m": 0.475
+    },
+    {
+     "i": 14,
+     "text": "A failing answer MUST report the decision-tree path that failed.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "none",
+       0.81
+      ],
+      "term": [
+       "none",
+       0.49
+      ],
+      "check": [
+       "CLI run",
+       0.2
+      ]
+     },
+     "fired": [],
+     "m": 0.6075
+    },
+    {
+     "i": 15,
+     "text": "A live run MUST log every wave as output: its composed request, Jev's\nanswers, its reason and the branch or verdict they selected.",
+     "a": {
+      "obligations": [
+       "1",
+       0.47
+      ],
+      "joined_by": [
+       "none",
+       0.69
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "inspection or grep",
+       0.47
+      ]
+     },
+     "fired": [],
+     "m": 0.5425
+    },
+    {
+     "i": 16,
+     "text": "The mode MUST NOT check structure that Raptor's import checks.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.81
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "unit test",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.7825
+    }
+   ]
+  },
+  "REQ-JEV-0201": {
+   "fails": 0,
+   "margin": 0.6925,
+   "n": 5,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev check` MUST take one of two argument forms: a single record\nwith a location and a mode, or a `--profile`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.43
+      ],
+      "joined_by": [
+       "alternatives",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.65
+      ],
+      "check": [
+       "CLI run",
+       0.87
+      ]
+     },
+     "fired": [],
+     "m": 0.4925
+    },
+    {
+     "i": 2,
+     "text": "In the single-record form, `judge-jev check` MUST take one record id,\ngiven with exactly one record-kind flag: `--req` (requirement), `--adr`\n(architecture decision record) or `--nfr` (non-functional requirement).",
+     "a": {
+      "obligations": [
+       "3",
+       0.27
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.26
+      ],
+      "term": [
+       "none",
+       0.73
+      ],
+      "check": [
+       "CLI run",
+       0.85
+      ]
+     },
+     "fired": [],
+     "m": 0.6425
+    },
+    {
+     "i": 3,
+     "text": "In the single-record form, `judge-jev check` MUST take exactly one\n`--location`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.73
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "CLI run",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.8275
+    },
+    {
+     "i": 4,
+     "text": "In the single-record form, `judge-jev check` MUST take exactly one\n`--mode`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.7
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.83
+    },
+    {
+     "i": 5,
+     "text": "Each record kind MUST use its own question set.",
+     "a": {
+      "obligations": [
+       "1",
+       0.72
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "CLI run",
+       0.27
+      ]
+     },
+     "fired": [],
+     "m": 0.6699999999999999
+    }
+   ]
+  },
+  "REQ-JEV-0202": {
+   "fails": 0,
+   "margin": 0.7358333333333333,
+   "n": 3,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "Each Jev request MUST carry exactly one record.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.87
+      ],
+      "term": [
+       "none",
+       0.68
+      ],
+      "check": [
+       "unit test",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.76
+    },
+    {
+     "i": 2,
+     "text": "Each Jev request MUST carry exactly one location.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.77
+      ],
+      "check": [
+       "unit test",
+       0.56
+      ]
+     },
+     "fired": [],
+     "m": 0.7825
+    },
+    {
+     "i": 3,
+     "text": "A run over many pairs MUST send them as a stream of single requests.",
+     "a": {
+      "obligations": [
+       "1",
+       0.75
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.77
+      ],
+      "term": [
+       "none",
+       0.69
+      ],
+      "check": [
+       "CLI run",
+       0.45
+      ]
+     },
+     "fired": [],
+     "m": 0.665
+    }
+   ]
+  },
+  "REQ-JEV-0203": {
+   "fails": 0,
+   "margin": 0.809375,
+   "n": 8,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST support the target mode `prompt`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.65
+      ]
+     },
+     "fired": [],
+     "m": 0.87
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST support the target mode `skill`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "CLI run",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.8775
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST support the target mode `task`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.64
+      ]
+     },
+     "fired": [],
+     "m": 0.8825000000000001
+    },
+    {
+     "i": 4,
+     "text": "judge-jev MUST support the target mode `code`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.92
+      ],
+      "check": [
+       "CLI run",
+       0.51
+      ]
+     },
+     "fired": [],
+     "m": 0.8575
+    },
+    {
+     "i": 5,
+     "text": "In `task` mode judge-jev MUST judge the raw template.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.75
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.51
+      ]
+     },
+     "fired": [],
+     "m": 0.7625
+    },
+    {
+     "i": 6,
+     "text": "In `task` mode judge-jev MUST judge an assignment rendered by sc-compose\nin strict mode from the vars file that `--vars` names, or, in a profile\nrun, that the profile names.",
+     "a": {
+      "obligations": [
+       "1",
+       0.45
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.54
+      ],
+      "term": [
+       "none",
+       0.51
+      ],
+      "check": [
+       "CLI run",
+       0.69
+      ]
+     },
+     "fired": [],
+     "m": 0.5475
+    },
+    {
+     "i": 7,
+     "text": "In `code` mode judge-jev MUST resolve the location with the tree-sitter\ngrammars sc-agent defines.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.86
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "CLI run",
+       0.41
+      ]
+     },
+     "fired": [],
+     "m": 0.7375
+    },
+    {
+     "i": 8,
+     "text": "judge-jev MUST NOT define its own tree-sitter grammars.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "inspection or grep",
+       1.0
+      ]
+     },
+     "fired": [],
+     "m": 0.94
+    }
+   ]
+  },
+  "REQ-JEV-0204": {
+   "fails": 0,
+   "margin": 0.7879166666666667,
+   "n": 6,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST read a TOML profile listing locations, each with its\nmode, the record ids that govern it, and for `task` mode a vars file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.33
+      ],
+      "joined_by": [
+       "and-list",
+       0.5
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.62
+      ]
+     },
+     "fired": [],
+     "m": 0.5650000000000001
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev check --profile <profile>` MUST check every listed pair.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.9
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.76
+      ]
+     },
+     "fired": [],
+     "m": 0.87
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev check --profile <profile>` MUST report each pair's verdict.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.87
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "CLI run",
+       0.94
+      ]
+     },
+     "fired": [],
+     "m": 0.885
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev check --profile <profile>` MUST aggregate the verdicts per\nrecord.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "CLI run",
+       0.8
+      ]
+     },
+     "fired": [],
+     "m": 0.8225
+    },
+    {
+     "i": 5,
+     "text": "`judge-jev check --profile <profile>` MUST aggregate the verdicts per\nlocation.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.9
+      ],
+      "term": [
+       "none",
+       0.57
+      ],
+      "check": [
+       "CLI run",
+       0.8
+      ]
+     },
+     "fired": [],
+     "m": 0.81
+    },
+    {
+     "i": 6,
+     "text": "A profile run MUST NOT judge a pair the profile does not list.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.64
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.62
+      ]
+     },
+     "fired": [],
+     "m": 0.775
+    }
+   ]
+  },
+  "REQ-JEV-0205": {
+   "fails": 1,
+   "margin": 0.8052272727272727,
+   "n": 11,
+   "verdict": "no",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST ship one question set per combination of record kind and\ntarget class (agent text or code).",
+     "a": {
+      "obligations": [
+       "1",
+       0.72
+      ],
+      "joined_by": [
+       "none",
+       0.75
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "inspection or grep",
+       0.91
+      ]
+     },
+     "fired": [],
+     "m": 0.795
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST ship one quality decision tree per record kind.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.59
+      ],
+      "check": [
+       "inspection or grep",
+       0.89
+      ]
+     },
+     "fired": [],
+     "m": 0.845
+    },
+    {
+     "i": 3,
+     "text": "Every shipped question and prompt text MUST be approved by Rand before\nit ships.",
+     "a": {
+      "obligations": [
+       "1",
+       0.76
+      ],
+      "joined_by": [
+       "none",
+       0.61
+      ],
+      "term": [
+       "none",
+       0.5
+      ],
+      "check": [
+       "inspection or grep",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.6825
+    },
+    {
+     "i": 4,
+     "text": "Question sets MUST be data files shipped with the tool.",
+     "a": {
+      "obligations": [
+       "1",
+       0.61
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "inspection or grep",
+       0.82
+      ]
+     },
+     "fired": [],
+     "m": 0.82
+    },
+    {
+     "i": 5,
+     "text": "Quality decision trees MUST be data files shipped with the tool.",
+     "a": {
+      "obligations": [
+       "1",
+       0.83
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.92
+      ],
+      "check": [
+       "inspection or grep",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.885
+    },
+    {
+     "i": 6,
+     "text": "The released tool MUST accept an override file for any question set.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "project term defined nowhere",
+       0.37
+      ],
+      "check": [
+       "CLI run",
+       0.68
+      ]
+     },
+     "fired": [
+      "R2"
+     ],
+     "m": 0.795
+    },
+    {
+     "i": 7,
+     "text": "The released tool MUST accept an override file for any quality decision\ntree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "CLI run",
+       0.62
+      ]
+     },
+     "fired": [],
+     "m": 0.7575000000000001
+    },
+    {
+     "i": 8,
+     "text": "Every result MUST carry the question-set id.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.61
+      ],
+      "check": [
+       "inspection or grep",
+       0.51
+      ]
+     },
+     "fired": [],
+     "m": 0.77
+    },
+    {
+     "i": 9,
+     "text": "Every result MUST carry the content digest of the file used.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "inspection or grep",
+       0.52
+      ]
+     },
+     "fired": [],
+     "m": 0.8
+    },
+    {
+     "i": 10,
+     "text": "Every log entry MUST carry the question-set id.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "inspection or grep",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.85
+    },
+    {
+     "i": 11,
+     "text": "Every log entry MUST carry the content digest of the file used.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "inspection or grep",
+       0.64
+      ]
+     },
+     "fired": [],
+     "m": 0.8574999999999999
+    }
+   ]
+  },
+  "REQ-JEV-0206": {
+   "fails": 2,
+   "margin": 0.7983333333333333,
+   "n": 3,
+   "verdict": "no",
+   "st": [
+    {
+     "i": 1,
+     "text": "When a record is satisfied in more than one location (prompt, skill,\nagent, template or code), judge-jev MUST judge the record separately at\neach location.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.99
+      ],
+      "term": [
+       "undefined acronym",
+       0.35
+      ],
+      "check": [
+       "unit test",
+       0.71
+      ]
+     },
+     "fired": [
+      "R2"
+     ],
+     "m": 0.8200000000000001
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST report one result per (record, location) pair.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "undefined acronym",
+       0.24
+      ],
+      "check": [
+       "unit test",
+       0.65
+      ]
+     },
+     "fired": [
+      "R2"
+     ],
+     "m": 0.8275
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.42
+      ],
+      "check": [
+       "unit test",
+       0.6
+      ]
+     },
+     "fired": [],
+     "m": 0.7474999999999999
+    }
+   ]
+  },
+  "REQ-JEV-0207": {
+   "fails": 0,
+   "margin": 0.7883333333333334,
+   "n": 6,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "A location MUST take one of three forms: `path`, `path#Heading` or\n`path::Symbol`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.63
+      ],
+      "joined_by": [
+       "alternatives",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.61
+      ],
+      "check": [
+       "unit test",
+       0.73
+      ]
+     },
+     "fired": [],
+     "m": 0.5125
+    },
+    {
+     "i": 2,
+     "text": "A `path` location MUST select the whole file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "unit test",
+       0.64
+      ]
+     },
+     "fired": [],
+     "m": 0.855
+    },
+    {
+     "i": 3,
+     "text": "A `path#Heading` location MUST select a Markdown section, from the\nheading to the next heading of the same or higher level.",
+     "a": {
+      "obligations": [
+       "1",
+       0.87
+      ],
+      "joined_by": [
+       "none",
+       0.81
+      ],
+      "term": [
+       "none",
+       0.66
+      ],
+      "check": [
+       "unit test",
+       0.82
+      ]
+     },
+     "fired": [],
+     "m": 0.79
+    },
+    {
+     "i": 4,
+     "text": "A `path::Symbol` location MUST select a code symbol resolved by\nsc-agent's tree-sitter grammars.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "unit test",
+       0.71
+      ]
+     },
+     "fired": [],
+     "m": 0.8375
+    },
+    {
+     "i": 5,
+     "text": "Markdown sections MUST be parsed by the same rules Raptor uses for the\nsame file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.9
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "unit test",
+       0.76
+      ]
+     },
+     "fired": [],
+     "m": 0.8425
+    },
+    {
+     "i": 6,
+     "text": "A location MUST NOT be a line range.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "unit test",
+       0.68
+      ]
+     },
+     "fired": [],
+     "m": 0.8925000000000001
+    }
+   ]
+  },
+  "REQ-JEV-0208": {
+   "fails": 0,
+   "margin": 0.8071875,
+   "n": 16,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev quality` MUST accept `--dry-run`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "CLI run",
+       0.95
+      ]
+     },
+     "fired": [],
+     "m": 0.9475
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev check` MUST accept `--dry-run`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.87
+      ],
+      "check": [
+       "CLI run",
+       0.92
+      ]
+     },
+     "fired": [],
+     "m": 0.9425
+    },
+    {
+     "i": 3,
+     "text": "A dry run MUST compose every request without calling Jev.",
+     "a": {
+      "obligations": [
+       "2",
+       0.49
+      ],
+      "joined_by": [
+       "none",
+       0.41
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.65
+      ]
+     },
+     "fired": [],
+     "m": 0.615
+    },
+    {
+     "i": 4,
+     "text": "Each dry-run entry MUST report the record id.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.66
+      ]
+     },
+     "fired": [],
+     "m": 0.855
+    },
+    {
+     "i": 5,
+     "text": "Each dry-run entry MUST report the record's Raptor source.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.91
+      ],
+      "check": [
+       "CLI run",
+       0.65
+      ]
+     },
+     "fired": [],
+     "m": 0.885
+    },
+    {
+     "i": 6,
+     "text": "Each dry-run entry MUST report the resolved location as its path, section\nor symbol.",
+     "a": {
+      "obligations": [
+       "1",
+       0.79
+      ],
+      "joined_by": [
+       "alternatives",
+       0.56
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.59
+      ]
+     },
+     "fired": [],
+     "m": 0.6575
+    },
+    {
+     "i": 7,
+     "text": "Each dry-run entry MUST report the digest of the location's selected\ntext.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "CLI run",
+       0.57
+      ]
+     },
+     "fired": [],
+     "m": 0.855
+    },
+    {
+     "i": 8,
+     "text": "Each dry-run entry MUST report the mode.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.94
+      ],
+      "check": [
+       "CLI run",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.8825
+    },
+    {
+     "i": 9,
+     "text": "Each dry-run entry MUST report the question set as its shipped id or its\noverride path.",
+     "a": {
+      "obligations": [
+       "1",
+       0.79
+      ],
+      "joined_by": [
+       "alternatives",
+       0.86
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.69
+      ]
+     },
+     "fired": [],
+     "m": 0.6275
+    },
+    {
+     "i": 10,
+     "text": "In `task` mode, each dry-run entry MUST report the vars file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.7
+      ]
+     },
+     "fired": [],
+     "m": 0.845
+    },
+    {
+     "i": 11,
+     "text": "In `task` mode, each dry-run entry MUST report the rendered text.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.73
+      ]
+     },
+     "fired": [],
+     "m": 0.86
+    },
+    {
+     "i": 12,
+     "text": "Each dry-run entry MUST report the full composed request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.94
+      ],
+      "check": [
+       "CLI run",
+       0.68
+      ]
+     },
+     "fired": [],
+     "m": 0.8925
+    },
+    {
+     "i": 13,
+     "text": "Each dry-run entry MUST report the composed request's size against the\nrequest limit.",
+     "a": {
+      "obligations": [
+       "1",
+       0.8
+      ],
+      "joined_by": [
+       "none",
+       0.81
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.7675000000000001
+    },
+    {
+     "i": 14,
+     "text": "For `quality`, the dry run MUST report the decision tree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.49
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "CLI run",
+       0.75
+      ]
+     },
+     "fired": [],
+     "m": 0.7725
+    },
+    {
+     "i": 15,
+     "text": "For `quality`, the dry run MUST report the composed wave-1 request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.4
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.77
+      ]
+     },
+     "fired": [],
+     "m": 0.7575000000000001
+    },
+    {
+     "i": 16,
+     "text": "A dry run MUST fail with a typed error on anything that would make the\nlive request wrong: an unresolved record or location, a render failure,\nor an oversize request.",
+     "a": {
+      "obligations": [
+       "3",
+       0.21
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.68
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "CLI run",
+       0.79
+      ]
+     },
+     "fired": [],
+     "m": 0.7525000000000001
+    }
+   ]
+  },
+  "REQ-JEV-0209": {
+   "fails": 1,
+   "margin": 0.719,
+   "n": 5,
+   "verdict": "no",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev quality` MUST take one or more record ids.",
+     "a": {
+      "obligations": [
+       "1",
+       0.87
+      ],
+      "joined_by": [
+       "none",
+       0.74
+      ],
+      "term": [
+       "none",
+       0.45
+      ],
+      "check": [
+       "CLI run",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.73
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev quality` MUST take each record id with one record-kind flag:\n`--req` (requirement), `--adr` (architecture decision record) or `--nfr`\n(non-functional requirement).",
+     "a": {
+      "obligations": [
+       "1",
+       0.44
+      ],
+      "joined_by": [
+       "alternatives",
+       0.45
+      ],
+      "term": [
+       "none",
+       0.47
+      ],
+      "check": [
+       "CLI run",
+       0.79
+      ]
+     },
+     "fired": [],
+     "m": 0.5625
+    },
+    {
+     "i": 3,
+     "text": "Every record-kind flag of `judge-jev quality` MUST be repeatable.",
+     "a": {
+      "obligations": [
+       "1",
+       0.81
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "project term defined nowhere",
+       0.27
+      ],
+      "check": [
+       "CLI run",
+       0.74
+      ]
+     },
+     "fired": [
+      "R2"
+     ],
+     "m": 0.8049999999999999
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev quality` MUST judge each record with its kind's quality\ndecision tree (REQ-JEV-0101).",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.32
+      ],
+      "check": [
+       "CLI run",
+       0.37
+      ]
+     },
+     "fired": [],
+     "m": 0.6475
+    },
+    {
+     "i": 5,
+     "text": "All records of one `judge-jev quality` invocation MUST be logged under\none run name.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.84
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "inspection or grep",
+       0.75
+      ]
+     },
+     "fired": [],
+     "m": 0.85
+    }
+   ]
+  },
+  "REQ-JEV-0210": {
+   "fails": 0,
+   "margin": 0.67675,
+   "n": 10,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev validate` MUST take one input file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.73
+      ],
+      "check": [
+       "CLI run",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.885
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev validate` MUST take one input-kind flag with that file:\n`--tree` (quality tree), `--questions` (question set), `--answers`\n(answers file), `--index` (Raptor import index) or `--requests` (batch\nrequest stream).",
+     "a": {
+      "obligations": [
+       "1",
+       0.25
+      ],
+      "joined_by": [
+       "alternatives",
+       0.62
+      ],
+      "term": [
+       "none",
+       0.59
+      ],
+      "check": [
+       "CLI run",
+       0.89
+      ]
+     },
+     "fired": [],
+     "m": 0.5275
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev validate` MUST check the file with the model `judge-jev`\napplies to that input kind before its first Jev request (ADR-JEV-0005).",
+     "a": {
+      "obligations": [
+       "1",
+       0.63
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.44
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "unit test",
+       0.26
+      ]
+     },
+     "fired": [],
+     "m": 0.51
+    },
+    {
+     "i": 4,
+     "text": "Every refusal from `judge-jev validate` MUST name the field path.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.44
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "CLI run",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.6475
+    },
+    {
+     "i": 5,
+     "text": "Every refusal from `judge-jev validate` MUST name the rule the field\nbreaks.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.52
+      ],
+      "term": [
+       "none",
+       0.56
+      ],
+      "check": [
+       "CLI run",
+       0.66
+      ]
+     },
+     "fired": [],
+     "m": 0.6575
+    },
+    {
+     "i": 6,
+     "text": "`judge-jev validate --answers` MUST apply the answers-file envelope that\n`--answers-file` applies before the first request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.66
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "CLI run",
+       0.47
+      ]
+     },
+     "fired": [],
+     "m": 0.72
+    },
+    {
+     "i": 7,
+     "text": "The answers-file envelope MUST require an object of string keys.",
+     "a": {
+      "obligations": [
+       "1",
+       0.84
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "unit test",
+       0.55
+      ]
+     },
+     "fired": [],
+     "m": 0.81
+    },
+    {
+     "i": 8,
+     "text": "The answers-file envelope MUST require each key's value to be an object\nor a non-empty list of objects.",
+     "a": {
+      "obligations": [
+       "1",
+       0.65
+      ],
+      "joined_by": [
+       "alternatives",
+       0.79
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "unit test",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.56
+    },
+    {
+     "i": 9,
+     "text": "The answers-file envelope MUST require an object with `__error__` to hold\nonly a string code of at most 64 characters.",
+     "a": {
+      "obligations": [
+       "3",
+       0.39
+      ],
+      "joined_by": [
+       "none",
+       0.6
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "unit test",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.6525
+    },
+    {
+     "i": 10,
+     "text": "`judge-jev validate` MUST NOT call Jev.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "unit test",
+       0.35
+      ]
+     },
+     "fired": [],
+     "m": 0.7975
+    }
+   ]
+  },
+  "REQ-JEV-0211": {
+   "fails": 0,
+   "margin": 0.6112500000000001,
+   "n": 4,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "For every input, every `judge-jev` command MUST print exactly one JSON\nobject.",
+     "a": {
+      "obligations": [
+       "1",
+       0.19
+      ],
+      "joined_by": [
+       "none",
+       0.77
+      ],
+      "term": [
+       "none",
+       0.61
+      ],
+      "check": [
+       "CLI run",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.6025
+    },
+    {
+     "i": 2,
+     "text": "The JSON object a `judge-jev` command prints MUST be its result or a\ntyped error.",
+     "a": {
+      "obligations": [
+       "1",
+       0.85
+      ],
+      "joined_by": [
+       "alternatives",
+       0.84
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "CLI run",
+       0.82
+      ]
+     },
+     "fired": [],
+     "m": 0.6575
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev` MUST refuse an invalid tree, question set, index, request\nstream or run directory before its first Jev request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.32
+      ],
+      "joined_by": [
+       "alternatives",
+       0.3
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "CLI run",
+       0.75
+      ]
+     },
+     "fired": [],
+     "m": 0.63
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev` MUST check that every log event of a request (the request,\nJev's largest possible answer and the result) fits the logger's event\nsize limit before sending the request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.56
+      ],
+      "joined_by": [
+       "none",
+       0.47
+      ],
+      "term": [
+       "none",
+       0.64
+      ],
+      "check": [
+       "unit test",
+       0.55
+      ]
+     },
+     "fired": [],
+     "m": 0.555
+    }
+   ]
+  },
+  "REQ-JEV-0212": {
+   "fails": 0,
+   "margin": 0.6841666666666666,
+   "n": 6,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "A definition MUST be attachable to a record alone, or to a record and\none location under evaluation.",
+     "a": {
+      "obligations": [
+       "1",
+       0.65
+      ],
+      "joined_by": [
+       "alternatives",
+       0.85
+      ],
+      "term": [
+       "none",
+       0.7
+      ],
+      "check": [
+       "unit test",
+       0.49
+      ]
+     },
+     "fired": [],
+     "m": 0.4975
+    },
+    {
+     "i": 2,
+     "text": "A request about a record MUST carry, in its state next to the record, only\nthe definitions attached to that record alone, plus those attached to\nthat record and the request's location.",
+     "a": {
+      "obligations": [
+       "1",
+       0.4
+      ],
+      "joined_by": [
+       "and-list",
+       0.24
+      ],
+      "term": [
+       "none",
+       0.57
+      ],
+      "check": [
+       "unit test",
+       0.9
+      ]
+     },
+     "fired": [],
+     "m": 0.6575
+    },
+    {
+     "i": 3,
+     "text": "A request with no matching definition MUST be identical to the request\nsent without definitions.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.45
+      ],
+      "check": [
+       "unit test",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.7999999999999999
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev` MUST refuse, before sending, a request whose definitions take\nit over the size limit.",
+     "a": {
+      "obligations": [
+       "1",
+       0.75
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.74
+      ],
+      "check": [
+       "unit test",
+       0.5
+      ]
+     },
+     "fired": [],
+     "m": 0.735
+    },
+    {
+     "i": 5,
+     "text": "Every request's log event MUST record the digest of each definition it\ncarried.",
+     "a": {
+      "obligations": [
+       "1",
+       0.71
+      ],
+      "joined_by": [
+       "none",
+       0.84
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "unit test",
+       0.41
+      ]
+     },
+     "fired": [],
+     "m": 0.625
+    },
+    {
+     "i": 6,
+     "text": "`judge-jev` MUST NOT truncate a definition.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.57
+      ],
+      "check": [
+       "unit test",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.79
+    }
+   ]
+  },
+  "REQ-JEV-0213": {
+   "fails": 0,
+   "margin": 0.7210714285714286,
+   "n": 7,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev` MUST provide a comparison of one or more candidate\ndefinitions.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.79
+      ],
+      "term": [
+       "none",
+       0.66
+      ],
+      "check": [
+       "CLI run",
+       0.79
+      ]
+     },
+     "fired": [],
+     "m": 0.7875000000000001
+    },
+    {
+     "i": 2,
+     "text": "The comparison MUST run the requests the candidate definitions would\nreach with the candidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.87
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.45
+      ]
+     },
+     "fired": [],
+     "m": 0.77
+    },
+    {
+     "i": 3,
+     "text": "The comparison MUST run the same requests without the candidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.9
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.5
+      ]
+     },
+     "fired": [],
+     "m": 0.7925
+    },
+    {
+     "i": 4,
+     "text": "The comparison MUST report each answer's choice with and without the\ncandidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.53
+      ],
+      "joined_by": [
+       "none",
+       0.42
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "CLI run",
+       0.7
+      ]
+     },
+     "fired": [],
+     "m": 0.6125
+    },
+    {
+     "i": 5,
+     "text": "The comparison MUST report each answer's confidence with and without the\ncandidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.69
+      ],
+      "joined_by": [
+       "none",
+       0.55
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.76
+      ]
+     },
+     "fired": [],
+     "m": 0.7225
+    },
+    {
+     "i": 6,
+     "text": "The comparison MUST report the candidates as material when an answer's\nchoice flips or its confidence crosses the decision threshold, and as not\nmaterial when every change stays on the same side of the threshold.",
+     "a": {
+      "obligations": [
+       "2",
+       0.57
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.76
+      ],
+      "term": [
+       "none",
+       0.66
+      ],
+      "check": [
+       "CLI run",
+       0.52
+      ]
+     },
+     "fired": [],
+     "m": 0.5925
+    },
+    {
+     "i": 7,
+     "text": "The comparison MUST record the threshold it applied.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.39
+      ]
+     },
+     "fired": [],
+     "m": 0.77
+    }
+   ]
+  },
+  "REQ-JEV-0214": {
+   "fails": 0,
+   "margin": 0.52625,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "Every question IRI in one scope (by default the repository) MUST be\ndeclared in one tree file only, across judge-jev's trees and every\nconsumer extension's.",
+     "a": {
+      "obligations": [
+       "1",
+       0.84
+      ],
+      "joined_by": [
+       "none",
+       0.77
+      ],
+      "term": [
+       "none",
+       0.39
+      ],
+      "check": [
+       "inspection or grep",
+       0.29
+      ]
+     },
+     "fired": [],
+     "m": 0.5725
+    },
+    {
+     "i": 2,
+     "text": "Every `jj:id` in judge-jev's trees and in every consumer extension's\nMUST be unique within its tree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.68
+      ],
+      "joined_by": [
+       "none",
+       0.37
+      ],
+      "term": [
+       "none",
+       0.62
+      ],
+      "check": [
+       "unit test",
+       0.25
+      ]
+     },
+     "fired": [],
+     "m": 0.48
+    }
+   ]
+  },
+  "REQ-JEV-0215": {
+   "fails": 1,
+   "margin": 0.8295454545454546,
+   "n": 11,
+   "verdict": "no",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev doctor` MUST validate every tree in the scope against its\nschema.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.88
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev doctor` MUST validate every question set in the scope against\nits schema.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.87
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "CLI run",
+       0.74
+      ]
+     },
+     "fired": [],
+     "m": 0.875
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev doctor` MUST validate every definitions file in the scope\nagainst its schema.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.91
+      ],
+      "check": [
+       "CLI run",
+       0.74
+      ]
+     },
+     "fired": [],
+     "m": 0.8875
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev doctor` MUST validate every tree, question set and definitions\nfile in the scope against the ontology's shapes, including edges and\ncycles.",
+     "a": {
+      "obligations": [
+       "3",
+       0.19
+      ],
+      "joined_by": [
+       "and-list",
+       0.75
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.84
+      ]
+     },
+     "fired": [
+      "R1"
+     ],
+     "m": 0.6975
+    },
+    {
+     "i": 5,
+     "text": "`judge-jev doctor` MUST report each validation failure as an error.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.66
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "CLI run",
+       0.91
+      ]
+     },
+     "fired": [],
+     "m": 0.8425
+    },
+    {
+     "i": 6,
+     "text": "`judge-jev doctor` MUST report a definition with no attachment as a\nwarning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.55
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "CLI run",
+       0.92
+      ]
+     },
+     "fired": [],
+     "m": 0.8200000000000001
+    },
+    {
+     "i": 7,
+     "text": "`judge-jev doctor` MUST report an attachment to a record the Raptor index\ndoes not hold as a warning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.4
+      ],
+      "term": [
+       "none",
+       0.87
+      ],
+      "check": [
+       "CLI run",
+       0.85
+      ]
+     },
+     "fired": [],
+     "m": 0.7725
+    },
+    {
+     "i": 8,
+     "text": "`judge-jev doctor` MUST report an attachment to a location that does not\nexist as a warning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.6
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.94
+      ]
+     },
+     "fired": [],
+     "m": 0.845
+    },
+    {
+     "i": 9,
+     "text": "`judge-jev doctor` MUST report a definition whose source does not exist\nas a warning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.41
+      ],
+      "term": [
+       "none",
+       0.92
+      ],
+      "check": [
+       "CLI run",
+       0.91
+      ]
+     },
+     "fired": [],
+     "m": 0.7825
+    },
+    {
+     "i": 10,
+     "text": "`judge-jev doctor` MUST NOT call Jev.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "unit test",
+       0.31
+      ]
+     },
+     "fired": [],
+     "m": 0.7925
+    },
+    {
+     "i": 11,
+     "text": "A `judge-jev doctor` warning MUST NOT fail the command.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "CLI run",
+       0.96
+      ]
+     },
+     "fired": [],
+     "m": 0.9299999999999999
+    }
+   ]
+  }
+ },
+ {
+  "NFR-JEV-0001": {
+   "fails": 0,
+   "margin": 0.76625,
+   "n": 4,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev tests MUST run offline against recorded Jev answers.",
+     "a": {
+      "obligations": [
+       "1",
+       0.77
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "CLI run",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.7225
+    },
+    {
+     "i": 2,
+     "text": "judge-jev tests MUST NOT depend on timing.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "inspection or grep",
+       0.4
+      ]
+     },
+     "fired": [],
+     "m": 0.73
+    },
+    {
+     "i": 3,
+     "text": "judge-jev tests MUST NOT depend on sleeps.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.77
+      ],
+      "check": [
+       "inspection or grep",
+       0.87
+      ]
+     },
+     "fired": [],
+     "m": 0.9
+    },
+    {
+     "i": 4,
+     "text": "judge-jev tests MUST NOT depend on ordering.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.44
+      ],
+      "check": [
+       "inspection or grep",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.7125
+    }
+   ]
+  },
+  "REQ-JEV-0001": {
+   "fails": 0,
+   "margin": 0.8675,
+   "n": 3,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST obtain records through Raptor's query interface.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "inspection or grep",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.76
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST NOT parse record Markdown itself.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "inspection or grep",
+       0.99
+      ]
+     },
+     "fired": [],
+     "m": 0.9325
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.69
+      ],
+      "check": [
+       "inspection or grep",
+       0.99
+      ]
+     },
+     "fired": [],
+     "m": 0.9099999999999999
+    }
+   ]
+  },
+  "REQ-JEV-0002": {
+   "fails": 0,
+   "margin": 0.765625,
+   "n": 8,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST send every Jev request through one batch command.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.77
+      ],
+      "check": [
+       "inspection or grep",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.7825
+    },
+    {
+     "i": 2,
+     "text": "The batch command MUST read request lines.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.87
+      ],
+      "check": [
+       "CLI run",
+       0.26
+      ]
+     },
+     "fired": [],
+     "m": 0.78
+    },
+    {
+     "i": 3,
+     "text": "The batch command MUST write one result envelope per request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.59
+      ]
+     },
+     "fired": [],
+     "m": 0.8525
+    },
+    {
+     "i": 4,
+     "text": "The batch command MUST use typed error codes.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.92
+      ],
+      "check": [
+       "inspection or grep",
+       0.3
+      ]
+     },
+     "fired": [],
+     "m": 0.805
+    },
+    {
+     "i": 5,
+     "text": "The batch command MUST apply a fixed retry policy.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.82
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "unit test",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.7525
+    },
+    {
+     "i": 6,
+     "text": "The batch command MUST enforce request size limits.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "CLI run",
+       0.36
+      ]
+     },
+     "fired": [],
+     "m": 0.8
+    },
+    {
+     "i": 7,
+     "text": "The batch command MUST log every request through the sc-observability\nlogger (REQ-JEV-0008).",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "inspection or grep",
+       0.29
+      ]
+     },
+     "fired": [],
+     "m": 0.6725
+    },
+    {
+     "i": 8,
+     "text": "The batch command MUST log every answer through the sc-observability\nlogger (REQ-JEV-0008).",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.62
+      ],
+      "check": [
+       "inspection or grep",
+       0.26
+      ]
+     },
+     "fired": [],
+     "m": 0.68
+    }
+   ]
+  },
+  "REQ-JEV-0003": {
+   "fails": 0,
+   "margin": 0.615,
+   "n": 1,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST read the TypeSafe API key from `TYPESAFE_API_KEY` first,\nthen from the platform credential store, service `plan-anchor`, account\n`typesafe-api-key`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.41
+      ],
+      "joined_by": [
+       "and-list",
+       0.41
+      ],
+      "term": [
+       "none",
+       0.64
+      ],
+      "check": [
+       "unit test",
+       0.82
+      ]
+     },
+     "fired": [],
+     "m": 0.615
+    }
+   ]
+  },
+  "REQ-JEV-0004": {
+   "fails": 0,
+   "margin": 0.7375,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST refuse every live Jev call with\n`POLICY.REMOTE_JUDGE_DISABLED` unless the committed\n`.sc/judge-jev/settings.yaml` sets `allow_remote_judge: true`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.83
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.73
+      ],
+      "check": [
+       "CLI run",
+       0.55
+      ]
+     },
+     "fired": [],
+     "m": 0.775
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST NOT write that setting without the user's answer.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.81
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "inspection or grep",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.7000000000000001
+    }
+   ]
+  },
+  "REQ-JEV-0005": {
+   "fails": 0,
+   "margin": 0.7368750000000001,
+   "n": 4,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST ship as a marketplace plugin for Claude.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.61
+      ],
+      "check": [
+       "inspection or grep",
+       0.71
+      ]
+     },
+     "fired": [],
+     "m": 0.8
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST ship as a marketplace plugin for Codex.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.68
+      ],
+      "check": [
+       "inspection or grep",
+       0.73
+      ]
+     },
+     "fired": [],
+     "m": 0.84
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST ship as a marketplace plugin for Cursor.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.74
+      ],
+      "check": [
+       "inspection or grep",
+       0.76
+      ]
+     },
+     "fired": [],
+     "m": 0.8525
+    },
+    {
+     "i": 4,
+     "text": "An upgrade MUST update every harness that is locked, installed or present.",
+     "a": {
+      "obligations": [
+       "1",
+       0.35
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.29
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "CLI run",
+       0.39
+      ]
+     },
+     "fired": [],
+     "m": 0.455
+    }
+   ]
+  },
+  "REQ-JEV-0006": {
+   "fails": 0,
+   "margin": 0.6875,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST obtain its record database by asking Raptor to build a\nlocal SQLite database from the repository's Raptor-parseable Markdown on\neach run.",
+     "a": {
+      "obligations": [
+       "1",
+       0.37
+      ],
+      "joined_by": [
+       "none",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.56
+      ],
+      "check": [
+       "CLI run",
+       0.56
+      ]
+     },
+     "fired": [],
+     "m": 0.6025
+    },
+    {
+     "i": 2,
+     "text": "When Raptor supplies a SQLite snapshot of a Dolt branch, judge-jev MUST\nquery it through the same Raptor interface.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.74
+      ],
+      "check": [
+       "unit test",
+       0.4
+      ]
+     },
+     "fired": [],
+     "m": 0.7725
+    }
+   ]
+  },
+  "REQ-JEV-0007": {
+   "fails": 0,
+   "margin": 0.62,
+   "n": 1,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev's requirements, non-functional requirements and decisions MUST\nimport through Raptor with no issues.",
+     "a": {
+      "obligations": [
+       "1",
+       0.39
+      ],
+      "joined_by": [
+       "none",
+       0.59
+      ],
+      "term": [
+       "none",
+       0.52
+      ],
+      "check": [
+       "CLI run",
+       0.98
+      ]
+     },
+     "fired": [],
+     "m": 0.62
+    }
+   ]
+  },
+  "REQ-JEV-0008": {
+   "fails": 0,
+   "margin": 0.7350000000000001,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST write its run logs (requests, answers, quality-tree\nbranches, verdicts) through the sc-observability logger, the logger\nsc-agent uses.",
+     "a": {
+      "obligations": [
+       "1",
+       0.83
+      ],
+      "joined_by": [
+       "none",
+       0.68
+      ],
+      "term": [
+       "none",
+       0.5
+      ],
+      "check": [
+       "inspection or grep",
+       0.52
+      ]
+     },
+     "fired": [],
+     "m": 0.6325000000000001
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST NOT keep its own log format alongside it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.56
+      ],
+      "check": [
+       "inspection or grep",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.8375
+    }
+   ]
+  },
+  "REQ-JEV-0101": {
+   "fails": 1,
+   "margin": 0.60828125,
+   "n": 16,
+   "verdict": "no",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST provide a mode that reports, for one requirement (REQ),\nnon-functional requirement (NFR) or architecture decision record (ADR),\nthe verdict of that record kind's quality decision tree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.81
+      ],
+      "joined_by": [
+       "none",
+       0.64
+      ],
+      "term": [
+       "none",
+       0.55
+      ],
+      "check": [
+       "CLI run",
+       0.69
+      ]
+     },
+     "fired": [],
+     "m": 0.6725
+    },
+    {
+     "i": 2,
+     "text": "The mode MUST judge only records that Raptor imported without\ndiagnostics.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.57
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "unit test",
+       0.6
+      ]
+     },
+     "fired": [],
+     "m": 0.735
+    },
+    {
+     "i": 3,
+     "text": "The mode MUST run as a decision tree of prompts: each wave sends several\nquestions, and the answers to one wave select the next wave's questions.",
+     "a": {
+      "obligations": [
+       "3",
+       0.2
+      ],
+      "joined_by": [
+       "none",
+       0.66
+      ],
+      "term": [
+       "none",
+       0.68
+      ],
+      "check": [
+       "unit test",
+       0.32
+      ]
+     },
+     "fired": [],
+     "m": 0.615
+    },
+    {
+     "i": 4,
+     "text": "Every wave MUST report, as its reason, each of its questions with the\nquestion's id and text, Jev's choice and Jev's confidence.",
+     "a": {
+      "obligations": [
+       "1",
+       0.53
+      ],
+      "joined_by": [
+       "none",
+       0.55
+      ],
+      "term": [
+       "none",
+       0.73
+      ],
+      "check": [
+       "inspection or grep",
+       0.2
+      ]
+     },
+     "fired": [],
+     "m": 0.5025000000000001
+    },
+    {
+     "i": 5,
+     "text": "A wave the tree marks per statement MUST send one request for each MUST\nand MUST NOT statement of the record, carrying that statement with the\nwhole record as context.",
+     "a": {
+      "obligations": [
+       "3",
+       0.15
+      ],
+      "joined_by": [
+       "and-list",
+       0.46
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "unit test",
+       0.41
+      ]
+     },
+     "fired": [
+      "R1"
+     ],
+     "m": 0.6525
+    },
+    {
+     "i": 6,
+     "text": "A per-statement wave's reason MUST list each statement's index and text\nwith each question's id, choice and confidence.",
+     "a": {
+      "obligations": [
+       "1",
+       0.64
+      ],
+      "joined_by": [
+       "none",
+       0.46
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "inspection or grep",
+       0.27
+      ]
+     },
+     "fired": [],
+     "m": 0.5475
+    },
+    {
+     "i": 7,
+     "text": "A per-statement wave's verdict rule MUST be able to fire when any one\nstatement's answers match it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.4
+      ],
+      "term": [
+       "none",
+       0.56
+      ],
+      "check": [
+       "unit test",
+       0.49
+      ]
+     },
+     "fired": [],
+     "m": 0.605
+    },
+    {
+     "i": 8,
+     "text": "A per-statement wave's verdict MUST name the statements whose answers\nfired its rule.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.79
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "unit test",
+       0.29
+      ]
+     },
+     "fired": [],
+     "m": 0.71
+    },
+    {
+     "i": 9,
+     "text": "A per-statement request that gets no answer MUST fail with an error that\nnames its statement.",
+     "a": {
+      "obligations": [
+       "2",
+       0.28
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.5
+      ],
+      "term": [
+       "none",
+       0.61
+      ],
+      "check": [
+       "CLI run",
+       0.39
+      ]
+     },
+     "fired": [],
+     "m": 0.5549999999999999
+    },
+    {
+     "i": 10,
+     "text": "A wave after the first MUST refine the answers of the wave before it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.88
+      ],
+      "joined_by": [
+       "none",
+       0.82
+      ],
+      "term": [
+       "none",
+       0.42
+      ],
+      "check": [
+       "unit test",
+       0.22
+      ]
+     },
+     "fired": [],
+     "m": 0.585
+    },
+    {
+     "i": 11,
+     "text": "A wave after the first MUST be designed from the observed live results\nof the wave before it.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.71
+      ],
+      "term": [
+       "none",
+       0.44
+      ],
+      "check": [
+       "inspection or grep",
+       0.15
+      ]
+     },
+     "fired": [],
+     "m": 0.555
+    },
+    {
+     "i": 12,
+     "text": "A wave with no next wave MUST end the walk, with its verdict given by a\nrule in the tree file over that wave's answers.",
+     "a": {
+      "obligations": [
+       "2",
+       0.53
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.47
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "unit test",
+       0.31
+      ]
+     },
+     "fired": [],
+     "m": 0.51
+    },
+    {
+     "i": 13,
+     "text": "The tree MUST ship with the tool as a data file a consumer can override\n(REQ-JEV-0205); answers select the branch and the verdict, never a model\nchoosing the next questions.",
+     "a": {
+      "obligations": [
+       "3",
+       0.28
+      ],
+      "joined_by": [
+       "none",
+       0.49
+      ],
+      "term": [
+       "none",
+       0.46
+      ],
+      "check": [
+       "inspection or grep",
+       0.52
+      ]
+     },
+     "fired": [],
+     "m": 0.5475
+    },
+    {
+     "i": 14,
+     "text": "A failing answer MUST report the decision-tree path that failed.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.85
+      ],
+      "term": [
+       "none",
+       0.51
+      ],
+      "check": [
+       "CLI run",
+       0.16
+      ]
+     },
+     "fired": [],
+     "m": 0.62
+    },
+    {
+     "i": 15,
+     "text": "A live run MUST log every wave as output: its composed request, Jev's\nanswers, its reason and the branch or verdict they selected.",
+     "a": {
+      "obligations": [
+       "1",
+       0.45
+      ],
+      "joined_by": [
+       "none",
+       0.7
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "inspection or grep",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.5375
+    },
+    {
+     "i": 16,
+     "text": "The mode MUST NOT check structure that Raptor's import checks.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "none",
+       0.86
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "unit test",
+       0.5
+      ]
+     },
+     "fired": [],
+     "m": 0.7825
+    }
+   ]
+  },
+  "REQ-JEV-0201": {
+   "fails": 0,
+   "margin": 0.6809999999999999,
+   "n": 5,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev check` MUST take one of two argument forms: a single record\nwith a location and a mode, or a `--profile`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.4
+      ],
+      "joined_by": [
+       "alternatives",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.62
+      ],
+      "check": [
+       "CLI run",
+       0.89
+      ]
+     },
+     "fired": [],
+     "m": 0.48750000000000004
+    },
+    {
+     "i": 2,
+     "text": "In the single-record form, `judge-jev check` MUST take one record id,\ngiven with exactly one record-kind flag: `--req` (requirement), `--adr`\n(architecture decision record) or `--nfr` (non-functional requirement).",
+     "a": {
+      "obligations": [
+       "3",
+       0.29
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.21
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "CLI run",
+       0.85
+      ]
+     },
+     "fired": [],
+     "m": 0.62
+    },
+    {
+     "i": 3,
+     "text": "In the single-record form, `judge-jev check` MUST take exactly one\n`--location`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.66
+      ],
+      "term": [
+       "none",
+       0.74
+      ],
+      "check": [
+       "CLI run",
+       0.87
+      ]
+     },
+     "fired": [],
+     "m": 0.8049999999999999
+    },
+    {
+     "i": 4,
+     "text": "In the single-record form, `judge-jev check` MUST take exactly one\n`--mode`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.64
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.82
+      ]
+     },
+     "fired": [],
+     "m": 0.8125
+    },
+    {
+     "i": 5,
+     "text": "Each record kind MUST use its own question set.",
+     "a": {
+      "obligations": [
+       "1",
+       0.59
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.74
+      ],
+      "check": [
+       "CLI run",
+       0.41
+      ]
+     },
+     "fired": [],
+     "m": 0.6799999999999999
+    }
+   ]
+  },
+  "REQ-JEV-0202": {
+   "fails": 0,
+   "margin": 0.7433333333333333,
+   "n": 3,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "Each Jev request MUST carry exactly one record.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.85
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "unit test",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.785
+    },
+    {
+     "i": 2,
+     "text": "Each Jev request MUST carry exactly one location.",
+     "a": {
+      "obligations": [
+       "1",
+       0.87
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "unit test",
+       0.55
+      ]
+     },
+     "fired": [],
+     "m": 0.8025
+    },
+    {
+     "i": 3,
+     "text": "A run over many pairs MUST send them as a stream of single requests.",
+     "a": {
+      "obligations": [
+       "1",
+       0.73
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.76
+      ],
+      "term": [
+       "none",
+       0.66
+      ],
+      "check": [
+       "CLI run",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.6425
+    }
+   ]
+  },
+  "REQ-JEV-0203": {
+   "fails": 0,
+   "margin": 0.8,
+   "n": 8,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST support the target mode `prompt`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.7
+      ]
+     },
+     "fired": [],
+     "m": 0.8975
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST support the target mode `skill`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.91
+      ],
+      "check": [
+       "CLI run",
+       0.59
+      ]
+     },
+     "fired": [],
+     "m": 0.875
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST support the target mode `task`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.8725
+    },
+    {
+     "i": 4,
+     "text": "judge-jev MUST support the target mode `code`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.94
+      ],
+      "check": [
+       "CLI run",
+       0.52
+      ]
+     },
+     "fired": [],
+     "m": 0.865
+    },
+    {
+     "i": 5,
+     "text": "In `task` mode judge-jev MUST judge the raw template.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.66
+      ],
+      "term": [
+       "none",
+       0.79
+      ],
+      "check": [
+       "CLI run",
+       0.44
+      ]
+     },
+     "fired": [],
+     "m": 0.715
+    },
+    {
+     "i": 6,
+     "text": "In `task` mode judge-jev MUST judge an assignment rendered by sc-compose\nin strict mode from the vars file that `--vars` names, or, in a profile\nrun, that the profile names.",
+     "a": {
+      "obligations": [
+       "1",
+       0.4
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.49
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "CLI run",
+       0.73
+      ]
+     },
+     "fired": [],
+     "m": 0.54
+    },
+    {
+     "i": 7,
+     "text": "In `code` mode judge-jev MUST resolve the location with the tree-sitter\ngrammars sc-agent defines.",
+     "a": {
+      "obligations": [
+       "1",
+       0.88
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.85
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "CLI run",
+       0.31
+      ]
+     },
+     "fired": [],
+     "m": 0.6975
+    },
+    {
+     "i": 8,
+     "text": "judge-jev MUST NOT define its own tree-sitter grammars.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "inspection or grep",
+       1.0
+      ]
+     },
+     "fired": [],
+     "m": 0.9375
+    }
+   ]
+  },
+  "REQ-JEV-0204": {
+   "fails": 0,
+   "margin": 0.7745833333333333,
+   "n": 6,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST read a TOML profile listing locations, each with its\nmode, the record ids that govern it, and for `task` mode a vars file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.32
+      ],
+      "joined_by": [
+       "and-list",
+       0.45
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "CLI run",
+       0.59
+      ]
+     },
+     "fired": [],
+     "m": 0.5425
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev check --profile <profile>` MUST check every listed pair.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.86
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "CLI run",
+       0.8
+      ]
+     },
+     "fired": [],
+     "m": 0.865
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev check --profile <profile>` MUST report each pair's verdict.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.82
+      ],
+      "term": [
+       "none",
+       0.73
+      ],
+      "check": [
+       "CLI run",
+       0.92
+      ]
+     },
+     "fired": [],
+     "m": 0.8574999999999999
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev check --profile <profile>` MUST aggregate the verdicts per\nrecord.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.9
+      ],
+      "term": [
+       "none",
+       0.51
+      ],
+      "check": [
+       "CLI run",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.8049999999999999
+    },
+    {
+     "i": 5,
+     "text": "`judge-jev check --profile <profile>` MUST aggregate the verdicts per\nlocation.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.84
+      ],
+      "term": [
+       "none",
+       0.56
+      ],
+      "check": [
+       "CLI run",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.8
+    },
+    {
+     "i": 6,
+     "text": "A profile run MUST NOT judge a pair the profile does not list.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.7
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.7775
+    }
+   ]
+  },
+  "REQ-JEV-0205": {
+   "fails": 0,
+   "margin": 0.7911363636363636,
+   "n": 11,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "judge-jev MUST ship one question set per combination of record kind and\ntarget class (agent text or code).",
+     "a": {
+      "obligations": [
+       "1",
+       0.72
+      ],
+      "joined_by": [
+       "none",
+       0.73
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "inspection or grep",
+       0.9
+      ]
+     },
+     "fired": [],
+     "m": 0.765
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST ship one quality decision tree per record kind.",
+     "a": {
+      "obligations": [
+       "1",
+       0.77
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.56
+      ],
+      "check": [
+       "inspection or grep",
+       0.9
+      ]
+     },
+     "fired": [],
+     "m": 0.8025
+    },
+    {
+     "i": 3,
+     "text": "Every shipped question and prompt text MUST be approved by Rand before\nit ships.",
+     "a": {
+      "obligations": [
+       "1",
+       0.81
+      ],
+      "joined_by": [
+       "none",
+       0.54
+      ],
+      "term": [
+       "none",
+       0.47
+      ],
+      "check": [
+       "inspection or grep",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.665
+    },
+    {
+     "i": 4,
+     "text": "Question sets MUST be data files shipped with the tool.",
+     "a": {
+      "obligations": [
+       "1",
+       0.6
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.87
+      ],
+      "check": [
+       "inspection or grep",
+       0.85
+      ]
+     },
+     "fired": [],
+     "m": 0.8175
+    },
+    {
+     "i": 5,
+     "text": "Quality decision trees MUST be data files shipped with the tool.",
+     "a": {
+      "obligations": [
+       "1",
+       0.8
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.91
+      ],
+      "check": [
+       "inspection or grep",
+       0.85
+      ]
+     },
+     "fired": [],
+     "m": 0.875
+    },
+    {
+     "i": 6,
+     "text": "The released tool MUST accept an override file for any question set.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.46
+      ],
+      "check": [
+       "CLI run",
+       0.6
+      ]
+     },
+     "fired": [],
+     "m": 0.735
+    },
+    {
+     "i": 7,
+     "text": "The released tool MUST accept an override file for any quality decision\ntree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.69
+      ],
+      "check": [
+       "CLI run",
+       0.64
+      ]
+     },
+     "fired": [],
+     "m": 0.8125
+    },
+    {
+     "i": 8,
+     "text": "Every result MUST carry the question-set id.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "inspection or grep",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.76
+    },
+    {
+     "i": 9,
+     "text": "Every result MUST carry the content digest of the file used.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "inspection or grep",
+       0.44
+      ]
+     },
+     "fired": [],
+     "m": 0.785
+    },
+    {
+     "i": 10,
+     "text": "Every log entry MUST carry the question-set id.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "inspection or grep",
+       0.68
+      ]
+     },
+     "fired": [],
+     "m": 0.855
+    },
+    {
+     "i": 11,
+     "text": "Every log entry MUST carry the content digest of the file used.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "inspection or grep",
+       0.6
+      ]
+     },
+     "fired": [],
+     "m": 0.83
+    }
+   ]
+  },
+  "REQ-JEV-0206": {
+   "fails": 2,
+   "margin": 0.7883333333333332,
+   "n": 3,
+   "verdict": "no",
+   "st": [
+    {
+     "i": 1,
+     "text": "When a record is satisfied in more than one location (prompt, skill,\nagent, template or code), judge-jev MUST judge the record separately at\neach location.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.99
+      ],
+      "term": [
+       "undefined acronym",
+       0.35
+      ],
+      "check": [
+       "unit test",
+       0.64
+      ]
+     },
+     "fired": [
+      "R2"
+     ],
+     "m": 0.8025
+    },
+    {
+     "i": 2,
+     "text": "judge-jev MUST report one result per (record, location) pair.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "undefined acronym",
+       0.22
+      ],
+      "check": [
+       "unit test",
+       0.57
+      ]
+     },
+     "fired": [
+      "R2"
+     ],
+     "m": 0.8099999999999999
+    },
+    {
+     "i": 3,
+     "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.42
+      ],
+      "check": [
+       "unit test",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.7525
+    }
+   ]
+  },
+  "REQ-JEV-0207": {
+   "fails": 0,
+   "margin": 0.7733333333333334,
+   "n": 6,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "A location MUST take one of three forms: `path`, `path#Heading` or\n`path::Symbol`.",
+     "a": {
+      "obligations": [
+       "1",
+       0.53
+      ],
+      "joined_by": [
+       "alternatives",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.62
+      ],
+      "check": [
+       "unit test",
+       0.75
+      ]
+     },
+     "fired": [],
+     "m": 0.49
+    },
+    {
+     "i": 2,
+     "text": "A `path` location MUST select the whole file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "unit test",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.8425
+    },
+    {
+     "i": 3,
+     "text": "A `path#Heading` location MUST select a Markdown section, from the\nheading to the next heading of the same or higher level.",
+     "a": {
+      "obligations": [
+       "1",
+       0.81
+      ],
+      "joined_by": [
+       "none",
+       0.77
+      ],
+      "term": [
+       "none",
+       0.68
+      ],
+      "check": [
+       "unit test",
+       0.85
+      ]
+     },
+     "fired": [],
+     "m": 0.7775000000000001
+    },
+    {
+     "i": 4,
+     "text": "A `path::Symbol` location MUST select a code symbol resolved by\nsc-agent's tree-sitter grammars.",
+     "a": {
+      "obligations": [
+       "1",
+       0.85
+      ],
+      "joined_by": [
+       "none",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "unit test",
+       0.71
+      ]
+     },
+     "fired": [],
+     "m": 0.81
+    },
+    {
+     "i": 5,
+     "text": "Markdown sections MUST be parsed by the same rules Raptor uses for the\nsame file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.86
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "unit test",
+       0.79
+      ]
+     },
+     "fired": [],
+     "m": 0.845
+    },
+    {
+     "i": 6,
+     "text": "A location MUST NOT be a line range.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "unit test",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.875
+    }
+   ]
+  },
+  "REQ-JEV-0208": {
+   "fails": 0,
+   "margin": 0.80109375,
+   "n": 16,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev quality` MUST accept `--dry-run`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.87
+      ],
+      "check": [
+       "CLI run",
+       0.95
+      ]
+     },
+     "fired": [],
+     "m": 0.95
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev check` MUST accept `--dry-run`.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "CLI run",
+       0.94
+      ]
+     },
+     "fired": [],
+     "m": 0.95
+    },
+    {
+     "i": 3,
+     "text": "A dry run MUST compose every request without calling Jev.",
+     "a": {
+      "obligations": [
+       "2",
+       0.63
+      ],
+      "joined_by": [
+       "none",
+       0.47
+      ],
+      "term": [
+       "none",
+       0.87
+      ],
+      "check": [
+       "CLI run",
+       0.65
+      ]
+     },
+     "fired": [],
+     "m": 0.59
+    },
+    {
+     "i": 4,
+     "text": "Each dry-run entry MUST report the record id.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.77
+      ],
+      "check": [
+       "CLI run",
+       0.65
+      ]
+     },
+     "fired": [],
+     "m": 0.85
+    },
+    {
+     "i": 5,
+     "text": "Each dry-run entry MUST report the record's Raptor source.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.92
+      ],
+      "check": [
+       "CLI run",
+       0.65
+      ]
+     },
+     "fired": [],
+     "m": 0.88
+    },
+    {
+     "i": 6,
+     "text": "Each dry-run entry MUST report the resolved location as its path, section\nor symbol.",
+     "a": {
+      "obligations": [
+       "1",
+       0.79
+      ],
+      "joined_by": [
+       "alternatives",
+       0.6
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "CLI run",
+       0.55
+      ]
+     },
+     "fired": [],
+     "m": 0.6375000000000001
+    },
+    {
+     "i": 7,
+     "text": "Each dry-run entry MUST report the digest of the location's selected\ntext.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.91
+      ],
+      "check": [
+       "CLI run",
+       0.57
+      ]
+     },
+     "fired": [],
+     "m": 0.8525
+    },
+    {
+     "i": 8,
+     "text": "Each dry-run entry MUST report the mode.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.95
+      ],
+      "check": [
+       "CLI run",
+       0.41
+      ]
+     },
+     "fired": [],
+     "m": 0.835
+    },
+    {
+     "i": 9,
+     "text": "Each dry-run entry MUST report the question set as its shipped id or its\noverride path.",
+     "a": {
+      "obligations": [
+       "1",
+       0.83
+      ],
+      "joined_by": [
+       "alternatives",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "CLI run",
+       0.66
+      ]
+     },
+     "fired": [],
+     "m": 0.62
+    },
+    {
+     "i": 10,
+     "text": "In `task` mode, each dry-run entry MUST report the vars file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.92
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.71
+      ]
+     },
+     "fired": [],
+     "m": 0.87
+    },
+    {
+     "i": 11,
+     "text": "In `task` mode, each dry-run entry MUST report the rendered text.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.87
+      ],
+      "check": [
+       "CLI run",
+       0.81
+      ]
+     },
+     "fired": [],
+     "m": 0.885
+    },
+    {
+     "i": 12,
+     "text": "Each dry-run entry MUST report the full composed request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.94
+      ],
+      "check": [
+       "CLI run",
+       0.61
+      ]
+     },
+     "fired": [],
+     "m": 0.87
+    },
+    {
+     "i": 13,
+     "text": "Each dry-run entry MUST report the composed request's size against the\nrequest limit.",
+     "a": {
+      "obligations": [
+       "1",
+       0.75
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "CLI run",
+       0.56
+      ]
+     },
+     "fired": [],
+     "m": 0.765
+    },
+    {
+     "i": 14,
+     "text": "For `quality`, the dry run MUST report the decision tree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.49
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.69
+      ]
+     },
+     "fired": [],
+     "m": 0.755
+    },
+    {
+     "i": 15,
+     "text": "For `quality`, the dry run MUST report the composed wave-1 request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.56
+      ],
+      "term": [
+       "none",
+       0.86
+      ],
+      "check": [
+       "CLI run",
+       0.79
+      ]
+     },
+     "fired": [],
+     "m": 0.795
+    },
+    {
+     "i": 16,
+     "text": "A dry run MUST fail with a typed error on anything that would make the\nlive request wrong: an unresolved record or location, a render failure,\nor an oversize request.",
+     "a": {
+      "obligations": [
+       "3",
+       0.32
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.62
+      ],
+      "term": [
+       "none",
+       0.76
+      ],
+      "check": [
+       "CLI run",
+       0.79
+      ]
+     },
+     "fired": [],
+     "m": 0.7125
+    }
+   ]
+  },
+  "REQ-JEV-0209": {
+   "fails": 0,
+   "margin": 0.701,
+   "n": 5,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev quality` MUST take one or more record ids.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.7
+      ],
+      "term": [
+       "none",
+       0.47
+      ],
+      "check": [
+       "CLI run",
+       0.85
+      ]
+     },
+     "fired": [],
+     "m": 0.735
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev quality` MUST take each record id with one record-kind flag:\n`--req` (requirement), `--adr` (architecture decision record) or `--nfr`\n(non-functional requirement).",
+     "a": {
+      "obligations": [
+       "1",
+       0.49
+      ],
+      "joined_by": [
+       "alternatives",
+       0.5
+      ],
+      "term": [
+       "none",
+       0.49
+      ],
+      "check": [
+       "CLI run",
+       0.76
+      ]
+     },
+     "fired": [],
+     "m": 0.56
+    },
+    {
+     "i": 3,
+     "text": "Every record-kind flag of `judge-jev quality` MUST be repeatable.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.31
+      ],
+      "check": [
+       "CLI run",
+       0.77
+      ]
+     },
+     "fired": [],
+     "m": 0.7325
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev quality` MUST judge each record with its kind's quality\ndecision tree (REQ-JEV-0101).",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.36
+      ],
+      "check": [
+       "unit test",
+       0.36
+      ]
+     },
+     "fired": [],
+     "m": 0.6475
+    },
+    {
+     "i": 5,
+     "text": "All records of one `judge-jev quality` invocation MUST be logged under\none run name.",
+     "a": {
+      "obligations": [
+       "1",
+       0.96
+      ],
+      "joined_by": [
+       "none",
+       0.82
+      ],
+      "term": [
+       "none",
+       0.81
+      ],
+      "check": [
+       "inspection or grep",
+       0.73
+      ]
+     },
+     "fired": [],
+     "m": 0.83
+    }
+   ]
+  },
+  "REQ-JEV-0210": {
+   "fails": 0,
+   "margin": 0.6757500000000001,
+   "n": 10,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev validate` MUST take one input file.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "CLI run",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.8875
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev validate` MUST take one input-kind flag with that file:\n`--tree` (quality tree), `--questions` (question set), `--answers`\n(answers file), `--index` (Raptor import index) or `--requests` (batch\nrequest stream).",
+     "a": {
+      "obligations": [
+       "1",
+       0.16
+      ],
+      "joined_by": [
+       "alternatives",
+       0.62
+      ],
+      "term": [
+       "none",
+       0.59
+      ],
+      "check": [
+       "CLI run",
+       0.87
+      ]
+     },
+     "fired": [],
+     "m": 0.5
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev validate` MUST check the file with the model `judge-jev`\napplies to that input kind before its first Jev request (ADR-JEV-0005).",
+     "a": {
+      "obligations": [
+       "1",
+       0.69
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.51
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "unit test",
+       0.32
+      ]
+     },
+     "fired": [],
+     "m": 0.5575
+    },
+    {
+     "i": 4,
+     "text": "Every refusal from `judge-jev validate` MUST name the field path.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.52
+      ],
+      "term": [
+       "none",
+       0.74
+      ],
+      "check": [
+       "CLI run",
+       0.42
+      ]
+     },
+     "fired": [],
+     "m": 0.6425
+    },
+    {
+     "i": 5,
+     "text": "Every refusal from `judge-jev validate` MUST name the rule the field\nbreaks.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.49
+      ],
+      "term": [
+       "none",
+       0.61
+      ],
+      "check": [
+       "CLI run",
+       0.59
+      ]
+     },
+     "fired": [],
+     "m": 0.6525
+    },
+    {
+     "i": 6,
+     "text": "`judge-jev validate --answers` MUST apply the answers-file envelope that\n`--answers-file` applies before the first request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.74
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.37
+      ]
+     },
+     "fired": [],
+     "m": 0.7175
+    },
+    {
+     "i": 7,
+     "text": "The answers-file envelope MUST require an object of string keys.",
+     "a": {
+      "obligations": [
+       "1",
+       0.87
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "unit test",
+       0.54
+      ]
+     },
+     "fired": [],
+     "m": 0.8200000000000001
+    },
+    {
+     "i": 8,
+     "text": "The answers-file envelope MUST require each key's value to be an object\nor a non-empty list of objects.",
+     "a": {
+      "obligations": [
+       "1",
+       0.67
+      ],
+      "joined_by": [
+       "alternatives",
+       0.77
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "unit test",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.545
+    },
+    {
+     "i": 9,
+     "text": "The answers-file envelope MUST require an object with `__error__` to hold\nonly a string code of at most 64 characters.",
+     "a": {
+      "obligations": [
+       "3",
+       0.36
+      ],
+      "joined_by": [
+       "none",
+       0.59
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "unit test",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.635
+    },
+    {
+     "i": 10,
+     "text": "`judge-jev validate` MUST NOT call Jev.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.99
+      ],
+      "term": [
+       "none",
+       0.84
+      ],
+      "check": [
+       "unit test",
+       0.37
+      ]
+     },
+     "fired": [],
+     "m": 0.8
+    }
+   ]
+  },
+  "REQ-JEV-0211": {
+   "fails": 0,
+   "margin": 0.599375,
+   "n": 4,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "For every input, every `judge-jev` command MUST print exactly one JSON\nobject.",
+     "a": {
+      "obligations": [
+       "1",
+       0.16
+      ],
+      "joined_by": [
+       "none",
+       0.77
+      ],
+      "term": [
+       "none",
+       0.57
+      ],
+      "check": [
+       "CLI run",
+       0.81
+      ]
+     },
+     "fired": [],
+     "m": 0.5775
+    },
+    {
+     "i": 2,
+     "text": "The JSON object a `judge-jev` command prints MUST be its result or a\ntyped error.",
+     "a": {
+      "obligations": [
+       "1",
+       0.85
+      ],
+      "joined_by": [
+       "alternatives",
+       0.84
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.82
+      ]
+     },
+     "fired": [],
+     "m": 0.6625
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev` MUST refuse an invalid tree, question set, index, request\nstream or run directory before its first Jev request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.47
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.31
+      ],
+      "term": [
+       "none",
+       0.74
+      ],
+      "check": [
+       "CLI run",
+       0.77
+      ]
+     },
+     "fired": [],
+     "m": 0.5725
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev` MUST check that every log event of a request (the request,\nJev's largest possible answer and the result) fits the logger's event\nsize limit before sending the request.",
+     "a": {
+      "obligations": [
+       "1",
+       0.56
+      ],
+      "joined_by": [
+       "none",
+       0.5
+      ],
+      "term": [
+       "none",
+       0.73
+      ],
+      "check": [
+       "unit test",
+       0.55
+      ]
+     },
+     "fired": [],
+     "m": 0.585
+    }
+   ]
+  },
+  "REQ-JEV-0212": {
+   "fails": 0,
+   "margin": 0.69125,
+   "n": 6,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "A definition MUST be attachable to a record alone, or to a record and\none location under evaluation.",
+     "a": {
+      "obligations": [
+       "1",
+       0.64
+      ],
+      "joined_by": [
+       "alternatives",
+       0.89
+      ],
+      "term": [
+       "none",
+       0.69
+      ],
+      "check": [
+       "unit test",
+       0.52
+      ]
+     },
+     "fired": [],
+     "m": 0.49
+    },
+    {
+     "i": 2,
+     "text": "A request about a record MUST carry, in its state next to the record, only\nthe definitions attached to that record alone, plus those attached to\nthat record and the request's location.",
+     "a": {
+      "obligations": [
+       "1",
+       0.41
+      ],
+      "joined_by": [
+       "and-list",
+       0.21
+      ],
+      "term": [
+       "none",
+       0.59
+      ],
+      "check": [
+       "unit test",
+       0.9
+      ]
+     },
+     "fired": [],
+     "m": 0.6725
+    },
+    {
+     "i": 3,
+     "text": "A request with no matching definition MUST be identical to the request\nsent without definitions.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.44
+      ],
+      "check": [
+       "unit test",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.8075
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev` MUST refuse, before sending, a request whose definitions take\nit over the size limit.",
+     "a": {
+      "obligations": [
+       "1",
+       0.81
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.71
+      ],
+      "check": [
+       "unit test",
+       0.59
+      ]
+     },
+     "fired": [],
+     "m": 0.7625
+    },
+    {
+     "i": 5,
+     "text": "Every request's log event MUST record the digest of each definition it\ncarried.",
+     "a": {
+      "obligations": [
+       "1",
+       0.67
+      ],
+      "joined_by": [
+       "none",
+       0.84
+      ],
+      "term": [
+       "none",
+       0.54
+      ],
+      "check": [
+       "inspection or grep",
+       0.37
+      ]
+     },
+     "fired": [],
+     "m": 0.605
+    },
+    {
+     "i": 6,
+     "text": "`judge-jev` MUST NOT truncate a definition.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.6
+      ],
+      "check": [
+       "unit test",
+       0.66
+      ]
+     },
+     "fired": [],
+     "m": 0.81
+    }
+   ]
+  },
+  "REQ-JEV-0213": {
+   "fails": 0,
+   "margin": 0.7142857142857143,
+   "n": 7,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev` MUST provide a comparison of one or more candidate\ndefinitions.",
+     "a": {
+      "obligations": [
+       "1",
+       0.92
+      ],
+      "joined_by": [
+       "none",
+       0.75
+      ],
+      "term": [
+       "none",
+       0.62
+      ],
+      "check": [
+       "CLI run",
+       0.75
+      ]
+     },
+     "fired": [],
+     "m": 0.76
+    },
+    {
+     "i": 2,
+     "text": "The comparison MUST run the requests the candidate definitions would\nreach with the candidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.89
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.47
+      ]
+     },
+     "fired": [],
+     "m": 0.79
+    },
+    {
+     "i": 3,
+     "text": "The comparison MUST run the same requests without the candidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.91
+      ],
+      "joined_by": [
+       "none",
+       0.91
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.6
+      ]
+     },
+     "fired": [],
+     "m": 0.81
+    },
+    {
+     "i": 4,
+     "text": "The comparison MUST report each answer's choice with and without the\ncandidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.56
+      ],
+      "joined_by": [
+       "none",
+       0.42
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.74
+      ]
+     },
+     "fired": [],
+     "m": 0.6425
+    },
+    {
+     "i": 5,
+     "text": "The comparison MUST report each answer's confidence with and without the\ncandidates.",
+     "a": {
+      "obligations": [
+       "1",
+       0.56
+      ],
+      "joined_by": [
+       "none",
+       0.46
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "CLI run",
+       0.74
+      ]
+     },
+     "fired": [],
+     "m": 0.665
+    },
+    {
+     "i": 6,
+     "text": "The comparison MUST report the candidates as material when an answer's\nchoice flips or its confidence crosses the decision threshold, and as not\nmaterial when every change stays on the same side of the threshold.",
+     "a": {
+      "obligations": [
+       "2",
+       0.65
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.79
+      ],
+      "term": [
+       "none",
+       0.65
+      ],
+      "check": [
+       "CLI run",
+       0.46
+      ]
+     },
+     "fired": [],
+     "m": 0.5625
+    },
+    {
+     "i": 7,
+     "text": "The comparison MUST record the threshold it applied.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.95
+      ],
+      "term": [
+       "none",
+       0.82
+      ],
+      "check": [
+       "CLI run",
+       0.36
+      ]
+     },
+     "fired": [],
+     "m": 0.77
+    }
+   ]
+  },
+  "REQ-JEV-0214": {
+   "fails": 0,
+   "margin": 0.53125,
+   "n": 2,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "Every question IRI in one scope (by default the repository) MUST be\ndeclared in one tree file only, across judge-jev's trees and every\nconsumer extension's.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.73
+      ],
+      "term": [
+       "none",
+       0.52
+      ],
+      "check": [
+       "inspection or grep",
+       0.24
+      ]
+     },
+     "fired": [],
+     "m": 0.595
+    },
+    {
+     "i": 2,
+     "text": "Every `jj:id` in judge-jev's trees and in every consumer extension's\nMUST be unique within its tree.",
+     "a": {
+      "obligations": [
+       "1",
+       0.6
+      ],
+      "joined_by": [
+       "none",
+       0.39
+      ],
+      "term": [
+       "none",
+       0.66
+      ],
+      "check": [
+       "unit test",
+       0.22
+      ]
+     },
+     "fired": [],
+     "m": 0.4675
+    }
+   ]
+  },
+  "REQ-JEV-0215": {
+   "fails": 0,
+   "margin": 0.8193181818181817,
+   "n": 11,
+   "verdict": "yes",
+   "st": [
+    {
+     "i": 1,
+     "text": "`judge-jev doctor` MUST validate every tree in the scope against its\nschema.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "none",
+       0.94
+      ],
+      "term": [
+       "none",
+       0.8
+      ],
+      "check": [
+       "CLI run",
+       0.84
+      ]
+     },
+     "fired": [],
+     "m": 0.8825
+    },
+    {
+     "i": 2,
+     "text": "`judge-jev doctor` MUST validate every question set in the scope against\nits schema.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "none",
+       0.9
+      ],
+      "term": [
+       "none",
+       0.9
+      ],
+      "check": [
+       "CLI run",
+       0.71
+      ]
+     },
+     "fired": [],
+     "m": 0.87
+    },
+    {
+     "i": 3,
+     "text": "`judge-jev doctor` MUST validate every definitions file in the scope\nagainst its schema.",
+     "a": {
+      "obligations": [
+       "1",
+       0.89
+      ],
+      "joined_by": [
+       "none",
+       0.96
+      ],
+      "term": [
+       "none",
+       0.92
+      ],
+      "check": [
+       "CLI run",
+       0.79
+      ]
+     },
+     "fired": [],
+     "m": 0.89
+    },
+    {
+     "i": 4,
+     "text": "`judge-jev doctor` MUST validate every tree, question set and definitions\nfile in the scope against the ontology's shapes, including edges and\ncycles.",
+     "a": {
+      "obligations": [
+       "1",
+       0.15
+      ],
+      "joined_by": [
+       "and-list",
+       0.82
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "CLI run",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.52
+    },
+    {
+     "i": 5,
+     "text": "`judge-jev doctor` MUST report each validation failure as an error.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.66
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.92
+      ]
+     },
+     "fired": [],
+     "m": 0.855
+    },
+    {
+     "i": 6,
+     "text": "`judge-jev doctor` MUST report a definition with no attachment as a\nwarning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.95
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.7
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.94
+      ]
+     },
+     "fired": [],
+     "m": 0.86
+    },
+    {
+     "i": 7,
+     "text": "`judge-jev doctor` MUST report an attachment to a record the Raptor index\ndoes not hold as a warning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.97
+      ],
+      "joined_by": [
+       "condition+obligation",
+       0.42
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.86
+      ]
+     },
+     "fired": [],
+     "m": 0.775
+    },
+    {
+     "i": 8,
+     "text": "`judge-jev doctor` MUST report an attachment to a location that does not\nexist as a warning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.93
+      ],
+      "joined_by": [
+       "none",
+       0.79
+      ],
+      "term": [
+       "none",
+       0.85
+      ],
+      "check": [
+       "CLI run",
+       0.9
+      ]
+     },
+     "fired": [],
+     "m": 0.8675
+    },
+    {
+     "i": 9,
+     "text": "`judge-jev doctor` MUST report a definition whose source does not exist\nas a warning.",
+     "a": {
+      "obligations": [
+       "1",
+       0.87
+      ],
+      "joined_by": [
+       "none",
+       0.4
+      ],
+      "term": [
+       "none",
+       0.92
+      ],
+      "check": [
+       "CLI run",
+       0.92
+      ]
+     },
+     "fired": [],
+     "m": 0.7775000000000001
+    },
+    {
+     "i": 10,
+     "text": "`judge-jev doctor` MUST NOT call Jev.",
+     "a": {
+      "obligations": [
+       "1",
+       1.0
+      ],
+      "joined_by": [
+       "none",
+       1.0
+      ],
+      "term": [
+       "none",
+       0.89
+      ],
+      "check": [
+       "unit test",
+       0.3
+      ]
+     },
+     "fired": [],
+     "m": 0.7975
+    },
+    {
+     "i": 11,
+     "text": "A `judge-jev doctor` warning MUST NOT fail the command.",
+     "a": {
+      "obligations": [
+       "1",
+       0.99
+      ],
+      "joined_by": [
+       "none",
+       0.98
+      ],
+      "term": [
+       "none",
+       0.75
+      ],
+      "check": [
+       "CLI run",
+       0.95
+      ]
+     },
+     "fired": [],
+     "m": 0.9175
+    }
+   ]
+  }
+ }
+]

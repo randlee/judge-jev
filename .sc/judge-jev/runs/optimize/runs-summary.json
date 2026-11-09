@@ -1,0 +1,20 @@
+{
+ "jev_requests_total": 42866,
+ "by_stage": {
+  "baseline": 292,
+  "final-triplet": 6207,
+  "backoff": 1448,
+  "combination": 1094,
+  "combination-final": 1210,
+  "combination-greedy": 1996,
+  "candidate-slot": 18121,
+  "reference": 4972,
+  "control": 624,
+  "noise": 292,
+  "paired-selection": 6610
+ },
+ "run_files": 902,
+ "rows": 5877,
+ "tweaks": 841,
+ "tweaks_in_final": 237
+}

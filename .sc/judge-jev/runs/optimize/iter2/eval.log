@@ -1,0 +1,178 @@
+candidates 225 rejected 107
+M1 survivors 162
+NFR-JEV-0001 ref f=0.00 m=0.746 cands 7 kept 7
+    remove mechanical 0:0.725 0:0.714 drop definition sentence 0
+    remove mechanical 0:0.754 0:0.757 drop definition sentence 1
+    remove haiku-A 0:0.736 0:0.744 parenthetical flag name in a definition; no statement relies on it
+    remove haiku-A 0:0.759 0:0.768 content description repeats what the answers-file definition already says; no statement us
+    remove haiku-A 0:0.744 0:0.741 vendor name in the Jev definition; no statement relies on it
+    reword opus-A 0:0.748 0:0.748 shortening: vendor/hosting detail no statement relies on
+    reword sonnet-A 0:0.742 0:0.742 shortening; vendor/hosting detail unused by statements
+REQ-JEV-0001 ref f=0.00 m=0.884 cands 4 kept 3
+    reword haiku-A 0:0.877 0:0.888 shortening: drops the descriptor requirements, which no statement relies on
+    remove haiku-A 0:0.894 0:0.893 input format named in the Raptor definition; statement s2 names Markdown itself
+    remove sonnet-A 0:0.885 0:0.883 store detail unused; statement 3 says record store itself
+REQ-JEV-0002 ref f=0.00 m=0.766 cands 18 kept 12
+    reword haiku-A 0:0.763 0:0.759 shortening: drops the script path and colon clause; the batch command is already named by 
+    remove haiku-A 0:0.765 0:0.761 restates what the statements and the result-envelope definition already say; no statement 
+    remove haiku-A 0:0.757 0:0.749 log file path is used by no statement
+    remove haiku-A 0:0.767 0:0.769 vendor name in the Jev definition; no statement relies on it
+    reword opus-A 0:0.747 0:0.767 shortening: restates the batch-command MUST statements
+    remove opus-A 0:0.754 0:0.749 Jev is common to the record set and no statement depends on its vendor
+    reword opus-A 0:0.767 0:0.758 shortening: envelope contents not used by any statement
+    reword opus-A 0:0.770 0:0.765 shortening; the code list defines the set
+    reword opus-A 0:0.761 0:0.762 shortening: number in definition no statement relies on
+    remove sonnet-A 0:0.775 0:0.771 example code list not relied on by statement
+    remove sonnet-A 0:0.761 0:0.769 common usage of error code
+    reword sonnet-A 0:0.768 0:0.766 shortening; transient/recoverable restated by code list
+REQ-JEV-0003 ref f=0.00 m=0.668 cands 6 kept 6
+    remove mechanical 0:0.598 0:0.573 drop definition sentence 0
+    remove mechanical 0:0.495 0:0.637 drop definition sentence 1
+    remove haiku-A 0:0.615 0:0.620 Jev appears in no statement of this record; TypeSafe stays defined as the company
+    reword opus-A 0:0.510 0:0.517 shortening; same three stores
+    reword opus-A 0:0.647 0:0.633 shortening; Jev not used in the statement
+    reword sonnet-A 0:0.657 0:0.670 shortening; vendor names unused by statement
+REQ-JEV-0004 ref f=0.00 m=0.674 cands 5 kept 4
+    remove haiku-A 0:0.679 0:0.681 vendor name in the Jev definition; no statement relies on it
+    reword opus-A 0:0.596 0:0.613 shortening: Jev's vendor is not used by either statement
+    reword opus-A 0:0.644 0:0.649 shortening: vendor/hosting detail no statement relies on
+    reword sonnet-A 0:0.645 0:0.636 shortening; Jev already named in the term
+REQ-JEV-0005 ref f=0.00 m=0.729 cands 5 kept 4
+    remove mechanical 0:0.716 0:0.671 drop definition sentence 0
+    remove mechanical 0:0.686 0:0.674 drop definition sentence 1
+    reword opus-A 0:0.732 0:0.696 shortening
+    remove sonnet-A 0:0.704 0:0.699 relative clause common usage
+REQ-JEV-0006 ref f=0.00 m=0.659 cands 7 kept 6
+    remove mechanical 0:0.634 0:0.649 drop definition sentence 1
+    remove mechanical 0:0.634 0:0.641 drop definition sentence 2
+    remove haiku-A 0:0.653 0:0.651 the single-file property is used by no statement
+    remove haiku-A 0:0.657 0:0.676 Raptor's import role is defined in REQ-JEV-0001; no statement here relies on this clause
+    reword opus-A 0:0.644 0:0.637 shortening: snapshot is common usage; definition is circular
+    remove sonnet-A 0:0.617 0:0.622 detail unused
+REQ-JEV-0007 ref f=0.00 m=0.653 cands 2 kept 1
+    remove haiku-A 0:0.615 0:0.640 scope clause not used by the statement, which already speaks of records
+REQ-JEV-0008 ref f=0.00 m=0.693 cands 6 kept 5
+    remove mechanical 0:0.714 0:0.689 drop definition sentence 1
+    remove haiku-A 0:0.691 0:0.706 version number in the definition; no statement relies on it
+    reword opus-A 0:0.665 0:0.693 shortening: format detail no statement relies on
+    reword opus-A 0:0.676 0:0.685 shortening; Jev's answers not used by the statement
+    reword sonnet-A 0:0.667 0:0.701 shortening
+REQ-JEV-0101 ref f=0.00 m=0.567 cands 15 kept 7
+    remove mechanical 0:0.550 0:0.573 drop definition sentence 2
+    remove mechanical 0:0.563 0:0.562 drop definition sentence 3
+    remove haiku-A 0:0.560 0:0.564 no MUST statement names the verdict values
+    reword opus-A 0:0.560 0:0.556 shortening: the reason statement already defines what a reason reports
+    remove sonnet-A 0:0.549 0:0.550 answer shape restated by statements
+    remove sonnet-A 0:0.568 0:0.572 location detail
+    remove sonnet-A 0:0.565 0:0.560 detail
+REQ-JEV-0201 ref f=0.00 m=0.673 cands 14 kept 11
+    remove mechanical 0:0.663 0:0.658 drop definition sentence 0
+    remove mechanical 0:0.659 0:0.677 drop definition sentence 1
+    remove mechanical 0:0.665 0:0.669 drop definition sentence 3
+    reword haiku-B 0:0.693 0:0.704 shortening: location-form examples and their cite are not relied on by any statement; the 
+    reword haiku-B 0:0.679 0:0.683 shortening: record-id cite inside a definition that no statement relies on
+    remove opus-B 0:0.682 0:0.683 location forms are defined in cited REQ-JEV-0207; no statement here uses them
+    remove opus-B 0:0.666 0:0.672 target class is undefined here and no statement uses it
+    reword opus-B 0:0.684 0:0.668 shortening: profile contents are defined in REQ-JEV-0204 and unused by statements
+    reword opus-B 0:0.688 0:0.673 shortening: s2 already gives the flag/expansion pairs; acronyms unused
+    reword sonnet-B 0:0.665 0:0.687 shortening; TOML not used by any statement
+    remove sonnet-B 0:0.664 0:0.678 repeats s5 and the kind definition; target class undefined elsewhere in record
+REQ-JEV-0202 ref f=0.00 m=0.720 cands 11 kept 9
+    remove mechanical 0:0.719 0:0.716 drop definition sentence 1
+    remove mechanical 0:0.713 0:0.686 drop definition sentence 2
+    reword haiku-B 0:0.735 0:0.723 shortening: vendor name and hosting descriptor are not relied on by any statement
+    reword haiku-B 0:0.734 0:0.747 shortening: record-id parenthetical in a definition that no statement relies on
+    reword haiku-B 0:0.760 0:0.733 shortening: record-id cite in a definition; location is defined in REQ-JEV-0207 and no sta
+    remove opus-B 0:0.731 0:0.717 no statement uses record kinds
+    reword opus-B 0:0.739 0:0.731 shortening: acronyms and record kinds unused by statements
+    reword opus-B 0:0.727 0:0.739 shortening: vendor/hosting detail carries no obligation
+    remove sonnet-B 0:0.734 0:0.713 expansion of kinds no statement uses
+REQ-JEV-0203 ref f=0.00 m=0.764 cands 9 kept 8
+    remove mechanical 0:0.718 0:0.727 drop definition sentence 0
+    remove mechanical 0:0.759 0:0.760 drop definition sentence 1
+    remove mechanical 0:0.715 0:0.728 drop definition sentence 3
+    reword haiku-B 0:0.768 0:0.762 shortening: ADR cite duplicates the one already in Implementation Notes and is not relied 
+    reword haiku-B 0:0.738 0:0.745 shortening: the mode values are repeated in statements 1-4, which state them themselves
+    reword haiku-B 0:0.752 0:0.758 shortening: parenthetical term label that no statement uses
+    reword haiku-B 0:0.770 0:0.767 shortening: record-id cite in a definition that no statement relies on
+    remove opus-B 0:0.750 0:0.745 s7 already says sc-agent defines the grammars; ADR cited in Implementation Notes
+REQ-JEV-0204 ref f=0.00 m=0.769 cands 6 kept 4
+    remove mechanical 0:0.765 0:0.751 drop definition sentence 0
+    remove mechanical 0:0.761 0:0.747 drop definition sentence 2
+    remove haiku-B 0:0.727 0:0.741 the clause restates statement 1 (mode and record ids per location); the location list is s
+    remove opus-B 0:0.740 0:0.730 repeats s1
+REQ-JEV-0205 ref f=0.00 m=0.815 cands 21 kept 20
+    remove mechanical 0:0.819 0:0.826 drop definition sentence 0
+    remove mechanical 0:0.803 0:0.795 drop definition sentence 1
+    remove mechanical 0:0.821 0:0.813 drop definition sentence 2
+    remove mechanical 0:0.812 0:0.808 drop definition sentence 3
+    remove mechanical 0:0.811 0:0.805 drop definition sentence 4
+    remove mechanical 0:0.817 0:0.812 drop definition sentence 6
+    remove mechanical 0:0.817 0:0.811 drop definition sentence 7
+    remove mechanical 0:0.807 0:0.803 drop definition sentence 8
+    remove haiku-B 0:0.820 0:0.827 record-id cite in a definition; no statement cites REQ-JEV-0101
+    reword haiku-B 0:0.822 0:0.822 shortening: record-id cite in a definition that no statement relies on
+    reword haiku-B 0:0.819 0:0.812 shortening: 'location' is used only in this definition, so no statement relies on the phra
+    reword opus-B 0:0.813 0:0.813 shortening: acronyms unused by statements
+    reword opus-B 0:0.813 0:0.806 shortening: send detail carries no obligation
+    remove opus-B 0:0.818 0:0.819 s6 already names `--questions <file>`
+    remove opus-B 0:0.808 0:0.815 clause carries no obligation
+    remove opus-B 0:0.815 0:0.806 parentheticals name modes no statement uses (original text had just 'agent text or code')
+    remove sonnet-B 0:0.815 0:0.829 acronym list restated, no statement uses it
+    remove sonnet-B 0:0.814 0:0.820 mode list not relied on by statements
+    remove sonnet-B 0:0.820 0:0.811 mode not relied on by statements
+    reword sonnet-B 0:0.813 0:0.817 shortening
+REQ-JEV-0206 ref f=0.00 m=0.753 cands 0 kept 0
+REQ-JEV-0207 ref f=0.00 m=0.790 cands 6 kept 2
+    remove mechanical 0:0.772 0:0.781 drop definition sentence 2
+    reword haiku-B 0:0.775 0:0.763 shortening: the import clause is not relied on by any statement; statement 5 relies only o
+REQ-JEV-0208 ref f=0.00 m=0.788 cands 23 kept 7
+    remove mechanical 0:0.776 0:0.766 drop definition sentence 2
+    remove mechanical 0:0.791 0:0.780 drop definition sentence 5
+    remove mechanical 0:0.776 0:0.784 drop definition sentence 9
+    reword haiku-B 0:0.793 0:0.789 shortening: record-id cite in a definition that no statement relies on
+    reword haiku-B 0:0.788 0:0.794 shortening: vendor name and hosting descriptor are not relied on by any statement
+    remove opus-B 0:0.787 0:0.791 no statement uses 'target mode'
+    remove sonnet-B 0:0.787 0:0.788 parenthetical restates mode name
+REQ-JEV-0209 ref f=0.00 m=0.753 cands 7 kept 6
+    remove mechanical 0:0.702 0:0.697 drop definition sentence 1
+    remove haiku-C 0:0.755 0:0.768 Parenthetical flag name in the run-name definition; no statement relies on it.
+    remove haiku-C 0:0.757 0:0.744 Flag list repeats statement s2; the repeatable clause still defines the term.
+    remove opus-C 0:0.719 0:0.751 repeatable is common usage
+    reword opus-C 0:0.763 0:0.760 shortening
+    reword sonnet-C 0:0.751 0:0.742 shortening: drops the repeatable gloss, flag list stays
+REQ-JEV-0210 ref f=0.00 m=0.646 cands 7 kept 3
+    remove opus-C 0:0.648 0:0.655 detail no statement relies on
+    remove opus-C 0:0.641 0:0.649 s7-s9 state the envelope's value rules themselves
+    remove sonnet-C 0:0.633 0:0.634 vendor name and hosting detail no statement relies on
+REQ-JEV-0211 ref f=0.00 m=0.694 cands 10 kept 7
+    remove mechanical 0:0.632 0:0.639 drop definition sentence 0
+    remove haiku-C 0:0.699 0:0.704 Confidence range is not named in any statement; statements rely on the choice only.
+    remove haiku-C 0:0.672 0:0.684 Error fields not named in any statement; statements rely on the typed error and its code.
+    remove haiku-C 0:0.708 0:0.707 Package name of the logger; statements rely only on 'the logger's event size limit'.
+    remove opus-C 0:0.672 0:0.667 answer-shape detail no statement relies on
+    remove opus-C 0:0.663 0:0.703 range no statement uses
+    remove sonnet-C 0:0.684 0:0.646 field list not relied on by any statement
+REQ-JEV-0212 ref f=0.00 m=0.707 cands 9 kept 5
+    remove haiku-C 0:0.702 0:0.690 Placement detail of the request state; statement s2 does not rely on it.
+    reword opus-C 0:0.703 0:0.698 shortening
+    reword opus-C 0:0.718 0:0.703 shortening; s4 already says it is the request's limit
+    reword opus-C 0:0.689 0:0.702 shortening; s5 needs only that a digest exists
+    remove sonnet-C 0:0.710 0:0.697 digest inputs not relied on by any statement
+REQ-JEV-0213 ref f=0.00 m=0.657 cands 5 kept 2
+    remove haiku-C 0:0.628 0:0.657 Flag clause; no statement names --threshold and statements rely on the threshold itself.
+    remove opus-C 0:0.635 0:0.648 decide semantics not used by s6, which only needs crossing
+REQ-JEV-0214 ref f=0.00 m=0.655 cands 9 kept 3
+    remove opus-C 0:0.645 0:0.659 qualifier no statement relies on
+    remove opus-C 0:0.647 0:0.650 repeats s2's 'within its tree'
+    remove sonnet-C 0:0.659 0:0.646 partial-sentence removal; tree file is common usage
+REQ-JEV-0215 ref f=0.00 m=0.815 cands 13 kept 9
+    remove mechanical 0:0.800 0:0.797 drop definition sentence 0
+    remove mechanical 0:0.811 0:0.812 drop definition sentence 1
+    remove haiku-C 0:0.821 0:0.822 File path of the shape files; no statement relies on the location.
+    reword opus-C 0:0.809 0:0.820 shortening; no statement uses 'Jev request' or the vendor
+    remove opus-C 0:0.821 0:0.811 edge is common graph usage
+    remove opus-C 0:0.809 0:0.814 file path no statement relies on
+    reword opus-C 0:0.809 0:0.806 shortening
+    remove sonnet-C 0:0.793 0:0.795 two sentences that only make sense together; s10 uses Jev as common usage and no statement
+    remove sonnet-C 0:0.798 0:0.810 vendor name and hosting detail no statement relies on

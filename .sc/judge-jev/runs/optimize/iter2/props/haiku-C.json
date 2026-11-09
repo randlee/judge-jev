@@ -1,0 +1,14 @@
+[
+  {"rid": "REQ-JEV-0209", "type": "remove", "target": "defs", "old": " (`--run-name`)", "new": "", "why": "Parenthetical flag name in the run-name definition; no statement relies on it.", "evidence": ""},
+  {"rid": "REQ-JEV-0209", "type": "remove", "target": "defs", "old": "one of `--req`, `--adr` and `--nfr`; it is ", "new": "", "why": "Flag list repeats statement s2; the repeatable clause still defines the term.", "evidence": ""},
+  {"rid": "REQ-JEV-0210", "type": "reword", "target": "defs", "old": "is TypeSafe's hosted judge model", "new": "is a judge model", "why": "Shortening: drops vendor name and hosting detail that no statement relies on.", "evidence": ""},
+  {"rid": "REQ-JEV-0210", "type": "reword", "target": "defs", "old": "refused field,.", "new": "refused field.", "why": "Shortening (typo): drops the stray comma before the period.", "evidence": ""},
+  {"rid": "REQ-JEV-0211", "type": "remove", "target": "defs", "old": " and a confidence from 0 to 1", "new": "", "why": "Confidence range is not named in any statement; statements rely on the choice only.", "evidence": ""},
+  {"rid": "REQ-JEV-0211", "type": "remove", "target": "defs", "old": ", a `message` and a `suggested_action`", "new": "", "why": "Error fields not named in any statement; statements rely on the typed error and its code.", "evidence": ""},
+  {"rid": "REQ-JEV-0211", "type": "remove", "target": "defs", "old": "sc-observability ", "new": "", "why": "Package name of the logger; statements rely only on 'the logger's event size limit'.", "evidence": ""},
+  {"rid": "REQ-JEV-0212", "type": "remove", "target": "defs", "old": " next to the questions", "new": "", "why": "Placement detail of the request state; statement s2 does not rely on it.", "evidence": ""},
+  {"rid": "REQ-JEV-0213", "type": "remove", "target": "defs", "old": " unless `--threshold` sets it", "new": "", "why": "Flag clause; no statement names --threshold and statements rely on the threshold itself.", "evidence": ""},
+  {"rid": "REQ-JEV-0214", "type": "reword", "target": "defs", "old": "a Turtle file of", "new": "a file of", "why": "Shortening: drops the format name that no statement relies on.", "evidence": ""},
+  {"rid": "REQ-JEV-0215", "type": "reword", "target": "defs", "old": "is TypeSafe's hosted judge model", "new": "is a judge model", "why": "Shortening: drops vendor name and hosting detail that no statement relies on.", "evidence": ""},
+  {"rid": "REQ-JEV-0215", "type": "remove", "target": "defs", "old": " in `assets/shapes/`", "new": "", "why": "File path of the shape files; no statement relies on the location.", "evidence": ""}
+]

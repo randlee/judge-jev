@@ -1,0 +1,290 @@
+[
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "reword",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model.",
+  "new": "Jev is the judge model.",
+  "why": "shortening; vendor/hosting detail unused by statements",
+  "evidence": ""
+ },
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "remove",
+  "target": "defs",
+  "old": " (`--answers-file`)",
+  "new": "",
+  "why": "flag name not relied on by any statement",
+  "evidence": ""
+ },
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "remove",
+  "target": "defs",
+  "old": ": JSON answers given to judge-jev",
+  "new": "",
+  "why": "restates what recorded answers are",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0001",
+  "type": "remove",
+  "target": "defs",
+  "old": " into its record store",
+  "new": "",
+  "why": "store detail unused; statement 3 says record store itself",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": " (`JEV.RATE_LIMITED`, `JEV.OVERLOADED`, `JEV.NETWORK`, `JEV.RESPONSE_INVALID`)",
+  "new": "",
+  "why": "example code list not relied on by statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": ", at most 64000 bytes",
+  "new": "",
+  "why": "numeric example not relied on by statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": ", which writes `.sc/judge-jev/logs/judge-jev.log.jsonl`",
+  "new": "",
+  "why": "log path not used by statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": ": it reads request lines, sends each to Jev and writes a result line",
+  "new": "",
+  "why": "repeats statements s2/s3",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": ", holding its answers or its error",
+  "new": "",
+  "why": "detail of envelope contents unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": " naming a failure",
+  "new": "",
+  "why": "common usage of error code",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "reword",
+  "target": "defs",
+  "old": "a call that failed with a recoverable or transient error",
+  "new": "a failed call",
+  "why": "shortening; transient/recoverable restated by code list",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "reword",
+  "target": "defs",
+  "old": "the macOS Keychain, the Windows Credential Manager or, on Linux, the Secret Service",
+  "new": "the operating system's secret store",
+  "why": "shortening; vendor names unused by statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "remove",
+  "target": "defs",
+  "old": " whose API serves Jev",
+  "new": "",
+  "why": "relationship to Jev unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "remove",
+  "target": "defs",
+  "old": "TypeSafe's hosted ",
+  "new": "",
+  "why": "vendor/hosting detail unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "reword",
+  "target": "defs",
+  "old": "is a request sent to Jev.",
+  "new": "is a request.",
+  "why": "shortening; Jev already named in the term",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "remove",
+  "target": "defs",
+  "old": ": Claude, Codex or Cursor",
+  "new": "",
+  "why": "harness names repeated in statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "remove",
+  "target": "defs",
+  "old": ", and present when its `.<harness>/` directory exists",
+  "new": "",
+  "why": "trailing clause; try removal",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "remove",
+  "target": "defs",
+  "old": " judge-jev installs into",
+  "new": "",
+  "why": "relative clause common usage",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "remove",
+  "target": "defs",
+  "old": "; a SQLite snapshot of a Dolt branch is a SQLite copy of that branch",
+  "new": "",
+  "why": "restates the term from the statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "remove",
+  "target": "defs",
+  "old": "single-file ",
+  "new": "",
+  "why": "detail unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "remove",
+  "target": "defs",
+  "old": " with Git-style branches",
+  "new": "",
+  "why": "detail unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "remove",
+  "target": "defs",
+  "old": " that imports Markdown records",
+  "new": "",
+  "why": "statement says Raptor-parseable Markdown",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0007",
+  "type": "remove",
+  "target": "defs",
+  "old": " for a record",
+  "new": "",
+  "why": "detail unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "remove",
+  "target": "defs",
+  "old": " (version 1.5.0)",
+  "new": "",
+  "why": "version number unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "remove",
+  "target": "defs",
+  "old": " from Jev's answers",
+  "new": "",
+  "why": "detail unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "defs",
+  "old": "the JSON-lines logger of the sc-observability package",
+  "new": "the sc-observability logger package",
+  "why": "shortening",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "remove",
+  "target": "defs",
+  "old": ": it answers each multiple-choice question about a text with one choice and a confidence from 0 to 1",
+  "new": "",
+  "why": "answer shape restated by statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "remove",
+  "target": "defs",
+  "old": ", and its reason is the report of its questions and Jev's answers",
+  "new": "",
+  "why": "repeats s4",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "remove",
+  "target": "defs",
+  "old": " (`yes` or `no`)",
+  "new": "",
+  "why": "example values unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "remove",
+  "target": "defs",
+  "old": " (questions to Jev)",
+  "new": "",
+  "why": "parenthetical gloss",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "remove",
+  "target": "defs",
+  "old": "a rule in the tree file that turns",
+  "new": "a rule that turns",
+  "why": "location detail",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "remove",
+  "target": "defs",
+  "old": " from the first to the one that gives the verdict",
+  "new": "",
+  "why": "detail",
+  "evidence": ""
+ }
+]

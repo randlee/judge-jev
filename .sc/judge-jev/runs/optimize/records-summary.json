@@ -1,0 +1,579 @@
+{
+ "NFR-JEV-0001": {
+  "orig": [
+   6,
+   0.689,
+   6
+  ],
+  "greedy": [
+   0,
+   0.769,
+   0
+  ],
+  "final": [
+   0,
+   0.75,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 5,
+  "defs_pruned": [
+   "Jev is TypeSafe's hosted judge model: it answers each multiple-choice question about a text with one choice and a confidence from 0 to 1.",
+   "A Jev request is one call to it.",
+   "Recorded Jev answers are an answers file (`--answers-file`): JSON answers given to judge-jev in place of a live Jev call."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0001": {
+  "orig": [
+   4,
+   0.85,
+   4
+  ],
+  "greedy": [
+   0,
+   0.868,
+   0
+  ],
+  "final": [
+   0,
+   0.887,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 4,
+  "defs_pruned": [
+   "Raptor is the requirements tool that imports Markdown records into its record store and serves them to other tools (ADR-JEV-0002).",
+   "Its query interface is the way Raptor hands records to another tool."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0002": {
+  "orig": [
+   6,
+   0.727,
+   45
+  ],
+  "greedy": [
+   0,
+   0.779,
+   0
+  ],
+  "final": [
+   0,
+   0.779,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0003": {
+  "orig": [
+   6,
+   0.567,
+   6
+  ],
+  "greedy": [
+   0,
+   0.641,
+   0
+  ],
+  "final": [
+   0,
+   0.649,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0004": {
+  "orig": [
+   6,
+   0.674,
+   7
+  ],
+  "greedy": [
+   0,
+   0.738,
+   0
+  ],
+  "final": [
+   0,
+   0.723,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0005": {
+  "orig": [
+   6,
+   0.68,
+   18
+  ],
+  "greedy": [
+   0,
+   0.739,
+   0
+  ],
+  "final": [
+   0,
+   0.726,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0006": {
+  "orig": [
+   6,
+   0.642,
+   12
+  ],
+  "greedy": [
+   0,
+   0.692,
+   0
+  ],
+  "final": [
+   0,
+   0.68,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0007": {
+  "orig": [
+   6,
+   0.731,
+   6
+  ],
+  "greedy": [
+   0,
+   0.652,
+   0
+  ],
+  "final": [
+   0,
+   0.649,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 3,
+  "defs_pruned": [
+   "Raptor is the requirements tool that imports Markdown records.",
+   "An issue is a diagnostic Raptor's import reports for a record, such as `UNKNOWN_SECTION`."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0008": {
+  "orig": [
+   6,
+   0.71,
+   6
+  ],
+  "greedy": [
+   0,
+   0.73,
+   0
+  ],
+  "final": [
+   0,
+   0.73,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0101": {
+  "orig": [
+   6,
+   0.568,
+   75
+  ],
+  "greedy": [
+   1,
+   0.598,
+   1
+  ],
+  "final": [
+   0,
+   0.6,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 1,
+  "defs_pruned": [],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0201": {
+  "orig": [
+   6,
+   0.652,
+   12
+  ],
+  "greedy": [
+   0,
+   0.697,
+   0
+  ],
+  "final": [
+   0,
+   0.686,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 6,
+  "defs_pruned": [
+   "A record is one requirement (REQ), non-functional requirement (NFR) or architecture decision record (ADR) as Raptor imports it; REQ, NFR and ADR are its record kinds.",
+   "A location is the text judged against a record: a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207).",
+   "A mode (target mode) names what a location holds: `prompt` (prompt text), `skill` (a skill file), `task` (a task template) or `code` (source code).",
+   "A question set is the data file of questions judge-jev sends to Jev about a location for one record kind and target class.",
+   "`--profile` names a profile: a TOML file listing locations, each with its mode and the ids of the records that govern it (REQ-JEV-0204)."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0202": {
+  "orig": [
+   6,
+   0.711,
+   18
+  ],
+  "greedy": [
+   0,
+   0.748,
+   0
+  ],
+  "final": [
+   0,
+   0.747,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 7,
+  "defs_pruned": [
+   "Jev is TypeSafe's hosted judge model: it answers each multiple-choice question about a text with one choice and a confidence from 0 to 1.",
+   "A Jev request is one call to it.",
+   "A record is one requirement (REQ), non-functional requirement (NFR) or architecture decision record (ADR) as Raptor imports it; REQ, NFR and ADR are its record kinds.",
+   "A location is the text judged against a record: a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207).",
+   "A pair is one (record, location) pair.",
+   "A stream of single requests is a sequence of Jev requests, one per pair, sent one at a time through the batch command (REQ-JEV-0002)."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0203": {
+  "orig": [
+   6,
+   0.702,
+   17
+  ],
+  "greedy": [
+   0,
+   0.799,
+   0
+  ],
+  "final": [
+   0,
+   0.799,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0204": {
+  "orig": [
+   6,
+   0.71,
+   11
+  ],
+  "greedy": [
+   0,
+   0.775,
+   0
+  ],
+  "final": [
+   0,
+   0.768,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0205": {
+  "orig": [
+   6,
+   0.741,
+   32
+  ],
+  "greedy": [
+   0,
+   0.795,
+   0
+  ],
+  "final": [
+   0,
+   0.811,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 14,
+  "defs_pruned": [
+   "A record is one requirement (REQ), non-functional requirement (NFR) or architecture decision record (ADR) as Raptor imports it; REQ, NFR and ADR are its record kinds.",
+   "A question set is the data file of questions judge-jev sends to Jev about a location for one record kind and target class.",
+   "A target class is agent text (modes `prompt`, `skill` and `task`) or code (mode `code`).",
+   "A quality decision tree is the data file of questions that judges whether a record is well written: waves of questions, with rules that turn Jev's answers into the next wave or a verdict (REQ-JEV-0101).",
+   "A question-set id is the `id` field of a question set or tree file.",
+   "The content digest of a file is the SHA-256 of its bytes.",
+   "A log entry is one event a run writes through the sc-observability logger (REQ-JEV-0008)."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0206": {
+  "orig": [
+   6,
+   0.768,
+   9
+  ],
+  "greedy": [
+   6,
+   0.769,
+   9
+  ],
+  "final": [
+   0,
+   0.788,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 8,
+  "defs_pruned": [],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0207": {
+  "orig": [
+   6,
+   0.767,
+   12
+  ],
+  "greedy": [
+   0,
+   0.78,
+   0
+  ],
+  "final": [
+   0,
+   0.776,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 5,
+  "defs_pruned": [
+   "Raptor is the requirements tool that imports Markdown records; its rules decide which text belongs to which heading.",
+   "sc-agent is the agent tool whose Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007).",
+   "Tree-sitter grammars are the parsers that find a named symbol in source code."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0208": {
+  "orig": [
+   6,
+   0.68,
+   71
+  ],
+  "greedy": [
+   0,
+   0.802,
+   0
+  ],
+  "final": [
+   0,
+   0.792,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 8,
+  "defs_pruned": [
+   "A Jev request is one call to it.",
+   "Raptor is the requirements tool that imports Markdown records into its record store and serves them to other tools (ADR-JEV-0002).",
+   "A dry-run entry is its report of one request a live run would send.",
+   "A composed request is the full JSON body judge-jev would send to Jev.",
+   "The record's Raptor source is the Raptor index the record was read from.",
+   "A location (resolved: its path, section or symbol) is the text judged against a record: a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207).",
+   "A quality decision tree is the data file of questions that judges whether a record is well written: waves of questions, with rules that turn Jev's answers into the next wave or a verdict (REQ-JEV-0101).",
+   "A typed error is a JSON error object with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a `suggested_action`."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0209": {
+  "orig": [
+   6,
+   0.701,
+   12
+  ],
+  "greedy": [
+   3,
+   0.713,
+   3
+  ],
+  "final": [
+   0,
+   0.737,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 4,
+  "defs_pruned": [
+   "A run name is the name every log event of one invocation carries (`--run-name`)."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0210": {
+  "orig": [
+   6,
+   0.639,
+   45
+  ],
+  "greedy": [
+   1,
+   0.679,
+   1
+  ],
+  "final": [
+   0,
+   0.678,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 1,
+  "defs_pruned": [],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0211": {
+  "orig": [
+   6,
+   0.539,
+   24
+  ],
+  "greedy": [
+   0,
+   0.61,
+   0
+  ],
+  "final": [
+   0,
+   0.706,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 2,
+  "defs_pruned": [],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0212": {
+  "orig": [
+   6,
+   0.655,
+   30
+  ],
+  "greedy": [
+   0,
+   0.697,
+   0
+  ],
+  "final": [
+   0,
+   0.689,
+   0
+  ],
+  "choice": "pruned",
+  "kept_tweaks": 7,
+  "defs_pruned": [
+   "A definition is a term with its meaning, from a `.sc/judge-jev/*.definitions.ttl` file (ADR-JEV-0008).",
+   "It is attached to a record, or to a record and a location (the file, Markdown section or code symbol being judged).",
+   "A request's state is the data it sends to Jev next to the questions, which holds the record.",
+   "The size limit of a request is 24000 bytes.",
+   "A definition's digest is the SHA-256 of its term, text and source."
+  ],
+  "changed_vs_greedy": true
+ },
+ "REQ-JEV-0213": {
+  "orig": [
+   6,
+   0.589,
+   25
+  ],
+  "greedy": [
+   0,
+   0.719,
+   0
+  ],
+  "final": [
+   0,
+   0.713,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0214": {
+  "orig": [
+   6,
+   0.529,
+   12
+  ],
+  "greedy": [
+   0,
+   0.534,
+   0
+  ],
+  "final": [
+   0,
+   0.538,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 0,
+  "defs_pruned": [],
+  "changed_vs_greedy": false
+ },
+ "REQ-JEV-0215": {
+  "orig": [
+   6,
+   0.708,
+   54
+  ],
+  "greedy": [
+   0,
+   0.822,
+   0
+  ],
+  "final": [
+   0,
+   0.826,
+   0
+  ],
+  "choice": "fixes-only",
+  "kept_tweaks": 1,
+  "defs_pruned": [],
+  "changed_vs_greedy": true
+ }
+}

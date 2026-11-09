@@ -1,0 +1,281 @@
+[
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "reword",
+  "target": "defs",
+  "old": "an answers file (`--answers-file`): JSON",
+  "new": "an answers file: JSON",
+  "why": "shortening: CLI flag parenthetical; no statement uses the flag",
+  "evidence": ""
+ },
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "reword",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model.",
+  "new": "Jev is a judge model.",
+  "why": "shortening: vendor/hosting detail no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "reword",
+  "target": "defs",
+  "old": "(`--answers-file`): JSON answers given to judge-jev.",
+  "new": "(`--answers-file`).",
+  "why": "shortening: restates what an answers file is; common usage",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0001",
+  "type": "reword",
+  "target": "defs",
+  "old": "imports Markdown records into",
+  "new": "imports records into",
+  "why": "shortening: Markdown qualifier not needed to define Raptor or record store",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0001",
+  "type": "reword",
+  "target": "defs",
+  "old": "Raptor is the requirements tool that imports",
+  "new": "Raptor is the tool that imports",
+  "why": "shortening; 'requirements' adds nothing a statement uses",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "reword",
+  "target": "defs",
+  "old": "`jev_judge.py batch`: it reads request lines, sends each to Jev and writes a result line.",
+  "new": "`jev_judge.py batch`.",
+  "why": "shortening: restates the batch-command MUST statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model:",
+  "new": "",
+  "why": "Jev is common to the record set and no statement depends on its vendor",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "reword",
+  "target": "defs",
+  "old": "for one request, holding its answers or its error.",
+  "new": "for one request.",
+  "why": "shortening: envelope contents not used by any statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "reword",
+  "target": "defs",
+  "old": "with a recoverable or transient error",
+  "new": "with a transient error",
+  "why": "shortening; the code list defines the set",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "reword",
+  "target": "defs",
+  "old": "logger of the sc-observability package, which writes `.sc/judge-jev/logs/judge-jev.log.jsonl`.",
+  "new": "logger of the sc-observability package.",
+  "why": "shortening: file path no statement relies on; statements cite REQ-JEV-0008",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "reword",
+  "target": "defs",
+  "old": "`--max-request-bytes` value, at most 64000 bytes.",
+  "new": "`--max-request-bytes` value.",
+  "why": "shortening: number in definition no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "reword",
+  "target": "defs",
+  "old": "the macOS Keychain, the Windows Credential Manager or, on Linux, the Secret Service.",
+  "new": "macOS Keychain, Windows Credential Manager or Linux Secret Service.",
+  "why": "shortening; same three stores",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "reword",
+  "target": "defs",
+  "old": "TypeSafe is the company whose API serves Jev.",
+  "new": "TypeSafe is the API provider.",
+  "why": "shortening; Jev not used in the statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "reword",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model: A live",
+  "new": "A live",
+  "why": "shortening: Jev's vendor is not used by either statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "reword",
+  "target": "defs",
+  "old": "TypeSafe's hosted judge model:",
+  "new": "judge model:",
+  "why": "shortening: vendor/hosting detail no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "reword",
+  "target": "defs",
+  "old": "installs into: Claude, Codex or Cursor.",
+  "new": "installs into.",
+  "why": "shortening: statements already name Claude, Codex and Cursor",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "reword",
+  "target": "defs",
+  "old": "A harness is an agent tool judge-jev",
+  "new": "A harness is a tool judge-jev",
+  "why": "shortening",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "reword",
+  "target": "defs",
+  "old": "installed when its `.<harness>/skills/judge-jev/` directory exists",
+  "new": "installed when its judge-jev skill directory exists",
+  "why": "shortening the path while keeping the condition",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "reword",
+  "target": "defs",
+  "old": "branches; a SQLite snapshot of a Dolt branch is a SQLite copy of that branch.",
+  "new": "branches.",
+  "why": "shortening: snapshot is common usage; definition is circular",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "reword",
+  "target": "defs",
+  "old": "SQLite is a single-file SQL database.",
+  "new": "SQLite is a SQL database.",
+  "why": "shortening: single-file detail not used by statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "reword",
+  "target": "defs",
+  "old": "requirements tool that imports Markdown records.",
+  "new": "requirements tool.",
+  "why": "shortening: statement already says Raptor builds from Markdown",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0007",
+  "type": "reword",
+  "target": "defs",
+  "old": "import reports for a record.",
+  "new": "import reports.",
+  "why": "shortening: redundant qualifier",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "defs",
+  "old": "sc-observability package (version 1.5.0).",
+  "new": "sc-observability package.",
+  "why": "shortening: version number no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "defs",
+  "old": "is the JSON-lines logger of",
+  "new": "is the logger of",
+  "why": "shortening: format detail no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "defs",
+  "old": "tree's rules select from Jev's answers.",
+  "new": "tree's rules select.",
+  "why": "shortening; Jev's answers not used by the statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "defs",
+  "old": "in waves; a wave is one set of questions, and its reason is the report of its questions and Jev's answers.",
+  "new": "in waves; a wave is one set of questions.",
+  "why": "shortening: the reason statement already defines what a reason reports",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "defs",
+  "old": "into a verdict (`yes` or `no`).",
+  "new": "into a verdict.",
+  "why": "shortening: example values no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model:",
+  "new": "Jev is a judge model:",
+  "why": "shortening: vendor/hosting detail no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "defs",
+  "old": "with one choice and a confidence from 0 to 1.",
+  "new": "with one choice and a confidence.",
+  "why": "shortening: range not used by any statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "defs",
+  "old": "data file of prompts (questions to Jev) in waves",
+  "new": "data file of prompts in waves",
+  "why": "shortening: parenthetical restates prompt",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "defs",
+  "old": "multiple-choice question about a text with",
+  "new": "multiple-choice question with",
+  "why": "shortening: redundant qualifier",
+  "evidence": ""
+ }
+]

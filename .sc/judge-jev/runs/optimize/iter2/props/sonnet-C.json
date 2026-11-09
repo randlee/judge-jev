@@ -1,0 +1,23 @@
+[
+{"rid":"REQ-JEV-0209","type":"remove","target":"defs","old":" (`--run-name`)","new":"","why":"flag spelling in the definition; s5 relies only on the term run name","evidence":""},
+{"rid":"REQ-JEV-0209","type":"remove","target":"defs","old":"; it is repeatable when one invocation may give it more than once","new":"","why":"repeatable is common usage; s3 states the obligation itself","evidence":""},
+{"rid":"REQ-JEV-0209","type":"reword","target":"defs","old":"is one of `--req`, `--adr` and `--nfr`; it is repeatable when one invocation may give it more than once.","new":"is `--req`, `--adr` or `--nfr`.","why":"shortening: drops the repeatable gloss, flag list stays","evidence":""},
+{"rid":"REQ-JEV-0210","type":"remove","target":"defs","old":"TypeSafe's hosted ","new":"","why":"vendor name and hosting detail no statement relies on","evidence":""},
+{"rid":"REQ-JEV-0210","type":"remove","target":"defs","old":"of keys and list indexes ","new":"","why":"partial-sentence removal; field path is common usage","evidence":""},
+{"rid":"REQ-JEV-0210","type":"reword","target":"defs","old":"refused field,. Its","new":"refused field. Its","why":"shortening: drops stray comma","evidence":""},
+{"rid":"REQ-JEV-0211","type":"remove","target":"defs","old":": it answers each multiple-choice question about a text with one choice and a confidence from 0 to 1","new":"","why":"mechanics of Jev's answers; no statement relies on them","evidence":""},
+{"rid":"REQ-JEV-0211","type":"remove","target":"defs","old":" with a stable `code`, a `message` and a `suggested_action`","new":"","why":"field list not relied on by any statement","evidence":""},
+{"rid":"REQ-JEV-0211","type":"reword","target":"defs","old":"written through the sc-observability logger","new":"written through the logger","why":"shortening: drops vendor/library name","evidence":""},
+{"rid":"REQ-JEV-0212","type":"remove","target":"defs","old":" next to the questions","new":"","why":"parenthetical detail of state no statement relies on","evidence":""},
+{"rid":"REQ-JEV-0212","type":"remove","target":"defs","old":"It is attached to a record, or to a record and a location. ","new":"","why":"repeats s1 and has a dangling pronoun","evidence":""},
+{"rid":"REQ-JEV-0212","type":"remove","target":"defs","old":" of its term, text and source","new":"","why":"digest inputs not relied on by any statement","evidence":""},
+{"rid":"REQ-JEV-0213","type":"remove","target":"defs","old":"; a confidence at or above it decides","new":"","why":"tie-break detail no statement relies on","evidence":""},
+{"rid":"REQ-JEV-0213","type":"remove","target":"defs","old":" unless `--threshold` sets it","new":"","why":"flag override not relied on by any statement","evidence":""},
+{"rid":"REQ-JEV-0214","type":"remove","target":"defs","old":" of quality decision trees","new":"","why":"partial-sentence removal; tree file is common usage","evidence":""},
+{"rid":"REQ-JEV-0214","type":"remove","target":"defs","old":"short id within its tree","new":"short id","why":"repeats s2's within its tree","evidence":""},
+{"rid":"REQ-JEV-0214","type":"reword","target":"defs","old":"is the URN that names a question","new":"is a URN","why":"shortening: tautological clause","evidence":""},
+{"rid":"REQ-JEV-0215","type":"remove","target":"defs","old":"Jev is TypeSafe's hosted judge model. A Jev request is one call to it. ","new":"","why":"two sentences that only make sense together; s10 uses Jev as common usage and no statement uses Jev request","evidence":""},
+{"rid":"REQ-JEV-0215","type":"remove","target":"defs","old":"TypeSafe's hosted ","new":"","why":"vendor name and hosting detail no statement relies on","evidence":""},
+{"rid":"REQ-JEV-0215","type":"remove","target":"defs","old":" in `assets/shapes/`","new":"","why":"file path no statement relies on","evidence":""},
+{"rid":"REQ-JEV-0215","type":"remove","target":"defs","old":"; an edge is a link from one node of a tree to another","new":"","why":"edge is common graph usage","evidence":""}
+]

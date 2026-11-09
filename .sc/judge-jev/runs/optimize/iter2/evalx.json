@@ -1,0 +1,2252 @@
+{
+ "cands": {
+  "REQ-JEV-0206": [
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "src": "mechanical",
+    "target": "defs",
+    "old": "A judgment is one Jev verdict on one record at one location; a result is the reported judgment.",
+    "new": "",
+    "why": "drop definition sentence 0",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A location is defined in REQ-JEV-0207; a pair is one (record,\nlocation) pair. A record is one requirement, non-functional requirement or\narchitecture decision record as Raptor imports it. A location is the text\njudged against a record: a whole file (`path`), a Markdown section\n(`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207). A pair is\none (record, location) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7316666666666666,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.91
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.61
+        ],
+        "check": [
+         "unit test",
+         0.35
+        ]
+       },
+       "fired": [],
+       "m": 0.715
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.92
+        ],
+        "term": [
+         "none",
+         0.64
+        ],
+        "check": [
+         "unit test",
+         0.39
+        ]
+       },
+       "fired": [],
+       "m": 0.725
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.77
+        ],
+        "check": [
+         "unit test",
+         0.29
+        ]
+       },
+       "fired": [],
+       "m": 0.755
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-0/i2x-m1-0",
+     "m2": "repos/i2x-m2-0/i2x-m2-0"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7208333333333332,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.92
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.57
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.71
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.91
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.27
+        ]
+       },
+       "fired": [],
+       "m": 0.6799999999999999
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.81
+        ],
+        "check": [
+         "unit test",
+         0.32
+        ]
+       },
+       "fired": [],
+       "m": 0.7725
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "src": "mechanical",
+    "target": "defs",
+    "old": "A location is defined in REQ-JEV-0207; a pair is one (record, location) pair.",
+    "new": "",
+    "why": "drop definition sentence 1",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A record is one requirement, non-functional\nrequirement or architecture decision record as Raptor imports it. A location\nis the text judged against a record: a whole file (`path`), a Markdown\nsection (`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207). A\npair is one (record, location) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7641666666666667,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.64
+        ],
+        "check": [
+         "unit test",
+         0.55
+        ]
+       },
+       "fired": [],
+       "m": 0.7775000000000001
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.62
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.725
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.86
+        ],
+        "check": [
+         "unit test",
+         0.34
+        ]
+       },
+       "fired": [],
+       "m": 0.79
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-1/i2x-m1-1",
+     "m2": "repos/i2x-m2-1/i2x-m2-1"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7558333333333334,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.66
+        ],
+        "check": [
+         "unit test",
+         0.52
+        ]
+       },
+       "fired": [],
+       "m": 0.78
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.61
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.7224999999999999
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         0.99
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.85
+        ],
+        "check": [
+         "unit test",
+         0.26
+        ]
+       },
+       "fired": [],
+       "m": 0.765
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "src": "mechanical",
+    "target": "defs",
+    "old": "A record is one requirement, non-functional requirement or architecture decision record as Raptor imports it.",
+    "new": "",
+    "why": "drop definition sentence 2",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A location is defined in REQ-JEV-0207; a\npair is one (record, location) pair. A location is the text judged against a\nrecord: a whole file (`path`), a Markdown section (`path#Heading`) or a code\nsymbol (`path::Symbol`) (REQ-JEV-0207). A pair is one (record, location)\npair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7766666666666667,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.92
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.66
+        ],
+        "check": [
+         "unit test",
+         0.6
+        ]
+       },
+       "fired": [],
+       "m": 0.79
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.64
+        ],
+        "check": [
+         "unit test",
+         0.46
+        ]
+       },
+       "fired": [],
+       "m": 0.76
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.73
+        ],
+        "check": [
+         "unit test",
+         0.41
+        ]
+       },
+       "fired": [],
+       "m": 0.78
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-2/i2x-m1-2",
+     "m2": "repos/i2x-m2-2/i2x-m2-2"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7775,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.91
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.66
+        ],
+        "check": [
+         "unit test",
+         0.52
+        ]
+       },
+       "fired": [],
+       "m": 0.7675000000000001
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.65
+        ],
+        "check": [
+         "unit test",
+         0.45
+        ]
+       },
+       "fired": [],
+       "m": 0.76
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.84
+        ],
+        "check": [
+         "unit test",
+         0.4
+        ]
+       },
+       "fired": [],
+       "m": 0.8049999999999999
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "src": "mechanical",
+    "target": "defs",
+    "old": "A location is the text judged against a record: a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207).",
+    "new": "",
+    "why": "drop definition sentence 3",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A location is defined in REQ-JEV-0207; a\npair is one (record, location) pair. A record is one requirement,\nnon-functional requirement or architecture decision record as Raptor imports\nit. A pair is one (record, location) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.775,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.69
+        ]
+       },
+       "fired": [],
+       "m": 0.7975
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.65
+        ],
+        "check": [
+         "unit test",
+         0.44
+        ]
+       },
+       "fired": [],
+       "m": 0.7575
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         0.99
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.74
+        ],
+        "check": [
+         "unit test",
+         0.37
+        ]
+       },
+       "fired": [],
+       "m": 0.77
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-3/i2x-m1-3",
+     "m2": "repos/i2x-m2-3/i2x-m2-3"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7816666666666666,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.92
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.7
+        ]
+       },
+       "fired": [],
+       "m": 0.8
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.92
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.62
+        ],
+        "check": [
+         "unit test",
+         0.49
+        ]
+       },
+       "fired": [],
+       "m": 0.7525
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.74
+        ],
+        "check": [
+         "unit test",
+         0.44
+        ]
+       },
+       "fired": [],
+       "m": 0.7925
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "src": "mechanical",
+    "target": "defs",
+    "old": "A pair is one (record, location) pair.",
+    "new": "",
+    "why": "drop definition sentence 4",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A location is defined in REQ-JEV-0207; a\npair is one (record, location) pair. A record is one requirement,\nnon-functional requirement or architecture decision record as Raptor imports\nit. A location is the text judged against a record: a whole file (`path`), a\nMarkdown section (`path#Heading`) or a code symbol (`path::Symbol`)\n(REQ-JEV-0207).\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7225,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.91
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.6
+        ],
+        "check": [
+         "unit test",
+         0.32
+        ]
+       },
+       "fired": [],
+       "m": 0.7025
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.62
+        ],
+        "check": [
+         "unit test",
+         0.34
+        ]
+       },
+       "fired": [],
+       "m": 0.7125
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.81
+        ],
+        "check": [
+         "unit test",
+         0.22
+        ]
+       },
+       "fired": [],
+       "m": 0.7525000000000001
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-4/i2x-m1-4",
+     "m2": "repos/i2x-m2-4/i2x-m2-4"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7483333333333334,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.91
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.61
+        ],
+        "check": [
+         "unit test",
+         0.47
+        ]
+       },
+       "fired": [],
+       "m": 0.745
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "none",
+         0.95
+        ],
+        "term": [
+         "none",
+         0.7
+        ],
+        "check": [
+         "unit test",
+         0.35
+        ]
+       },
+       "fired": [],
+       "m": 0.7324999999999999
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.8
+        ],
+        "check": [
+         "unit test",
+         0.29
+        ]
+       },
+       "fired": [],
+       "m": 0.7675
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "reword",
+    "target": "defs",
+    "old": "A location is defined in REQ-JEV-0207; a\npair",
+    "new": "A pair",
+    "why": "shortening: the location definition is repeated by the sentence that defines it as the text judged against a record",
+    "evidence": "",
+    "src": "haiku-B",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A pair is one (record, location) pair. A\nrecord is one requirement, non-functional requirement or architecture\ndecision record as Raptor imports it. A location is the text judged against\na record: a whole file (`path`), a Markdown section (`path#Heading`) or a\ncode symbol (`path::Symbol`) (REQ-JEV-0207). A pair is one (record,\nlocation) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7491666666666666,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.47
+        ]
+       },
+       "fired": [],
+       "m": 0.745
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.68
+        ],
+        "check": [
+         "unit test",
+         0.3
+        ]
+       },
+       "fired": [],
+       "m": 0.7175
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         0.99
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.81
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.785
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-5/i2x-m1-5",
+     "m2": "repos/i2x-m2-5/i2x-m2-5"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7516666666666666,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.92
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.57
+        ],
+        "check": [
+         "unit test",
+         0.47
+        ]
+       },
+       "fired": [],
+       "m": 0.7375
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.68
+        ],
+        "check": [
+         "unit test",
+         0.34
+        ]
+       },
+       "fired": [],
+       "m": 0.735
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         0.99
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.82
+        ],
+        "check": [
+         "unit test",
+         0.34
+        ]
+       },
+       "fired": [],
+       "m": 0.7825
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "reword",
+    "target": "defs",
+    "old": "record as Raptor imports\nit.",
+    "new": "record.",
+    "why": "shortening: the Raptor import clause is not relied on by any statement",
+    "evidence": "",
+    "src": "haiku-B",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A location is defined in REQ-JEV-0207; a\npair is one (record, location) pair. A record is one requirement,\nnon-functional requirement or architecture decision record. A location is\nthe text judged against a record: a whole file (`path`), a Markdown section\n(`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207). A pair is\none (record, location) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7408333333333333,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.61
+        ],
+        "check": [
+         "unit test",
+         0.41
+        ]
+       },
+       "fired": [],
+       "m": 0.74
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "none",
+         0.92
+        ],
+        "term": [
+         "none",
+         0.74
+        ],
+        "check": [
+         "unit test",
+         0.26
+        ]
+       },
+       "fired": [],
+       "m": 0.72
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.81
+        ],
+        "check": [
+         "unit test",
+         0.26
+        ]
+       },
+       "fired": [],
+       "m": 0.7625
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-6/i2x-m1-6",
+     "m2": "repos/i2x-m2-6/i2x-m2-6"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7566666666666667,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.66
+        ],
+        "check": [
+         "unit test",
+         0.52
+        ]
+       },
+       "fired": [],
+       "m": 0.7725
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.94
+        ],
+        "term": [
+         "none",
+         0.69
+        ],
+        "check": [
+         "unit test",
+         0.31
+        ]
+       },
+       "fired": [],
+       "m": 0.7224999999999999
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.82
+        ],
+        "check": [
+         "unit test",
+         0.3
+        ]
+       },
+       "fired": [],
+       "m": 0.775
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "reword",
+    "target": "defs",
+    "old": "against a record: a whole file (`path`), a\nMarkdown section (`path#Heading`) or a code symbol (`path::Symbol`)\n(REQ-JEV-0207).",
+    "new": "against a record.",
+    "why": "shortening: location-form examples are not relied on by any statement; the forms are defined in REQ-JEV-0207",
+    "evidence": "",
+    "src": "haiku-B",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A location is defined in REQ-JEV-0207; a\npair is one (record, location) pair. A record is one requirement,\nnon-functional requirement or architecture decision record as Raptor imports\nit. A location is the text judged against a record. A pair is one (record,\nlocation) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.775,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.54
+        ],
+        "check": [
+         "unit test",
+         0.61
+        ]
+       },
+       "fired": [],
+       "m": 0.77
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.68
+        ],
+        "check": [
+         "unit test",
+         0.47
+        ]
+       },
+       "fired": [],
+       "m": 0.765
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.81
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.79
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-7/i2x-m1-7",
+     "m2": "repos/i2x-m2-7/i2x-m2-7"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7916666666666666,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.64
+        ],
+        "check": [
+         "unit test",
+         0.69
+        ]
+       },
+       "fired": [],
+       "m": 0.8175
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.74
+        ],
+        "check": [
+         "unit test",
+         0.41
+        ]
+       },
+       "fired": [],
+       "m": 0.77
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.8
+        ],
+        "check": [
+         "unit test",
+         0.37
+        ]
+       },
+       "fired": [],
+       "m": 0.7875
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "reword",
+    "target": "defs",
+    "old": "A location is defined in REQ-JEV-0207; a pair is one (record, location) pair. A record",
+    "new": "A location is defined in REQ-JEV-0207. A record",
+    "why": "shortening: pair is defined again later in the paragraph",
+    "evidence": "",
+    "src": "opus-B",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A location is defined in REQ-JEV-0207. A\nrecord is one requirement, non-functional requirement or architecture\ndecision record as Raptor imports it. A location is the text judged against\na record: a whole file (`path`), a Markdown section (`path#Heading`) or a\ncode symbol (`path::Symbol`) (REQ-JEV-0207). A pair is one (record,\nlocation) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7691666666666667,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.55
+        ]
+       },
+       "fired": [],
+       "m": 0.765
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.69
+        ],
+        "check": [
+         "unit test",
+         0.44
+        ]
+       },
+       "fired": [],
+       "m": 0.765
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.79
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.7775
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-8/i2x-m1-8",
+     "m2": "repos/i2x-m2-8/i2x-m2-8"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.745,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.6
+        ],
+        "check": [
+         "unit test",
+         0.46
+        ]
+       },
+       "fired": [],
+       "m": 0.75
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.71
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.82
+        ],
+        "check": [
+         "unit test",
+         0.32
+        ]
+       },
+       "fired": [],
+       "m": 0.775
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "target": "defs",
+    "old": ": a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`)",
+    "new": "",
+    "why": "location forms are in cited REQ-JEV-0207; no statement uses them",
+    "evidence": "",
+    "src": "opus-B",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. A location is defined in REQ-JEV-0207; a\npair is one (record, location) pair. A record is one requirement,\nnon-functional requirement or architecture decision record as Raptor imports\nit. A location is the text judged against a record (REQ-JEV-0207). A pair is\none (record, location) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7875,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.96
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.56
+        ],
+        "check": [
+         "unit test",
+         0.65
+        ]
+       },
+       "fired": [],
+       "m": 0.79
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.93
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.66
+        ],
+        "check": [
+         "unit test",
+         0.47
+        ]
+       },
+       "fired": [],
+       "m": 0.76
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         0.99
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.82
+        ],
+        "check": [
+         "unit test",
+         0.46
+        ]
+       },
+       "fired": [],
+       "m": 0.8125
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-9/i2x-m1-9",
+     "m2": "repos/i2x-m2-9/i2x-m2-9"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7866666666666666,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.55
+        ],
+        "check": [
+         "unit test",
+         0.66
+        ]
+       },
+       "fired": [],
+       "m": 0.7875
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.65
+        ],
+        "check": [
+         "unit test",
+         0.49
+        ]
+       },
+       "fired": [],
+       "m": 0.7675
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.82
+        ],
+        "check": [
+         "unit test",
+         0.42
+        ]
+       },
+       "fired": [],
+       "m": 0.8049999999999999
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "target": "defs",
+    "old": "A location is defined in REQ-JEV-0207; ",
+    "new": "",
+    "why": "duplicates the later location definition and citation",
+    "evidence": "",
+    "src": "sonnet-B",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location; a\nresult is the reported judgment. a pair is one (record, location) pair. A\nrecord is one requirement, non-functional requirement or architecture\ndecision record as Raptor imports it. A location is the text judged against\na record: a whole file (`path`), a Markdown section (`path#Heading`) or a\ncode symbol (`path::Symbol`) (REQ-JEV-0207). A pair is one (record,\nlocation) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7575,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.52
+        ],
+        "check": [
+         "unit test",
+         0.45
+        ]
+       },
+       "fired": [],
+       "m": 0.7275
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.71
+        ],
+        "check": [
+         "unit test",
+         0.37
+        ]
+       },
+       "fired": [],
+       "m": 0.7525
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.85
+        ],
+        "check": [
+         "unit test",
+         0.34
+        ]
+       },
+       "fired": [],
+       "m": 0.7925
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-10/i2x-m1-10",
+     "m2": "repos/i2x-m2-10/i2x-m2-10"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7666666666666666,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.89
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.6
+        ],
+        "check": [
+         "unit test",
+         0.47
+        ]
+       },
+       "fired": [],
+       "m": 0.7375
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.75
+        ],
+        "check": [
+         "unit test",
+         0.39
+        ]
+       },
+       "fired": [],
+       "m": 0.7675
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         0.99
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.8
+        ],
+        "check": [
+         "unit test",
+         0.41
+        ]
+       },
+       "fired": [],
+       "m": 0.795
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   },
+   {
+    "rid": "REQ-JEV-0206",
+    "type": "remove",
+    "target": "defs",
+    "old": "; a result is the reported judgment",
+    "new": "",
+    "why": "result is common usage",
+    "evidence": "",
+    "src": "sonnet-B",
+    "text": "## REQ-JEV-0206: One judgment per record and location\n\n**Status:** Draft  \n\n### Requirement Statement\n\nDefinitions: A judgment is one Jev verdict on one record at one location. A\nlocation is defined in REQ-JEV-0207; a pair is one (record, location) pair.\nA record is one requirement, non-functional requirement or architecture\ndecision record as Raptor imports it. A location is the text judged against\na record: a whole file (`path`), a Markdown section (`path#Heading`) or a\ncode symbol (`path::Symbol`) (REQ-JEV-0207). A pair is one (record,\nlocation) pair.\n\n**MUST statements:**\n- When a record is satisfied in more than one location, judge-jev MUST\n  judge the record separately at each location.\n- judge-jev MUST report one result per (record, location) pair.\n\n**MUST NOT statements:**\n- judge-jev MUST NOT combine a record's locations into one judgment.\n\n### Rationale\n\nRand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"\n\n### Success Criteria\n\n**Acceptance Criteria:**\n- [ ] A record mapped to three locations produces three results, one per\n  location.\n- [ ] A failure at one location is reported against that location only.\n\n---\n\n",
+    "m1": {
+     "fails": 0,
+     "margin": 0.7333333333333334,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.36
+        ]
+       },
+       "fired": [],
+       "m": 0.72
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.96
+        ],
+        "term": [
+         "none",
+         0.59
+        ],
+        "check": [
+         "unit test",
+         0.32
+        ]
+       },
+       "fired": [],
+       "m": 0.705
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         1.0
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.8
+        ],
+        "check": [
+         "unit test",
+         0.32
+        ]
+       },
+       "fired": [],
+       "m": 0.775
+      }
+     ]
+    },
+    "runs": {
+     "m1": "repos/i2x-m1-11/i2x-m1-11",
+     "m2": "repos/i2x-m2-11/i2x-m2-11"
+    },
+    "m2": {
+     "fails": 0,
+     "margin": 0.7366666666666667,
+     "n": 3,
+     "verdict": "yes",
+     "st": [
+      {
+       "i": 1,
+       "text": "When a record is satisfied in more than one location, judge-jev MUST\njudge the record separately at each location.",
+       "a": {
+        "obligations": [
+         "1",
+         0.91
+        ],
+        "joined_by": [
+         "condition+obligation",
+         0.99
+        ],
+        "term": [
+         "none",
+         0.6
+        ],
+        "check": [
+         "unit test",
+         0.41
+        ]
+       },
+       "fired": [],
+       "m": 0.7275
+      },
+      {
+       "i": 2,
+       "text": "judge-jev MUST report one result per (record, location) pair.",
+       "a": {
+        "obligations": [
+         "1",
+         0.95
+        ],
+        "joined_by": [
+         "none",
+         0.95
+        ],
+        "term": [
+         "none",
+         0.64
+        ],
+        "check": [
+         "unit test",
+         0.29
+        ]
+       },
+       "fired": [],
+       "m": 0.7075
+      },
+      {
+       "i": 3,
+       "text": "judge-jev MUST NOT combine a record's locations into one judgment.",
+       "a": {
+        "obligations": [
+         "1",
+         0.99
+        ],
+        "joined_by": [
+         "none",
+         0.98
+        ],
+        "term": [
+         "none",
+         0.79
+        ],
+        "check": [
+         "unit test",
+         0.34
+        ]
+       },
+       "fired": [],
+       "m": 0.775
+      }
+     ]
+    },
+    "kept": true,
+    "ref": {
+     "fails_min": 0,
+     "fails_mean": 0.0,
+     "margin_mean": 0.7526388888888889
+    }
+   }
+  ]
+ },
+ "rejects": [
+  {
+   "rid": "REQ-JEV-0206",
+   "type": "reword",
+   "target": "defs",
+   "old": "(REQ-JEV-0207). A pair is one (record, location) pair.",
+   "new": "(REQ-JEV-0207).",
+   "why": "shortening: duplicate of the pair definition already given earlier in the Definitions paragraph",
+   "evidence": "",
+   "src": "haiku-B",
+   "reject": "duplicate or no-op"
+  },
+  {
+   "rid": "REQ-JEV-0206",
+   "type": "reword",
+   "target": "defs",
+   "old": "(`path::Symbol`) (REQ-JEV-0207). A pair is one (record, location) pair.",
+   "new": "(`path::Symbol`) (REQ-JEV-0207).",
+   "why": "shortening: duplicate pair definition (already defined earlier)",
+   "evidence": "",
+   "src": "opus-B",
+   "reject": "duplicate or no-op"
+  },
+  {
+   "rid": "REQ-JEV-0206",
+   "type": "reword",
+   "target": "defs",
+   "old": "A location is defined in REQ-JEV-0207; a pair",
+   "new": "A pair",
+   "why": "shortening: location defined again later in the paragraph",
+   "evidence": "",
+   "src": "opus-B",
+   "reject": "duplicate or no-op"
+  },
+  {
+   "rid": "REQ-JEV-0206",
+   "type": "remove",
+   "target": "defs",
+   "old": " as Raptor imports it",
+   "new": "",
+   "why": "Raptor undefined here; no statement uses it",
+   "evidence": "",
+   "src": "opus-B",
+   "reject": "duplicate or no-op"
+  },
+  {
+   "rid": "REQ-JEV-0206",
+   "type": "remove",
+   "target": "defs",
+   "old": "A pair is one (record, location) pair.",
+   "new": "",
+   "why": "duplicate of earlier pair definition",
+   "evidence": "",
+   "src": "sonnet-B",
+   "reject": "duplicate or no-op"
+  },
+  {
+   "rid": "REQ-JEV-0206",
+   "type": "remove",
+   "target": "defs",
+   "old": " as Raptor imports it",
+   "new": "",
+   "why": "Raptor not used by any statement",
+   "evidence": "",
+   "src": "sonnet-B",
+   "reject": "duplicate or no-op"
+  },
+  {
+   "rid": "REQ-JEV-0206",
+   "type": "remove",
+   "target": "defs",
+   "old": ": a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207)",
+   "new": "",
+   "why": "forms owned by REQ-JEV-0207, not used by statements",
+   "evidence": "",
+   "src": "sonnet-B",
+   "reject": "duplicate or no-op"
+  }
+ ]
+}
