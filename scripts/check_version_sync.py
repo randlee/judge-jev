@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Version discipline for the sc-judge-jev plugin: VERSION is the single source of truth.
 
-Default (consistency):
+Consistency:
   VERSION holds X.Y.Z. Every version declared in shipped metadata equals it
   exactly: plugin manifests, marketplace manifests, the installer skill's
   SKILL.md, every harness agent header and registry.yaml entry under
@@ -10,33 +10,29 @@ Default (consistency):
   version from plugin.json when install.py renders them, so every install-time
   template must declare `{{ version }}` instead of a literal.
   Files are discovered by globbing (see version_declarations), so a new agent
-  or reference cannot escape. CHANGELOG.md has a "## X.Y.Z" entry. Registry
+  or reference cannot escape. CHANGELOG.md has a "## Unreleased" section or a
+  "## X.Y.Z" entry. Registry
   paths, manifest identities and marketplace sources are checked too, and the
   plugin must expose only the judge-jev-installer skill.
 
---base <ref> (pull-request rule):
-  A PR that changes shipped content (plugins/ or a marketplace manifest) must
-  raise VERSION above the base's VERSION (with everything above moving with
-  it) and change CHANGELOG.md. A PR that touches only tests, scripts/ or docs
-  needs no bump.
+There is no pull-request bump rule: nothing is published, VERSION stays 0.1.0, and
+no PR raises it. Changes accumulate under "## Unreleased" in CHANGELOG.md.
 
-Not release metadata, so not checked: `schema_version` fields and the
-`metadata.version` of templates/*.md.j2 (wire-contract versions pinned by the
-JSON schemas' `const`), and integer document versions.
+Every other version number is locked too, with no exclusions: each template's
+own header `version:` (every *.j2) equals VERSION, and every integer version
+(a question set's or tree's `version` / `jj:version`, every `schema_version`)
+equals 1 until the first publish.
 
 Exit 0 in sync; 2 when the check fails: drift (each on its own line on stdout)
-or missing files and bad input (on stderr): a --base ref that does not resolve
-to a commit (the pull-request rule is never skipped silently), a manifest that
-is not valid JSON, a file that cannot be read. A check script's job is to fail
+or missing files and bad input (on stderr): a manifest that is not valid JSON,
+a file that cannot be read. A check script's job is to fail
 CI, so drift is nonzero; like every judge-jev CLI it never exits 1.
 """
 from __future__ import annotations
 
-import argparse
 import json
 import pathlib
 import re
-import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -51,8 +47,6 @@ FRONT_RE = re.compile(r"^---\n(.*?)\n---", re.S)
 VER_RE = re.compile(r'^\s*version:\s*["\']?([0-9]+\.[0-9]+\.[0-9]+)["\']?\s*$', re.M)
 SEMVER_RE = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+")
 
-# Shipped content: what an install copies or a marketplace reads.
-SHIPPED_PREFIXES = ("plugins/", ".claude-plugin/", ".agents/", ".cursor-plugin/")
 # Every file matching these must declare a version.
 REQUIRED_GLOBS = (
     "plugins/*/plugin.json",
@@ -135,8 +129,35 @@ def template_drift(root: pathlib.Path) -> list:
     return drift
 
 
+INT_VERSION_RES = (
+    re.compile(r'"(?:schema_)?version":\s*([0-9]+)\s*[,}]'),
+    re.compile(r"^\s*schema_version:\s*([0-9]+)\s*$", re.M),
+    re.compile(r"\bjj:version\s+([0-9]+)\b"),
+)
+LOCKED_INT_VERSION = "1"
+
+
+def locked_drift(root: pathlib.Path, want: str) -> list:
+    """Template header versions that are not VERSION, and integer versions that are not 1."""
+    drift = []
+    for template in sorted(root.glob("plugins/**/*.j2")):
+        head = FRONT_RE.match(template.read_text(encoding="utf-8"))
+        for v in VER_RE.findall(head.group(1)) if head else []:
+            if v != want:
+                drift.append(f"{_rel(template)}: template version {v} != VERSION {want}")
+    for f in sorted(root.glob("plugins/**/*")):
+        if not f.is_file() or f.suffix not in (".json", ".ttl", ".yaml", ".yml", ".j2"):
+            continue
+        text = f.read_text(encoding="utf-8")
+        for pattern in INT_VERSION_RES:
+            for v in pattern.findall(text):
+                if v != LOCKED_INT_VERSION:
+                    drift.append(f"{_rel(f)}: integer version {v} != {LOCKED_INT_VERSION} (locked until the first publish)")
+    return drift
+
+
 def ssot_drift(root: pathlib.Path, want: str) -> list:
-    """Every version declaration that does not equal VERSION, plus a missing CHANGELOG entry."""
+    """Every version declaration that does not equal VERSION, plus a missing CHANGELOG section."""
     drift = []
     for pattern in REQUIRED_GLOBS:
         if not any(root.glob(pattern)):
@@ -148,9 +169,10 @@ def ssot_drift(root: pathlib.Path, want: str) -> list:
             if v != want:
                 drift.append(f"{rel}: {v} != VERSION {want}")
     drift.extend(template_drift(root))
+    drift.extend(locked_drift(root, want))
     changelog = root / "CHANGELOG.md"
-    if not changelog.exists() or not re.search(rf"^## {re.escape(want)}\b", changelog.read_text(encoding="utf-8"), re.M):
-        drift.append(f"CHANGELOG.md has no '## {want}' entry")
+    if not changelog.exists() or not re.search(rf"^## (Unreleased\b|{re.escape(want)}\b)", changelog.read_text(encoding="utf-8"), re.M):
+        drift.append(f"CHANGELOG.md has neither a '## Unreleased' section nor a '## {want}' entry")
     return drift
 
 
@@ -183,19 +205,6 @@ def load_manifest(path: pathlib.Path) -> dict:
     if not isinstance(data, dict):
         raise CheckError(f"{_rel(path)} must be a JSON object, got {type(data).__name__}")
     return data
-
-
-def parse(v: str):
-    return tuple(int(x) for x in v.split("."))
-
-
-def git(*args: str) -> str:
-    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True, check=False).stdout
-
-
-def show(ref: str, rel: str):
-    out = subprocess.run(["git", "show", f"{ref}:{rel}"], cwd=ROOT, capture_output=True, text=True, check=False)
-    return out.stdout if out.returncode == 0 else None
 
 
 def release_checks(want: str, drift: list) -> int:
@@ -268,39 +277,10 @@ def release_checks(want: str, drift: list) -> int:
     return sum(len(v) or 1 for _, v in declarations)
 
 
-def require_commit(ref: str) -> None:
-    """CheckError unless ``ref`` names a commit here: a missing base must fail, never skip the PR rule."""
-    done = subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], cwd=ROOT,
-                          capture_output=True, text=True, check=False)
-    if done.returncode != 0:
-        raise CheckError(f"--base {ref!r} is not a commit in this clone; fetch it (actions/checkout with "
-                         "fetch-depth: 0, or git fetch origin <branch>) so the pull-request rule can run")
-
-
-def pr_checks(base: str, want: str, drift: list) -> str:
-    require_commit(base)
-    changed = set(l for l in git("diff", "--name-only", f"{base}...HEAD").splitlines() if l.strip())
-    changed |= set(l for l in git("diff", "--name-only", base).splitlines() if l.strip())          # working tree edits
-    changed |= set(l for l in git("ls-files", "--others", "--exclude-standard").splitlines() if l.strip())  # new, uncommitted files
-    shipped = sorted(rel for rel in changed if rel.startswith(SHIPPED_PREFIXES))
-    base_version = (show(base, "VERSION") or "").strip()
-    if not SEMVER_RE.fullmatch(base_version):
-        return f"no VERSION at {base}; consistency checks only"
-    raised = parse(want) > parse(base_version)
-    if shipped and not raised:
-        listed = ", ".join(shipped[:5]) + (f" (+{len(shipped) - 5} more)" if len(shipped) > 5 else "")
-        drift.append(f"shipped content changed ({listed}) but VERSION is still {want}; raise VERSION above {base_version} and every version with it")
-    if parse(want) < parse(base_version):
-        drift.append(f"VERSION {want} is below {base}'s {base_version}")
-    if raised and "CHANGELOG.md" not in changed:
-        drift.append(f"VERSION changed {base_version} -> {want} but CHANGELOG.md did not")
-    return f"pull-request rule against {base} (VERSION {base_version} -> {want}, {len(shipped)} shipped file(s) changed)"
-
-
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--base", default="", help="git ref of the PR base; enables the pull-request rule")
-    args = ap.parse_args()
+    if len(sys.argv) > 1:
+        print(__doc__)
+        return 0 if sys.argv[1] in ("-h", "--help") else 2
     vfile = ROOT / "VERSION"
     if not vfile.exists():
         print("check-version-sync: VERSION file missing", file=sys.stderr)
@@ -312,7 +292,7 @@ def main() -> int:
     drift: list = []
     try:
         checked = release_checks(want, drift)
-        mode = pr_checks(args.base, want, drift) if args.base else "consistency"
+        mode = "consistency"
     except CheckError as exc:
         print(f"check-version-sync: {exc}", file=sys.stderr)
         return 2
@@ -321,7 +301,7 @@ def main() -> int:
         for d in drift:
             print(f"  {d}")
         return 2
-    print(f"check-version-sync [{mode}]: {checked} version declarations equal {want}, CHANGELOG entry present")
+    print(f"check-version-sync [{mode}]: {checked} version declarations equal {want}, CHANGELOG section present")
     return 0
 
 
