@@ -23,6 +23,10 @@ batch command.
 
 ### Requirement Statement
 
+Definitions: Raptor is the requirements tool that imports Markdown records
+into its record store and serves them to other tools (ADR-JEV-0002). Its
+query interface is the way Raptor hands records to another tool.
+
 **MUST statements:**
 
 - judge-jev MUST obtain records through Raptor's query interface.
@@ -49,6 +53,24 @@ them and notify judge-jev without breaking it.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. The batch command is `jev_judge.py
+batch`: it reads request lines (one JSON request per line), sends each to
+Jev and writes a result line. A result envelope is the JSON result line for
+one request, holding its answers or its error
+(`assets/schemas/jev-batch-result.schema.json`). A typed error code is a
+stable dotted code naming a failure, such as `JEV.NETWORK` or
+`JEV.RATE_LIMITED`. The fixed retry policy is one retry of a call that
+failed with a recoverable or transient error (`JEV.RATE_LIMITED`,
+`JEV.OVERLOADED`, `JEV.NETWORK`, `JEV.RESPONSE_INVALID`), after the
+response's Retry-After delay capped at 30 seconds, or after 1 second without
+one. The request size limit is the `--max-request-bytes` value, at most
+64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
+`--gate dev`. The sc-observability logger is the JSON-lines logger of the
+sc-observability package (version 1.5.0), which writes
+`.sc/judge-jev/logs/judge-jev.log.jsonl`.
 
 **MUST statements:**
 
@@ -81,6 +103,11 @@ replaces it (ADR-JEV-0001).
 
 ### Requirement Statement
 
+Definitions: TypeSafe is the company whose API (application programming
+interface) serves Jev, the judge model; the TypeSafe API key authenticates
+calls to it. The platform credential store is the macOS Keychain, the
+Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
+
 **MUST statements:**
 
 - judge-jev MUST read the TypeSafe API key from `TYPESAFE_API_KEY` first,
@@ -103,6 +130,13 @@ Tools that call Jev share one stored key, saved once.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. A live Jev call is a request sent
+to Jev, as opposed to a dry run or an answers file.
+`POLICY.REMOTE_JUDGE_DISABLED` is the typed error code for a refused live
+call.
 
 **MUST statements:**
 
@@ -131,6 +165,13 @@ Text sent to Jev leaves the machine; the user decides once per repository.
 
 ### Requirement Statement
 
+Definitions: A harness is an agent tool judge-jev installs into: Claude
+(Claude Code), Codex or Cursor. A marketplace plugin is a plugin a harness
+installs from a plugin marketplace. A harness is locked when the install
+lock records it, installed when its `.<harness>/skills/judge-jev/` directory
+exists, and present when its `.<harness>/` directory exists in the
+repository. An upgrade is an install of a newer judge-jev version.
+
 **MUST statements:**
 
 - judge-jev MUST ship as a marketplace plugin for Claude.
@@ -154,6 +195,14 @@ No harness is left on an old version.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: Raptor is the requirements tool that imports Markdown records
+into its record store and serves them to other tools (ADR-JEV-0002).
+Raptor-parseable Markdown is Markdown in the record format Raptor's import
+reads. SQLite is a single-file SQL (Structured Query Language) database.
+Dolt is a SQL database with Git-style branches; a SQLite snapshot of a Dolt
+branch is a SQLite copy of that branch's records. The Raptor interface is
+the way Raptor hands records to another tool.
 
 **MUST statements:**
 
@@ -181,6 +230,10 @@ pulled from Dolt, so the source can change without changing judge-jev.
 
 ### Requirement Statement
 
+Definitions: Raptor is the requirements tool that imports Markdown records.
+An issue is a diagnostic Raptor's import reports for a record, such as
+`UNKNOWN_SECTION`.
+
 **MUST statements:**
 
 - judge-jev's requirements, non-functional requirements and decisions MUST
@@ -202,6 +255,13 @@ first.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: The sc-observability logger is the JSON-lines logger of the
+sc-observability package (version 1.5.0), which writes
+`.sc/judge-jev/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
+Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). A
+quality-tree branch is the next wave a quality decision tree's rules select
+from Jev's answers.
 
 **MUST statements:**
 
@@ -238,6 +298,12 @@ judge-jev.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. Recorded Jev answers are an answers
+file (`--answers-file`): JSON answers given to judge-jev in place of a live
+Jev call.
 
 **MUST statements:**
 

@@ -23,6 +23,17 @@ meets a Raptor-supplied REQ, NFR or ADR record. The CLI is defined in
 
 ### Requirement Statement
 
+Definitions: A record is one requirement (REQ), non-functional requirement
+(NFR) or architecture decision record (ADR) as Raptor imports it; REQ, NFR
+and ADR are its record kinds. A location is the text judged against a
+record: a whole file (`path`), a Markdown section (`path#Heading`) or a code
+symbol (`path::Symbol`) (REQ-JEV-0207). A mode (target mode) names what a
+location holds: `prompt` (prompt text), `skill` (a skill file), `task` (a
+task template) or `code` (source code). A question set is the data file of
+questions judge-jev sends to Jev about a location for one record kind and
+target class. `--profile` names a profile: a TOML file listing locations,
+each with its mode and the ids of the records that govern it (REQ-JEV-0204).
+
 **MUST statements:**
 - `judge-jev check` MUST take one of two argument forms: a single record
   with a location and a mode, or a `--profile`.
@@ -54,6 +65,17 @@ violated in a different way.
 
 ### Requirement Statement
 
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. A record is one requirement (REQ),
+non-functional requirement (NFR) or architecture decision record (ADR) as
+Raptor imports it; REQ, NFR and ADR are its record kinds. A location is the
+text judged against a record: a whole file (`path`), a Markdown section
+(`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207). A pair is
+one (record, location) pair. A stream of single requests is a sequence of
+Jev requests, one per pair, sent one at a time through the batch command
+(REQ-JEV-0002).
+
 **MUST statements:**
 - Each Jev request MUST carry exactly one record.
 - Each Jev request MUST carry exactly one location.
@@ -77,6 +99,17 @@ command already does.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: A mode (target mode) names what a location holds: `prompt`
+(prompt text), `skill` (a skill file), `task` (a task template) or `code`
+(source code). A location is the text judged against a record: a whole file
+(`path`), a Markdown section (`path#Heading`) or a code symbol
+(`path::Symbol`) (REQ-JEV-0207). sc-compose is the template renderer; in
+strict mode it fails on any template variable the vars file does not set. A
+vars file holds the values of a template's variables. An assignment is the
+text a task template renders to. sc-agent is the agent tool whose Rust Jev
+tool will replace judge-jev's Python Jev core (ADR-JEV-0007). Tree-sitter
+grammars are the parsers that find a named symbol in source code.
 
 **MUST statements:**
 - judge-jev MUST support the target mode `prompt`.
@@ -121,6 +154,15 @@ owns the grammars so every consumer selects code the same way.
 
 ### Requirement Statement
 
+Definitions: TOML is Tom's Obvious Minimal Language, a configuration file
+format. A profile is a TOML file listing locations, each with its mode and
+the ids of the records that govern it. A location is the text judged against
+a record: a whole file (`path`), a Markdown section (`path#Heading`) or a
+code symbol (`path::Symbol`) (REQ-JEV-0207). A mode (target mode) names what
+a location holds: `prompt` (prompt text), `skill` (a skill file), `task` (a
+task template) or `code` (source code). A pair is one (record, location)
+pair. A vars file holds the values of a task template's variables.
+
 **MUST statements:**
 - judge-jev MUST read a TOML profile listing locations, each with its
   mode, the record ids that govern it, and for `task` mode a vars file.
@@ -155,6 +197,18 @@ all kinds.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: A record is one requirement (REQ), non-functional requirement
+(NFR) or architecture decision record (ADR) as Raptor imports it; REQ, NFR
+and ADR are its record kinds. A question set is the data file of questions
+judge-jev sends to Jev about a location for one record kind and target
+class. A target class is agent text (modes `prompt`, `skill` and `task`) or
+code (mode `code`). A quality decision tree is the data file of questions
+that judges whether a record is well written: waves of questions, with rules
+that turn Jev's answers into the next wave or a verdict (REQ-JEV-0101). A
+question-set id is the `id` field of a question set or tree file. The
+content digest of a file is the SHA-256 of its bytes. A log entry is one
+event a run writes through the sc-observability logger (REQ-JEV-0008).
 
 **MUST statements:**
 - judge-jev MUST ship one question set per combination of record kind and
@@ -238,6 +292,12 @@ Rand (2026-11-08): "batching is simply streaming of single requests."
 
 ### Requirement Statement
 
+Definitions: Raptor is the requirements tool that imports Markdown records;
+its rules decide which text belongs to which heading. sc-agent is the agent
+tool whose Rust Jev tool will replace judge-jev's Python Jev core
+(ADR-JEV-0007). Tree-sitter grammars are the parsers that find a named
+symbol in source code.
+
 **MUST statements:**
 - A location MUST take one of three forms: `path`, `path#Heading` or
   `path::Symbol`.
@@ -278,6 +338,30 @@ paths in a profile are relative to the profile or to the repository root.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. Raptor is the requirements tool
+that imports Markdown records into its record store and serves them to other
+tools (ADR-JEV-0002). A dry run is a run with `--dry-run`: it composes every
+request and sends none. A dry-run entry is its report of one request a live
+run would send. A composed request is the full JSON body judge-jev would
+send to Jev. The record's Raptor source is the Raptor index the record was
+read from. A location (resolved: its path, section or symbol) is the text
+judged against a record: a whole file (`path`), a Markdown section
+(`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207). The
+digest of a text is its SHA-256. A mode (target mode) names what a location
+holds: `prompt` (prompt text), `skill` (a skill file), `task` (a task
+template) or `code` (source code). A question set is the data file of
+questions sent to Jev; its shipped id is the `id` of a set shipped with the
+tool, its override path the file given with `--questions`. A vars file holds
+the values of a task template's variables. The request limit is 24000 bytes
+by default. A quality decision tree is the data file of questions that
+judges whether a record is well written: waves of questions, with rules that
+turn Jev's answers into the next wave or a verdict (REQ-JEV-0101). The
+wave-1 request is the request for its first wave. A typed error is a JSON
+error object with a stable `code` (such as `INPUT.MALFORMED`), a `message`
+and a `suggested_action`.
 
 **MUST statements:**
 - `judge-jev quality` MUST accept `--dry-run`.
@@ -325,6 +409,9 @@ waves depend on live answers.
 
 ### Requirement Statement
 
+Definitions: A run name is the name every log event of one invocation
+carries (`--run-name`).
+
 **MUST statements:**
 - `judge-jev quality` MUST take one or more record ids.
 - `judge-jev quality` MUST take each record id with one record-kind flag:
@@ -355,6 +442,18 @@ log.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. The model for an input kind is the
+Pydantic model (a typed schema class) judge-jev validates that input with
+(ADR-JEV-0005). A field path is the dotted path of keys and list indexes to
+the refused field, such as `nodes.wave-1.questions.context.criteria`. An
+answers file is a JSON file of Jev's answers, keyed by request, that
+`--answers-file` gives judge-jev in place of a live call. Its envelope is
+its outer structure: its keys and the type of each value.
+`JEV.RESPONSE_INVALID` is the typed error code for an answer whose
+questions, choices or probabilities do not match the request.
 
 **MUST statements:**
 - `judge-jev validate` MUST take one input file.
@@ -402,6 +501,18 @@ is checked after the send as `JEV.RESPONSE_INVALID`.
 
 ### Requirement Statement
 
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. A `judge-jev` command's result is
+the JSON object it prints on success. A typed error is a JSON error object
+with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a
+`suggested_action`. A tree is a quality decision tree file, a question set a
+file of questions, an index a Raptor import index, a request stream the
+request lines of the batch command, and a run directory the folder that
+holds a run's log. A log event is one event written through the
+sc-observability logger; the logger's event size limit is 65536 bytes
+(sc-observability 1.5.0).
+
 **MUST statements:**
 - For every input, every `judge-jev` command MUST print exactly one JSON
   object.
@@ -434,6 +545,13 @@ after a paid call wastes the call; a crash loses its answer.
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: A definition is a term with its meaning, from a
+`.sc/judge-jev/*.definitions.ttl` file (ADR-JEV-0008). It is attached to a
+record, or to a record and a location (the file, Markdown section or code
+symbol being judged). A request's state is the data it sends to Jev next to
+the questions, which holds the record. The size limit of a request is 24000
+bytes. A definition's digest is the SHA-256 of its term, text and source.
 
 **MUST statements:**
 - A definition MUST be attachable to a record alone, or to a record and
@@ -478,6 +596,13 @@ requires clarification".
 
 ### Requirement Statement
 
+Definitions: A definition is a term with its meaning, attached to a record
+(ADR-JEV-0008); a candidate definition is one being tested. The comparison
+is `judge-jev compare-definition`. The requests a candidate would reach are
+the requests about the records it is attached to. An answer is Jev's choice
+for one question, with its confidence from 0 to 1. The decision threshold is
+0.6 unless `--threshold` sets it; a confidence at or above it decides.
+
 **MUST statements:**
 - `judge-jev` MUST provide a comparison of one or more candidate
   definitions.
@@ -519,6 +644,12 @@ other changes get it over the threshold."
 
 ### Requirement Statement
 
+Definitions: A question IRI (Internationalized Resource Identifier) is the
+URN that names a question, such as `urn:judge-jev:question:req.term`. A tree
+file is a Turtle file of quality decision trees. A consumer extension is a
+tree file that a repository using judge-jev adds. `jj:id` is a question's
+short id within its tree.
+
 **MUST statements:**
 - Every question IRI in one scope (by default the repository) MUST be
   declared in one tree file only, across judge-jev's trees and every
@@ -548,6 +679,21 @@ w/in that scope (repo is typical scope)."
 **Status:** Draft  
 
 ### Requirement Statement
+
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. The scope is the trees and question
+sets shipped with judge-jev, the tree and definitions files at the top level
+of `.sc/judge-jev/`, and each path given to `judge-jev doctor`. A tree is a
+quality decision tree file; a question set is a file of questions; a
+definitions file is a `.definitions.ttl` file of definitions, each a term
+with its meaning and the `source` file it comes from. A file's schema is the
+model that checks its fields. The ontology's shapes are the SHACL (Shapes
+Constraint Language) files in `assets/shapes/`; an edge is a link from one
+node of a tree to another, and a cycle is a chain of edges that leads back
+to its start. An attachment links a definition to a record, or to a record
+and a location (a file, Markdown section or code symbol). The Raptor index
+is the record file Raptor's import writes.
 
 **MUST statements:**
 - `judge-jev doctor` MUST validate every tree in the scope against its
