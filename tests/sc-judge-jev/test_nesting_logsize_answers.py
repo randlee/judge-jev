@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest import mock
 
 import test_quality as tq
-from test_jev_judge import env, jsonl, request_line, run_cli, write
+from test_jev_judge import env, jsonl, plan_answers, request_line, run_cli, write
 from test_validate import validate
 
 jj = tq.jj
@@ -265,6 +265,8 @@ class AnswersEnvelope(unittest.TestCase):
         "error code over the bound": {"*": {"__error__": "J" * (jj.FIXTURE_CODE_LIMIT + 1)}},
         "error code far over the bound": {"*": {"__error__": "J" * 70000}},
         "error with another field": {"*": {"__error__": "X", "why": 1}},
+        "error code is empty": {"*": {"__error__": ""}},
+        "empty error code in a list": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": ""}]},
         "entry is a string": {"*": "x"},
         "entry is a number": {"*": 3},
         "entry is null": {"*": None},
@@ -275,6 +277,7 @@ class AnswersEnvelope(unittest.TestCase):
     }
     ENVELOPE_ACCEPTED = {
         "error at the bound": {"*": {"__error__": "J" * jj.FIXTURE_CODE_LIMIT}},
+        "error of one character": {"*": {"__error__": "J"}},
         "short error": {"*": {"__error__": "JEV.NETWORK"}},
         "empty answers object": {"*": {}},
         "list of errors": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": "JEV.OVERLOADED"}]},
@@ -316,6 +319,42 @@ class AnswersEnvelope(unittest.TestCase):
                 self.assertEqual(validate("--answers", write(self.d, "v.json", fixture))[0], 0, name)
                 code, out, sent = self.quality(fixture)
                 self.assertEqual((code, out["error"]["code"], sent), (2, "JEV.RESPONSE_INVALID", 1), out)
+
+    def test_a_noul_probability_above_one_passes_the_envelope_and_fails_after_the_send(self):
+        for key, value in (("noul", 1.5), ("probability", 1.5), ("noul", 1.0000001)):
+            with self.subTest(f"{key}={value}"):
+                answers = copy.deepcopy(self.good)
+                answers["context"] = {"type": "noul", key: value}
+                fixture = {"ADR-T-0001/wave-1": answers}
+                self.assertEqual(validate("--answers", write(self.d, "v.json", fixture))[0], 0)
+                code, out, sent = self.quality(fixture)
+                self.assertEqual((code, out["error"]["code"], sent), (2, "JEV.RESPONSE_INVALID", 1), out)
+                self.assertIn(f"invalid answer for context: {key}: Input should be less than or equal to 1", out["error"]["message"])
+
+    def test_a_fixture_without_an_entry_for_a_request_is_fixture_missing_before_any_send(self):
+        elsewhere = {"OTHER-0001/wave-1": self.good}  # no entry for ADR-T-0001/wave-1 and no '*'
+        code, out, sent = self.quality(elsewhere)
+        self.assertEqual((code, out["error"]["code"], sent), (2, "FIXTURE.MISSING", 0), out)
+        self.assertIn("ADR-T-0001/wave-1/r1", out["error"]["message"])
+        code, out, sent = self.batch({"other-item/cur": plan_answers()})
+        self.assertEqual((code, out["error"]["code"], sent), (2, "FIXTURE.MISSING", 0), out)
+        self.assertIn("ex-42/cur/r1", out["error"]["message"])
+
+    def test_batch_checks_every_line_of_the_stream_before_sending_the_first(self):
+        sent = []
+        lines = [request_line("covered"), request_line("uncovered")]
+        src = write(self.d, "r2.jsonl", jsonl(lines))
+        fixture = write(self.d, "b2.json", {"covered/cur": plan_answers()})
+        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+            code, out = run_cli(["batch", "--input", src, "--answers-file", fixture, "--run-dir", str(self.d / "blogs2")])
+        self.assertEqual((code, out["error"]["code"], len(sent)), (2, "FIXTURE.MISSING", 0), out)
+        self.assertFalse((self.d / "blogs2").exists())
+
+    def test_a_star_entry_or_any_key_form_covers_the_request(self):
+        for key in ("ex-42/cur/r1", "ex-42/cur", "cur", "*"):
+            with self.subTest(key):
+                code, out, sent = self.batch({key: plan_answers()})
+                self.assertEqual((code, sent), (0, 1), out)
 
     def test_a_long_error_code_never_reaches_the_log(self):
         code, out, sent = self.quality({"*": {"__error__": "J" * 70000}})

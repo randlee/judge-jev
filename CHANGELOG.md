@@ -72,6 +72,12 @@
   by where it hangs in the graph, never by its label. What rdflib logs or warns
   about an ill-typed literal is kept in the error (`data["log"]`) and no longer
   printed to stderr. `load_tree(None)` and other non-path arguments are `INPUT.MISSING`.
+- An answers-file `{"__error__": ""}` is `INPUT.MALFORMED` at load (the code is 1
+  to 64 characters). `batch` and `quality` check that the answers file has an
+  entry (or a `*`) for every request they are about to send, and refuse with
+  `FIXTURE.MISSING` and nothing sent: `batch` checks the whole stream, `quality`
+  each wave before it is sent. A noul answer with a probability over 1 is
+  `JEV.RESPONSE_INVALID` after the send (test restored).
 - No input crashes `jev_judge.py`. Every JSON input (tree, question set, index,
   answers file, request stream, Jev's response) is refused as `INPUT.MALFORMED`
   (or `JEV.RESPONSE_INVALID`) when it holds NaN or Infinity, an integer over

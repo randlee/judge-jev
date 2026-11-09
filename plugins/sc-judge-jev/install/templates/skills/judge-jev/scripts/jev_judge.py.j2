@@ -635,12 +635,12 @@ class NoulAnswer(Closed):
 
 
 class FixtureError(Closed):
-    code: str = Field(alias="__error__", max_length=FIXTURE_CODE_LIMIT)  # BATCH_FIXTURE_ERROR: the attempt fails with this code
+    code: str = Field(alias="__error__", min_length=1, max_length=FIXTURE_CODE_LIMIT)  # BATCH_FIXTURE_ERROR: the attempt fails with this code
 
 
 def _fixture_problems(entries: dict) -> list:
     """Each envelope problem of an answers file as ``path: rule``. The envelope is what is decidable before any request: an
-    entry is an object, {"__error__": code} (a string code within FIXTURE_CODE_LIMIT, nothing else), or a non-empty list of
+    entry is an object, {"__error__": code} (a string code of 1 to FIXTURE_CODE_LIMIT characters, nothing else), or a non-empty list of
     those (successive attempts). What an answer object holds (its questions, choices, probabilities) is Jev's response and is
     checked after the send (JEV.RESPONSE_INVALID), so a test can feed an invalid answer on purpose."""
     problems = []
@@ -662,7 +662,7 @@ def _fixture_problems(entries: dict) -> list:
 class AnswersFile(RootModel[dict[str, Any]]):
     """The envelope of an answers file, the one model `validate --answers` and every command that reads --answers-file apply
     before the first request: an object of string keys, each an object or a non-empty list of objects, an object with
-    {"__error__": code} holding only a string code within FIXTURE_CODE_LIMIT."""
+    {"__error__": code} holding only a string code of 1 to FIXTURE_CODE_LIMIT characters."""
 
     model_config = ConfigDict(strict=True)
 
@@ -1094,7 +1094,7 @@ def answers_envelope_error(data, where: str) -> Optional[JudgeError]:
         return None
     return JudgeError("INPUT.MALFORMED", f"{where}: {parsed.error.text}",
                       action="An answers file maps a request key to Jev's answers (an object), a non-empty list of them, or "
-                             "an __error__ object with a string code of at most " + str(FIXTURE_CODE_LIMIT) + " characters and nothing else.")
+                             "an __error__ object with a string code of 1 to " + str(FIXTURE_CODE_LIMIT) + " characters and nothing else.")
 
 
 def check_threshold(value: float, name: str = "--threshold") -> Result[float, JudgeError]:
@@ -1205,12 +1205,39 @@ def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict, log
     return Ok(jobs)
 
 
+def _fixture_keys(job: BatchJob) -> tuple:
+    return (f"{job.item_id}/{job.candidate_id}/r{job.repeat}", f"{job.item_id}/{job.candidate_id}", job.candidate_id, "*")
+
+
+def _fixture_missing(keys: tuple) -> Err:
+    return fail("FIXTURE.MISSING", f"answers fixture has no entry for {keys[0]} (or {keys[1]}, {keys[2]}, '*')",
+                action=f"Add an entry for {keys[0]} to the answers file.")
+
+
+def check_fixture_coverage(lines: list, settings: BatchSettings, fixture) -> Result[None, JudgeError]:
+    """FIXTURE.MISSING for the first request of ``lines`` the answers fixture has no entry (and no ``*``) for, before any is
+    sent. Ok when there is no fixture or the run is a dry run (it consults none)."""
+    if fixture is None or settings.dry_run:
+        return Ok(None)
+    base = load_question_set(settings.gate)
+    if isinstance(base, Err):
+        return base
+    for number, line in enumerate(lines, start=1):
+        jobs = batch_jobs(line, number, settings, base.value.roles)
+        if isinstance(jobs, Err):
+            return jobs
+        for job in jobs.value:
+            keys = _fixture_keys(job)
+            if not any(k in fixture for k in keys):
+                return _fixture_missing(keys)
+    return Ok(None)
+
+
 def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int) -> Result[dict, JudgeError]:
-    keys = (f"{job.item_id}/{job.candidate_id}/r{job.repeat}", f"{job.item_id}/{job.candidate_id}", job.candidate_id, "*")
+    keys = _fixture_keys(job)
     entry = next((fixture[k] for k in keys if k in fixture), None)
     if entry is None:
-        return fail("FIXTURE.MISSING", f"answers fixture has no entry for {keys[0]} (or {keys[1]}, {keys[2]}, '*')",
-                    action=f"Add an entry for {keys[0]} to the answers file.")
+        return _fixture_missing(keys)
     if isinstance(entry, list):
         if not entry:
             return fail("FIXTURE.MISSING", f"answers fixture entry for {keys[0]} is an empty list")
@@ -1635,6 +1662,9 @@ def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
     if isinstance(loaded, Err):
         return loaded
     fixture = loaded.value
+    covered = check_fixture_coverage(lines, settings, fixture)
+    if isinstance(covered, Err):
+        return covered
     run_dir = args.run_dir or (str(pathlib.Path(args.anchors).parent / "anchor-runs") if getattr(args, "anchors", "") else "")
     if not run_dir:
         return fail("VALIDATION.INPUT", "the result log needs a directory: pass --anchors (log under its anchor-runs/) or --run-dir",
@@ -2047,6 +2077,9 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
         if isinstance(lines, Err):
             return lines
         lines, statements = lines.value
+        covered = check_fixture_coverage(lines, settings, fixture)  # this wave's request ids are known: refuse before sending
+        if isinstance(covered, Err):
+            return covered
         pumped = pump_batch(lines, settings, api_key, fixture, log, echo=False, fields={**fields, "node": node_id})
         if isinstance(pumped, Err):
             return pumped
