@@ -196,7 +196,7 @@ one event a run writes.
 
 **MUST statements:**
 - judge-jev MUST ship one question set per combination of record kind and
-  target class.
+  target class (agent text or code).
 - judge-jev MUST ship one quality decision tree per record kind.
 - Every shipped question and prompt text MUST be approved by Rand before
   it ships.
@@ -246,8 +246,9 @@ results from many variations of the same set be told apart and compared.
 Definitions: A judgment is one Jev verdict on one record at one location.
 
 **MUST statements:**
-- When a record is satisfied in more than one location, judge-jev MUST
-  judge the record separately at each location.
+- When a record is satisfied in more than one location (prompt, skill,
+  agent, template or code), judge-jev MUST judge the record separately at
+  each location.
 - judge-jev MUST report one result per (record, location) pair.
 
 **MUST NOT statements:**
@@ -289,7 +290,8 @@ Tree-sitter grammars are the parsers.
   heading to the next heading of the same or higher level.
 - A `path::Symbol` location MUST select a code symbol resolved by
   sc-agent's tree-sitter grammars.
-- Markdown sections MUST be parsed by the same rules Raptor uses.
+- Markdown sections MUST be parsed by the same rules Raptor uses for the
+  same file.
 
 **MUST NOT statements:**
 - A location MUST NOT be a line range.
@@ -432,7 +434,9 @@ questions, choices or probabilities do not match the request.
 **MUST statements:**
 - `judge-jev validate` MUST take one input file.
 - `judge-jev validate` MUST take one input-kind flag with that file:
-  `--tree`, `--questions`, `--answers`, `--index` or `--requests`.
+  `--tree` (quality tree), `--questions` (question set), `--answers`
+  (answers file), `--index` (Raptor import index) or `--requests` (batch
+  request stream).
 - `judge-jev validate` MUST check the file with the model `judge-jev`
   applies to that input kind before its first Jev request (ADR-JEV-0005).
 - Every refusal from `judge-jev validate` MUST name the field path.
@@ -525,14 +529,14 @@ after a paid call wastes the call; a crash loses its answer.
 
 ### Requirement Statement
 
-Definitions: It is attached to a record, or to a record and a location. A
-request's state is the data it sends. The size limit is 24000 bytes. A
-definition's digest is the SHA-256.
+Definitions: A definition is attached to a record, or to a record and a
+location. A request's state is the data it sends. The size limit is 24000
+bytes. A definition's digest is the SHA-256.
 
 **MUST statements:**
 - A definition MUST be attachable to a record alone, or to a record and
   one location under evaluation.
-- A request about a record MUST carry, in its state, only
+- A request about a record MUST carry, in its state next to the record, only
   the definitions attached to that record alone, plus those attached to
   that record and the request's location.
 - A request with no matching definition MUST be identical to the request
