@@ -4,6 +4,12 @@
 
 ## Unreleased
 
+- The installed `judge-jev` skill has its workflow: verify dependencies, build
+  the Raptor index, judge with `quality`, fix failing records in a measured
+  tweak-and-rejudge loop, and test definitions with `compare-definition` and
+  `doctor`. It was a stub with no description.
+- README: install section with the marketplace commands for Claude Code, Codex
+  and Cursor, the installer command, and a requirements table.
 - `quality` logs the rank of the rule that fired (`rule_rank` on the wave and
   verdict events) and the record's Raptor IRI (`record_iri` on every event);
   the run triples carry the fired rule's `jj:rank` beside `jj:fired`.

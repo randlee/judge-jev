@@ -8,8 +8,88 @@ required_variables:
 ---
 ---
 name: judge-jev
+description: Judge whether REQ, NFR and ADR records are well written with TypeSafe's Jev, reading the records through Raptor, and fix the failing ones in a measured tweak-and-rejudge loop. Use when the user asks to check, judge, score, tune or fix requirements or ADRs, asks whether a record is testable or well written, or asks to add or test a definition for a record's term. Not for parsing records (Raptor does that) and not for general code review.
 metadata:
   version: "{{ version }}"
 ---
 
 # judge-jev
+
+judge-jev sends each REQ, NFR or ADR record to Jev with its kind's question tree and turns Jev's typed answers into a verdict, `yes` or `no`, with every answer's choice, criterion and confidence as the reason. A failing criterion carries a `Fix:` line. Records come from Raptor's import index; judge-jev never parses Markdown.
+
+`J` below is this skill's `scripts/jev_judge.py`. Run it with `uv run --script "$J" ...`: its inline metadata supplies pydantic, sc-observability, PyYAML, pyoxigraph and pyshacl. Plain `python3` fails with `DEPENDENCY.*`.
+
+## Step 1 - Verify dependencies
+
+```bash
+which uv && uv --version
+J="<this skill's directory>/scripts/jev_judge.py"
+uv run --script "$J" --help >/dev/null && echo "judge-jev ok"
+test -n "$TYPESAFE_API_KEY" && echo "TYPESAFE_API_KEY set" || echo "TYPESAFE_API_KEY missing"
+uv run -q --no-project --with pyyaml python "<this skill's directory>/scripts/judge_jev_settings.py" show | jq '.data.allow_remote_judge'   # true, false, or null
+```
+
+`allow_remote_judge` in the committed `.sc/judge-jev/settings.yaml` is the user's answer to whether record text may be sent to TypeSafe (Jev). `true`: continue. `false`: live calls are refused with `POLICY.REMOTE_JUDGE_DISABLED`; tell the user and work offline only (`--dry-run`, `validate`, `doctor`). `null`: ask the user once, record the answer with the same command and `set allow_remote_judge true|false`, and commit the file. Never infer consent from run files or other repositories.
+
+Raptor, once per machine (needs a Rust toolchain; it builds the `raptor_schema` PyO3 module):
+
+```bash
+git clone -b integration/judge-jev https://github.com/randlee/raptor "$RAPTOR"
+uv venv "$RAPTOR/.venv" -p 3.11 && uv pip install -p "$RAPTOR/.venv/bin/python" "$RAPTOR" markdown
+```
+
+The repository needs a `.raptor/` inventory naming its record files (Raptor's README). New records are written from Raptor's templates (`$RAPTOR/templates/README.md`).
+
+## Step 2 - Build the index
+
+```bash
+"$RAPTOR/.venv/bin/python" "$RAPTOR/scripts/extract.py" --project-root . --output index.json
+```
+
+Exit 0 with `"issues": 0` means every record imported. Otherwise fix each diagnostic it prints (file, line, rule, fix) and rerun. judge-jev judges only records Raptor imported without diagnostics.
+
+## Step 3 - Judge
+
+```bash
+uv run --script "$J" quality --req REQ-ABC-0001 --adr ADR-ABC-0002 --index index.json --run-name <name>
+```
+
+`--req`, `--nfr` and `--adr` repeat and mix. `--dry-run` prints each composed request and calls nothing. Each record's result holds the verdict, the path through the tree and each wave's reason; a per-statement wave answers once per MUST / MUST NOT statement and `matched_statements` names the ones that failed. Every request, answer and verdict is logged to `.sc/judge-jev/logs/judge-jev.log.jsonl` (`--run-dir` moves it). `validate --index|--tree <file>` checks an input without calling Jev.
+
+## Step 4 - Fix failing records
+
+Fixing is an optimization loop, run by you, the author running this skill. It is not a proposal for the user to approve.
+
+1. **Candidates.** For each failing statement or answer, list concrete tweaks from its `Fix:` line and the record's own sources: split an and-list into one statement per obligation, move a reason to Rationale, replace a vague qualifier with the measure the code or docs state, define a project term or acronym in the record's `Definitions:` paragraph, link the record that defines it, or rewrite a statement as a checkable outcome. Fresh subagents, on different models where available, may propose more tweaks; they are inputs, not decisions.
+2. **Measure.** Apply one tweak, rebuild the index, rejudge the record. Keep it when failing statements drop, or the deciding answers move further past their choice; revert it otherwise. Repeat until no tweak improves the record.
+3. **Noise.** An answer below about 0.35 confidence can flip between identical runs. Rejudge a record at least twice before calling a change an improvement or a record passing.
+4. **Review the converged diff.** Compare the original and final record. Keep changes that make it more specific, testable or accurate. Revert any change that adds, drops or weakens an obligation or drifts from what the project's ADRs, requirements and code say, even when Jev scores it higher.
+5. **Report.** Bring the user only passing records and the list that still fails, each with its failing answers and why no tweak resolved it.
+
+Never edit a question, tree or criterion to make a record pass. Never answer for Jev. A failed Jev call is rerun once, then reported with its verbatim error.
+
+## Step 5 - Definitions
+
+A definition tells Jev what a term means for one record, without changing a question. It lives in `.sc/judge-jev/definitions.ttl` (shape: `assets/shapes/definitions.shacl.ttl`; rules: `references/jev-api.md`, Definitions), attached to the record's Raptor IRI, `<repository URN>#<record id>` (the index's `metadata.repository`):
+
+```turtle
+@prefix jj: <urn:judge-jev:ontology#> .
+@prefix d:  <urn:judge-jev:definition:> .
+@prefix a:  <urn:judge-jev:attachment:> .
+
+d:fast a jj:Definition ; jj:term "fast" ; jj:text "Finishes within 5 s on the reference host." ;
+    jj:source "docs/requirements/perf.md" ; jj:attachedTo a:fast-1 .
+a:fast-1 a jj:Attachment ; jj:record <urn:raptor:repo:example#REQ-ABC-0001> .
+```
+
+- An answer "project term defined nowhere" makes the term a candidate, not a definition.
+- Write the candidate from the repository's own material, then test it:
+
+```bash
+uv run --script "$J" compare-definition --req REQ-ABC-0001 --index index.json --definition <iri>
+```
+
+- Keep it only when the output says material: an answer's choice flips, or its confidence crosses the threshold (default 0.6). Several candidates can be compared together. Remove a definition that changes nothing.
+- `uv run --script "$J" doctor --index index.json` checks every tree and definitions file and calls nothing: errors for invalid files, warnings for an unattached definition or a record the index lacks.
+
+Troubleshooting and the full install: `references/installation-and-troubleshooting.md`. Jev request format and limits: `references/jev-api.md`.
