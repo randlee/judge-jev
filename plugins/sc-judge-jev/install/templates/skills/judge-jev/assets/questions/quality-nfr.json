@@ -2,7 +2,7 @@
   "schema": "judge-jev/quality-tree/1",
   "id": "quality-nfr",
   "kind": "nfr",
-  "version": 3,
+  "version": 1,
   "approved": true,
   "note": "wave-1 wording approved by Rand Lee, 2026-11-08",
   "start": "wave-1",

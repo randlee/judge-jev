@@ -11,7 +11,7 @@
 
 `VERSION` at the repo root is the single source of truth. Every version declared in shipped metadata equals it exactly: the plugin manifests, the marketplace manifests that carry a version, `SKILL.md`, each `references/*.md`, each harness agent, and each `registry.yaml` entry. Nothing has its own patch line.
 
-`judge-jev` is unpublished, so `VERSION` stays `0.1.0` until the first publish: no PR bumps it. Describe each change under `## Unreleased` in `CHANGELOG.md`.
+`judge-jev` is unpublished, so every version number is locked until the first publish: `VERSION` and every template's own `version:` stay `0.1.0`, and every integer version (question sets, trees, `schema_version`) stays `1`. No PR bumps any of them. Describe each change under `## Unreleased` in `CHANGELOG.md`.
 
 `scripts/check_version_sync.py` enforces this: by default it checks that every declaration it finds by glob equals `VERSION` and that the changelog has a `## Unreleased` section or a `## <VERSION>` entry. `tests/sc-judge-jev/test_version_ssot.py` runs the same discovery in the suite. Template `metadata.version` and `schema_version` values are wire-contract versions pinned by the JSON schemas, not release versions.
 

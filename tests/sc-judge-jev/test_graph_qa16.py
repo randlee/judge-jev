@@ -143,7 +143,7 @@ class DatatypeTests(GraphCase):
         cases = {
             "tree kind": (ADR_TTL.replace('jj:kind "adr"', "jj:kind 5"), "jj:kind"),
             "tree note": (ADR_TTL.replace('jj:note "wave-1 wording approved by Rand Lee, 2026-11-08"', "jj:note 5"), "jj:note"),
-            "tree version": (ADR_TTL.replace("jj:version 3", 'jj:version "3"'), "jj:version"),
+            "tree version": (ADR_TTL.replace("jj:version 1", 'jj:version "1"'), "jj:version"),
             "tree approved": (ADR_TTL.replace("jj:approved true", 'jj:approved "false"'), "jj:approved"),
             "tree id": (ADR_TTL.replace('jj:id "quality-adr"', "jj:id 7"), "jj:id"),
             "wave per": (BRANCH_TTL.replace('jj:per "statement"', "jj:per 1"), "jj:per"),

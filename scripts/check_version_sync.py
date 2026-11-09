@@ -18,9 +18,10 @@ Consistency:
 There is no pull-request bump rule: nothing is published, VERSION stays 0.1.0, and
 no PR raises it. Changes accumulate under "## Unreleased" in CHANGELOG.md.
 
-Not release metadata, so not checked: `schema_version` fields and the
-`metadata.version` of templates/*.md.j2 (wire-contract versions pinned by the
-JSON schemas' `const`), and integer document versions.
+Every other version number is locked too, with no exclusions: each template's
+own header `version:` (every *.j2) equals VERSION, and every integer version
+(a question set's or tree's `version` / `jj:version`, every `schema_version`)
+equals 1 until the first publish.
 
 Exit 0 in sync; 2 when the check fails: drift (each on its own line on stdout)
 or missing files and bad input (on stderr): a manifest that is not valid JSON,
@@ -128,6 +129,33 @@ def template_drift(root: pathlib.Path) -> list:
     return drift
 
 
+INT_VERSION_RES = (
+    re.compile(r'"(?:schema_)?version":\s*([0-9]+)\s*[,}]'),
+    re.compile(r"^\s*schema_version:\s*([0-9]+)\s*$", re.M),
+    re.compile(r"\bjj:version\s+([0-9]+)\b"),
+)
+LOCKED_INT_VERSION = "1"
+
+
+def locked_drift(root: pathlib.Path, want: str) -> list:
+    """Template header versions that are not VERSION, and integer versions that are not 1."""
+    drift = []
+    for template in sorted(root.glob("plugins/**/*.j2")):
+        head = FRONT_RE.match(template.read_text(encoding="utf-8"))
+        for v in VER_RE.findall(head.group(1)) if head else []:
+            if v != want:
+                drift.append(f"{_rel(template)}: template version {v} != VERSION {want}")
+    for f in sorted(root.glob("plugins/**/*")):
+        if not f.is_file() or f.suffix not in (".json", ".ttl", ".yaml", ".yml", ".j2"):
+            continue
+        text = f.read_text(encoding="utf-8")
+        for pattern in INT_VERSION_RES:
+            for v in pattern.findall(text):
+                if v != LOCKED_INT_VERSION:
+                    drift.append(f"{_rel(f)}: integer version {v} != {LOCKED_INT_VERSION} (locked until the first publish)")
+    return drift
+
+
 def ssot_drift(root: pathlib.Path, want: str) -> list:
     """Every version declaration that does not equal VERSION, plus a missing CHANGELOG section."""
     drift = []
@@ -141,6 +169,7 @@ def ssot_drift(root: pathlib.Path, want: str) -> list:
             if v != want:
                 drift.append(f"{rel}: {v} != VERSION {want}")
     drift.extend(template_drift(root))
+    drift.extend(locked_drift(root, want))
     changelog = root / "CHANGELOG.md"
     if not changelog.exists() or not re.search(rf"^## (Unreleased\b|{re.escape(want)}\b)", changelog.read_text(encoding="utf-8"), re.M):
         drift.append(f"CHANGELOG.md has neither a '## Unreleased' section nor a '## {want}' entry")

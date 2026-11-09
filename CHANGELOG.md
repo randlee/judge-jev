@@ -1,6 +1,6 @@
 # Changelog
 
-`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. Nothing is published yet, so `VERSION` stays `0.1.0` and no PR bumps it; changes accumulate under `## Unreleased` until the first publish. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
+`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. Nothing is published yet, so every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, every integer version (question sets, trees, `schema_version`) stays `1`, and no PR bumps any of them; changes accumulate under `## Unreleased` until the first publish. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
 ## Unreleased
 
