@@ -471,43 +471,43 @@ A definition is a node in the judge-jev graph (ADR-JEV-0006):
   space. The files load into the store as their own named graph, so they
   never change a tree's digest.
 
-**Request:** a Jev request has two parts, the state (data) and the
-questions, and Jev answers every question in parallel against the same
-state. Definitions are data: a request carries
-`state = {record, definitions}` (with the location when one is under
-evaluation), followed by the questions. `definitions` holds the record's
-record-only definitions plus those attached to this record and this
-location. A request with no matching definition is the same as before.
-`quality` evaluates the record alone, so it uses record-only definitions. Definitions are never
-truncated. A request that the definitions push over the size limit is
-refused before it is sent. Every request and its log event record the
-digest of each definition carried, and a run's triples link the run to
-them.
+- **Request:** a Jev request has two parts, the state (data) and the
+  questions, and Jev answers every question in parallel against the same
+  state. Definitions are data: a request carries
+  `state = {record, definitions}` (with the location when one is under
+  evaluation), followed by the questions. `definitions` holds the record's
+  record-only definitions plus those attached to this record and this
+  location. A request with no matching definition is the same as before.
+  `quality` evaluates the record alone, so it uses record-only definitions. Definitions are never
+  truncated. A request that the definitions push over the size limit is
+  refused before it is sent. Every request and its log event record the
+  digest of each definition carried, and a run's triples link the run to
+  them.
 
-**Tuning:** definitions are added in tuning, and only when they make a
-material change. The steps are:
+- **Tuning:** definitions are added in tuning, and only when they make a
+  material change. The steps are:
 
-1. A failing or `unclear` reason names a term the record leaves undefined.
-2. A definition is written from the repository's own material and named as
-   its source.
-3. The requests the definition would reach (the record's, or the record
-   and location's) are run with and without it.
-4. The definition is kept only if it can change an answer: an answer's
-   choice flips, or its confidence crosses the threshold that decides it.
-   A move that stays on the same side of the threshold (90% to 95%) is not
-   material. Candidates can be compared together, so a move that does not
-   cross on its own (20% to 50%) is material when the set's combined
-   change crosses. A definition that changes nothing is removed.
+  1. A failing or `unclear` reason names a term the record leaves undefined.
+  2. A definition is written from the repository's own material and named as
+     its source.
+  3. The requests the definition would reach (the record's, or the record
+     and location's) are run with and without it.
+  4. The definition is kept only if it can change an answer: an answer's
+     choice flips, or its confidence crosses the threshold that decides it.
+     A move that stays on the same side of the threshold (90% to 95%) is not
+     material. Candidates can be compared together, so a move that does not
+     cross on its own (20% to 50%) is material when the set's combined
+     change crosses. A definition that changes nothing is removed.
 
-The commit that adds a definition is its approval record.
+  The commit that adds a definition is its approval record.
 
-**Question naming:** a question's identity is its IRI, and an IRI is
-declared in one tree file only, across the repository: judge-jev's own trees
-and any consumer extension's (two files declaring one IRI would silently merge
-in the store). Its `jj:id`, the key in requests and reasons, is unique within
-its tree. judge-jev's questions use
-`urn:judge-jev:question:<kind>.<id>`. An extension mints its questions under
-its own namespace.
+- **Question naming:** a question's identity is its IRI, and an IRI is
+  declared in one tree file only, across the repository: judge-jev's own trees
+  and any consumer extension's (two files declaring one IRI would silently merge
+  in the store). Its `jj:id`, the key in requests and reasons, is unique within
+  its tree. judge-jev's questions use
+  `urn:judge-jev:question:<kind>.<id>`. An extension mints its questions under
+  its own namespace.
 
 **`judge-jev doctor`** checks everything judge-jev loads in a repository and
 calls nothing:
