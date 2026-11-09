@@ -1,6 +1,6 @@
 # judge-jev Requirements - Prose Evaluation
 
-**ID Range:** REQ-JEV-0201 through REQ-JEV-0211  
+**ID Range:** REQ-JEV-0201 through REQ-JEV-0215  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-08  
@@ -418,3 +418,122 @@ after a paid call wastes the call; a crash loses its answer.
   extra key, and raw JSON no value expresses) produce no `SCRIPT.INTERNAL`
   and no refusal after a request is sent.
 - [ ] Invalid UTF-8 on stdin is refused with `INPUT.MALFORMED`.
+
+---
+
+## REQ-JEV-0212: Targeted definitions
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- A request about a record MUST carry, in its state next to the record,
+  only the definitions linked to that record.
+- A request about a record with no linked definitions MUST be identical to
+  the request sent without definitions.
+- `judge-jev` MUST refuse, before sending, a request whose definitions take
+  it over the size limit, and MUST NOT truncate a definition.
+- Every request's log event MUST record the digest of each definition it
+  carried.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "we can NOT write a single definition file and add it
+to every prompt" when running over 1000 to 2000 records with 1 to 200
+locations each.
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] With definitions linked to record A only, the requests for record B
+  are byte-identical to a run without definitions.
+- [ ] The requests for record A carry exactly A's definitions, and their log
+  events list those definitions' digests.
+
+---
+
+## REQ-JEV-0213: A definition is kept only when it changes an answer
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- `judge-jev` MUST provide a comparison that runs a record's waves with and
+  without a candidate definition and reports, for each answer, the change
+  in choice and in confidence.
+- The comparison MUST report whether the definition is material: whether
+  any answer's choice changed, or its confidence changed by at least the
+  given minimum.
+- The comparison MUST record the minimum confidence change it applied.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "if adding the definition does not impact the scores
+used in the ruberic, they aren't necessary to add"; "material would need to
+impact confidence or flip answer".
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] With fixture answers where the definition flips one answer, the
+  comparison reports it as material.
+- [ ] With fixture answers that are the same with and without the
+  definition, the comparison reports it as not material.
+
+---
+
+## REQ-JEV-0214: Question ids are unique within a scope
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- Every question loaded in one scope (by default the repository) MUST have
+  a `jj:id` that no other question in that scope uses. This covers
+  judge-jev's trees and every consumer extension's.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "We would need to make sure all questions in
+judge-jev AND in consumer extensions follow a naming policy for uniqueness
+w/in that scope (repo is typical scope)."
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] Two trees in one scope that each define a question with the same
+  `jj:id` but different IRIs are reported as an error naming both IRIs.
+
+---
+
+## REQ-JEV-0215: Doctor command
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- `judge-jev doctor` MUST validate every tree, question set and definitions
+  file in the scope against its schema and the ontology's shapes, including
+  edges and cycles, and MUST report each failure as an error.
+- `judge-jev doctor` MUST report, as warnings that do not fail the command:
+  - a definition linked to no record;
+  - a definition linked to a record the Raptor index does not hold;
+  - a definition whose source does not exist.
+- `judge-jev doctor` MUST NOT call Jev.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "I would expect judge-jev doctor to report orphans/dead
+links as warnings, it would also run schema validation and verify ontology
+followed and no cycles."
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] A scope with one orphan definition exits 0 with one warning naming it.
+- [ ] A scope with a tree that has a cycle exits non-zero with an error
+  naming the cycle.

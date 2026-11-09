@@ -1,6 +1,6 @@
 # adr-jev-product - judge-jev Product Decisions
 
-**ID Range:** ADR-JEV-0001 through ADR-JEV-0007  
+**ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
 **Version:** 0.1.0  
 **Status:** Draft  
 **Created:** 2026-11-07  
@@ -425,3 +425,133 @@ wait for it.
 
 **Why Rejected:** A tool without a store could not record a run, and a lost
 store loses the runs.
+
+---
+
+## ADR-JEV-0008: Definitions are graph nodes targeted at records
+
+**Status:** Draft  
+
+### Context
+
+A record can use a term that neither the record nor anything Jev sees
+defines, and Jev then has to guess. judge-jev runs over 1000 to 2000 REQ,
+ADR and NFR records, each with 1 to 200 code locations. A single definitions
+file prepended to every request would be sent tens of thousands of times,
+almost always to requests that do not need it. Unrelated material lowers
+Jev's accuracy and uses up the request budget. The problem is how to supply
+a definition only where it changes an answer, and how to find definitions
+that no longer serve anything.
+
+### Decision
+
+A definition is a node in the judge-jev graph (ADR-JEV-0006):
+
+- **`jj:Definition`** holds a `jj:term`, a `jj:text` (short, one line on
+  average) and a `jj:source`, the repository file or record that the
+  meaning comes from. Pydantic validates the body (ADR-JEV-0005), and SHACL
+  validates the edges.
+- **`jj:appliesTo`** links a definition to one or more records by their
+  Raptor IRI. A record's definitions apply to every question asked about
+  that record and to every location checked against it.
+- **Storage:** definitions are Turtle files committed in the repository
+  under `.sc/judge-jev/`. The per-requirement tree-sitter queries will be
+  kept there too, keyed by the same record IDs. Both may move into the
+  Raptor database later, once real runs show the feature earns schema
+  space. The files load into the store as their own named graph, so they
+  never change a tree's digest.
+
+**Request:** a Jev request has two parts, the state (data) and the
+questions, and Jev answers every question in parallel against the same
+state. Definitions are data: a request carries
+`state = {record, definitions}`, where `definitions` holds only that
+record's definitions, followed by the questions. A record with no
+definitions sends the same request as before. Definitions are never
+truncated. A request that the definitions push over the size limit is
+refused before it is sent. Every request and its log event record the
+digest of each definition carried, and a run's triples link the run to
+them.
+
+**Tuning:** definitions are added in tuning, and only when they make a
+material change. The steps are:
+
+1. A failing or `unclear` reason names a term the record leaves undefined.
+2. A definition is written from the repository's own material and named as
+   its source.
+3. The record's waves are run with and without the definition.
+4. The definition is kept only if it changes the choice or the confidence
+   of an answer. A definition that changes nothing is removed. The minimum
+   confidence change counted is a tuning parameter, recorded with each
+   comparison.
+
+The commit that adds a definition is its approval record.
+
+**Question naming:** a question's identity is its IRI. Its `jj:id`, the key
+in requests and reasons, must be unique among all questions loaded in one
+scope, which is typically the repository. That covers judge-jev's own trees
+and any consumer extension's. judge-jev's questions use
+`urn:judge-jev:question:<kind>.<id>`. An extension mints its questions under
+its own namespace.
+
+**`judge-jev doctor`** checks everything judge-jev loads in a repository and
+calls nothing:
+- schema validation of every tree, question set and definitions file;
+- SHACL conformance to the ontology, including edges and the absence of
+  cycles;
+- duplicate question ids in the scope, as errors;
+- warnings, without failing, for:
+  - a definition with no `jj:appliesTo`;
+  - a definition that applies to a record the Raptor index does not have;
+  - a definition whose source does not exist.
+
+### Rationale
+
+Measuring a definition by its effect on Jev's answers keeps the
+low-value ones out. "sc-agent" read as "a specific type of agent" may
+already be inferred correctly. Targeting by record keeps every request as
+small as before unless that record needs help. Definitions sourced from
+the repository's own material and checked by A/B carry low risk.
+
+### Consequences
+
+**Positive:**
+
+- Changing or removing a definition affects only the runs of its records,
+  and a graph query lists exactly those runs.
+- The A/B run spends Jev calls only on the records involved.
+- Orphaned definitions and dead links are found by `doctor` rather than
+  accumulating.
+
+**Negative:**
+
+- A definition is seen by every question of its record's waves, not only
+  the one whose reason prompted it. The A/B run compares every answer, so
+  an effect on another question is counted.
+- Consumer extensions must follow the question naming rule, or `doctor`
+  refuses the scope.
+
+### Alternatives Considered
+
+#### Alternative 1: One definitions file in every request
+
+**Description:** A repository-wide glossary sent as context with every
+request.
+
+**Why Rejected:** At this scale it multiplies every request's size and
+gives Jev unrelated material.
+
+#### Alternative 2: Definitions inside the question text
+
+**Description:** Append a definition to the instructions of the question
+that needed it.
+
+**Why Rejected:** Definitions are data, and Jev keeps data in the state.
+The question text would also vary per record.
+
+#### Alternative 3: A Raptor table now
+
+**Description:** Store definitions and their links in Raptor's schema
+from the start.
+
+**Why Rejected:** The feature has to prove its value in real runs before
+it gets schema space in Raptor.
