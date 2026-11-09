@@ -116,7 +116,7 @@ def http(status, text="", retry_after=None):
 def request_line(item_id="ex-42", text="Sprint 2 copies the legacy runtime crates.", candidate="cur", questions=None):
     """One batch request line with the shipped plan question set as its only candidate."""
     if questions is None:
-        questions = ok(jj.load_question_set("plan"))["questions"]
+        questions = ok(jj.load_question_set("plan")).questions
     return {"item": {"id": item_id, "title": "", "text": text},
             "anchor": {"id": "ANC-001", "statement": STATEMENT, "scope": "the runtime crates", "kind": "directive"},
             "questions": [{"candidate_id": candidate, "questions": questions}]}
@@ -431,7 +431,7 @@ class ErrorHandlingTests(unittest.TestCase):
             self.assertEqual(t.bodies, [])
             self.assertFalse((Path(d) / "runs").exists())
             # the dev gate's default cap is 64000 bytes: the same item fits there
-            dev = write(d, "dev.jsonl", jsonl([request_line(text="x" * 30000, questions=ok(jj.load_question_set("dev"))["questions"])]))
+            dev = write(d, "dev.jsonl", jsonl([request_line(text="x" * 30000, questions=ok(jj.load_question_set("dev")).questions)]))
             code, out = run_cli(["batch", "--input", dev, "--run-dir", str(Path(d) / "runs"), "--gate", "dev", "--dry-run"])
             self.assertEqual((code, out["dry_run"]), (0, True))
 
@@ -449,16 +449,16 @@ class ErrorHandlingTests(unittest.TestCase):
     def test_documented_question_sets_load(self):
         for gate in ("plan", "dev"):
             qs = ok(jj.load_question_set(gate))
-            self.assertEqual(qs["gate"], gate)
-            for q in qs["questions"].values():
+            self.assertEqual(qs.gate, gate)
+            for q in qs.questions.values():
                 self.assertEqual(set(q["criteria"]), set(OPTIONS))
-        self.assertEqual(set(ok(jj.load_question_set("dev"))["roles"]), {"relevance", "compliance", "conflict", "evidence"})
+        self.assertEqual(set(ok(jj.load_question_set("dev")).roles), {"relevance", "compliance", "conflict", "evidence"})
         self.assertEqual(failure(jj.load_question_set("plan", str(Path(__file__)))).code, "INPUT.MALFORMED")
 
     def test_batch_and_quality_are_the_subcommands(self):
         parser = jj.build_parser()
         sub = next(a for a in parser._actions if a.dest == "cmd")
-        self.assertEqual(sorted(sub.choices), ["batch", "quality"])
+        self.assertEqual(sorted(sub.choices), ["batch", "quality", "validate"])
 
 
 if __name__ == "__main__":

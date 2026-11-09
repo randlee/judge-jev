@@ -1,6 +1,6 @@
 # judge-jev Requirements - Prose Evaluation
 
-**ID Range:** REQ-JEV-0201 through REQ-JEV-0209  
+**ID Range:** REQ-JEV-0201 through REQ-JEV-0211  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-08  
@@ -24,9 +24,15 @@ meets a Raptor-supplied REQ, NFR or ADR record. The CLI is defined in
 ### Requirement Statement
 
 **MUST statements:**
-- `judge-jev check` MUST take exactly one of `--req`, `--adr` or `--nfr`
-  with one record id, plus one `--location` and one `--mode`, or a
-  `--profile`.
+- `judge-jev check` MUST take one of two argument forms: a single record
+  with a location and a mode, or a `--profile`.
+- In the single-record form, `judge-jev check` MUST take one record id,
+  given with exactly one record-kind flag: `--req` (requirement), `--adr`
+  (architecture decision record) or `--nfr` (non-functional requirement).
+- In the single-record form, `judge-jev check` MUST take exactly one
+  `--location`.
+- In the single-record form, `judge-jev check` MUST take exactly one
+  `--mode`.
 - Each record kind MUST use its own question set.
 
 ### Rationale
@@ -49,7 +55,8 @@ violated in a different way.
 ### Requirement Statement
 
 **MUST statements:**
-- Each Jev request MUST carry exactly one record and one location.
+- Each Jev request MUST carry exactly one record.
+- Each Jev request MUST carry exactly one location.
 - A run over many pairs MUST send them as a stream of single requests.
 
 ### Rationale
@@ -72,11 +79,14 @@ command already does.
 ### Requirement Statement
 
 **MUST statements:**
-- judge-jev MUST support the target modes `prompt`, `skill`, `task` and
-  `code`.
-- In `task` mode judge-jev MUST judge both the raw template and an
-  assignment rendered by sc-compose in strict mode from the vars file named
-  by `--vars` or by the profile.
+- judge-jev MUST support the target mode `prompt`.
+- judge-jev MUST support the target mode `skill`.
+- judge-jev MUST support the target mode `task`.
+- judge-jev MUST support the target mode `code`.
+- In `task` mode judge-jev MUST judge the raw template.
+- In `task` mode judge-jev MUST judge an assignment rendered by sc-compose
+  in strict mode from the vars file that `--vars` names, or, in a profile
+  run, that the profile names.
 - In `code` mode judge-jev MUST resolve the location with the tree-sitter
   grammars sc-agent defines.
 
@@ -114,8 +124,12 @@ owns the grammars so every consumer selects code the same way.
 **MUST statements:**
 - judge-jev MUST read a TOML profile listing locations, each with its
   mode, the record ids that govern it, and for `task` mode a vars file.
-- `judge-jev check --profile <profile>` MUST check every listed pair and
-  report each pair's verdict, aggregated per record and per location.
+- `judge-jev check --profile <profile>` MUST check every listed pair.
+- `judge-jev check --profile <profile>` MUST report each pair's verdict.
+- `judge-jev check --profile <profile>` MUST aggregate the verdicts per
+  record.
+- `judge-jev check --profile <profile>` MUST aggregate the verdicts per
+  location.
 
 **MUST NOT statements:**
 - A profile run MUST NOT judge a pair the profile does not list.
@@ -143,19 +157,20 @@ all kinds.
 ### Requirement Statement
 
 **MUST statements:**
-- judge-jev MUST ship its question sets, one per record kind and target
-  class (agent text or code), plus one quality decision tree per record kind.
+- judge-jev MUST ship one question set per combination of record kind and
+  target class (agent text or code).
+- judge-jev MUST ship one quality decision tree per record kind.
 - Every shipped question and prompt text MUST be approved by Rand before
   it ships.
-- Question sets and quality decision trees MUST be data files shipped
-  with the tool, so changing a question, a tree branch or a wave needs no
-  code change.
-- The released tool MUST accept an override file for any question set or
-  tree, so a variation is tried by writing a file, never by changing or
-  rebuilding code.
-- Every result and log entry MUST carry the question-set id and the
-  content digest of the file used, so results from many variations of the
-  same set can be told apart and compared.
+- Question sets MUST be data files shipped with the tool.
+- Quality decision trees MUST be data files shipped with the tool.
+- The released tool MUST accept an override file for any question set.
+- The released tool MUST accept an override file for any quality decision
+  tree.
+- Every result MUST carry the question-set id.
+- Every result MUST carry the content digest of the file used.
+- Every log entry MUST carry the question-set id.
+- Every log entry MUST carry the content digest of the file used.
 
 ### Rationale
 
@@ -164,6 +179,12 @@ trust frontier agents to write them." The question sets are the tool's
 system prompts. Getting them production-worthy means running thousands of
 question variations against the released tool; a variation that needs a
 code change cannot be run at that scale.
+
+Because question sets and trees are data files, changing a question, a
+tree branch or a wave needs no code change. An override file lets a
+variation be tried by writing a file, never by changing or rebuilding code.
+The question-set id and file digest on every result and log entry let
+results from many variations of the same set be told apart and compared.
 
 ### Success Criteria
 
@@ -218,10 +239,13 @@ Rand (2026-11-08): "batching is simply streaming of single requests."
 ### Requirement Statement
 
 **MUST statements:**
-- A location MUST be `path` (whole file), `path#Heading` (a Markdown
-  section, from the heading to the next heading of the same or higher
-  level), or `path::Symbol` (a code symbol resolved by sc-agent's
-  tree-sitter grammars).
+- A location MUST take one of three forms: `path`, `path#Heading` or
+  `path::Symbol`.
+- A `path` location MUST select the whole file.
+- A `path#Heading` location MUST select a Markdown section, from the
+  heading to the next heading of the same or higher level.
+- A `path::Symbol` location MUST select a code symbol resolved by
+  sc-agent's tree-sitter grammars.
 - Markdown sections MUST be parsed by the same rules Raptor uses for the
   same file.
 
@@ -256,15 +280,25 @@ paths in a profile are relative to the profile or to the repository root.
 ### Requirement Statement
 
 **MUST statements:**
-- `quality` and `check` MUST accept `--dry-run`, which composes every
-  request without calling Jev.
-- Each dry-run entry MUST report the record id and its Raptor source, the
-  resolved location (path, section or symbol, digest of the selected
-  text), the mode, the question set (shipped id or override path), for
-  `task` mode the vars file and rendered text, the full composed request,
-  and its size against the request limit.
-- For `quality`, the dry run MUST report the decision tree and the composed
-  wave-1 request; later waves depend on live answers.
+- `judge-jev quality` MUST accept `--dry-run`.
+- `judge-jev check` MUST accept `--dry-run`.
+- A dry run MUST compose every request without calling Jev.
+- Each dry-run entry MUST report the record id.
+- Each dry-run entry MUST report the record's Raptor source.
+- Each dry-run entry MUST report the resolved location as its path, section
+  or symbol.
+- Each dry-run entry MUST report the digest of the location's selected
+  text.
+- Each dry-run entry MUST report the mode.
+- Each dry-run entry MUST report the question set as its shipped id or its
+  override path.
+- In `task` mode, each dry-run entry MUST report the vars file.
+- In `task` mode, each dry-run entry MUST report the rendered text.
+- Each dry-run entry MUST report the full composed request.
+- Each dry-run entry MUST report the composed request's size against the
+  request limit.
+- For `quality`, the dry run MUST report the decision tree.
+- For `quality`, the dry run MUST report the composed wave-1 request.
 - A dry run MUST fail with a typed error on anything that would make the
   live request wrong: an unresolved record or location, a render failure,
   or an oversize request.
@@ -272,7 +306,8 @@ paths in a profile are relative to the profile or to the repository root.
 ### Rationale
 
 The caller must know the prompt will be built correctly before any text
-leaves the machine.
+leaves the machine. A `quality` dry run stops at wave 1 because later
+waves depend on live answers.
 
 ### Success Criteria
 
@@ -291,16 +326,95 @@ leaves the machine.
 ### Requirement Statement
 
 **MUST statements:**
-- `judge-jev quality` MUST take exactly one of `--req`, `--adr` or `--nfr`
-  with one record id and judge that record with its kind's quality
+- `judge-jev quality` MUST take one or more record ids.
+- `judge-jev quality` MUST take each record id with one record-kind flag:
+  `--req` (requirement), `--adr` (architecture decision record) or `--nfr`
+  (non-functional requirement).
+- Every record-kind flag of `judge-jev quality` MUST be repeatable.
+- `judge-jev quality` MUST judge each record with its kind's quality
   decision tree (REQ-JEV-0101).
+- All records of one `judge-jev quality` invocation MUST be logged under
+  one run name.
 
 ### Rationale
 
-Quality and compliance are separate questions about separate inputs.
+Quality and compliance are separate questions about separate inputs. One
+run name per invocation groups a measurement over many records in the
+log.
 
 ### Success Criteria
 
 **Acceptance Criteria:**
 - [ ] Every request `judge-jev quality --req <id>` sends carries only the
   record and questions from the REQ quality tree.
+
+---
+
+## REQ-JEV-0210: Validate command
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- `judge-jev validate` MUST take one input file with one input-kind flag:
+  `--tree` (quality tree), `--questions` (question set), `--answers`
+  (answers file), `--index` (Raptor import index) or `--requests` (batch
+  request stream).
+- `judge-jev validate` MUST check the file with the model `judge-jev`
+  applies to that input kind before its first Jev request (ADR-JEV-0005).
+- Every refusal from `judge-jev validate` MUST name the field path and the
+  rule the field breaks.
+- `judge-jev validate --answers` MUST apply the answers-file envelope that
+  `--answers-file` applies before the first request: an object of string keys,
+  each an object or a non-empty list of objects, an object with `__error__`
+  holding only a string code of at most 64 characters. The answers file
+  stands in for Jev's response, so what an answer holds (its questions,
+  choices and probabilities) is not part of the envelope; it is checked after
+  the send as `JEV.RESPONSE_INVALID`.
+
+**MUST NOT statements:**
+- `judge-jev validate` MUST NOT call Jev.
+
+### Rationale
+
+A tree variation checked before a run costs nothing; one refused after a
+paid call wastes it.
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] Every input the sweep tests refuse in `quality` is refused by
+  `judge-jev validate` with the same field path.
+- [ ] The shipped trees and question sets pass `judge-jev validate`.
+
+---
+
+## REQ-JEV-0211: A typed result for every input
+
+**Status:** Draft  
+
+### Requirement Statement
+
+**MUST statements:**
+- For every input, every `judge-jev` command MUST print exactly one JSON
+  object: its result or a typed error.
+- `judge-jev` MUST refuse an invalid tree, question set, index, request
+  stream or run directory before its first Jev request.
+- `judge-jev` MUST check that every log event of a request (the request,
+  Jev's largest possible answer and the result) fits the logger's event
+  size limit before sending the request.
+
+### Rationale
+
+Rand Lee, 2026-11-08: "Crash is not acceptable for any input." A refusal
+after a paid call wastes the call; a crash loses its answer.
+
+### Success Criteria
+
+**Acceptance Criteria:**
+- [ ] The sweep tests (every field of a tree, index and answers file
+  replaced by each of a fixed list of wrong values, deleted or given an
+  extra key, and raw JSON no value expresses) produce no `SCRIPT.INTERNAL`
+  and no refusal after a request is sent.
+- [ ] Invalid UTF-8 on stdin is refused with `INPUT.MALFORMED`.

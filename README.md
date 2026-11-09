@@ -26,15 +26,21 @@ Each run has four steps:
 ## CLI
 
 Two primitives, each composing single Jev requests, plus a profile run that
-aggregates them. Full definitions: [docs/cli.md](docs/cli.md); prompt
+aggregates them, and `validate` checks an input file without calling Jev.
+Full definitions: [docs/cli.md](docs/cli.md); prompt
 composition diagrams: [docs/diagrams/](docs/diagrams/).
 
 ```
-judge-jev quality --req|--adr|--nfr <id>
+judge-jev quality (--req|--adr|--nfr <id>)...
 judge-jev check   --req|--adr|--nfr <id> --location <loc> --mode prompt|skill|task|code
 judge-jev check   --profile <profile>
-# every command: [--questions <file>] [--dry-run]
+judge-jev validate --tree|--questions|--answers|--index|--requests <file>   # '-' = stdin
+# check, quality: [--questions <file>] [--dry-run]
 ```
+
+`validate` checks a file with the model judge-jev applies to it before its
+first request: no Jev call, no key, no log (REQ-JEV-0210). Check a tree
+variation with `judge-jev validate --tree <file>` before a run.
 
 ## Modes
 

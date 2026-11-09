@@ -1,10 +1,10 @@
 # adr-jev-product - judge-jev Product Decisions
 
-**ID Range:** ADR-JEV-0001 through ADR-JEV-0004  
+**ID Range:** ADR-JEV-0001 through ADR-JEV-0007  
 **Version:** 0.1.0  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-07  
+**Last Updated:** 2026-11-08  
 **Decision Date:** 2026-11-07  
 **Owner:** Rand Lee  
 
@@ -24,8 +24,11 @@ what the first version leaves out.
 
 judge-jev's Jev core (the batch command, request and result contracts,
 key lookup and remote-judge consent) is copied from an existing
-implementation. A Rust implementation, exposed through PyO3 bindings or a
-CLI, will replace that Python core.
+implementation, and a Rust implementation, exposed through PyO3 bindings or
+a command-line interface (CLI), will replace that Python core. The problem
+is whether the Python core may change before then: any change to its
+architecture or contracts is a change the Rust replacement must reproduce,
+or its callers break when the replacement lands.
 
 ### Decision
 
@@ -48,14 +51,27 @@ to its callers.
 
 - Improvements to the core wait for the Rust implementation.
 
+### Alternatives Considered
+
+#### Alternative 1: Improve the Python core before the Rust replacement
+
+**Description:** Change the copied core's architecture or contracts now.
+
+**Why Rejected:** The Rust implementation could then not replace the core
+without a change to its callers.
+
 ## ADR-JEV-0002: Query records through Raptor over local SQLite
 
 **Status:** Draft  
 
 ### Context
 
-Requirements move to a Dolt server as the single source of truth, with
-the Raptor CLI as the access path.
+judge-jev needs requirement records to judge, and their source is
+changing: requirements move from Markdown files to a Dolt server as the
+single source of truth, with the Raptor command-line interface (CLI) as
+the access path. Raptor owns the record schema and every conversion
+(REQ-JEV-0001). The problem is how judge-jev reads records so that neither
+the move to Dolt nor a Raptor schema change breaks it.
 
 ### Decision
 
@@ -79,6 +95,22 @@ without touching judge-jev.
 - judge-jev depends on Raptor's query contract; Raptor notifies judge-jev
   maintenance before changing it.
 
+### Alternatives Considered
+
+#### Alternative 1: Parse record Markdown directly
+
+**Description:** judge-jev reads the record Markdown files itself.
+
+**Why Rejected:** Raptor owns the schema and every conversion; a parser in
+judge-jev breaks when Raptor changes them (REQ-JEV-0001).
+
+#### Alternative 2: Query the record store with SQL directly
+
+**Description:** judge-jev runs its own SQL against the record store.
+
+**Why Rejected:** Raptor owns the schema; judge-jev's own queries break when
+Raptor changes it (REQ-JEV-0001).
+
 ## ADR-JEV-0003: Judge record quality instead of loosening the schema
 
 **Status:** Proposed  
@@ -86,7 +118,11 @@ without touching judge-jev.
 ### Context
 
 Raptor rejects records missing required sections, such as statements
-written as plain prose.
+written as plain prose, so corpora with prose-only records do not import.
+judge-jev can judge only records with typed statements and criteria. The
+problem is how such records get into a judgeable form: by loosening
+Raptor's schema to accept them, or by keeping it strict and explaining
+what to fix.
 
 ### Decision
 
@@ -110,13 +146,25 @@ records that cannot be judged.
 - Corpora with prose-only records need editing before import, guided by
   the import diagnostics.
 
+### Alternatives Considered
+
+#### Alternative 1: Loosen Raptor's schema
+
+**Description:** Accept records missing required sections, such as
+prose-only statements.
+
+**Why Rejected:** A looser schema stores records that cannot be judged.
+
 ## ADR-JEV-0004: Code references are outside the first version
 
 **Status:** Draft  
 
 ### Context
 
-Records will eventually govern code as well as prompts.
+Records will eventually govern code as well as prompts, but selecting code
+needs tree-sitter grammars, which sc-agent defines and which may not be
+complete yet. The problem is what the first version judges while those
+grammars are unfinished.
 
 ### Decision
 
@@ -139,3 +187,241 @@ tree-sitter work first.
 **Negative:**
 
 - Code is not judged until the tree-sitter extension exists.
+
+### Alternatives Considered
+
+#### Alternative 1: judge-jev defines its own tree-sitter grammars
+
+**Description:** Ship grammars inside judge-jev so code is judged now.
+
+**Why Rejected:** sc-agent owns the grammars so every consumer selects code
+the same way (REQ-JEV-0203).
+
+#### Alternative 2: Line-range locations for code
+
+**Description:** Reference code by file line ranges instead of symbols.
+
+**Why Rejected:** Line ranges drift on every edit; symbols survive
+(REQ-JEV-0207).
+
+---
+
+## ADR-JEV-0005: Pydantic models validate every JSON input
+
+**Status:** Draft  
+
+### Context
+
+judge-jev reads JSON written by people and agents (quality trees, question
+sets, answers files, request streams), by Raptor (the import index) and by
+Jev (responses). Quality trees will be varied thousands of times
+(REQ-JEV-0205). Hand-written type checks let fourteen input shapes crash
+the script or fail only after a paid Jev call, found by review of PRs #13
+and #14. The problem is how to make every input either accepted, or refused
+with the exact field, before the first call.
+
+### Decision
+
+Every JSON input is parsed into a pydantic v2 model in strict mode before
+it is used, and code after parsing receives model instances, not
+dictionaries. Each model is the single definition of its input's shape.
+Rules that span fields (a rule's choices are options of its question, a
+`goto` names a node, no cycle, a final rule without conditions) are model
+validators. `judge-jev validate` (REQ-JEV-0210) runs the same models
+without calling Jev. The JSON shapes of the Jev core's contracts do not
+change (ADR-JEV-0001); only how they are checked does.
+
+### Rationale
+
+One model per input replaces scattered checks that each had to anticipate
+every wrong type, and pydantic reports the field path of every refusal.
+
+### Consequences
+
+**Positive:**
+
+- Every refusal names the field and the rule it breaks.
+- Tree authors check a variation with `judge-jev validate` before a run.
+
+**Negative:**
+
+- pydantic (with its compiled core) becomes a dependency, pinned in the
+  script's PEP 723 header and in CI.
+- Refusal wording follows pydantic's messages.
+
+### Alternatives Considered
+
+#### Alternative 1: Keep hand-written checks
+
+**Description:** Extend the `isinstance` checks for each new crash found.
+
+**Why Rejected:** Each new shape needs a new check; review of #13 and #14
+found fourteen that were missed.
+
+#### Alternative 2: JSON Schema validated by `jsonschema`
+
+**Description:** One schema file per input, validated at load.
+
+**Why Rejected:** Rules that span fields stay hand-written, and code after
+validation still handles untyped dictionaries.
+
+---
+
+## ADR-JEV-0006: Quality trees and their answers are an RDF graph
+
+**Status:** Draft  
+
+### Context
+
+A quality tree is a graph: waves, questions, options and rules, with edges
+between them. As JSON, a question shared by two trees or two waves is
+copied, list position carries rule priority, and every structural check is
+code judge-jev maintains. Answers live in log files apart from the questions
+that produced them, so comparing thousands of question variations means
+scraping logs. The problem is how to represent trees and answers so that
+questions are shared, structure is checked by existing tools, and every
+verdict can be traced through its answers to the exact question and option.
+
+### Decision
+
+Quality trees are written in Turtle (TTL) against a judge-jev ontology:
+waves, questions, options and rules are resources linked by edges, and a
+question is one resource with an IRI that any wave may use. Order is a
+`rank` property: rules are tried by rank and the reason lists questions by
+rank; questions within a wave are otherwise unordered. SHACL shapes over the
+ontology validate the graph and its edges (each rule's choices are options
+of its question, each `goto` names a node, no cycle, a final rule without
+conditions). Pydantic models (ADR-JEV-0005) validate each node's body,
+including the per-wave JSON compiled from the graph and sent to Jev. Runs,
+answers, fired rules and verdicts are recorded as triples linked to the
+questions, options and Raptor records they concern, in an Oxigraph store
+(`pyoxigraph` in judge-jev). A tree's digest is the SHA-256 of its
+canonical form (RDFC-1.0).
+
+The vocabulary, prefix `jj: <urn:judge-jev:ontology#>`:
+
+- Tree: `jj:Tree` (`jj:start`, `jj:node`, `jj:kind`), `jj:Wave`
+  (`jj:asks` a `jj:Question`, `jj:rule`, `jj:per`, `jj:statements`,
+  `jj:modal`), `jj:Leaf` (`jj:verdict`).
+- Question: `jj:Question` (`jj:instructions`, `jj:option` a `jj:Option`,
+  `jj:rank`), `jj:Option` (`jj:label`, `jj:criterion`).
+- Rule: `jj:BranchRule` (`jj:goto`) and `jj:VerdictRule` (`jj:verdict`),
+  each with `jj:rank` and `jj:whenAll` / `jj:whenAny` a `jj:Condition`
+  (`jj:question`, `jj:choice` an `jj:Option`).
+- Run: `jj:Run` (`jj:tree`, `jj:treeDigest`, `jj:record` the Raptor
+  record's IRI), `jj:WaveRun` (`jj:inRun`, `jj:node`, `jj:requestId`,
+  `jj:statement`, `jj:fired` a rule), `jj:Answer` (`jj:ofWaveRun`,
+  `jj:toQuestion`, `jj:chose` an `jj:Option`, `jj:confidence`,
+  `jj:probability` a `jj:OptionProbability` with `jj:option` and `jj:p`),
+  `jj:verdictValue` on a run.
+
+### Rationale
+
+Validation of the graph moves to SHACL and of node bodies to pydantic, so
+judge-jev's own checking code shrinks to the compile step. One graph of
+records, questions and answers makes any verdict traceable and any two
+question variations comparable with one query.
+
+### Consequences
+
+**Positive:**
+
+- A question is written once and used by IRI.
+- A query over the graph compares question variations across runs.
+- The graph renders in a graph viewer for authoring and diagnosis.
+- The Rust Jev tool in sc-agent can process the same ontology with
+  Oxigraph.
+
+**Negative:**
+
+- `pyoxigraph` and a SHACL validator become dependencies.
+- Each wave needs a compile step from the graph to Jev's JSON request.
+- Tree authors write Turtle instead of JSON.
+
+### Alternatives Considered
+
+#### Alternative 1: JSON trees with references to shared question files
+
+**Description:** Keep JSON; a wave lists `$ref`s that judge-jev resolves.
+
+**Why Rejected:** It removes duplication only; structure checks stay in
+judge-jev's code, and answers stay apart from questions.
+
+#### Alternative 2: JSON trees as today
+
+**Description:** Keep one JSON file per tree with inline questions.
+
+**Why Rejected:** Questions are copied, priority is list position, and
+answers cannot be joined to questions without scraping logs.
+
+---
+
+## ADR-JEV-0007: The seam to sc-agent's Jev tool
+
+**Status:** Draft  
+
+### Context
+
+sc-agent's Rust Jev tool will replace judge-jev's Python Jev core
+(ADR-JEV-0001). Its first version will not include Oxigraph, though a later
+one may. Quality trees and their answers become an RDF graph
+(ADR-JEV-0006). The problem is where the boundary lies, so that judge-jev
+works with a Jev tool that has no graph store today, and one with Oxigraph
+later takes over graph work without judge-jev changing its callers.
+
+### Decision
+
+judge-jev has two ports:
+
+- **Transport:** sends the request lines of one wave and returns their
+  result lines. Its contract is the existing batch request and result
+  schemas (`assets/schemas/jev-batch-request.schema.json`,
+  `jev-batch-result.schema.json`), unchanged. The Python core implements it
+  now; sc-agent's Jev tool implements it later.
+- **Graph store:** loads a tree, validates it with SHACL, compiles a wave
+  to its JSON questions, records a run's triples and answers queries.
+  judge-jev implements it now with `pyoxigraph` and a SHACL validator; a
+  Jev tool with Oxigraph may implement it later.
+
+Only JSON crosses the transport. The result lines in the sc-observability
+log are the record of a run; a run's triples are a projection of those
+lines and the tree, so they can be rebuilt from the log at any time. The
+tree walk (which wave next, which verdict) uses only the compiled waves and
+the answers, so it runs on either side of the seam.
+
+### Rationale
+
+A Jev tool without a graph store needs only the JSON contract it already
+has. Because the triples are rebuilt from the log, no run is lost when the
+store moves to the other side of the seam.
+
+### Consequences
+
+**Positive:**
+
+- sc-agent's first Jev tool replaces the Python core with no graph work.
+- Moving the graph store into sc-agent changes the port's implementation,
+  not its callers.
+
+**Negative:**
+
+- Until sc-agent hosts the store, judge-jev carries the graph dependencies.
+- The projection from result lines to triples must stay in step with the
+  ontology.
+
+### Alternatives Considered
+
+#### Alternative 1: sc-agent's Jev tool reads trees and writes triples
+
+**Description:** Send the TTL tree and the record; the tool walks the tree
+and stores the triples.
+
+**Why Rejected:** Its first version has no graph store, so judge-jev would
+wait for it.
+
+#### Alternative 2: Triples as the only record of a run
+
+**Description:** Write runs to the graph store instead of the log.
+
+**Why Rejected:** A tool without a store could not record a run, and a lost
+store loses the runs.

@@ -7,25 +7,47 @@ Every command takes `--dry-run`.
 ## `judge-jev quality`
 
 ```
-judge-jev quality --req|--adr|--nfr <id> [--questions <file>] [--dry-run]
+judge-jev quality (--req|--adr|--nfr <id>)... [--questions <file>] [--dry-run]
 ```
 
-Judges whether one record is well written (REQ-JEV-0101, REQ-JEV-0209).
+Judges whether each named record is well written (REQ-JEV-0101,
+REQ-JEV-0209). `--req`, `--adr` and `--nfr` repeat and mix; one invocation
+judges every named record under one run name.
 
 - Input: the record text from Raptor. Only records Raptor imported without
-  diagnostics are judged.
+  diagnostics are judged; every record is checked before the first request.
 - Runs the record kind's quality decision tree, in waves. Each wave is one
-  request: record text + that wave's questions. The wave's answers select
-  the next wave's questions, narrowing in until a leaf verdict.
-- The tree ships with the tool; answers pick the branch, no model chooses
-  questions.
-- Output: one verdict. A failure reports the path through the tree that
-  failed.
-- `--dry-run` reports the tree and the composed wave-1 request; later waves
-  depend on live answers.
-- A live run logs every wave as output: composed request, answers, selected
-  branch. Logging goes through the sc-observability logger, the one sc-agent uses
-  (REQ-JEV-0008).
+  request: record text + that wave's questions. Every wave reports its
+  reason: each question's id, text, Jev's choice, the chosen option's
+  criterion (which carries its fix hint) and confidence. A wave's
+  answers select the next wave, which refines them; a wave with no next
+  wave ends the walk, and a rule in the tree (`verdict_rules`) turns its
+  answers into the verdict.
+- The shipped trees hold wave 1 only. A wave 2 is designed from wave 1's
+  observed live answers.
+- The tree ships with the tool; answers pick the branch and the verdict, no
+  model chooses questions.
+- Output: per record, the verdict, the path through the tree and every
+  wave's reason.
+- A per-statement wave (`"per": "statement"` in the tree) sends one request
+  per MUST / MUST NOT statement: the statement plus the whole record as
+  context, with all the wave's questions. The tree names the record field
+  holding the statements (`statements`) and the modals judged (`modals`).
+  Its reason lists each statement's index and text with every question's
+  answer; a rule fires when any one statement matches it, and
+  `matched_statements` names the statements that fired it. A statement that
+  gets no answer is named in the error.
+- `verdict_rules` match on `any` (one listed question got its choice) and
+  `all` (every listed question did); a choice may be a list of choices.
+- `--dry-run` reports each record's tree and composed wave-1 request, one
+  per statement for a per-statement wave; later waves depend on live
+  answers.
+- A live run logs every wave as output: composed request, answers, reason,
+  selected branch or verdict. A per-statement wave logs each statement's
+  request and a `statement` event (statement, answers, reason), then a
+  `wave` event with the request ids, matched statements and verdict. Logging goes through the sc-observability
+  logger, the one sc-agent uses (REQ-JEV-0008), to
+  `.sc/judge-jev/logs/judge-jev.log.jsonl`.
 
 Diagram: [diagrams/quality.md](diagrams/quality.md)
 
@@ -65,6 +87,38 @@ Checks every pair the profile lists and aggregates the results
   - per location: the records it meets and fails.
 
 Diagram: [diagrams/check-profile.md](diagrams/check-profile.md)
+
+## `judge-jev validate`
+
+```
+judge-jev validate --tree|--questions|--answers|--index|--requests <file>
+```
+
+Checks one input file with the model judge-jev applies to that input kind
+before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
+
+- Kinds: `--tree` (quality tree), `--questions` (question set), `--answers`
+  (answers file), `--index` (Raptor import index), `--requests` (batch
+  request stream). Exactly one.
+- `--requests` also takes `--gate` and `--max-request-bytes`, as `batch`
+  does, so a stream is checked against the same set and size limit.
+- `--tree` checks the tree alone; the checks that need a record (its
+  statements, request size, log-event size) run in `quality`, before the
+  first call and in `--dry-run`.
+- `--answers` checks the envelope only, the same one `--answers-file` checks
+  before the first request in `batch` and `quality`: an object of string keys,
+  each an object or a non-empty list of objects; an `__error__` object holds a
+  string code of at most 64 characters and nothing else (`INPUT.MALFORMED`
+  otherwise). An answer's own body (its choice, probabilities, extra keys) is
+  Jev's response stand-in and is checked after the send
+  (`JEV.RESPONSE_INVALID`), so a test can feed an invalid answer on purpose.
+- Never calls Jev, needs no key, writes no log.
+- Output: one JSON object. Success names the kind, the path and the file's
+  sha256.
+- A refusal is the typed error (`QUALITY.TREE`, `INPUT.MALFORMED`,
+  `VALIDATION.INPUT`, ...) naming the field path and the rule it breaks.
+
+Diagram: [diagrams/validate.md](diagrams/validate.md)
 
 ## Locations
 
@@ -115,6 +169,13 @@ variations, run against the released tool:
 
 - A variation is a file. `--questions <file>` overrides a set or tree on the
   released build; no code change or rebuild.
+- A quality tree override whose `kind` differs from the record's kind is
+  refused with `QUALITY.TREE` before any call.
+- A variation is checked with `judge-jev validate --tree <file>`
+  (REQ-JEV-0210). It is checked whole before any call, and `--dry-run` reports the
+  same error: a malformed question, a rule choice that is not an option, a
+  wave without a final unconditional rule, or a cycle is `QUALITY.TREE`
+  naming the wave, question or rule. No tree crashes the tool.
 - Every result and log entry carries the set id and the file's content
   digest, so variations of the same set are compared by digest in the
   sc-observability log.
@@ -136,6 +197,11 @@ request a live run would send:
 
 Typed errors on an unresolved record or location, a render failure or an
 oversize request.
+
+Every input yields one JSON object, its result or a typed error. An invalid
+tree, question set, index, request stream or run directory, and a log event
+that exceeds the logger's size limit, are refused before the first Jev
+request (REQ-JEV-0211).
 
 ## Open
 

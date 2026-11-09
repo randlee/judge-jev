@@ -82,8 +82,8 @@ class JevPropagationTests(unittest.TestCase):
         base = jj.load_question_set("plan").value
         line = {"item": {"id": "ex-42", "title": "", "text": "Sprint 2 copies the legacy runtime crates."},
                 "anchor": {"id": "ANC-001", "statement": STATEMENT},
-                "questions": [{"candidate_id": "cur", "questions": base["questions"]}]}
-        return jj.batch_jobs(line, 1, settings, base["roles"]).value[0], settings
+                "questions": [{"candidate_id": "cur", "questions": base.questions}]}
+        return jj.batch_jobs(line, 1, settings, base.roles).value[0], settings
 
     def run_job(self, transport_result):
         job, settings = self.job()

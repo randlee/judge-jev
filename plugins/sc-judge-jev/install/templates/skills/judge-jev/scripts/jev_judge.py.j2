@@ -10,6 +10,7 @@ required_variables:
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "pydantic>=2.7,<3",
 #   "pyyaml>=5.1",
 #   "sc-observability==1.5.0",
 # ]
@@ -17,12 +18,20 @@ required_variables:
 """jev_judge.py
 
 Run it with ``uv run --script jev_judge.py ...``: the inline metadata above
-supplies its two dependencies, each imported lazily where it is needed. The
+supplies its three dependencies. pydantic (v2) defines the model of every JSON
+input (ADR-JEV-0005) and is imported at the top (DEPENDENCY.PYDANTIC when it
+does not import); the other two are imported lazily where they are needed. The
 run log goes through the sc-observability logger (``sc-observability==1.5.0``,
 Python 3.11+; DEPENDENCY.SC_OBSERVABILITY when it does not import), and a live
 Jev call reads the committed ``allow_remote_judge`` answer through
 ``judge_jev_settings.py`` (PyYAML when the settings file exists). Everything
 else is the standard library.
+
+Every JSON input (quality tree, question set, answers file, Raptor import index,
+batch request line, Jev's answers) is parsed by ``strict_loads`` (NaN and
+Infinity, oversized integers, deep nesting and lone surrogates are refused there)
+and then by one strict pydantic model; a refusal names the field path and the
+rule it breaks. ``validate`` runs those models and nothing else.
 
 Expected failures travel as values: a function that can fail returns
 ``Ok(value)`` or ``Err(JudgeError)`` (see ``result.py``) and its caller
@@ -34,9 +43,12 @@ Subcommands
   batch           low layer: JSONL request lines (stdin or --input) -> one JSONL result line per (item, candidate,
                   repeat) on stdout as each answer arrives; each request, answer and result is also a log event in the
                   sc-observability log <run-dir>/logs/judge-jev.log.jsonl; never writes beads
-  quality         one REQ, ADR or NFR (--req|--adr|--nfr <id>) from a Raptor import index (--index), judged with its
-                  kind's decision tree (assets/questions/quality-<kind>.json or --questions): one batch request per
-                  wave, answers pick the next wave, a leaf gives the verdict; every wave is logged
+  quality         one or more REQs, ADRs or NFRs (repeated --req|--adr|--nfr <id>) from a Raptor import index
+                  (--index), each judged with its kind's decision tree (assets/questions/quality-<kind>.json or
+                  --questions): one batch request per wave, or per statement of a per-statement wave; every wave
+                  reports each question's answer (per statement) as its reason;
+                  answers pick the next wave, and the last wave's verdict_rules (or a leaf) give the verdict; every
+                  wave is logged, all records under one run name
 
 Every subcommand prints JSON to stdout (or markdown with --format md where
 supported).
@@ -79,10 +91,23 @@ import threading
 import time
 import urllib.error
 import urllib.request
-from typing import Any, NamedTuple, Optional
+from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, utf8_stdio  # noqa: E402
+
+try:
+    from pydantic import (AfterValidator, BaseModel, ConfigDict, Discriminator, Field, PrivateAttr, RootModel, Tag,
+                          ValidationError, model_validator)
+    from pydantic_core import PydanticCustomError
+except ImportError as _exc:  # before any model exists: print the typed error by hand and stop
+    if __name__ != "__main__":
+        raise
+    print(json.dumps({"success": False, "data": None, "error": {
+        "code": "DEPENDENCY.PYDANTIC", "message": f"pydantic (v2) is required for the input models and did not import: {_exc}",
+        "recoverable": False, "suggested_action": "Run with `uv run --script jev_judge.py ...` (its inline metadata pins "
+                                                  "pydantic>=2.7,<3), or python3 -m pip install 'pydantic>=2.7,<3'."}}, indent=2))
+    sys.exit(2)
 
 
 JEV_URL = "https://api.typesafe.ai/v1/systemone"  # tests redirect by patching this constant in-process
@@ -108,6 +133,13 @@ TRANSIENT_CODES = ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RES
 
 _sleep = time.sleep  # replaced in tests
 BEARER_RE = re.compile(r"(?i)(bearer\s+)[^\s\"']+")
+BATCH_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")  # matched whole (fullmatch): a trailing newline is not part of an id
+MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
+MAX_MESSAGE = 300                   # characters of one problem in a refusal message
+ATTEMPT_MESSAGE_LIMIT = 500         # characters of an error message recorded in a result line: bounds its log events
+FIXTURE_CODE_LIMIT = 64             # characters of an answers-file {"__error__": code}: the code is logged unclipped, so it is bounded at load
+WORST_CHAR = "\U0001F600"           # the character that measures largest in the logger's ASCII-escaped JSON (12 bytes: a surrogate pair)
+WORST_PROBABILITY = 1.2345678901234567e-300  # the longest repr a probability in [0, 1] can have: sizes the largest possible answer
 
 
 # --------------------------------------------------------------------------- #
@@ -151,14 +183,7 @@ def fail(code: str, message: str, **fields) -> Err[JudgeError]:
     return Err(JudgeError(code, message, **fields))
 
 
-def redact_sensitive(value):
-    """Remove the live TypeSafe credential and bearer tokens from every emitted value."""
-    if isinstance(value, dict):
-        return {key: redact_sensitive(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [redact_sensitive(item) for item in value]
-    if isinstance(value, tuple):
-        return tuple(redact_sensitive(item) for item in value)
+def _redact_text(value):
     if not isinstance(value, str):
         return value
     text = value
@@ -168,12 +193,118 @@ def redact_sensitive(value):
     return BEARER_RE.sub(r"\1<redacted>", text)
 
 
+def redact_sensitive(value):
+    """Remove the live TypeSafe credential and bearer tokens from every emitted value. Iterative (an explicit stack, no
+    recursion): a container nested a thousand deep is walked like any other and never raises RecursionError."""
+    if not isinstance(value, (dict, list, tuple)):
+        return _redact_text(value)
+    # a frame is [source container, iterator over its items, output container, key under which it joins its parent]
+    stack = [[value, iter(value.items() if isinstance(value, dict) else value), {} if isinstance(value, dict) else [], None]]
+    while True:
+        frame = stack[-1]
+        source, items, out, key = frame
+        try:
+            item = next(items)
+        except StopIteration:
+            stack.pop()
+            done = tuple(out) if isinstance(source, tuple) else out
+            if not stack:
+                return done
+            parent = stack[-1]
+            if isinstance(parent[2], dict):
+                parent[2][key] = done
+            else:
+                parent[2].append(done)
+            continue
+        child_key, child = item if isinstance(source, dict) else (None, item)
+        if isinstance(child, (dict, list, tuple)):
+            stack.append([child, iter(child.items() if isinstance(child, dict) else child), {} if isinstance(child, dict) else [], child_key])
+        elif isinstance(source, dict):
+            out[child_key] = _redact_text(child)
+        else:
+            out.append(_redact_text(child))
+
+
+EMIT_MAX_DEPTH = 100  # containers nested deeper than this are replaced by a marker in emitted output (json.dumps(indent=) recurses)
+EMIT_TRUNCATED = "<truncated: nested deeper than %d levels>" % EMIT_MAX_DEPTH
+
+
+def bound_depth(value, limit: int = EMIT_MAX_DEPTH):
+    """A copy of ``value`` whose containers nest at most ``limit`` deep; a deeper container becomes EMIT_TRUNCATED. Iterative."""
+    if not isinstance(value, (dict, list, tuple)):
+        return value
+    root = {} if isinstance(value, dict) else []
+    stack = [(value, root, 1)]
+    while stack:
+        source, out, depth = stack.pop()
+        for key, child in (source.items() if isinstance(source, dict) else enumerate(source)):
+            if isinstance(child, (dict, list, tuple)):
+                if depth >= limit:
+                    kid = EMIT_TRUNCATED
+                else:
+                    kid = {} if isinstance(child, dict) else []
+                    stack.append((child, kid, depth + 1))
+            else:
+                kid = child
+            if isinstance(out, dict):
+                out[key] = kid
+            else:
+                out.append(kid)
+    return root
+
+
+def _reject_constant(name: str):
+    raise ValueError(f"{name} is not a JSON number")
+
+
+JSON_MAX_DEPTH = 500  # deepest container nesting accepted in any JSON input, on every Python (3.14's parser has no recursion limit)
+
+
+def _json_depth_exceeds(value, limit: int) -> bool:
+    """True when ``value``'s containers nest deeper than ``limit``. Iterative, so any depth is measured without recursing."""
+    stack = [(value, 1)] if isinstance(value, (dict, list)) else []
+    while stack:
+        node, depth = stack.pop()
+        if depth > limit:
+            return True
+        stack.extend((child, depth + 1) for child in (node.values() if isinstance(node, dict) else node)
+                     if isinstance(child, (dict, list)))
+    return False
+
+
+def strict_loads(text: str):
+    """json.loads that also refuses what later breaks a request or the log: NaN and Infinity, a string that is not
+    encodable UTF-8 (a lone surrogate escape), containers nested deeper than JSON_MAX_DEPTH. Raises ValueError (oversized
+    integers, deep nesting and malformed JSON included) or RecursionError (nesting too deep for the parser); callers turn
+    both into a typed error. The depth limit makes the refusal the same on every Python: 3.11-3.13 raise RecursionError
+    near 1000 levels, 3.14 parses any depth."""
+    value = json.loads(text, parse_constant=_reject_constant)
+    if _json_depth_exceeds(value, JSON_MAX_DEPTH):
+        raise ValueError(f"containers are nested deeper than {JSON_MAX_DEPTH} levels")
+    json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    return value
+
+
+def utf8_text(text: str) -> str:
+    """Text that encodes as UTF-8; JSON-escaped (ASCII) when it holds a lone surrogate, so output never fails."""
+    try:
+        text.encode("utf-8")
+        return text
+    except UnicodeEncodeError:
+        return text.encode("utf-8", "backslashreplace").decode("utf-8")
+
+
 def emit(obj, fmt: str = "json") -> None:
-    obj = redact_sensitive(obj)
+    obj = bound_depth(redact_sensitive(obj))  # always printable: nesting beyond EMIT_MAX_DEPTH is marked, never a traceback
     if fmt == "json":
-        print(json.dumps(obj, indent=2, ensure_ascii=False))
+        text = json.dumps(obj, indent=2, ensure_ascii=False)
+        try:
+            text.encode("utf-8")
+        except UnicodeEncodeError:
+            text = json.dumps(obj, indent=2, ensure_ascii=True)
+        print(text)
     else:
-        print(obj)
+        print(utf8_text(str(obj)))
 
 
 def now_utc() -> _dt.datetime:
@@ -184,71 +315,444 @@ def stamp() -> str:
     return now_utc().strftime("%Y%m%dT%H%M%SZ")
 
 
-def load_json(path: str, what: str) -> Result[Any, JudgeError]:
+def read_source(path: str, what: str, action: str = "") -> Result[str, JudgeError]:
+    """The UTF-8 text of a file, or of stdin for ``-``; line endings are normalised to LF. Invalid UTF-8 is INPUT.MALFORMED
+    (a typed error, never a crash)."""
     if path == "-":
-        raw = sys.stdin.read()
         try:
-            return Ok(json.loads(raw))
-        except json.JSONDecodeError as exc:
-            return fail("INPUT.MALFORMED", f"{what} on stdin is not valid JSON: {exc}")
+            buffer = getattr(sys.stdin, "buffer", None)
+            text = buffer.read().decode("utf-8") if buffer is not None else sys.stdin.read()
+        except (OSError, ValueError, AttributeError) as exc:  # UnicodeDecodeError is a ValueError; a closed stdin
+            return fail("INPUT.MALFORMED", f"{what} on stdin could not be read: {type(exc).__name__}: {exc}",
+                        action="Pass UTF-8 text on stdin.")
+        return Ok(text.replace("\r\n", "\n"))
     p = pathlib.Path(path) if path else None
     if p is None or not path.strip() or not p.is_file():
         return fail("INPUT.MISSING", f"{what} not found: {path!r}" + (" (not a regular file)" if p is not None and path.strip() and p.exists() else ""),
-                    action=f"Pass the path of an existing file for the {what}.")
+                    action=action or f"Pass the path of an existing file for the {what}.")
     try:
-        return Ok(json.loads(p.read_text(encoding="utf-8")))
-    except json.JSONDecodeError as exc:
-        return fail("INPUT.MALFORMED", f"{what} is not valid JSON: {exc}", action=f"Fix the JSON in {path}.")
+        return Ok(p.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError) as exc:
         return fail("INPUT.MALFORMED", f"{what} could not be read: {exc}", action=f"Check {path} is a readable UTF-8 file.")
 
 
-def anchor_kind(a: dict) -> str:
-    """directive (default), prohibition or structural; a record without `kind` is a directive."""
-    k = a.get("kind")
-    return k if k in KINDS else "directive"
+def decode_json(text: str, path: str, what: str) -> Result[Any, JudgeError]:
+    """The strict JSON of ``text`` (see strict_loads); INPUT.MALFORMED for anything else."""
+    on = " on stdin" if path == "-" else ""
+    try:
+        return Ok(strict_loads(text))
+    except (ValueError, RecursionError) as exc:
+        return fail("INPUT.MALFORMED", f"{what}{on} is not valid JSON: {type(exc).__name__}: {exc}",
+                    action=f"Fix the JSON in {'the input' if path == '-' else path}.")
+
+
+def load_json(path: str, what: str) -> Result[Any, JudgeError]:
+    text = read_source(path, what)
+    if isinstance(text, Err):
+        return text
+    return decode_json(text.value, path, what)
+
+
+def content_sha256(text: str) -> str:
+    """The digest of a file's text, CRLF as LF, so a Windows checkout (core.autocrlf) gives the same digest as any other."""
+    return hashlib.sha256(text.replace("\r\n", "\n").encode("utf-8", "backslashreplace")).hexdigest()
+
+
+# --------------------------------------------------------------------------- #
+# models (ADR-JEV-0005): one strict pydantic model per JSON input; a refusal names the field path and the rule
+# --------------------------------------------------------------------------- #
+def _non_blank(value: str) -> str:
+    if not value.strip():
+        raise ValueError("must not be blank")
+    return value
+
+
+def _safe_id_text(value: str) -> str:
+    if not BATCH_ID_RE.fullmatch(value):
+        raise ValueError("must be letters, digits and _.:- only, starting with a letter or digit, at most 128 characters")
+    return value
+
+
+SafeId = Annotated[str, AfterValidator(_safe_id_text)]
+NonBlank = Annotated[str, AfterValidator(_non_blank)]
+Probability = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+Choices = Union[str, Annotated[list[str], Field(min_length=1)]]  # a rule's condition value: one choice, or any of several
+JsonObjects = Annotated[dict[str, dict[str, Any]], Field(min_length=1)]  # Jev's own question objects, passed through verbatim
+
+
+class Closed(BaseModel):
+    """A format judge-jev owns: wrong types are refused, not coerced, and unknown fields are refused."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+
+class Open(BaseModel):
+    """A format another tool owns: wrong types are refused, unknown fields are kept."""
+
+    model_config = ConfigDict(strict=True, extra="allow")
+
+
+# The fields below default to None without allowing it: pydantic does not validate a default, so an absent field is None
+# and an explicit null is refused, as the hand-written checks did.
+class ChoiceQuestion(Closed):
+    type: Literal["choice"]
+    instructions: NonBlank
+    criteria: Annotated[dict[NonBlank, NonBlank], Field(min_length=2, max_length=255)]  # option name -> description
+
+
+class NextRule(Closed):
+    when: dict[str, Choices] = Field(default_factory=dict)  # question id -> choice or [choices]; every pair must match
+    goto: str
+
+
+class VerdictRule(Closed):
+    any_: dict[str, Choices] = Field(default_factory=dict, alias="any")  # matches when any listed question got its choice
+    all_: dict[str, Choices] = Field(default_factory=dict, alias="all")  # and every listed question got its choice
+    verdict: str
+
+
+class Leaf(Closed):
+    verdict: str
+
+
+class Wave(Closed):
+    """Questions and exactly one of ``next`` (ordered {when, goto}) or ``verdict_rules`` (ordered {any, all, verdict});
+    ``per: statement`` sends the wave once per statement of the record field ``statements`` (kept by ``modals``)."""
+
+    questions: Annotated[dict[SafeId, ChoiceQuestion], Field(min_length=1)]
+    next: Annotated[list[NextRule], Field(min_length=1)] = None
+    verdict_rules: Annotated[list[VerdictRule], Field(min_length=1)] = None
+    per: Literal["statement"] = None
+    statements: NonBlank = None
+    modals: Annotated[list[str], Field(min_length=1)] = None
+
+    @model_validator(mode="after")
+    def _rules_and_per(self):
+        if (self.next is None) == (self.verdict_rules is None):
+            raise ValueError("needs exactly one of next or verdict_rules")
+        if self.per is None:
+            stray = [name for name in ("statements", "modals") if getattr(self, name) is not None]
+            if stray:
+                raise ValueError(f"has {' and '.join(stray)} without per")
+        elif self.statements is None:
+            raise ValueError('per "statement" needs statements, the record field to split')
+
+        def conditions(label: str, when: dict) -> None:
+            for qid, wanted in when.items():
+                if qid not in self.questions:
+                    raise ValueError(f"{label}.{qid}: {qid!r} is not a question of this wave")
+                for choice in ([wanted] if isinstance(wanted, str) else wanted):
+                    if choice not in self.questions[qid].criteria:
+                        raise ValueError(f"{label}.{qid}: {choice!r} is not an option of question {qid!r} "
+                                         f"(options: {list(self.questions[qid].criteria)})")
+
+        if self.next is not None:
+            for i, rule in enumerate(self.next):
+                conditions(f"next[{i}].when", rule.when)
+            if self.next[-1].when:
+                raise ValueError("the last next rule must have no when, so every combination of answers has an outcome")
+        else:
+            for i, rule in enumerate(self.verdict_rules):
+                conditions(f"verdict_rules[{i}].any", rule.any_)
+                conditions(f"verdict_rules[{i}].all", rule.all_)
+            if self.verdict_rules[-1].any_ or self.verdict_rules[-1].all_:
+                raise ValueError("the last verdict_rules rule must have no any or all, so every combination of answers has an outcome")
+        return self
+
+
+def _node_tag(value) -> str:
+    return "wave" if isinstance(value, dict) and "questions" in value else "leaf"  # a node without questions is a leaf
+
+
+TreeNode = Annotated[Union[Annotated[Wave, Tag("wave")], Annotated[Leaf, Tag("leaf")]], Discriminator(_node_tag)]
+
+
+def _goto_cycle(nodes: dict):
+    """A node that can reach itself through ``next`` rules, or None (the rules are already checked)."""
+    def targets(node) -> list:
+        return [r.goto for r in (node.next or [])] if isinstance(node, Wave) else []
+
+    color = {}
+    for root in nodes:
+        if root in color:
+            continue
+        color[root] = 1
+        stack = [(root, iter(targets(nodes[root])))]
+        while stack:
+            node_id, pending = stack[-1]
+            nxt = next(pending, None)
+            if nxt is None:
+                color[node_id] = 2
+                stack.pop()
+            elif color.get(nxt) == 1:
+                return nxt
+            elif nxt not in color:
+                color[nxt] = 1
+                stack.append((nxt, iter(targets(nodes[nxt]))))
+    return None
+
+
+class QualityTreeModel(Closed):
+    """A quality decision tree (assets/questions/quality-<kind>.json): waves and leaves, the walk starting at ``start``."""
+
+    schema_: str = Field(default=None, alias="schema")
+    id: str
+    kind: Optional[Literal["req", "adr", "nfr"]] = None
+    version: int = None
+    approved: bool = None
+    note: str = None
+    start: str
+    nodes: Annotated[dict[SafeId, TreeNode], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def _graph(self):
+        if self.start not in self.nodes:
+            raise ValueError(f"start {self.start!r} is not a node")
+        if not isinstance(self.nodes[self.start], Wave):
+            raise ValueError(f"start {self.start} is a leaf; the first node must be a wave")
+        for node_id, node in self.nodes.items():
+            for i, rule in enumerate(node.next or []) if isinstance(node, Wave) else ():
+                if rule.goto not in self.nodes:
+                    raise ValueError(f"nodes.{node_id}.next[{i}].goto: {rule.goto!r} is not a node")
+        looped = _goto_cycle(self.nodes)
+        if looped is not None:
+            raise ValueError(f"node {looped} can lead back to itself: the tree has a cycle")
+        return self
+
+
+class QuestionSet(Closed):
+    """A gate's question set (assets/questions/plan.json, dev.json): Jev's questions and the roles that gate the verdict."""
+
+    schema_: str = Field(default=None, alias="schema")
+    gate: str = None
+    version: int = None
+    notes: str = None
+    roles: dict[str, str]
+    questions: JsonObjects
+
+    @model_validator(mode="after")
+    def _roles_name_questions(self):
+        _check_role_map(self.questions, self.roles, REQUIRED_ROLES)
+        return self
+
+
+def _check_role_map(questions: dict, roles: dict, required: tuple) -> None:
+    """Every required role, and the optional evidence role if present, names a question of the set (QUESTIONS.ROLES)."""
+    for role in required:
+        if roles.get(role) not in questions:
+            raise PydanticCustomError("roles", "must map role '{role}' to a question id in the set", {"role": role})
+    evidence = roles.get("evidence")
+    if evidence is not None and evidence not in questions:
+        raise PydanticCustomError("roles", "maps role 'evidence' to '{evidence}', which is not a question in the set", {"evidence": evidence})
+
+
+class BatchItem(Open):
+    id: SafeId
+    title: str = None
+    text: NonBlank
+
+
+class BatchAnchor(Open):
+    id: SafeId
+    statement: NonBlank
+    scope: str = None
+    kind: Literal["directive", "prohibition", "structural"] = None
+
+
+class BatchCandidate(Closed):
+    candidate_id: SafeId
+    questions: JsonObjects
+    roles: dict[str, str] = None
+    _effective_roles: dict = PrivateAttr(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _roles(self, info):
+        """Context: ``anchored`` (the line has an anchor, so the three roles are required) and ``base_roles`` (the gate's)."""
+        context = info.context or {}
+        anchored = bool(context.get("anchored"))
+        roles = self.roles or (context.get("base_roles") or {} if anchored else {})
+        if anchored:
+            _check_role_map(self.questions, roles, REQUIRED_ROLES)
+        self._effective_roles = roles
+        return self
+
+    @property
+    def effective_roles(self) -> dict:
+        return self._effective_roles
+
+
+class RequestLine(Closed):
+    """One line of a batch request stream (assets/schemas/jev-batch-request.schema.json)."""
+
+    item: BatchItem
+    anchor: BatchAnchor = None
+    questions: Annotated[list[BatchCandidate], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def _distinct_candidates(self):
+        seen = set()
+        for cand in self.questions:
+            if cand.candidate_id in seen:
+                raise ValueError(f"candidate {cand.candidate_id} is listed twice (use --repeat for repeats)")
+            seen.add(cand.candidate_id)
+        return self
+
+
+def _record_has_id(record: dict) -> dict:
+    if not isinstance(record.get("id"), str):
+        raise ValueError("needs a string id")
+    return record
+
+
+class RaptorDiagnostics(Open):
+    issues: list[dict[str, Any]]
+
+
+class RaptorIndex(Open):
+    """The parts of Raptor's import index (scripts/extract.py --output) that ``quality`` reads; the records are Raptor's and stay open."""
+
+    metadata: dict[str, Any] = None
+    requirements: list[Annotated[dict[str, Any], AfterValidator(_record_has_id)]] = None
+    decisions: list[Annotated[dict[str, Any], AfterValidator(_record_has_id)]] = None
+    diagnostics: RaptorDiagnostics
+
+
+class ChoiceAnswer(Closed):
+    """A Jev choice answer. Context ``options``: the question's option names (the choice and probability keys must be them)."""
+
+    type: Literal["choice"] = "choice"
+    choice: str
+    confidence: Probability
+    probabilities: dict[str, Probability]
+
+    @model_validator(mode="after")
+    def _against_the_question(self, info):
+        options = (info.context or {}).get("options")
+        if options and self.choice not in options:
+            raise ValueError(f"choice {self.choice!r} is not one of {sorted(options)}")
+        if options and set(self.probabilities) != options:
+            raise ValueError("probability keys differ from the options")
+        total = sum(self.probabilities.values())
+        if abs(total - 1) > PROBABILITY_ROUNDING * max(len(self.probabilities), 1):
+            raise ValueError(f"probabilities sum to {total:.4f}")
+        return self
+
+
+class NoulAnswer(Closed):
+    """A Jev noul answer: the probability of yes under ``noul``, ``probability`` or ``p`` (the first present is read)."""
+
+    type: Literal["noul"] = None
+    noul: Probability = None
+    probability: Probability = None
+    p: Probability = None
+
+    @model_validator(mode="after")
+    def _has_a_probability(self):
+        if noul_probability(self.model_dump(exclude_none=True)) is None:
+            raise ValueError("noul probability is missing or not in [0, 1]")
+        return self
+
+
+class FixtureError(Closed):
+    code: str = Field(alias="__error__", min_length=1, max_length=FIXTURE_CODE_LIMIT)  # BATCH_FIXTURE_ERROR: the attempt fails with this code
+
+
+def _fixture_problems(entries: dict) -> list:
+    """Each envelope problem of an answers file as ``path: rule``. The envelope is what is decidable before any request: an
+    entry is an object, {"__error__": code} (a string code of 1 to FIXTURE_CODE_LIMIT characters, nothing else), or a non-empty list of
+    those (successive attempts). What an answer object holds (its questions, choices, probabilities) is Jev's response and is
+    checked after the send (JEV.RESPONSE_INVALID), so a test can feed an invalid answer on purpose."""
+    problems = []
+    for key, entry in entries.items():
+        attempts = entry if isinstance(entry, list) else [entry]
+        if isinstance(entry, list) and not entry:
+            problems.append(f"{key}: List should have at least 1 item after validation, not 0")
+        for n, attempt in enumerate(attempts):
+            where = f"{key}.{n}" if isinstance(entry, list) else key
+            if isinstance(attempt, dict) and BATCH_FIXTURE_ERROR in attempt:
+                parsed = validate_model(FixtureError, attempt)
+                if isinstance(parsed, Err):
+                    problems.append(f"{where}: {parsed.error.text}")
+            elif not isinstance(attempt, dict):
+                problems.append(f"{where}: Input should be an object of answers, an object with {BATCH_FIXTURE_ERROR}, or a list of them")
+    return problems
+
+
+class AnswersFile(RootModel[dict[str, Any]]):
+    """The envelope of an answers file, the one model `validate --answers` and every command that reads --answers-file apply
+    before the first request: an object of string keys, each an object or a non-empty list of objects, an object with
+    {"__error__": code} holding only a string code of 1 to FIXTURE_CODE_LIMIT characters."""
+
+    model_config = ConfigDict(strict=True)
+
+    @model_validator(mode="after")
+    def _entries(self):
+        problems = _fixture_problems(self.root)
+        if problems:
+            raise ValueError("; ".join(_clip(p) for p in problems[:MAX_PROBLEMS]) + (f"; and {len(problems) - MAX_PROBLEMS} more" if len(problems) > MAX_PROBLEMS else ""))
+        return self
+
+
+class Refused(NamedTuple):
+    """A model refusal: the message (one ``path: rule`` per problem), and the first problem's location and type."""
+    text: str
+    first_loc: tuple
+    first_type: str
+
+
+def _clip(text: str, limit: int = MAX_MESSAGE) -> str:
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
+def _loc_text(loc: tuple) -> str:
+    parts = list(loc)
+    if len(parts) > 2 and parts[0] == "nodes" and parts[2] in ("wave", "leaf"):
+        del parts[2]  # the union tag pydantic puts after the node id
+    return ".".join(str(part) for part in parts)
+
+
+def validate_model(model, data, context=None) -> Result[Any, Refused]:
+    """``data`` as ``model`` (strict), or the refusal naming each failing field path and the rule it breaks."""
+    try:
+        return Ok(model.model_validate(data, context=context))
+    except ValidationError as exc:
+        errors = exc.errors(include_url=False, include_context=False, include_input=False)
+    except RecursionError:
+        return Err(Refused("the input is nested too deeply to check", (), "recursion_error"))
+    lines = []
+    for error in errors:
+        message = error["msg"].removeprefix("Value error, ")
+        where = _loc_text(error["loc"])
+        line = _clip(f"{where}: {message}" if where else message)
+        if line not in lines:
+            lines.append(line)
+    text = "; ".join(lines[:MAX_PROBLEMS]) + (f"; and {len(lines) - MAX_PROBLEMS} more" if len(lines) > MAX_PROBLEMS else "")
+    return Err(Refused(text, tuple(errors[0]["loc"]), errors[0]["type"]))
 
 
 # --------------------------------------------------------------------------- #
 # judging
 # --------------------------------------------------------------------------- #
-def check_roles(qs: dict, where: str, required_roles=REQUIRED_ROLES) -> Result[None, JudgeError]:
-    """Every required role, and the optional evidence role if present, must name a question in the set.
-
-    A request line without an anchor (a quality wave) requires no role: ``required_roles`` is then empty."""
-    questions = qs.get("questions")
-    if not isinstance(questions, dict) or not questions:
-        return fail("INPUT.MALFORMED", f"{where}: 'questions' must be a non-empty object keyed by question id",
-                    action="See assets/questions/plan.json for the shape.")
-    if not required_roles:
-        return Ok(None)
-    roles = qs.get("roles")
-    if not isinstance(roles, dict):
-        return fail("QUESTIONS.ROLES", f"{where}: 'roles' must map relevance, compliance and conflict to question ids",
-                    action="See references/verdict-gating.md for the role contract.")
-    for required in required_roles:
-        if roles.get(required) not in questions:
-            return fail("QUESTIONS.ROLES", f"{where} must map role '{required}' to a question id in the set",
-                        action="See references/verdict-gating.md for the role contract.")
-    evidence = roles.get("evidence")
-    if evidence is not None and evidence not in questions:
-        return fail("QUESTIONS.ROLES", f"{where} maps role 'evidence' to '{evidence}', which is not a question in the set",
-                    action="Keep the default question ids, or update roles to match the renamed question.")
-    return Ok(None)
+def question_set_error(refused: Refused, where: str) -> JudgeError:
+    """A question-set refusal: QUESTIONS.ROLES when a role is the problem, else INPUT.MALFORMED."""
+    roles = refused.first_type == "roles" or refused.first_loc[:1] == ("roles",)
+    return JudgeError("QUESTIONS.ROLES" if roles else "INPUT.MALFORMED", f"{where}: {refused.text}",
+                      action="See references/verdict-gating.md for the role contract." if roles else "See assets/questions/plan.json for the shape.")
 
 
-def load_question_set(gate: str, override_path: str = "") -> Result[dict, JudgeError]:
+def parse_question_set(data, where: str) -> Result[QuestionSet, JudgeError]:
+    parsed = validate_model(QuestionSet, data)
+    if isinstance(parsed, Err):
+        return Err(question_set_error(parsed.error, where))
+    return parsed
+
+
+def load_question_set(gate: str, override_path: str = "") -> Result[QuestionSet, JudgeError]:
     path = override_path or str(QUESTIONS_DIR / f"{gate}.json")
     loaded = load_json(path, f"question set for gate '{gate}'")
     if isinstance(loaded, Err):
         return loaded
-    qs = loaded.value
-    if not isinstance(qs, dict):
-        return fail("INPUT.MALFORMED", f"question set {path} must be a JSON object")
-    checked = check_roles(qs, f"question set {path}")
-    if isinstance(checked, Err):
-        return checked
-    return Ok(qs)
+    return parse_question_set(loaded.value, f"question set {path}")
 
 
 def questions_digest(questions: dict) -> str:
@@ -325,8 +829,8 @@ def call_jev(body: dict, api_key: str, timeout: float) -> Result[dict, JudgeErro
     if len(raw) > MAX_RESPONSE_BYTES:
         return fail("JEV.RESPONSE_INVALID", "Jev response exceeded the size limit", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
     try:
-        parsed = json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeError):
+        parsed = strict_loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeError, RecursionError):
         return fail("JEV.RESPONSE_INVALID", "Jev response was not JSON", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
     if not isinstance(parsed, dict):
         return fail("JEV.RESPONSE_INVALID", "Jev response was not a JSON object", recoverable=True, action="Check for a proxy rewriting the response.")
@@ -350,36 +854,23 @@ def noul_probability(ans: dict):
     return None
 
 
-def answer_problem(ans, question) -> str:
-    """Why an answer cannot be gated, or None when it can (modelled on process-porn's validator, minus the model check)."""
+def is_noul(ans: dict) -> bool:
+    """A noul answer: type "noul", or no type and a "noul" key. answer_problem and answer_choice both use this."""
+    return ans.get("type") == "noul" or ("type" not in ans and "noul" in ans)
+
+
+def answer_problem(ans, question) -> Optional[str]:
+    """Why an answer cannot be gated, or None when it can: the answer parsed as the choice or noul model, the choice and
+    probabilities checked against the question's options."""
     if not isinstance(ans, dict):
         return "answer is not an object"
-    kind = ans.get("type", "choice")
-    if kind == "noul":
-        if not is_probability(noul_probability(ans)):
-            return "noul probability is missing or not in [0, 1]"
-        return None
-    if kind != "choice":
+    kind = "noul" if is_noul(ans) else ans.get("type", "choice")
+    if kind not in ("choice", "noul"):
         return f"answer type {kind!r} is not choice or noul"
     criteria = question.get("criteria") if isinstance(question, dict) else None
     options = set(criteria) if isinstance(criteria, dict) else set()
-    if "choice" not in ans:
-        return "choice answer has no 'choice'"
-    if options and ans["choice"] not in options:
-        return f"choice {ans['choice']!r} is not one of {sorted(options)}"
-    if not is_probability(ans.get("confidence")):
-        return "confidence is missing or not in [0, 1]"
-    probs = ans.get("probabilities")
-    if not isinstance(probs, dict):
-        return "probabilities missing"
-    if options and set(probs) != options:
-        return "probability keys differ from the options"
-    if not all(is_probability(p) for p in probs.values()):
-        return "a probability is out of range"
-    total = sum(probs.values())
-    if abs(total - 1) > PROBABILITY_ROUNDING * max(len(probs), 1):
-        return f"probabilities sum to {total:.4f}"
-    return None
+    parsed = validate_model(NoulAnswer if kind == "noul" else ChoiceAnswer, ans, {"options": options})
+    return None if isinstance(parsed, Ok) else parsed.error.text
 
 
 def validate_response(resp: dict, questions: dict, optional=frozenset()) -> Result[dict, JudgeError]:
@@ -398,14 +889,14 @@ def validate_response(resp: dict, questions: dict, optional=frozenset()) -> Resu
             continue  # an optional question left unanswered
         problem = answer_problem(answers[qid], q)
         if problem:
-            return fail("JEV.RESPONSE_INVALID", f"invalid answer for {qid}: {problem}", recoverable=True,
+            return fail("JEV.RESPONSE_INVALID", _clip(f"invalid answer for {qid}: {problem}", ATTEMPT_MESSAGE_LIMIT), recoverable=True,
                         action="Retry; if it repeats, the question set or the model changed shape.")
     return Ok(resp)
 
 
 def answer_choice(ans: dict) -> tuple:
     """Return (choice, confidence) for a choice answer; tolerate noul answers."""
-    if ans.get("type") == "noul" or "noul" in ans:
+    if is_noul(ans):  # answer_problem checked its probability
         p = float(noul_probability(ans) or 0.0)
         return ("yes" if p >= 0.5 else "no", abs(p - 0.5) * 2)
     return (ans.get("choice", "unclear"), float(ans.get("confidence", 0.0)))
@@ -608,7 +1099,21 @@ def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, JudgeError]:
     fixture = loaded.value
     if not isinstance(fixture, dict):
         return fail("INPUT.MALFORMED", f"answers fixture must be an object keyed by {keyed_by} (or '*')")
+    enveloped = answers_envelope_error(fixture, f"answers fixture {path}")
+    if enveloped is not None:
+        return Err(enveloped)
     return Ok(fixture)
+
+
+def answers_envelope_error(data, where: str) -> Optional[JudgeError]:
+    """None when ``data`` is a valid answers-file envelope (AnswersFile), else INPUT.MALFORMED naming the field path; the one
+    check behind `validate --answers` and --answers-file."""
+    parsed = validate_model(AnswersFile, data)
+    if isinstance(parsed, Ok):
+        return None
+    return JudgeError("INPUT.MALFORMED", f"{where}: {parsed.error.text}",
+                      action="An answers file maps a request key to Jev's answers (an object), a non-empty list of them, or "
+                             "an __error__ object with a string code of 1 to " + str(FIXTURE_CODE_LIMIT) + " characters and nothing else.")
 
 
 def check_threshold(value: float, name: str = "--threshold") -> Result[float, JudgeError]:
@@ -627,7 +1132,6 @@ BATCH_RESULT_SCHEMA = "judge-jev/jev-batch-result/1"
 BATCH_MAX_WORKERS = 4              # parallel Jev evaluators; the anchor-tuning protocol's cap
 BATCH_RETRIES = 1                  # one retry per failed call, recorded as retry_count on the line
 BATCH_FIXTURE_ERROR = "__error__"  # an answers-file attempt {"__error__": "<code>"} simulates a failed call
-BATCH_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 
 
 class BatchSettings(NamedTuple):
@@ -666,71 +1170,93 @@ def batch_run_id(request_id: str) -> str:
 
 
 def _safe_id(value, what: str) -> Result[str, JudgeError]:
-    if not isinstance(value, str) or not BATCH_ID_RE.match(value):
+    if not isinstance(value, str) or not BATCH_ID_RE.fullmatch(value):
         return fail("VALIDATION.INPUT", f"{what} {value!r} is not a safe id (letters, digits and _.:- only)",
                     action="See assets/schemas/jev-batch-request.schema.json.")
     return Ok(value)
 
 
-def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict) -> Result[list, JudgeError]:
-    """One request line -> its jobs (candidates x repeats, in order). Refuses a malformed line or an oversized request before any call.
+def request_line_error(refused: Refused, where: str) -> JudgeError:
+    """A request-line refusal: QUESTIONS.ROLES for a role problem, INPUT.MALFORMED for a candidate's question set, else
+    VALIDATION.INPUT."""
+    loc = refused.first_loc
+    if refused.first_type == "roles":
+        code = "QUESTIONS.ROLES"
+    elif loc[:1] == ("questions",) and len(loc) >= 3 and loc[2] == "questions":
+        code = "INPUT.MALFORMED"
+    else:
+        code = "VALIDATION.INPUT"
+    return JudgeError(code, f"{where}: {refused.text}", action="See assets/schemas/jev-batch-request.schema.json.")
+
+
+def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict, log_fields=None) -> Result[list, JudgeError]:
+    """One request line -> its jobs (candidates x repeats, in order). Refuses a malformed line, an oversized request, or a
+    request whose log events the logger would refuse, before any call (``log_fields``: the fields the caller adds to every
+    event of the line).
 
     A line without ``anchor`` (a quality wave: the record is the item) sends only the item, needs no roles and gets no
     verdict; a line with one is gated exactly as before."""
     where = f"request line {number}"
-    if not isinstance(line, dict) or set(line) - {"item", "anchor", "questions"}:
-        return fail("VALIDATION.INPUT", f"{where} must be an object with item, anchor and questions",
-                    action="See assets/schemas/jev-batch-request.schema.json.")
-    item, anchor_rec, candidates = line.get("item"), line.get("anchor"), line.get("questions")
-    if not isinstance(item, dict) or not isinstance(item.get("text"), str) or not item["text"].strip():
-        return fail("VALIDATION.INPUT", f"{where}: item needs id and non-empty text")
-    checked = _safe_id(item.get("id"), f"{where}: item id")
-    if isinstance(checked, Err):
-        return checked
-    anchored = "anchor" in line
-    if anchored:
-        if not isinstance(anchor_rec, dict) or not isinstance(anchor_rec.get("statement"), str) or not anchor_rec["statement"].strip():
-            return fail("VALIDATION.INPUT", f"{where}: anchor needs id and statement")
-        checked = _safe_id(anchor_rec.get("id"), f"{where}: anchor id")
-        if isinstance(checked, Err):
-            return checked
-    if not isinstance(candidates, list) or not candidates:
-        return fail("VALIDATION.INPUT", f"{where}: questions must be a non-empty array of candidates")
-    jobs, seen = [], set()
-    item_state = {"id": item["id"], "title": item.get("title") or "", "text": item["text"]}
-    state = build_state(anchor_rec, item_state) if anchored else {"item": item_state}
-    kind = anchor_kind(anchor_rec) if anchored else "directive"
-    anchor_id = anchor_rec["id"] if anchored else None
-    for cand in candidates:
-        if not isinstance(cand, dict):
-            return fail("VALIDATION.INPUT", f"{where}: every candidate is an object with candidate_id, questions and optional roles")
-        cid = _safe_id(cand.get("candidate_id"), f"{where}: candidate_id")
-        if isinstance(cid, Err):
-            return cid
-        if cid.value in seen:
-            return fail("VALIDATION.INPUT", f"{where}: candidate {cid.value} is listed twice", action="Use --repeat for repeats.")
-        seen.add(cid.value)
-        qs = {"questions": cand.get("questions"), "roles": cand.get("roles") or (base_roles if anchored else {})}
-        checked = check_roles(qs, f"{where}: candidate {cid.value}", REQUIRED_ROLES if anchored else ())
-        if isinstance(checked, Err):
-            return checked
-        body = {"model": settings.model, "state": state, "questions": qs["questions"]}
+    anchored = isinstance(line, dict) and "anchor" in line
+    parsed = validate_model(RequestLine, line, {"anchored": anchored, "base_roles": base_roles})
+    if isinstance(parsed, Err):
+        return Err(request_line_error(parsed.error, where))
+    request = parsed.value
+    item, anchor = request.item, request.anchor
+    jobs = []
+    item_state = {"id": item.id, "title": item.title or "", "text": item.text}
+    state = build_state({"id": anchor.id, "statement": anchor.statement, "scope": anchor.scope}, item_state) if anchored else {"item": item_state}
+    kind = anchor.kind or "directive" if anchored else "directive"
+    anchor_id = anchor.id if anchored else None
+    for cand in request.questions:
+        body = {"model": settings.model, "state": state, "questions": cand.questions}
         size = len(encode_body(body))
         if size > settings.max_request_bytes:
-            return fail("JEV.CONTEXT_EXCEEDED", f"{where}: the request for {item['id']}/{cid.value} is {size} bytes, over --max-request-bytes {settings.max_request_bytes}",
+            return fail("JEV.CONTEXT_EXCEEDED", f"{where}: the request for {item.id}/{cand.candidate_id} is {size} bytes, over --max-request-bytes {settings.max_request_bytes}",
                         action="Shorten the item (see references/plan-size-and-shape.md); never raise the cap to make it fit.")
+        first = len(jobs)
         for r in range(1, settings.repeat + 1):
-            rid = batch_request_id(settings.prefix, item["id"], anchor_id, cid.value, r)
-            jobs.append(BatchJob(item["id"], anchor_id, cid.value, r, rid, body, qs["questions"], qs["roles"], kind))
+            rid = batch_request_id(settings.prefix, item.id, anchor_id, cand.candidate_id, r)
+            jobs.append(BatchJob(item.id, anchor_id, cand.candidate_id, r, rid, body, cand.questions, cand.effective_roles, kind))
+        checked = check_log_events(jobs[first:][-1], settings, f"{where}: {item.id}/{cand.candidate_id}", log_fields or {})
+        if isinstance(checked, Err):
+            return checked
     return Ok(jobs)
 
 
+def _fixture_keys(job: BatchJob) -> tuple:
+    return (f"{job.item_id}/{job.candidate_id}/r{job.repeat}", f"{job.item_id}/{job.candidate_id}", job.candidate_id, "*")
+
+
+def _fixture_missing(keys: tuple) -> Err:
+    return fail("FIXTURE.MISSING", f"answers fixture has no entry for {keys[0]} (or {keys[1]}, {keys[2]}, '*')",
+                action=f"Add an entry for {keys[0]} to the answers file.")
+
+
+def check_fixture_coverage(lines: list, settings: BatchSettings, fixture) -> Result[None, JudgeError]:
+    """FIXTURE.MISSING for the first request of ``lines`` the answers fixture has no entry (and no ``*``) for, before any is
+    sent. Ok when there is no fixture or the run is a dry run (it consults none)."""
+    if fixture is None or settings.dry_run:
+        return Ok(None)
+    base = load_question_set(settings.gate)
+    if isinstance(base, Err):
+        return base
+    for number, line in enumerate(lines, start=1):
+        jobs = batch_jobs(line, number, settings, base.value.roles)
+        if isinstance(jobs, Err):
+            return jobs
+        for job in jobs.value:
+            keys = _fixture_keys(job)
+            if not any(k in fixture for k in keys):
+                return _fixture_missing(keys)
+    return Ok(None)
+
+
 def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int) -> Result[dict, JudgeError]:
-    keys = (f"{job.item_id}/{job.candidate_id}/r{job.repeat}", f"{job.item_id}/{job.candidate_id}", job.candidate_id, "*")
+    keys = _fixture_keys(job)
     entry = next((fixture[k] for k in keys if k in fixture), None)
     if entry is None:
-        return fail("FIXTURE.MISSING", f"answers fixture has no entry for {keys[0]} (or {keys[1]}, {keys[2]}, '*')",
-                    action=f"Add an entry for {keys[0]} to the answers file.")
+        return _fixture_missing(keys)
     if isinstance(entry, list):
         if not entry:
             return fail("FIXTURE.MISSING", f"answers fixture entry for {keys[0]} is an empty list")
@@ -770,7 +1296,7 @@ def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dr
         "model_answered": raw.get("model") if raw is not None else None,
         "threshold": settings.threshold, "verdict": verdict, "min_confidence": min_conf, "leaning": leaning,
         "retry_count": max(len(attempts) - 1, 0), "attempts": attempts,
-        "error": None if error is None else {"code": error.code, "message": error.message, "recoverable": error.recoverable},
+        "error": None if error is None else {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": error.recoverable},
     })
 
 
@@ -792,7 +1318,7 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, api_key: str, fixture,
             attempts.append({"attempt": attempt, "ok": True})
             break
         error = got.error
-        attempts.append({"attempt": attempt, "ok": False, "error": {"code": error.code, "message": error.message, "recoverable": error.recoverable}})
+        attempts.append({"attempt": attempt, "ok": False, "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": error.recoverable}})
         if error.code in ABORT_CODES:
             abort.set(error)
             break
@@ -839,7 +1365,7 @@ async def stream_batch(source, settings: BatchSettings, api_key: str = "", fixtu
         number = 0
         async for line in _aiter(source):
             number += 1
-            jobs = batch_jobs(line, number, settings, base.value["roles"])
+            jobs = batch_jobs(line, number, settings, base.value.roles)
             if isinstance(jobs, Err):
                 raise BatchInputError(jobs.error)
             for job in jobs.value:
@@ -850,29 +1376,27 @@ async def stream_batch(source, settings: BatchSettings, api_key: str = "", fixtu
             yield await pending.popleft()
 
 
-def read_request_lines(path: str) -> Result[list, JudgeError]:
-    """Request lines from a file or stdin (``-``): the same parser for both, one JSON object per non-empty line."""
-    if path == "-":
-        text = sys.stdin.read()
-    else:
-        p = pathlib.Path(path)
-        if not p.is_file():
-            return fail("INPUT.MISSING", f"request stream not found: {path!r}", action="Pass a JSONL file, or - for stdin.")
-        try:
-            text = p.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as exc:
-            return fail("INPUT.MALFORMED", f"request stream could not be read: {exc}")
+def parse_request_lines(text: str, path: str) -> Result[list, JudgeError]:
+    """Request lines from the text of a request stream: one JSON object per non-empty line."""
     lines = []
-    for n, raw in enumerate(text.splitlines(), start=1):
-        if not raw.strip():
+    for n, line in enumerate(text.splitlines(), start=1):
+        if not line.strip():
             continue
         try:
-            lines.append(json.loads(raw))
-        except json.JSONDecodeError as exc:
-            return fail("INPUT.MALFORMED", f"request line {n} is not JSON: {exc}", action="Write one JSON object per line.")
+            lines.append(strict_loads(line))
+        except (ValueError, RecursionError) as exc:
+            return fail("INPUT.MALFORMED", f"request line {n} is not JSON: {type(exc).__name__}: {exc}", action="Write one JSON object per line.")
     if not lines:
         return fail("INPUT.EMPTY", "the request stream has no lines")
     return Ok(lines)
+
+
+def read_request_lines(path: str) -> Result[list, JudgeError]:
+    """Request lines from a file or stdin (``-``): the same parser for both, one JSON object per non-empty line."""
+    raw = read_source(path, "request stream", action="Pass a JSONL file, or - for stdin.")
+    if isinstance(raw, Err):
+        return raw
+    return parse_request_lines(raw.value, path)
 
 
 def write_stdout_line(text: str) -> None:
@@ -903,13 +1427,21 @@ def batch_settings(args, prefix: str) -> Result[BatchSettings, JudgeError]:
     if isinstance(threshold, Err):
         return threshold
     gate = getattr(args, "gate", "plan")
-    cap = getattr(args, "max_request_bytes", None) or (DEFAULT_MAX_REQUEST_BYTES if gate == "plan" else DEFAULT_MAX_REQUEST_BYTES_DEV)
+    cap = request_cap(gate, getattr(args, "max_request_bytes", None))
+    if isinstance(cap, Err):
+        return cap
+    return Ok(BatchSettings(gate, args.model, getattr(args, "repeat", 1), prefix, threshold.value, args.timeout,
+                            args.max_workers, cap.value, bool(args.dry_run)))
+
+
+def request_cap(gate: str, requested) -> Result[int, JudgeError]:
+    """The request size limit: ``requested`` or the gate's default, at most MAX_REQUEST_BYTES_CEILING."""
+    cap = requested or (DEFAULT_MAX_REQUEST_BYTES if gate == "plan" else DEFAULT_MAX_REQUEST_BYTES_DEV)
     if cap > MAX_REQUEST_BYTES_CEILING:
         return fail("VALIDATION.INPUT", f"--max-request-bytes {cap} is over {MAX_REQUEST_BYTES_CEILING}: every request is logged whole "
                     "and the run log refuses events over 64 KiB",
                     action=f"Pass --max-request-bytes {MAX_REQUEST_BYTES_CEILING} or less, or shorten the item text.")
-    return Ok(BatchSettings(gate, args.model, getattr(args, "repeat", 1), prefix, threshold.value, args.timeout,
-                            args.max_workers, cap, bool(args.dry_run)))
+    return Ok(cap)
 
 
 LOG_SERVICE = "judge-jev"
@@ -921,11 +1453,17 @@ class RunLog:
     """The run log (REQ-JEV-0008): one owned sc-observability logger per command, writing under
     ``<log_root>/logs/judge-jev.log.jsonl``. Every event carries the run name plus the caller's ``fields``."""
 
-    def __init__(self, sco, logger, run: str, log_root: pathlib.Path):
+    def __init__(self, sco, logger, run: str, log_root: pathlib.Path, size_at_open: int = 0):
         self._sco = sco
         self._logger = logger
         self.run = run
         self.log_root = log_root
+        self._size_at_open = size_at_open
+        self._events = 0
+
+    @property
+    def path(self) -> pathlib.Path:
+        return self.log_root / "logs" / f"{LOG_SERVICE}.log.jsonl"
 
     def event(self, action: str, fields: dict, correlation_id=None) -> Result[None, JudgeError]:
         """One log event, redacted like every emitted value; anything but an accepted admission is LOG.WRITE."""
@@ -936,6 +1474,7 @@ class RunLog:
             detail = getattr(got.error, "message", got.error) if isinstance(got, self._sco.Err) else got.value.kind
             return fail("LOG.WRITE", f"the sc-observability logger refused the {action} event: {detail}",
                         action="Read the message; the event was not recorded, so rerun once the cause is fixed.")
+        self._events += 1
         return Ok(None)
 
     def flush(self) -> Result[None, JudgeError]:
@@ -948,7 +1487,25 @@ class RunLog:
         got = self._logger.shutdown()
         if isinstance(got, self._sco.Err):
             return fail("LOG.WRITE", f"the sc-observability logger could not shut down: {getattr(got.error, 'message', got.error)}")
+        try:  # the logger admits events it later fails to write, so check the file grew
+            grew = self.path.stat().st_size > self._size_at_open
+        except OSError:
+            grew = False
+        if self._events and not grew:
+            return fail("LOG.WRITE", f"{self._events} event(s) were admitted but {self.path} did not grow; the run is not logged",
+                        action="Check the run directory is a writable directory, then rerun.")
         return Ok(None)
+
+
+def logger_module():
+    """The sc-observability module (imported lazily: only a command that logs, or sizes a log event, needs it)."""
+    try:
+        import sc_observability as sco
+    except ImportError as exc:
+        return fail("DEPENDENCY.SC_OBSERVABILITY", f"the sc-observability logger is required for the run log and did not import: {exc}",
+                    action=f"Run with `uv run --script jev_judge.py ...` (its inline metadata pins {SC_OBSERVABILITY_SPEC}), "
+                           f"or python3 -m pip install '{SC_OBSERVABILITY_SPEC}' (Python 3.11+).")
+    return Ok(sco)
 
 
 def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
@@ -957,24 +1514,30 @@ def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
     checked = _safe_id(name, "--run-name")
     if isinstance(checked, Err):
         return checked
-    try:
-        import sc_observability as sco  # lazy: only a command that logs needs it
-    except ImportError as exc:
-        return fail("DEPENDENCY.SC_OBSERVABILITY", f"the sc-observability logger is required for the run log and did not import: {exc}",
-                    action=f"Run with `uv run --script jev_judge.py ...` (its inline metadata pins {SC_OBSERVABILITY_SPEC}), "
-                           f"or python3 -m pip install '{SC_OBSERVABILITY_SPEC}' (Python 3.11+).")
+    module = logger_module()
+    if isinstance(module, Err):
+        return module
+    sco = module.value
     root = pathlib.Path(log_root)
+    log_file = root / "logs" / f"{LOG_SERVICE}.log.jsonl"
+    try:  # before any call: the log file must be appendable
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_file, "ab"):
+            pass
+        size_at_open = log_file.stat().st_size
+    except OSError as exc:
+        return fail("LOG.WRITE", f"the run log {log_file} is not writable: {exc}",
+                    action="Pass a --run-dir that is (or can be created as) a writable directory.")
     created = sco.create_logger(sco.LoggerConfig(service=LOG_SERVICE, log_root=str(root)))
     if isinstance(created, sco.Err):
         return fail("LOG.WRITE", f"the sc-observability logger could not start under {root}: {getattr(created.error, 'message', created.error)}",
                     action="Check the run directory is writable.")
-    return Ok(RunLog(sco, created.value, name, root))
+    return Ok(RunLog(sco, created.value, name, root, size_at_open))
 
 
-def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, JudgeError]:
+def result_line_events(line: dict, fields: dict) -> list:
     """A result line as three events: the request, Jev's answer (not on a dry run) and the result (the line without its
-    request and raw response). ``fields`` goes on every event. The logger refuses events over 64 KiB; the request event
-    fits because batch_settings caps --max-request-bytes at MAX_REQUEST_BYTES_CEILING."""
+    request and raw response). ``fields`` goes on every event."""
     ids = {"request_id": line["request_id"], "run_id": line["run_id"], **fields}
     events = [("request", {**ids, "item_id": line["item_id"], "anchor_id": line["anchor_id"], "candidate_id": line["candidate_id"],
                            "repeat": line["repeat"], "request_sha256": line["request_sha256"],
@@ -983,11 +1546,84 @@ def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, Judge
         events.append(("answer", {**ids, "ok": line["ok"], "model_answered": line["model_answered"], "raw_response": line["raw_response"],
                                   "attempts": line["attempts"], "error": line["error"]}))
     events.append(("result", {**ids, **{k: v for k, v in line.items() if k not in ("request", "raw_response")}}))
-    for action, event_fields in events:
+    return events
+
+
+def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, JudgeError]:
+    """A result line as its events (result_line_events), flushed. The logger refuses an event over its size limit; every
+    event was sized before the request was sent (check_log_events)."""
+    for action, event_fields in result_line_events(line, fields):
         logged = log.event(action, event_fields, correlation_id=line["run_id"])
         if isinstance(logged, Err):
             return logged
     return log.flush()
+
+
+# The size of a log event is measured the way the sc-observability logger measures it (sc-observability 1.5.0,
+# Logger.log): the event's fields encoded as typed values (sc_observability._event), serialised as compact ASCII JSON, in
+# UTF-8 bytes, against AdapterPolicy().max_request_bytes. test_log_event_limit pins this to the logger's own refusal.
+LOG_RUN_NAME_WORST = "r" * 128  # a run name is a safe id: at most 128 characters
+
+
+def log_event_size(sco, action: str, fields: dict, correlation_id=None) -> Result[int, str]:
+    """The bytes the logger counts for one event, or the logger's own reason it cannot encode the event (a nesting depth)."""
+    event = sco.LogEvent(level="info", target=LOG_TARGET, action=action, correlation_id=correlation_id,
+                         fields=redact_sensitive({"run": LOG_RUN_NAME_WORST, **fields}))
+    encoded = sco._event(event)
+    if isinstance(encoded, sco.Err):
+        return Err(str(getattr(encoded.error, "message", encoded.error)))
+    return Ok(len(json.dumps(encoded.value, separators=(",", ":")).encode("utf-8")))
+
+
+def check_event_sizes(events: list, where: str) -> Result[None, JudgeError]:
+    """Each (action, fields, correlation_id) event fits the logger's limit; else the event and its size are named."""
+    module = logger_module()
+    if isinstance(module, Err):
+        return module
+    sco = module.value
+    limit = sco.AdapterPolicy().max_request_bytes
+    for action, fields, correlation_id in events:
+        size = log_event_size(sco, action, fields, correlation_id)
+        if isinstance(size, Err):
+            return fail("VALIDATION.INPUT", f"{where}: the {action} log event cannot be logged: {size.error}",
+                        action="Shorten or flatten the part of the request the message names.")
+        if size.value > limit:
+            return fail("JEV.CONTEXT_EXCEEDED",
+                        f"{where}: the {action} log event would be {size.value} bytes, over the run log's {limit}-byte event limit; "
+                        "the logger would refuse it after Jev answered",
+                        action="Ask fewer questions or options in one request, or shorten the item; never raise a cap to make it fit.")
+    return Ok(None)
+
+
+def worst_answers(questions: dict, pick=None) -> dict:
+    """The largest answers Jev can give to ``questions`` that validate_response accepts: every question answered, the choice
+    ``pick(options, criteria)`` (default the longest option name) with nearly all the probability and every other option with a
+    probability of the longest repr."""
+    out = {}
+    for qid, question in questions.items():
+        criteria = question.get("criteria") if isinstance(question, dict) else None
+        options = list(criteria) if isinstance(criteria, dict) and criteria else ["x"]
+        choice = pick(options, criteria if isinstance(criteria, dict) else {}) if pick else max(options, key=lambda o: len(json.dumps(o)))
+        out[qid] = {"type": "choice", "choice": choice, "confidence": WORST_PROBABILITY,
+                    "probabilities": {o: 0.9999999999999999 if o == choice else WORST_PROBABILITY for o in options}}
+    return out
+
+
+def worst_line(job: BatchJob, settings: BatchSettings, pick=None) -> dict:
+    """The largest result line ``job`` can produce: the largest answers, a first attempt that failed with the longest
+    message and a second that answered (only a transient failure is retried, and its code is short). Messages are clipped
+    by characters but the logger measures ASCII-escaped JSON, so the worst message is ATTEMPT_MESSAGE_LIMIT characters that
+    each escape to 12 bytes (WORST_CHAR), not "x"s."""
+    raw = {"model": "m" * 64, "answers": worst_answers(job.questions, pick), "usage": {"input_tokens": 2 ** 63 - 1, "output_tokens": 2 ** 63 - 1}}
+    failed = {"attempt": 1, "ok": False, "error": {"code": "JEV.RESPONSE_INVALID", "message": WORST_CHAR * ATTEMPT_MESSAGE_LIMIT, "recoverable": True}}
+    return _line(job, settings, raw, [failed, {"attempt": 2, "ok": True}], None, False)
+
+
+def check_log_events(job: BatchJob, settings: BatchSettings, where: str, fields: dict) -> Result[None, JudgeError]:
+    """REQ-JEV-0211: the request event, the largest possible answer event and the result event of ``job`` fit the logger's
+    event limit, before anything is sent (and in a dry run alike)."""
+    line = worst_line(job, settings)
+    return check_event_sizes([(action, event_fields, line["run_id"]) for action, event_fields in result_line_events(line, fields)], where)
 
 
 def pump_batch(lines: list, settings: BatchSettings, api_key: str, fixture, log: RunLog, echo: bool,
@@ -1020,7 +1656,7 @@ def validate_request_lines(lines: list, settings: BatchSettings) -> Result[int, 
         return base
     total, keys = 0, set()
     for number, line in enumerate(lines, start=1):
-        jobs = batch_jobs(line, number, settings, base.value["roles"])
+        jobs = batch_jobs(line, number, settings, base.value.roles)
         if isinstance(jobs, Err):
             return jobs
         for job in jobs.value:
@@ -1045,6 +1681,9 @@ def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
     if isinstance(loaded, Err):
         return loaded
     fixture = loaded.value
+    covered = check_fixture_coverage(lines, settings, fixture)
+    if isinstance(covered, Err):
+        return covered
     run_dir = args.run_dir or (str(pathlib.Path(args.anchors).parent / "anchor-runs") if getattr(args, "anchors", "") else "")
     if not run_dir:
         return fail("VALIDATION.INPUT", "the result log needs a directory: pass --anchors (log under its anchor-runs/) or --run-dir",
@@ -1100,11 +1739,11 @@ def add_stream_options(parser) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# quality (REQ-JEV-0101, REQ-JEV-0209): one record, its kind's decision tree, one batch request per wave
+# quality (REQ-JEV-0101, REQ-JEV-0209): records, each kind's decision tree, one batch request per wave
 # --------------------------------------------------------------------------- #
 QUALITY_TABLES = {"req": "requirements", "nfr": "requirements", "adr": "decisions"}  # Raptor import index tables
 QUALITY_PREFIX = "quality"
-QUALITY_LOG_DIR = ".sc/judge-jev/logs"
+QUALITY_LOG_DIR = ".sc/judge-jev"  # the logger writes <log root>/logs/judge-jev.log.jsonl
 
 
 class QualityTree(NamedTuple):
@@ -1113,7 +1752,8 @@ class QualityTree(NamedTuple):
     path: str
     override: bool
     start: str
-    nodes: dict
+    nodes: dict          # node id -> Wave or Leaf
+    kind: Optional[str]  # the tree's record kind, when it names one
 
 
 def _tree_error(path: str, message: str) -> Err[JudgeError]:
@@ -1121,46 +1761,101 @@ def _tree_error(path: str, message: str) -> Err[JudgeError]:
                 action="Fix the tree file; see assets/questions/quality-req.json for the shape.")
 
 
+def parse_quality_tree(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+    """The text of a tree file as a QualityTree: strict JSON, then the QualityTreeModel (every node, question and rule, the
+    graph and its cycles). A node is a wave or a leaf ({verdict}). A wave has questions and exactly one of: ``next``, an
+    ordered list of {when: {question id: choice}, goto: node} (every pair must match; the first matching rule wins), or
+    ``verdict_rules``, an ordered list of {any: {question id: choice}, all: {question id: choice}, verdict} (a rule matches
+    when any ``any`` question got its listed choice and every ``all`` question got its listed choice; an absent ``any`` or
+    ``all`` holds; the first matching rule gives the verdict and the walk ends at that wave). A listed choice may be a list:
+    any of its choices matches.
+
+    A wave with ``per: statement`` is sent once per statement of the record: ``statements`` names the record field
+    (dotted path) holding the statements and ``modals``, if given, the statement modals judged. Its rules match when
+    any one statement's answers match them."""
+    data = decode_json(raw, path, f"quality tree {path}")
+    if isinstance(data, Err):
+        return data
+    parsed = validate_model(QualityTreeModel, data.value)
+    if isinstance(parsed, Err):
+        return _tree_error(path, parsed.error.text)
+    tree = parsed.value
+    return Ok(QualityTree(tree.id, content_sha256(raw), path, override, tree.start, tree.nodes, tree.kind))
+
+
 def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree, JudgeError]:
-    """The record kind's shipped tree, or the --questions override. A node is a wave ({questions, next}) or a leaf
-    ({verdict}); ``next`` is an ordered list of {when: {question id: choice}, goto: node}, the first match wins."""
+    """The record kind's shipped tree, or the --questions override (see parse_quality_tree)."""
     path = override_path or str(QUESTIONS_DIR / f"quality-{kind}.json")
-    p = pathlib.Path(path)
-    if not path.strip() or not p.is_file():
-        return fail("INPUT.MISSING", f"quality tree not found: {path!r}", action="Pass the path of an existing tree file.")
-    try:
-        raw = p.read_bytes()
-        tree = json.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        return fail("INPUT.MALFORMED", f"quality tree {path} is not readable JSON: {exc}", action=f"Fix the JSON in {path}.")
-    if not isinstance(tree, dict) or not isinstance(tree.get("id"), str) or not isinstance(tree.get("nodes"), dict) or not tree["nodes"]:
-        return _tree_error(path, "must be an object with id and a non-empty nodes object")
-    nodes = tree["nodes"]
-    if tree.get("start") not in nodes:
-        return _tree_error(path, f"start {tree.get('start')!r} is not a node")
-    for node_id, node in nodes.items():
-        if isinstance(_safe_id(node_id, "node id"), Err) or not isinstance(node, dict):
-            return _tree_error(path, f"node {node_id!r} must have a safe id (letters, digits and _.:-) and be an object")
-        if "verdict" in node:
-            if not isinstance(node["verdict"], str):
-                return _tree_error(path, f"leaf {node_id} needs a string verdict")
-            continue
-        questions, rules = node.get("questions"), node.get("next")
-        if not isinstance(questions, dict) or not questions or not isinstance(rules, list) or not rules:
-            return _tree_error(path, f"wave {node_id} needs a non-empty questions object and a non-empty next list")
-        for rule in rules:
-            when = rule.get("when", {}) if isinstance(rule, dict) else None
-            if not isinstance(when, dict) or rule.get("goto") not in nodes \
-                    or any(q not in questions or not isinstance(c, str) for q, c in when.items()):
-                return _tree_error(path, f"wave {node_id} has a branch that is not when (question id -> choice) plus goto (a node): {rule!r}")
-    # CRLF is hashed as LF, so a Windows checkout (core.autocrlf) gives the same digest as any other.
-    digest = hashlib.sha256(raw.replace(b"\r\n", b"\n")).hexdigest()
-    return Ok(QualityTree(tree["id"], digest, path, bool(override_path), tree["start"], nodes))
+    raw = read_source(path, "quality tree", action="Pass the path of an existing tree file.")
+    if isinstance(raw, Err):
+        return raw
+    return parse_quality_tree(raw.value, path, bool(override_path))
 
 
-def select_branch(rules: list, choices: dict):
-    """The first rule whose every {question: choice} matches; None when none does."""
-    return next((r["goto"] for r in rules if all(choices.get(q) == c for q, c in r.get("when", {}).items())), None)
+def _got(choices: dict, qid: str, wanted) -> bool:
+    return choices.get(qid) in wanted if isinstance(wanted, list) else choices.get(qid) == wanted
+
+
+def branch_matches(rule: NextRule, choices: dict) -> bool:
+    return all(_got(choices, q, c) for q, c in rule.when.items())
+
+
+def verdict_matches(rule: VerdictRule, choices: dict) -> bool:
+    anyof, allof = rule.any_, rule.all_
+    return (not anyof or any(_got(choices, q, c) for q, c in anyof.items())) and all(_got(choices, q, c) for q, c in allof.items())
+
+
+def select_rule(rules: list, matches, per_choices: list):
+    """The first rule that matches the choices of any one request of the wave (one, or one per statement), with the
+    indexes (into ``per_choices``) of the requests it matched; (None, []) when none does."""
+    for rule in rules:
+        hit = [i for i, choices in enumerate(per_choices) if matches(rule, choices)]
+        if hit:
+            return rule, hit
+    return None, []
+
+
+def wave_reason(node: Wave, answers: dict) -> list:
+    """The wave's reason: every question in tree order with its id, text, Jev's choice, the chosen option's criterion
+    (which carries its fix hint) and confidence."""
+    out = []
+    for qid, question in node.questions.items():
+        choice, confidence = answer_choice(answers[qid])
+        out.append({"id": qid, "text": question.instructions, "choice": choice,
+                    "criterion": question.criteria.get(choice, ""), "confidence": confidence})
+    return out
+
+
+def record_statements(record: dict, node: Wave) -> Result[list, JudgeError]:
+    """A per-statement wave's statements: the list at the node's ``statements`` field path in the record, each a string or
+    an object with text (and modal), kept when its modal is one of the node's ``modals`` (all when absent). Index is the
+    statement's 1-based position in that field."""
+    value, field = record, node.statements
+    for part in field.split("."):
+        value = value.get(part) if isinstance(value, dict) else None
+    where = f"{record.get('id')} field {field}"
+    if not isinstance(value, list):
+        return fail("RECORD.STATEMENTS", f"{where} is not a list of statements",
+                    action="Fix the tree's statements field path, or the record.")
+    out = []
+    for i, item in enumerate(value, 1):
+        text, modal = (item, None) if isinstance(item, str) else (item.get("text"), item.get("modal")) if isinstance(item, dict) else (None, None)
+        if not isinstance(text, str) or not text.strip():
+            return fail("RECORD.STATEMENTS", f"{where} item {i} has no statement text", action="Fix the record, rebuild the index, then rerun.")
+        if node.modals is None or modal in node.modals:
+            out.append({"index": i, "modal": modal, "text": text})
+    if not out:
+        return fail("RECORD.STATEMENTS", f"{where} has no statement with modal {node.modals}",
+                    action="Add the record's MUST or MUST NOT statements, rebuild the index, then rerun.")
+    return Ok(out)
+
+
+def parse_index(data, index_path: str) -> Result[RaptorIndex, JudgeError]:
+    parsed = validate_model(RaptorIndex, data)
+    if isinstance(parsed, Err):
+        return fail("INPUT.MALFORMED", f"{index_path} is not a Raptor import index: {parsed.error.text}",
+                    action="Pass the JSON written by Raptor's scripts/extract.py --output.")
+    return parsed
 
 
 def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, JudgeError]:
@@ -1168,134 +1863,271 @@ def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, J
     loaded = load_json(index_path, "Raptor import index")
     if isinstance(loaded, Err):
         return loaded
-    index = loaded.value
-    issues = index.get("diagnostics", {}).get("issues") if isinstance(index, dict) and isinstance(index.get("diagnostics"), dict) else None
-    table = index.get(QUALITY_TABLES[kind]) if isinstance(index, dict) else None
-    if not isinstance(issues, list) or not isinstance(table, list):
-        return fail("INPUT.MALFORMED", f"{index_path} is not a Raptor import index (needs diagnostics.issues and {QUALITY_TABLES[kind]})",
+    parsed = parse_index(loaded.value, index_path)
+    if isinstance(parsed, Err):
+        return parsed
+    index = parsed.value
+    table = getattr(index, QUALITY_TABLES[kind])
+    if table is None:
+        return fail("INPUT.MALFORMED", f"{index_path} is not a Raptor import index (needs {QUALITY_TABLES[kind]})",
                     action="Pass the JSON written by Raptor's scripts/extract.py --output.")
-    found = [i for i in issues if isinstance(i, dict) and i.get("id") == record_id]
+    found = [i for i in index.diagnostics.issues if i.get("id") == record_id]
     if found:
         error = JudgeError("RECORD.DIAGNOSTICS", f"{record_id} has {len(found)} Raptor import diagnostic(s); only records imported without diagnostics are judged",
                            action="Fix each diagnostic (its remedy says how), rebuild the index, then rerun.")
         error.data = {"record_id": record_id, "diagnostics": found}
         return Err(error)
-    record = next((r for r in table if isinstance(r, dict) and r.get("id") == record_id), None)
+    record = next((r for r in table if r.get("id") == record_id), None)
     if record is None:
         return fail("RECORD.NOT_FOUND", f"{record_id} is not in the {QUALITY_TABLES[kind]} of {index_path}",
                     action="Check the id and the --req/--adr/--nfr flag, and that the index is current.")
     return Ok(record)
 
 
-def wave_line(record: dict, node_id: str, node: dict) -> dict:
-    """One wave as one batch request line: the record (as Raptor's JSON) is the item; no anchor."""
-    return {"item": {"id": record["id"], "title": record.get("title") or "", "text": json.dumps(record, indent=2, ensure_ascii=False)},
-            "questions": [{"candidate_id": node_id, "questions": node["questions"]}]}
+def wave_line(record: dict, node_id: str, node: Wave, statement=None) -> dict:
+    """One wave request as one batch request line, no anchor. The item is the record (as Raptor's JSON); for one
+    statement of a per-statement wave, item ``<record id>.s<index>`` whose text is {statement, record} as JSON."""
+    if statement is None:
+        item = {"id": record["id"], "title": record.get("title") or "", "text": json.dumps(record, indent=2, ensure_ascii=False)}
+    else:
+        item = {"id": f"{record['id']}.s{statement['index']}", "title": record.get("title") or "",
+                "text": json.dumps({"statement": statement, "record": record}, indent=2, ensure_ascii=False)}
+    return {"item": item, "questions": [{"candidate_id": node_id, "questions": {qid: q.model_dump() for qid, q in node.questions.items()}}]}
+
+
+def wave_lines(record: dict, node_id: str, node: Wave) -> Result[tuple, JudgeError]:
+    """The wave's request lines and their statements: one line (statements [None]), or one per statement."""
+    if node.per != "statement":
+        return Ok(([wave_line(record, node_id, node)], [None]))
+    statements = record_statements(record, node)
+    if isinstance(statements, Err):
+        return statements
+    return Ok(([wave_line(record, node_id, node, s) for s in statements.value], statements.value))
 
 
 def quality_settings(dry_run: bool) -> BatchSettings:
     return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, DEFAULT_MAX_REQUEST_BYTES, dry_run)
 
 
-def cmd_quality(args) -> Result[Any, JudgeError]:
-    kind, record_id = next(((k, getattr(args, k)) for k in ("req", "adr", "nfr") if getattr(args, k)), (None, ""))
-    if kind is None:
-        return fail("VALIDATION.INPUT", "the record id is empty: pass one non-empty --req, --adr or --nfr id")
-    tree = load_quality_tree(kind, args.questions)
+def _with_refs(failed: Err, refs: dict) -> Err:
+    """Every error after a tree loads names the record and the tree."""
+    if failed.error.data is None:
+        failed.error.data = {}
+    failed.error.data.update(refs)
+    return failed
+
+
+def quality_fields(tree: QualityTree, record_id: str, kind: str) -> dict:
+    """The fields every log event of a record's walk carries."""
+    return {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record_id, "record_kind": kind}
+
+
+def _longest(values: list):
+    return max(values, key=len) if values else None
+
+
+def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statements: list,
+                      settings: BatchSettings) -> Result[None, JudgeError]:
+    """REQ-JEV-0211: the statement, wave and verdict events a wave's walk logs, with the largest answers and the longest
+    next or verdict, fit the logger's event limit. (The request, answer and result events were sized with the request.)"""
+    where = f"wave {node_id}"
+
+    def pick(options, criteria):  # the option the wave and statement events carry most of: its name three times and its criterion
+        return max(options, key=lambda o: 3 * len(json.dumps(o)) + len(json.dumps(criteria.get(o, ""))))
+
+    results = [worst_line(job, settings, pick) for job in jobs]
+    per_choices = [{qid: ans["choice"] for qid, ans in r["answers"].items()} for r in results]
+    nxt = _longest([r.goto for r in node.next]) if node.next is not None else None
+    verdict = _longest([r.verdict for r in node.verdict_rules]) if node.verdict_rules is not None else None
+    events, _wave = wave_log_events({**fields, "node": node_id}, node_id, node, statements, results, per_choices,
+                                    list(range(len(results))), nxt, verdict)
+    return check_event_sizes(events, where)
+
+
+def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: BatchSettings) -> Result[tuple, JudgeError]:
+    """Load (once per kind) the tree, the record and its wave-1 jobs, one per statement for a per-statement wave (the size
+    check). Every wave's statements, request sizes and log events are checked here, before any call.
+    Ok((tree, record, refs, [(statement or None, job)]))."""
+    if kind not in trees:
+        trees[kind] = load_quality_tree(kind, args.questions)
+    tree = trees[kind]
     if isinstance(tree, Err):
         return tree
     tree = tree.value
-    tree_ref = {"id": tree.id, "sha256": tree.sha256, "source": "override" if tree.override else "shipped", "path": tree.path}
-    record_ref = {"id": record_id, "kind": kind, "source": {"raptor_index": args.index}}
-
-    def refs(failed: Err) -> Err:
-        """Every error after the tree loads names the record and the tree."""
-        if failed.error.data is None:
-            failed.error.data = {}
-        failed.error.data.update({"record": record_ref, "tree": tree_ref})
-        return failed
-
+    refs = {"record": {"id": record_id, "kind": kind, "source": {"raptor_index": args.index}},
+            "tree": {"id": tree.id, "sha256": tree.sha256, "source": "override" if tree.override else "shipped", "path": tree.path}}
+    if tree.kind is not None and tree.kind != kind:
+        return _with_refs(_tree_error(tree.path, f"is a {tree.kind!r} tree; {record_id} is a {kind!r} record"), refs)
     record = quality_record(args.index, kind, record_id)
     if isinstance(record, Err):
-        return refs(record)
-    record = record.value
+        return _with_refs(record, refs)
+    fields = quality_fields(tree, record_id, kind)
+    start_jobs = None
+    for node_id, node in tree.nodes.items():  # the start wave first (its jobs are returned), then every later wave
+        if isinstance(node, Leaf):
+            continue
+        lines = wave_lines(record.value, node_id, node)
+        if isinstance(lines, Err):
+            return _with_refs(lines, refs)
+        wave_jobs = []
+        for line, statement in zip(*lines.value):
+            first = batch_jobs(line, 1, settings, {}, {**fields, "node": node_id})  # the size check: JEV.CONTEXT_EXCEEDED
+            if isinstance(first, Err):
+                return _with_refs(first, refs)
+            wave_jobs.append((statement, first.value[0]))
+        checked = check_wave_events(fields, node_id, node, [j for _s, j in wave_jobs], lines.value[1], settings)
+        if isinstance(checked, Err):
+            return _with_refs(checked, refs)
+        if node_id == tree.start:
+            start_jobs = wave_jobs
+    checked = check_event_sizes([("verdict", {**fields, "verdict": _longest([n.verdict for n in tree.nodes.values() if isinstance(n, Leaf)]
+                                                                           + [r.verdict for n in tree.nodes.values() if isinstance(n, Wave)
+                                                                              for r in (n.verdict_rules or [])]),
+                                              "path": list(tree.nodes)}, None)], "the verdict")
+    if isinstance(checked, Err):
+        return _with_refs(checked, refs)
+    return Ok((tree, record.value, refs, start_jobs))
+
+
+def cmd_quality(args) -> Result[Any, JudgeError]:
+    """Every record named by a repeated --req/--adr/--nfr (REQs, then ADRs, then NFRs, each in the order given), under one
+    run name and one run log. Every record is
+    loaded and size-checked before the first call; a wave without an answer stops the run with the results so far."""
+    wanted = [(kind, rid) for kind in ("req", "adr", "nfr") for rid in (getattr(args, kind) or [])]
+    if not wanted or any(not rid for _, rid in wanted):
+        return fail("VALIDATION.INPUT", "a record id is missing or empty: pass one or more non-empty --req, --adr or --nfr ids")
     settings = quality_settings(args.dry_run)
-    start = tree.nodes[tree.start]
-    if "verdict" in start:
-        return refs(_tree_error(tree.path, f"start {tree.start} is a leaf; the first node must be a wave"))
-    first = batch_jobs(wave_line(record, tree.start, start), 1, settings, {})  # the size check: JEV.CONTEXT_EXCEEDED
-    if isinstance(first, Err):
-        return refs(first)
+    trees, prepared = {}, []
+    for kind, rid in wanted:
+        got = _prepare_record(args, kind, rid, trees, settings)
+        if isinstance(got, Err):
+            return got
+        prepared.append(got.value)
     if settings.dry_run:
-        body = first.value[0].body
-        return Ok({"success": True, "error": None, "data": {
-            "dry_run": True, "record": record_ref, "tree": tree_ref,
-            "wave": {"node": tree.start, "request": body, "request_bytes": len(encode_body(body)),
-                     "max_request_bytes": settings.max_request_bytes}}})
+        results = []
+        for tree, _record, refs, jobs in prepared:
+            if tree.nodes[tree.start].per == "statement":
+                wave = {"node": tree.start, "per": "statement",
+                        "requests": [{"statement": s, "request": job.body, "request_bytes": len(encode_body(job.body))} for s, job in jobs]}
+            else:
+                (_s, job), = jobs
+                wave = {"node": tree.start, "request": job.body, "request_bytes": len(encode_body(job.body))}
+            results.append({**refs, "wave": {**wave, "max_request_bytes": settings.max_request_bytes}})
+        return Ok({"success": True, "error": None, "data": {"dry_run": True, "results": results}})
+    run_refs = prepared[0][2] if len(prepared) == 1 else {"records": [refs for _t, _r, refs, _j in prepared]}
     loaded = load_answers_fixture(args.answers_file, "'<record>/<node>/r1', '<record>/<node>', '<node>'")
     if isinstance(loaded, Err):
-        return refs(loaded)
+        return _with_refs(loaded, run_refs)
     fixture = loaded.value
     run_name = args.run_name or stamp()
     checked = _safe_id(run_name, "--run-name")
     if isinstance(checked, Err):
-        return refs(checked)
+        return _with_refs(checked, run_refs)
     api_key = ""
     if fixture is None:
         cleared = remote_preflight(args, "The record text")
         if isinstance(cleared, Err):
-            return refs(cleared)
+            return _with_refs(cleared, run_refs)
         api_key = cleared.value
     log = open_run_log(args.run_dir, run_name)
     if isinstance(log, Err):
-        return refs(log)
-    walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
-                       {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record_id, "record_kind": kind})
+        return _with_refs(log, run_refs)
+    results, failed = [], None
+    for tree, record, refs, _job in prepared:
+        walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
+                           quality_fields(tree, record["id"], refs["record"]["kind"]))
+        if isinstance(walked, Err):
+            failed = _with_refs(walked, {**refs, "results": results})
+            break
+        verdict, path, waves = walked.value
+        results.append({**refs, "verdict": verdict, "path": path, "waves": waves})
     closed = log.value.close()
-    if isinstance(walked, Err):
-        return refs(walked)
-    if isinstance(closed, Err):
-        return refs(closed)
-    verdict, path, waves = walked.value
-    leaf = tree.nodes[path[-1]]
+    if failed is not None:
+        return failed
+    if isinstance(closed, Err):  # the answers were paid for: report them with the log error
+        return _with_refs(closed, {**run_refs, "results": results})
     return Ok({"success": True, "error": None, "data": {
-        "dry_run": False, "record": record_ref, "tree": tree_ref, "verdict": verdict, "reason": leaf.get("reason"),
-        "path": path, "waves": waves, "log": {"run": run_name, "log_root": args.run_dir}}})
+        "dry_run": False, "results": results, "log": {"run": run_name, "log_root": args.run_dir}}})
+
+
+def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, results: list, per_choices: list,
+                    matched: list, nxt, verdict) -> tuple:
+    """The events a wave logs, as (action, fields, correlation_id), and the wave's entry of the command's result.
+    A per-statement wave logs one statement event per statement (its request is the request event with the same
+    request_id), then a compact wave event: a single event holding every statement exceeds the logger's event size limit."""
+    if node.per == "statement":
+        reason, events = [], []
+        for s, r, c in zip(statements, results, per_choices):
+            reason.append({"statement": s, "answers": wave_reason(node, r["answers"])})
+            events.append(("statement", {**fields, "node": node_id, "statement": s, "request_id": r["request_id"],
+                                         "answers": r["answers"], "choices": c, "reason": reason[-1]["answers"]}, r["run_id"]))
+        matched_statements = [statements[i]["index"] for i in matched]
+        request_ids = [r["request_id"] for r in results]
+        events.append(("wave", {**fields, "node": node_id, "per": "statement", "request_ids": request_ids,
+                                "matched_statements": matched_statements, "next": nxt, "verdict": verdict}, None))
+        wave = {"node": node_id, "per": "statement", "request_ids": request_ids, "reason": reason,
+                "matched_statements": matched_statements, "next": nxt, "verdict": verdict}
+        return events, wave
+    result, choices = results[0], per_choices[0]
+    reason = wave_reason(node, result["answers"])
+    events = [("wave", {**fields, "node": node_id, "request_id": result["request_id"], "request": result["request"],
+                        "answers": result["answers"], "choices": choices, "reason": reason, "next": nxt,
+                        "verdict": verdict}, result["run_id"])]
+    return events, {"node": node_id, "request_id": result["request_id"], "reason": reason, "next": nxt, "verdict": verdict}
 
 
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key: str, fixture, log: RunLog,
               fields: dict) -> Result[tuple, JudgeError]:
-    """Send one wave per node from the start until a leaf; answers pick each next node. Every wave is logged with its
-    composed request, answers and selected branch; the leaf's verdict is logged with the path."""
+    """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
+    Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
+    request, answers and selected branch or verdict; the verdict is logged with the path."""
     node_id, path, waves = tree.start, [], []
-    while "verdict" not in tree.nodes[node_id]:
+    verdict = None
+    while verdict is None:
+        node = tree.nodes[node_id]
+        if isinstance(node, Leaf):
+            path.append(node_id)
+            verdict = node.verdict
+            break
         if node_id in path:
             return _tree_error(tree.path, f"the answers lead back to {node_id}: the tree has a cycle")
         path.append(node_id)
-        node = tree.nodes[node_id]
-        pumped = pump_batch([wave_line(record, node_id, node)], settings, api_key, fixture, log, echo=False,
-                            fields={**fields, "node": node_id})
+        lines = wave_lines(record, node_id, node)
+        if isinstance(lines, Err):
+            return lines
+        lines, statements = lines.value
+        covered = check_fixture_coverage(lines, settings, fixture)  # this wave's request ids are known: refuse before sending
+        if isinstance(covered, Err):
+            return covered
+        pumped = pump_batch(lines, settings, api_key, fixture, log, echo=False, fields={**fields, "node": node_id})
         if isinstance(pumped, Err):
             return pumped
-        result = pumped.value[0]
-        if not result["ok"]:
-            error = JudgeError(result["error"]["code"], f"wave {node_id} got no answer: {result['error']['message']}",
-                               recoverable=result["error"]["recoverable"], action="Rerun once the cause is fixed.")
-            error.data = {"path": path, "waves": waves}
-            return Err(error)
-        choices = {qid: answer_choice(ans)[0] for qid, ans in result["answers"].items()}
-        nxt = select_branch(node["next"], choices)
-        if nxt is None:
-            return _tree_error(tree.path, f"no branch of wave {node_id} matches the answers {choices}")
-        logged = log.event("wave", {**fields, "node": node_id, "request_id": result["request_id"], "request": result["request"],
-                                    "answers": result["answers"], "choices": choices, "next": nxt},
-                           correlation_id=result["run_id"])
-        if isinstance(logged, Err):
-            return logged
-        waves.append({"node": node_id, "request_id": result["request_id"], "choices": choices, "next": nxt})
+        for result, statement in zip(pumped.value, statements):
+            if not result["ok"]:
+                which = "" if statement is None else f" statement {statement['index']} ({statement['text']!r})"
+                error = JudgeError(result["error"]["code"], f"wave {node_id}{which} got no answer: {result['error']['message']}",
+                                   recoverable=result["error"]["recoverable"], action="Rerun once the cause is fixed.")
+                error.data = {"path": path, "waves": waves, **({} if statement is None else {"statement": statement})}
+                return Err(error)
+        per_choices = [{qid: answer_choice(ans)[0] for qid, ans in r["answers"].items()} for r in pumped.value]
+        nxt, matched = None, []
+        if node.next is not None:
+            rule, matched = select_rule(node.next, branch_matches, per_choices)
+            if rule is None:
+                return _tree_error(tree.path, f"no branch of wave {node_id} matches the answers {per_choices}")
+            nxt = rule.goto
+        else:
+            rule, matched = select_rule(node.verdict_rules, verdict_matches, per_choices)
+            if rule is None:
+                return _tree_error(tree.path, f"no verdict rule of wave {node_id} matches the answers {per_choices}")
+            verdict = rule.verdict
+        events, wave = wave_log_events(fields, node_id, node, statements, pumped.value, per_choices, matched, nxt, verdict)
+        for action, event_fields, correlation_id in events:
+            logged = log.event(action, event_fields, correlation_id=correlation_id)
+            if isinstance(logged, Err):
+                return logged
+        waves.append(wave)
         node_id = nxt
-    path.append(node_id)
-    verdict = tree.nodes[node_id]["verdict"]
     logged = log.event("verdict", {**fields, "verdict": verdict, "path": path})
     if isinstance(logged, Err):
         return logged
@@ -1303,6 +2135,54 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
     if isinstance(flushed, Err):
         return flushed
     return Ok((verdict, path, waves))
+
+
+# --------------------------------------------------------------------------- #
+# validate (REQ-JEV-0210): the models and checks the other commands apply before their first Jev request, nothing else
+# --------------------------------------------------------------------------- #
+VALIDATE_KINDS = (("tree", "quality tree"), ("questions", "question set"), ("answers", "answers file"), ("index", "Raptor import index"),
+                  ("requests", "request stream"))
+
+
+def validate_input(kind: str, raw: str, path: str, args) -> Result[None, JudgeError]:
+    """``raw`` (the text of an input of ``kind``) accepted or refused exactly as the command that reads it would."""
+    what = dict(VALIDATE_KINDS)[kind]
+    if kind == "tree":
+        parsed = parse_quality_tree(raw, path)
+        return Ok(None) if isinstance(parsed, Ok) else parsed
+    if kind == "requests":
+        lines = parse_request_lines(raw, path)
+        if isinstance(lines, Err):
+            return lines
+        cap = request_cap(args.gate, args.max_request_bytes)
+        if isinstance(cap, Err):
+            return cap
+        settings = BatchSettings(args.gate, DEFAULT_MODEL, 1, "batch", DEFAULT_THRESHOLD, 30.0, 1, cap.value, True)
+        checked = validate_request_lines(lines.value, settings)
+        return checked if isinstance(checked, Err) else Ok(None)
+    data = decode_json(raw, path, what)
+    if isinstance(data, Err):
+        return data
+    if kind == "questions":
+        parsed = parse_question_set(data.value, f"question set {path}")
+    elif kind == "index":
+        parsed = parse_index(data.value, path)
+    else:
+        enveloped = answers_envelope_error(data.value, f"answers file {path}")
+        return Err(enveloped) if enveloped is not None else Ok(None)
+    return Ok(None) if isinstance(parsed, Ok) else parsed
+
+
+def cmd_validate(args) -> Result[Any, JudgeError]:
+    """Exactly one input file (``-`` is stdin) checked with its model; never calls Jev, reads no key, writes no log."""
+    kind, path = next((k, getattr(args, k)) for k, _what in VALIDATE_KINDS if getattr(args, k) is not None)
+    raw = read_source(path, dict(VALIDATE_KINDS)[kind])
+    if isinstance(raw, Err):
+        return raw
+    checked = validate_input(kind, raw.value, path, args)
+    if isinstance(checked, Err):
+        return checked
+    return Ok({"success": True, "error": None, "data": {"kind": kind, "path": path, "sha256": content_sha256(raw.value)}})
 
 
 class _UsageError(Exception):
@@ -1325,18 +2205,28 @@ def build_parser() -> argparse.ArgumentParser:
     bt.add_argument("--anchors", default="", help="anchors.json; the result log goes to its anchor-runs/ folder unless --run-dir is given")
     bt.add_argument("--gate", choices=("plan", "dev"), default="plan", help="default roles and request cap when a candidate carries no roles")
     bt.set_defaults(func=cmd_batch)
-    q = sub.add_parser("quality", help="judge whether one REQ, ADR or NFR is well written with its kind's decision tree, one Jev request per wave")
-    which = q.add_mutually_exclusive_group(required=True)
+    q = sub.add_parser("quality", help="judge whether each named REQ, ADR or NFR is well written with its kind's decision tree, one Jev request per wave")
     for kind in ("req", "adr", "nfr"):
-        which.add_argument(f"--{kind}", metavar="ID", default="", help=f"the {kind.upper()} record id")
+        q.add_argument(f"--{kind}", metavar="ID", action="append", default=[],
+                       help=f"a {kind.upper()} record id; repeat it (and mix kinds) to judge several records under one run name")
     q.add_argument("--index", required=True, help="the Raptor import index (JSON written by Raptor's scripts/extract.py --output)")
     q.add_argument("--questions", default="", help="a decision-tree file overriding the shipped assets/questions/quality-<kind>.json")
-    q.add_argument("--dry-run", action="store_true", help="report the tree, the record and the composed wave-1 request; call nothing")
+    q.add_argument("--dry-run", action="store_true", help="report each record's tree and composed wave-1 request (one per statement for a per-statement wave); call nothing")
     q.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/<node>/r1', '<record>/<node>', '<node>' or '*'; no network")
-    q.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log; default {QUALITY_LOG_DIR}")
+    q.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log (<run-dir>/logs/judge-jev.log.jsonl); default {QUALITY_LOG_DIR}")
     q.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     q.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
     q.set_defaults(func=cmd_quality)
+    v = sub.add_parser("validate", help="check one input file with the model the other commands apply before their first Jev request; calls nothing, needs no key, writes no log")
+    group = v.add_mutually_exclusive_group(required=True)
+    group.add_argument("--tree", metavar="FILE", default=None, help="a quality decision tree (assets/questions/quality-<kind>.json); - is stdin")
+    group.add_argument("--questions", metavar="FILE", default=None, help="a question set (assets/questions/plan.json); - is stdin")
+    group.add_argument("--answers", metavar="FILE", default=None, help="an answers file (--answers-file); - is stdin")
+    group.add_argument("--index", metavar="FILE", default=None, help="a Raptor import index (Raptor's scripts/extract.py --output); - is stdin")
+    group.add_argument("--requests", metavar="FILE", default=None, help="a batch request stream (assets/schemas/jev-batch-request.schema.json); - is stdin")
+    v.add_argument("--gate", choices=("plan", "dev"), default="plan", help="with --requests: the gate whose roles and request cap apply, as for batch")
+    v.add_argument("--max-request-bytes", type=int, default=None, help="with --requests: refuse any request over this, as for batch")
+    v.set_defaults(func=cmd_validate)
     return p
 
 
@@ -1361,6 +2251,11 @@ def main(argv=None) -> int:
 
 
 def _main(argv=None) -> int:
+    bad = next((a for a in (sys.argv[1:] if argv is None else argv) if isinstance(a, str) and utf8_text(a) != a), None)
+    if bad is not None:
+        emit(JudgeError("VALIDATION.INPUT", f"argument {utf8_text(bad)!r} is not valid UTF-8",
+                        action="Pass ids, paths and names as UTF-8 text.").to_json())
+        return 2
     try:
         args = build_parser().parse_args(argv)
     except _UsageError as exc:
