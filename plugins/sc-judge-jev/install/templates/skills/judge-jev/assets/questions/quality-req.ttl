@@ -9,7 +9,7 @@
 t:quality-req a jj:Tree ;
     jj:id "quality-req" ;
     jj:kind "req" ;
-    jj:version 3 ;
+    jj:version 1 ;
     jj:approved true ;
     jj:note "wave-1 wording approved by Rand Lee, 2026-11-08" ;
     jj:start t:quality-req:wave-1 ;
