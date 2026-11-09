@@ -62,7 +62,10 @@ class GraphStore(Protocol):
 
     def record_run(self, triples: Iterable[Any]) -> Result[int, Any]: ...
 
-    def query(self, sparql: str) -> Result[list[dict], Any]: ...
+    def query(self, sparql: str) -> Result[list[dict], Any]:
+        """Answer a SPARQL SELECT as one dict per solution. Only SELECT is supported: ASK, CONSTRUCT and DESCRIBE are
+        refused with a typed ``Err`` (``VALIDATION.INPUT``), as is any query the store cannot parse or evaluate."""
+        ...
 
 
 class PythonCoreTransport:
@@ -136,21 +139,37 @@ class OxigraphGraphStore:
         return jev_graph.validate_tree(tree)
 
     def compile_wave(self, tree: Any, node_id: str) -> Result[dict, Any]:
+        """The wave's JSON ``questions``; an unknown wave or a tree that does not validate is a typed ``Err``."""
         import jev_graph
-        return jev_graph.compile_wave(tree, node_id)
+        try:
+            return Ok(jev_graph.compile_wave(tree, node_id))
+        except jev_graph.TreeInvalid as exc:
+            return Err(exc.error)
+        except KeyError:
+            from jev_judge import JudgeError
+            return Err(JudgeError("VALIDATION.INPUT", f"the tree has no wave {node_id!r}",
+                                  action="Pass the id of a wave of the tree."))
 
     def record_run(self, triples: Iterable[Any]) -> Result[int, Any]:
-        before = len(self.store)
-        self.store.extend(list(triples))
-        return Ok(len(self.store) - before)
+        try:
+            before = len(self.store)
+            self.store.extend(list(triples))
+            return Ok(len(self.store) - before)
+        except (TypeError, ValueError, OSError, RuntimeError) as exc:
+            from jev_judge import JudgeError
+            return Err(JudgeError("VALIDATION.INPUT", f"record_run needs pyoxigraph quads: {type(exc).__name__}: {exc}",
+                                  action="Pass the quads jev_runs makes."))
 
     def query(self, sparql: str) -> Result[list[dict], Any]:
+        import pyoxigraph
+        from jev_judge import JudgeError
         try:
             solutions = self.store.query(sparql)
+            if not isinstance(solutions, pyoxigraph.QuerySolutions):
+                return Err(JudgeError("VALIDATION.INPUT", "only a SPARQL SELECT query is supported here, not ASK, CONSTRUCT or DESCRIBE",
+                                      action="Rewrite the query as a SELECT."))
             variables = [v.value for v in solutions.variables]
             rows = [{name: solution[name].value for name in variables if solution[name] is not None} for solution in solutions]
-        except (SyntaxError, ValueError, OSError) as exc:  # pyoxigraph raises SyntaxError for bad SPARQL
-            from jev_judge import JudgeError
-            return Err(JudgeError("VALIDATION.INPUT", f"SPARQL query failed: {type(exc).__name__}: {exc}",
-                                  action="Fix the query."))
+        except Exception as exc:  # pyoxigraph raises SyntaxError, ValueError, OSError, RuntimeError, TypeError (a non-str query)
+            return Err(JudgeError("VALIDATION.INPUT", f"SPARQL query failed: {type(exc).__name__}: {exc}", action="Fix the query."))
         return Ok(rows)

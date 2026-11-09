@@ -18,10 +18,14 @@ jjs:Prefixes a owl:Ontology ;
 
 jjs:TreeShape a sh:NodeShape ;
     sh:targetClass jj:Tree ;
+    sh:nodeKind sh:IRI ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:Tree is an IRI and has only the properties jj:id, jj:kind, jj:version, jj:approved, jj:note, jj:start, jj:node" ;
     sh:property [ sh:path jj:id ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
                   sh:pattern "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$" ;
                   sh:message "a tree has exactly one jj:id of letters, digits and _.:- only" ] ;
-    sh:property [ sh:path jj:kind ; sh:maxCount 1 ; sh:in ( "req" "adr" "nfr" ) ;
+    sh:property [ sh:path jj:kind ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ( "req" "adr" "nfr" ) ;
                   sh:message "jj:kind must be req, adr or nfr" ] ;
     sh:property [ sh:path jj:version ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
     sh:property [ sh:path jj:approved ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
@@ -32,7 +36,20 @@ jjs:TreeShape a sh:NodeShape ;
                   sh:or ( [ sh:class jj:Wave ] [ sh:class jj:Leaf ] ) ;
                   sh:message "a tree has at least one jj:node, each a jj:Wave or jj:Leaf" ] ;
     sh:sparql jjs:TreeStartIsNode ;
+    sh:sparql jjs:AllSubjectsShaped ;
     sh:sparql jjs:TreeNodeIdsUnique .
+
+jjs:AllSubjectsShaped a sh:SPARQLConstraint ;
+    sh:prefixes jjs:Prefixes ;
+    sh:message "{?value} is a subject of the graph but not a jj:Tree, Wave, Leaf, Question, Option, BranchRule, VerdictRule or Condition; a tree file holds nothing else" ;
+    sh:select """
+        SELECT DISTINCT $this ?value WHERE {
+            ?value ?p ?o .
+            FILTER NOT EXISTS {
+                ?value a ?class .
+                FILTER (?class IN (jj:Tree, jj:Wave, jj:Leaf, jj:Question, jj:Option, jj:BranchRule, jj:VerdictRule, jj:Condition))
+            }
+        }""" .
 
 jjs:TreeStartIsNode a sh:SPARQLConstraint ;
     sh:prefixes jjs:Prefixes ;
@@ -57,6 +74,10 @@ jjs:TreeNodeIdsUnique a sh:SPARQLConstraint ;
 
 jjs:WaveShape a sh:NodeShape ;
     sh:targetClass jj:Wave ;
+    sh:nodeKind sh:IRI ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:Wave is an IRI and has only the properties jj:id, jj:asks, jj:rule, jj:per, jj:statements, jj:modal" ;
     sh:property [ sh:path jj:id ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
                   sh:pattern "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$" ;
                   sh:message "a wave has exactly one jj:id of letters, digits and _.:- only" ] ;
@@ -64,13 +85,15 @@ jjs:WaveShape a sh:NodeShape ;
                   sh:message "a wave is a jj:node of exactly one tree" ] ;
     sh:property [ sh:path jj:asks ; sh:minCount 1 ; sh:nodeKind sh:IRI ; sh:class jj:Question ;
                   sh:message "a wave asks at least one jj:Question" ] ;
-    sh:property [ sh:path jj:rule ; sh:minCount 1 ;
+    sh:property [ sh:path jj:rule ; sh:minCount 1 ; sh:nodeKind sh:IRI ;
                   sh:or ( [ sh:class jj:BranchRule ] [ sh:class jj:VerdictRule ] ) ;
                   sh:message "a wave has at least one rule, each a jj:BranchRule or jj:VerdictRule" ] ;
     sh:property [ sh:path jj:verdict ; sh:maxCount 0 ; sh:message "a wave has no jj:verdict of its own; its verdict rules have" ] ;
-    sh:property [ sh:path jj:per ; sh:maxCount 1 ; sh:in ( "statement" ) ;
+    sh:property [ sh:path jj:per ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:in ( "statement" ) ;
                   sh:message "jj:per must be \"statement\"" ] ;
     sh:property [ sh:path jj:statements ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path jj:modal ; sh:datatype xsd:string ;
+                  sh:message "jj:modal must be a plain string such as \"Must\"" ] ;
     sh:sparql jjs:WaveRulesSameKind ;
     sh:sparql jjs:WaveRuleRanksUnique ;
     sh:sparql jjs:WaveQuestionRanksUnique ;
@@ -160,8 +183,10 @@ jjs:WaveStatementsNeedPer a sh:SPARQLConstraint ;
 
 jjs:LeafShape a sh:NodeShape ;
     sh:targetClass jj:Leaf ;
+    sh:nodeKind sh:IRI ;
     sh:closed true ;
-    sh:ignoredProperties ( rdf:type rdfs:label rdfs:comment ) ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:Leaf is an IRI and has only the properties jj:id, jj:verdict" ;
     sh:property [ sh:path jj:id ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
                   sh:pattern "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$" ;
                   sh:message "a leaf has exactly one jj:id of letters, digits and _.:- only" ] ;
@@ -174,6 +199,10 @@ jjs:LeafShape a sh:NodeShape ;
 
 jjs:QuestionShape a sh:NodeShape ;
     sh:targetClass jj:Question ;
+    sh:nodeKind sh:IRI ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:Question is an IRI and has only the properties jj:id, jj:instructions, jj:rank, jj:option" ;
     sh:property [ sh:path jj:id ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
                   sh:pattern "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$" ;
                   sh:message "a question has exactly one jj:id of letters, digits and _.:- only" ] ;
@@ -209,6 +238,10 @@ jjs:QuestionOptionLabelsUnique a sh:SPARQLConstraint ;
 
 jjs:OptionShape a sh:NodeShape ;
     sh:targetClass jj:Option ;
+    sh:nodeKind sh:IRI ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:Option is an IRI and has only the properties jj:label, jj:criterion, jj:rank" ;
     sh:property [ sh:path jj:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "\\S" ;
                   sh:message "an option has exactly one non-empty jj:label" ] ;
     sh:property [ sh:path jj:criterion ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "\\S" ;
@@ -220,6 +253,10 @@ jjs:OptionShape a sh:NodeShape ;
 
 jjs:BranchRuleShape a sh:NodeShape ;
     sh:targetClass jj:BranchRule ;
+    sh:nodeKind sh:IRI ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:BranchRule is an IRI and has only the properties jj:rank, jj:goto, jj:whenAll" ;
     sh:property [ sh:path [ sh:inversePath jj:rule ] ; sh:minCount 1 ; sh:maxCount 1 ;
                   sh:message "a rule belongs to exactly one wave" ] ;
     sh:property [ sh:path jj:rank ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
@@ -244,6 +281,10 @@ jjs:BranchGotoInTree a sh:SPARQLConstraint ;
 
 jjs:VerdictRuleShape a sh:NodeShape ;
     sh:targetClass jj:VerdictRule ;
+    sh:nodeKind sh:IRI ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:VerdictRule is an IRI and has only the properties jj:rank, jj:verdict, jj:whenAll, jj:whenAny" ;
     sh:property [ sh:path [ sh:inversePath jj:rule ] ; sh:minCount 1 ; sh:maxCount 1 ;
                   sh:message "a rule belongs to exactly one wave" ] ;
     sh:property [ sh:path jj:rank ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ;
@@ -256,6 +297,9 @@ jjs:VerdictRuleShape a sh:NodeShape ;
 
 jjs:ConditionShape a sh:NodeShape ;
     sh:targetClass jj:Condition ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:message "a jj:Condition is has only the properties jj:question, jj:choice" ;
     sh:property [ sh:path jj:question ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ; sh:class jj:Question ;
                   sh:message "a condition has exactly one jj:question" ] ;
     sh:property [ sh:path jj:choice ; sh:minCount 1 ; sh:nodeKind sh:IRI ; sh:class jj:Option ;

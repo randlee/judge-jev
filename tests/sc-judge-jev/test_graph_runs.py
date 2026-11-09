@@ -19,6 +19,7 @@ import jev_runs  # noqa: E402
 
 from test_jev_judge import answer, run_cli, write  # noqa: E402
 from test_quality import INDEX, QualityCase, never_called, tree_answers  # noqa: E402
+from test_graph_tree import ADR_JSON, ADR_TTL, BRANCH_TTL, write  # noqa: E402
 
 QUESTIONS = SKILL / "assets" / "questions"
 REPOSITORY = INDEX["metadata"]["repository"]
@@ -145,7 +146,7 @@ class AdrRun(RunCase):
         run_node = ox.NamedNode("urn:judge-jev:run:q1:ADR-T-0001")
         one = lambda s, p: [q.object for q in store.quads_for_pattern(s, jn(p), None)]  # noqa: E731
         self.assertEqual(one(run_node, "record"), [ox.NamedNode("urn:raptor:repo:test#ADR-T-0001")])
-        digest = run["tree_sha256"] if isinstance(tree, dict) else jev_graph.tree_digest(tree)
+        digest = run["tree_sha256"] if isinstance(tree, dict) else jev_graph.tree_digest(tree).value
         self.assertEqual(one(run_node, "treeDigest"), [ox.Literal(digest)])
         self.assertEqual(one(run_node, "verdictValue"), [ox.Literal("yes")])
         (wave_run,) = [q.subject for q in store.quads_for_pattern(None, jn("inRun"), run_node)]
@@ -196,6 +197,199 @@ class ReqRun(RunCase):
         self.assertEqual(len(rows), 8)  # four answers for each of two statements
 
 
+def loaded(text, directory):
+    """A tree graph from TTL text, checked against the shapes."""
+    tree = jev_graph.load_tree(write(directory, text))
+    assert isinstance(tree, jj.Ok), tree
+    assert jev_graph.validate_tree(tree.value) == jj.Ok(None)
+    return tree.value
+
+
+def choice(label, confidence=0.9):
+    return {"type": "choice", "choice": label, "confidence": confidence}
+
+
+BRANCH_RUN = {"name": "q1", "tree_sha256": "-", "record_id": "REQ-X-0001", "repository": REPOSITORY}
+BRANCH_LINES = [
+    {"request_id": "rq1", "candidate_id": "wave-1", "answers": {"size": choice("big")}},
+    {"request_id": "s1", "candidate_id": "wave-2", "answers": {"size": choice("huge")}},
+    {"request_id": "s2", "candidate_id": "wave-2", "answers": {"size": choice("small")}},
+]
+BRANCH_WALK = {"verdict": "no", "waves": [
+    {"node": "wave-1", "request_id": "rq1"},
+    {"node": "wave-2", "per": "statement", "request_ids": ["s1", "s2"],
+     "reason": [{"statement": {"text": "The CLI MUST fail."}}, {"statement": {"text": "The CLI MUST log."}}]}]}
+
+
+class GraphIriRuns(unittest.TestCase):
+    """F3: run triples use the tree graph's own IRIs, whatever they are, so TRACE_QUERY finds the rows."""
+
+    def setUp(self):
+        import tempfile
+        scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(scratch.cleanup)
+        self.dir = scratch.name
+
+    def trace(self, text, lines=BRANCH_LINES, walk=BRANCH_WALK):
+        tree = loaded(text, self.dir)
+        built = jev_runs.run_triples(tree, BRANCH_RUN, lines, walk)
+        store = ox.Store()
+        store.extend(list(tree.store) + built)
+        rows = store.query(jev_runs.trace_query(jev_runs.run_iri(BRANCH_RUN), f"{REPOSITORY}#REQ-X-0001"))
+        return tree, built, sorted((r["verdict"].value, r["rule"].value, r["question"].value, r["optionLabel"].value, r["criterion"].value)
+                                   for r in rows)
+
+    def test_branch_tree_with_kind_req_and_rules_r1_r2_traces_to_its_own_iris(self):
+        _tree, built, rows = self.trace(BRANCH_TTL)
+        self.assertEqual(rows, [
+            ("no", "urn:judge-jev:tree:b:wave-1:r1", "urn:judge-jev:question:b.size", "big", "Big."),
+            ("no", "urn:judge-jev:tree:b:wave-2:r1", "urn:judge-jev:question:b.size", "huge", "Huge."),
+        ])
+        fired = sorted(q.object.value for q in built if q.predicate == jn("fired"))
+        self.assertEqual(fired, ["urn:judge-jev:tree:b:wave-1:r1", "urn:judge-jev:tree:b:wave-2:r1"])
+
+    def test_a_tree_whose_iris_follow_no_naming_scheme_traces_to_those_iris(self):
+        renamed = (BRANCH_TTL.replace("urn:judge-jev:tree:", "https://example.org/trees/")
+                   .replace("urn:judge-jev:question:", "https://example.org/q#")
+                   .replace("urn:judge-jev:option:", "https://example.org/o#"))
+        _tree, built, rows = self.trace(renamed)
+        self.assertEqual(rows, [
+            ("no", "https://example.org/trees/b:wave-1:r1", "https://example.org/q#b.size", "big", "Big."),
+            ("no", "https://example.org/trees/b:wave-2:r1", "https://example.org/q#b.size", "huge", "Huge."),
+        ])
+        minted = [t.value for q in built for t in (q.subject, q.object) if isinstance(t, ox.NamedNode) and t.value.startswith("urn:judge-jev:question:")]
+        self.assertEqual(minted, [])
+        digest = [q.object.value for q in built if q.predicate == jn("treeDigest")]
+        self.assertEqual(digest, [jev_graph.tree_digest(_tree).value])
+
+    def test_a_rule_position_is_its_rank_order_not_its_iri(self):
+        # the rule IRIs sort the other way round from their ranks: position 1 is the lowest rank
+        swapped = (BRANCH_TTL.replace("t:b:wave-2:r1", "t:b:wave-2:zzz").replace("t:b:wave-2:r2", "t:b:wave-2:aaa"))
+        _tree, _built, rows = self.trace(swapped)
+        self.assertIn(("no", "urn:judge-jev:tree:b:wave-2:zzz", "urn:judge-jev:question:b.size", "huge", "Huge."), rows)
+
+    def test_labels_whose_slugs_collide_get_distinct_option_iris(self):
+        text = BRANCH_TTL.replace('jj:label "big"', 'jj:label "A/B"').replace('jj:label "huge"', 'jj:label "a b"')
+        self.assertEqual(jev_runs.slug("A/B"), jev_runs.slug("a b"))
+        lines = [{"request_id": "rq1", "candidate_id": "wave-1", "answers": {"size": choice("A/B")}},
+                 {"request_id": "s1", "candidate_id": "wave-2", "answers": {"size": choice("a b")}},
+                 {"request_id": "s2", "candidate_id": "wave-2", "answers": {"size": choice("A/B")}}]
+        _tree, built, rows = self.trace(text, lines)
+        chosen = {q.subject.value: q.object.value for q in built if q.predicate == jn("chose")}
+        self.assertEqual(chosen["urn:judge-jev:answer:q1:s1:size"], "urn:judge-jev:option:b.size:huge")
+        self.assertEqual(chosen["urn:judge-jev:answer:q1:s2:size"], "urn:judge-jev:option:b.size:big")
+        self.assertEqual(chosen["urn:judge-jev:answer:q1:rq1:size"], "urn:judge-jev:option:b.size:big")
+        labels = {r[3] for r in rows}
+        self.assertEqual(labels, {"A/B", "a b"})
+
+    def test_two_waves_may_ask_distinct_questions_with_the_same_id(self):
+        text = BRANCH_TTL.replace("t:b:wave-2 a jj:Wave ; jj:id \"wave-2\" ; jj:asks q:b.size ;", "t:b:wave-2 a jj:Wave ; jj:id \"wave-2\" ; jj:asks q:b.other ;") \
+            .replace("jj:whenAll [ a jj:Condition ; jj:question q:b.size ; jj:choice o:b.size:huge ] .",
+                     "jj:whenAll [ a jj:Condition ; jj:question q:b.other ; jj:choice o:b.other:huge ] .") + """
+q:b.other a jj:Question ; jj:id "size" ; jj:rank 1 ; jj:instructions "Other?" ; jj:option o:b.other:small , o:b.other:huge .
+o:b.other:small a jj:Option ; jj:rank 1 ; jj:label "small" ; jj:criterion "Other small." .
+o:b.other:huge a jj:Option ; jj:rank 2 ; jj:label "huge" ; jj:criterion "Other huge." .
+"""
+        _tree, _built, rows = self.trace(text)
+        self.assertIn(("no", "urn:judge-jev:tree:b:wave-2:r1", "urn:judge-jev:question:b.other", "huge", "Other huge."), rows)
+        self.assertIn(("no", "urn:judge-jev:tree:b:wave-1:r1", "urn:judge-jev:question:b.size", "big", "Big."), rows)
+
+
+class RenamedAdrRun(RunCase):
+    def test_a_renamed_adr_tree_traces_and_rebuilds_from_the_log(self):
+        import tempfile
+        renamed = (ADR_TTL.replace("@prefix q:  <urn:judge-jev:question:>", "@prefix q:  <urn:example:q:>")
+                   .replace("t:quality-adr:wave-1:rule-1", "t:quality-adr:wave-1:fail").replace("t:quality-adr:wave-1:rule-2", "t:quality-adr:wave-1:pass")
+                   .replace('jj:rank 1 ;\n    jj:verdict "no"', 'jj:rank 10 ;\n    jj:verdict "no"')
+                   .replace('jj:rank 2 ;\n    jj:verdict "yes"', 'jj:rank 20 ;\n    jj:verdict "yes"'))
+        with tempfile.TemporaryDirectory() as scratch:
+            tree = loaded(renamed, scratch)
+        result, lines, run = self.run_quality("--adr", "ADR-T-0001", {"ADR-T-0001/wave-1": tree_answers("quality-adr.json", alternatives="none")})
+        built = jev_runs.run_triples(tree, run, lines, result)
+        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository=REPOSITORY)
+        self.assertEqual(rebuilt.value, built)
+        store = ox.Store()
+        store.extend(list(tree.store) + built)
+        rows = self.trace(store, jev_runs.run_iri(run), "ADR-T-0001")
+        self.assertEqual(len(rows), 3)
+        self.assertEqual({r[1] for r in rows}, {"urn:judge-jev:tree:quality-adr:wave-1:fail"})
+        self.assertTrue(all(r[2].startswith("urn:example:q:adr.") for r in rows))
+        self.assertIn("alternatives", {r[2].rsplit(".", 1)[1] for r in rows})
+
+
+class RebuildMismatch(unittest.TestCase):
+    """F5: a log that does not fit the tree, or lacks a field, is LOG.READ, never a KeyError."""
+
+    def setUp(self):
+        import tempfile
+        scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(scratch.cleanup)
+        self.tree = loaded(BRANCH_TTL, scratch.name)
+
+    @staticmethod
+    def events(**overrides):
+        base = {
+            "result": [{"record_id": "R1", "request_id": "rq1", "candidate_id": "wave-1", "tree_sha256": "-", "answers": {"size": choice("big")}}],
+            "statement": [],
+            "wave": [{"record_id": "R1", "node": "wave-1", "request_id": "rq1"}],
+            "verdict": [{"record_id": "R1", "verdict": "yes"}],
+        }
+        base.update(overrides)
+        return base
+
+    def rebuild(self, events, tree=None):
+        with mock.patch.object(jev_runs, "read_run_events", return_value=jj.Ok(events)):
+            return jev_runs.rebuild_from_log("unused", "q1", tree if tree is not None else self.tree, repository=REPOSITORY)
+
+    def test_matching_events_rebuild(self):
+        self.assertIsInstance(self.rebuild(self.events()), jj.Ok)
+
+    def test_a_log_that_does_not_match_the_tree_is_log_read(self):
+        ev = self.events
+        cases = {
+            "unknown node": ev(wave=[{"record_id": "R1", "node": "nope", "request_id": "rq1"}]),
+            "unknown question": ev(result=[{"record_id": "R1", "request_id": "rq1", "answers": {"zzz": choice("big")}}]),
+            "unknown choice": ev(result=[{"record_id": "R1", "request_id": "rq1", "answers": {"size": choice("bogus")}}]),
+            "unlogged request": ev(wave=[{"record_id": "R1", "node": "wave-1", "request_id": "rq9"}]),
+            "choice not a string": ev(result=[{"record_id": "R1", "request_id": "rq1", "answers": {"size": {"choice": ["big"]}}}]),
+            "answers not an object": ev(result=[{"record_id": "R1", "request_id": "rq1", "answers": []}]),
+        }
+        for name, events in cases.items():
+            with self.subTest(name):
+                got = self.rebuild(events)
+                self.assertEqual(got.error.code, "LOG.READ", got)
+                self.assertIn("R1", got.error.message)
+
+    def test_a_log_line_missing_a_field_is_log_read(self):
+        ev = self.events()
+        cases = {
+            "result without answers": {"result": [{"record_id": "R1", "request_id": "rq1"}]},
+            "result without request_id": {"result": [{"record_id": "R1", "answers": {"size": choice("big")}}]},
+            "wave without request_id": {"wave": [{"record_id": "R1", "node": "wave-1"}]},
+            "wave without node": {"wave": [{"record_id": "R1", "request_id": "rq1"}]},
+            "verdict event without verdict": {"verdict": [{"record_id": "R1"}]},
+            "statement without request_id": {"statement": [{"record_id": "R1", "statement": {"text": "x"}}]},
+            "per-statement wave without request_ids": {"wave": [{"record_id": "R1", "node": "wave-2", "per": "statement"}]},
+            "per-statement wave with an unlogged statement": {"wave": [{"record_id": "R1", "node": "wave-2", "per": "statement", "request_ids": ["s1"]}]},
+        }
+        for name, change in cases.items():
+            with self.subTest(name):
+                got = self.rebuild({**ev, **change})
+                self.assertEqual(got.error.code, "LOG.READ", got)
+
+    def test_a_json_tree_with_a_different_node_is_log_read(self):
+        other = dict(ADR_JSON, nodes={"zzz": ADR_JSON["nodes"]["wave-1"]})
+        events = self.events(result=[{"record_id": "R1", "request_id": "rq1", "tree_sha256": "-", "answers": {"context": choice("missing")}}])
+        self.assertEqual(self.rebuild(events, other).error.code, "LOG.READ")
+
+    def test_a_tree_that_does_not_validate_is_its_own_error_not_a_crash(self):
+        store = ox.Store()
+        store.load(input=BRANCH_TTL + "<urn:a> jj:x 1 .\n", format=ox.RdfFormat.TURTLE)
+        got = self.rebuild(self.events(), jev_graph.TreeGraph(store, "memory"))
+        self.assertEqual(got.error.code, "LOG.READ")
+        self.assertIn("AllSubjectsShaped", got.error.message)
+
+
 class Ports(unittest.TestCase):
     def test_transports_satisfy_the_port(self):
         self.assertIsInstance(jev_ports.FixtureTransport({}), jev_ports.Transport)
@@ -241,6 +435,7 @@ class Ports(unittest.TestCase):
             del first
             again = jev_ports.OxigraphGraphStore(str(Path(td) / "g"))
             self.assertEqual(len(again.store), 1)
+            del again  # close the RocksDB store before the directory is removed, or its files may still be written
 
 
 if __name__ == "__main__":

@@ -48,6 +48,30 @@
   violation's focus node, path and shape), `tree_to_quality_json`,
   `compile_wave` and `tree_digest` (SHA-256 of the RDFC-1.0 canonical N-Quads).
   It needs `pyoxigraph>=0.5,<0.6` and `pyshacl>=0.30,<1`.
+- The tree graph layer refuses every bad input with a typed error (qa16). The
+  shapes are closed (`sh:closed` on every `jj:` node shape, `rdf:type` the only
+  ignored property; tree, wave, leaf, question, option and rule nodes must be IRIs)
+  and a rule says every subject is one of the shaped classes, so a blank node can
+  only be a condition: a 20000-deep blank-node chain riding beside a valid tree
+  segfaulted `tree_digest`, and is now `QUALITY.TREE`. A tree file over
+  `MAX_TREE_BYTES` (128 KiB) is `QUALITY.TREE` before it is parsed (a 900 KiB wave
+  took 155 s to check). `tree_digest` returns a `Result` and validates first;
+  `tree_to_quality_json` and `compile_wave` validate first and raise `TreeInvalid`.
+- `jj:kind`, `jj:per` and `jj:modal` must be plain strings, so mixed `jj:modal`
+  values are refused by the shapes instead of crashing `sorted()`.
+- Run triples use the tree graph's own IRIs for the tree, nodes, questions,
+  options and rules (`jev_graph.iri_index`), not names minted from the JSON, so
+  `TRACE_QUERY` finds rows for any valid tree, and two labels with one slug
+  ("A/B", "a b") stay two options. A JSON dict tree still mints the shipped names.
+- `OxigraphGraphStore.compile_wave` returns a `Result` (`VALIDATION.INPUT` for an
+  unknown wave); `query` answers SELECT only and refuses ASK, CONSTRUCT, DESCRIBE,
+  updates and a non-string as `VALIDATION.INPUT`; `record_run` refuses non-quads.
+- `rebuild_from_log` returns `LOG.READ` when the log does not match the tree (an
+  unknown node, question or option) or a log line lacks a field, instead of a `KeyError`.
+- SHACL violation text and order are the same on every run: a blank node is shown
+  by where it hangs in the graph, never by its label. What rdflib logs or warns
+  about an ill-typed literal is kept in the error (`data["log"]`) and no longer
+  printed to stderr. `load_tree(None)` and other non-path arguments are `INPUT.MISSING`.
 - No input crashes `jev_judge.py`. Every JSON input (tree, question set, index,
   answers file, request stream, Jev's response) is refused as `INPUT.MALFORMED`
   (or `JEV.RESPONSE_INVALID`) when it holds NaN or Infinity, an integer over

@@ -23,8 +23,9 @@ identical to the original:
   (``urn:raptor:repo:...``), so a record is ``urn:raptor:repo:<name>#REQ-T-0001``: the repository names the Raptor
   store and the fragment the record, as Raptor's own references do. A run whose log lacks the repository uses
   ``urn:raptor:repo:unknown``; ``run["repository"]`` (or a ``repository`` field the log carries) supplies it.
-* tree, node, question, option, rule come from ``JsonIris`` (the question IRI ``urn:judge-jev:question:<kind>.<id>``);
-  it is the one place those names are minted and must agree with the tree graph's IRIs.
+* tree, node, question, option, rule: for a TreeGraph, the tree file's own IRIs (``jev_graph.iri_index``; no naming
+  scheme is assumed). For a quality JSON dict, which has no IRIs, ``JsonIris`` mints the names the shipped trees use
+  (the question IRI ``urn:judge-jev:question:<kind>.<id>``).
 
 Standard library at import; ``pyoxigraph`` is imported where triples are built and ``sc_observability`` where the log is read.
 """
@@ -114,7 +115,27 @@ def _digest(tree: Any, run: dict) -> str:
     if isinstance(tree, dict):
         return run["tree_sha256"]
     import jev_graph
-    return jev_graph.tree_digest(tree)
+    digest = jev_graph.tree_digest(tree)
+    if isinstance(digest, Err):
+        raise jev_graph.TreeInvalid(digest.error)
+    return digest.value
+
+
+class _JsonNamer(JsonIris):
+    """``JsonIris`` with the node-qualified signatures of ``jev_graph.GraphIris``: the JSON names ignore the node."""
+
+    def question(self, node_id: str, question_id: str) -> str:  # type: ignore[override]
+        return super().question(question_id)
+
+    def option(self, node_id: str, question_id: str, label: str) -> str:  # type: ignore[override]
+        return super().option(question_id, label)
+
+
+def _iris(tree: Any, quality: dict):
+    if isinstance(tree, dict):
+        return _JsonNamer(quality)
+    import jev_graph
+    return jev_graph.iri_index(tree)
 
 
 def record_iri(run: dict) -> str:
@@ -168,7 +189,7 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
     """
     import pyoxigraph as ox
     quality = _quality_json(tree)
-    iris = JsonIris(quality)
+    iris = _iris(tree, quality)
     by_request = {line["request_id"]: line for line in result_lines}
     run_node, rec = ox.NamedNode(run_iri(run)), ox.NamedNode(record_iri(run))
     quads: set = set()
@@ -208,14 +229,14 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
                 answer = ox.NamedNode(f"urn:judge-jev:answer:{run['name']}:{request_id}:{qid}")
                 add(answer, RDF_TYPE, ox.NamedNode(JJ + "Answer"))
                 add(answer, "ofWaveRun", wave_run)
-                add(answer, "toQuestion", ox.NamedNode(iris.question(qid)))
-                add(answer, "chose", ox.NamedNode(iris.option(qid, choice)))
+                add(answer, "toQuestion", ox.NamedNode(iris.question(node_id, qid)))
+                add(answer, "chose", ox.NamedNode(iris.option(node_id, qid, choice)))
                 add(answer, "confidence", literal(confidence))
                 for label, p in sorted((ans.get("probabilities") or {}).items()):
                     prob = ox.NamedNode(f"{answer.value}:{quote(label, safe='')}")
                     add(answer, "probability", prob)
                     add(prob, RDF_TYPE, ox.NamedNode(JJ + "OptionProbability"))
-                    add(prob, "option", ox.NamedNode(iris.option(qid, label)))
+                    add(prob, "option", ox.NamedNode(iris.option(node_id, qid, label)))
                     add(prob, "p", literal(p))
     return sorted(quads, key=str)
 
@@ -278,22 +299,29 @@ def rebuild_from_log(log_root, run_name: str, tree: Any, repository: Optional[st
         rec["lines"].append(fields)
         rec["run"] = {"name": run_name, "tree_sha256": fields.get("tree_sha256"), "record_id": fields.get("record_id"),
                       "repository": fields.get("repository") or repository}
-    for fields in events.value["statement"]:
-        record(fields)["statements"][fields["request_id"]] = fields["statement"]
-    for fields in events.value["wave"]:
-        record(fields)["waves"].append(fields)
-    for fields in events.value["verdict"]:
-        record(fields)["verdict"] = fields["verdict"]
+    try:
+        for fields in events.value["statement"]:
+            record(fields)["statements"][fields["request_id"]] = fields["statement"]
+        for fields in events.value["wave"]:
+            record(fields)["waves"].append(fields)
+        for fields in events.value["verdict"]:
+            record(fields)["verdict"] = fields["verdict"]
+    except (KeyError, TypeError) as exc:
+        return _log_error(f"run {run_name}: a log event lacks a field: {type(exc).__name__}: {exc}")
     quads: list = []
     for record_id, rec in records.items():
         if record_id is None or rec["verdict"] is None:
             continue  # a record whose walk did not finish has no verdict to project
-        waves = []
-        for w in rec["waves"]:
-            if w.get("per") == "statement":
-                waves.append({"node": w["node"], "per": "statement", "request_ids": w["request_ids"],
-                              "reason": [{"statement": rec["statements"][i]} for i in w["request_ids"]]})
-            else:
-                waves.append({"node": w["node"], "request_id": w["request_id"]})
-        quads += run_triples(tree, rec["run"], rec["lines"], {"verdict": rec["verdict"], "waves": waves})
+        try:
+            waves = []
+            for w in rec["waves"]:
+                if w.get("per") == "statement":
+                    waves.append({"node": w["node"], "per": "statement", "request_ids": w["request_ids"],
+                                  "reason": [{"statement": rec["statements"][i]} for i in w["request_ids"]]})
+                else:
+                    waves.append({"node": w["node"], "request_id": w["request_id"]})
+            quads += run_triples(tree, rec["run"], rec["lines"], {"verdict": rec["verdict"], "waves": waves})
+        except Exception as exc:  # a log line missing a field, or the log and the tree disagree: a typed error, never a crash
+            return _log_error(f"run {run_name} record {record_id}: the log does not match the tree or lacks a field: "
+                              f"{type(exc).__name__}: {exc}")
     return Ok(sorted(set(quads), key=str))

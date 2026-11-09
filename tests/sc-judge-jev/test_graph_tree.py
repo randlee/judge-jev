@@ -316,7 +316,7 @@ class MalformedTests(GraphCase):
 
 class DigestTests(GraphCase):
     def digest(self, text: str) -> str:
-        return jev_graph.tree_digest(self.load(text))
+        return jev_graph.tree_digest(self.load(text)).value
 
     def test_digest_is_a_sha256_hex(self):
         d = self.digest(ADR_TTL)
