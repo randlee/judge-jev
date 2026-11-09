@@ -104,6 +104,7 @@ from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, utf8_stdio  # noqa: E402
+from jev_errors import BEARER_RE, JudgeError, redact_sensitive, _redact_text  # noqa: E402,F401  (standard library only)
 import jev_definitions  # noqa: E402  (standard library only)
 import jev_runs  # noqa: E402  (standard library at import)
 
@@ -143,7 +144,6 @@ ABORT_CODES = ("AUTH.CREDENTIALS", "POLICY.REMOTE_JUDGE_DISABLED")
 TRANSIENT_CODES = ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID")
 
 _sleep = time.sleep  # replaced in tests
-BEARER_RE = re.compile(r"(?i)(bearer\s+)[^\s\"']+")
 BATCH_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")  # matched whole (fullmatch): a trailing newline is not part of an id
 MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
@@ -156,84 +156,9 @@ WORST_PROBABILITY = 1.2345678901234567e-300  # the longest repr a probability in
 # --------------------------------------------------------------------------- #
 # plumbing
 # --------------------------------------------------------------------------- #
-class JudgeError:
-    """An expected failure, carried in Err. Never raised: main() turns it into the error envelope and exit 2."""
-
-    def __init__(self, code: str, message: str, recoverable: bool = False, action: str = "",
-                 status=None, retry_after=None):
-        self.code = code
-        self.message = message
-        self.recoverable = recoverable
-        self.action = action
-        self.status = status            # HTTP status when the error came from Jev
-        self.retry_after = retry_after  # parsed Retry-After header, seconds, or None
-        self.meta = {}                  # attempt / shortening bookkeeping, filled by judge_with_policy
-        self.data = None                # optional facts that explain the error (PLAN.TOO_LARGE carries the bead's shape)
-
-    def __str__(self) -> str:
-        return self.message
-
-    def __repr__(self) -> str:
-        return f"JudgeError({self.code!r}, {self.message!r})"
-
-    def to_json(self) -> dict:
-        return redact_sensitive({
-            "success": False,
-            "data": self.data,
-            "error": {
-                "code": self.code,
-                "message": str(self),
-                "recoverable": self.recoverable,
-                "suggested_action": self.action,
-            },
-        })
-
-
 def fail(code: str, message: str, **fields) -> Err[JudgeError]:
     """An expected failure as a value: ``return fail(...)`` where the old code raised."""
     return Err(JudgeError(code, message, **fields))
-
-
-def _redact_text(value):
-    if not isinstance(value, str):
-        return value
-    text = value
-    api_key = os.environ.get("TYPESAFE_API_KEY", "")
-    if api_key:
-        text = text.replace(api_key, "<redacted>")
-    return BEARER_RE.sub(r"\1<redacted>", text)
-
-
-def redact_sensitive(value):
-    """Remove the live TypeSafe credential and bearer tokens from every emitted value. Iterative (an explicit stack, no
-    recursion): a container nested a thousand deep is walked like any other and never raises RecursionError."""
-    if not isinstance(value, (dict, list, tuple)):
-        return _redact_text(value)
-    # a frame is [source container, iterator over its items, output container, key under which it joins its parent]
-    stack = [[value, iter(value.items() if isinstance(value, dict) else value), {} if isinstance(value, dict) else [], None]]
-    while True:
-        frame = stack[-1]
-        source, items, out, key = frame
-        try:
-            item = next(items)
-        except StopIteration:
-            stack.pop()
-            done = tuple(out) if isinstance(source, tuple) else out
-            if not stack:
-                return done
-            parent = stack[-1]
-            if isinstance(parent[2], dict):
-                parent[2][key] = done
-            else:
-                parent[2].append(done)
-            continue
-        child_key, child = item if isinstance(source, dict) else (None, item)
-        if isinstance(child, (dict, list, tuple)):
-            stack.append([child, iter(child.items() if isinstance(child, dict) else child), {} if isinstance(child, dict) else [], child_key])
-        elif isinstance(source, dict):
-            out[child_key] = _redact_text(child)
-        else:
-            out.append(_redact_text(child))
 
 
 EMIT_MAX_DEPTH = 100  # containers nested deeper than this are replaced by a marker in emitted output (json.dumps(indent=) recurses)
@@ -1866,17 +1791,12 @@ def parse_quality_tree_ttl(raw: str, path: str, override: bool = False) -> Resul
     then parsed as a JSON tree. The digest is that of the file's bytes."""
     import jev_graph
 
-    def own(error) -> Err[JudgeError]:  # jev_graph's JudgeError has the same fields; main() needs this module's class
-        wrapped = JudgeError(error.code, error.message, error.recoverable, error.action)
-        wrapped.data = error.data
-        return Err(wrapped)
-
     loaded = jev_graph.load_tree(path)
     if isinstance(loaded, Err):
-        return own(loaded.error)
+        return loaded
     checked = jev_graph.validate_tree(loaded.value)
     if isinstance(checked, Err):
-        return own(checked.error)
+        return checked
     parsed = parse_quality_tree(json.dumps(jev_graph.tree_to_quality_json(loaded.value)), path, override)
     if isinstance(parsed, Err):
         return parsed
@@ -1999,10 +1919,10 @@ def load_definitions_file(path) -> Result[tuple, JudgeError]:
     graph = module.value
     loaded = graph.load_definitions(path)
     if isinstance(loaded, Err):
-        return Err(_from_tool_error(loaded.error))
+        return loaded
     checked = graph.validate_definitions(loaded.value)
     if isinstance(checked, Err):
-        return Err(_from_tool_error(checked.error))
+        return checked
     rows = graph.definition_rows(loaded.value)
     for row in rows:
         body = validate_model(DefinitionBody, {"term": row["term"], "text": row["text"], "source": row["source"],
@@ -2102,9 +2022,12 @@ def _with_refs(failed: Err, refs: dict) -> Err:
     return failed
 
 
-def quality_fields(tree: QualityTree, record_id: str, kind: str, definitions=()) -> dict:
-    """The fields every log event of a record's walk carries; with definitions, each one's IRI, term and digest (REQ-JEV-0212)."""
+def quality_fields(tree: QualityTree, record_id: str, kind: str, definitions=(), record_iri: str = "") -> dict:
+    """The fields every log event of a record's walk carries; with definitions, each one's IRI, term and digest (REQ-JEV-0212);
+    with ``record_iri``, the record's Raptor IRI (``jev_runs.record_iri``), which the rebuilt run triples use."""
     fields = {"tree_id": tree.id, "tree_sha256": tree.sha256, "record_id": record_id, "record_kind": kind}
+    if record_iri:
+        fields["record_iri"] = record_iri
     if definitions:
         fields["definitions"] = jev_definitions.log_entries(list(definitions))
     return fields
@@ -2128,7 +2051,7 @@ def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statem
     nxt = _longest([r.goto for r in node.next]) if node.next is not None else None
     verdict = _longest([r.verdict for r in node.verdict_rules]) if node.verdict_rules is not None else None
     events, _wave = wave_log_events({**fields, "node": node_id}, node_id, node, statements, results, per_choices,
-                                    list(range(len(results))), nxt, verdict)
+                                    list(range(len(results))), nxt, verdict, rank=len(node.next or node.verdict_rules))
     return check_event_sizes(events, where)
 
 
@@ -2157,7 +2080,7 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
         refs["definitions"] = jev_definitions.log_entries(carried)
     if location is not None:
         refs["location"] = location
-    fields = {**quality_fields(tree, record_id, kind, carried), **(extra_fields or {})}
+    fields = {**quality_fields(tree, record_id, kind, carried, index_record_iri(args.index, record_id)), **(extra_fields or {})}
     start_jobs = None
     for node_id, node in tree.nodes.items():  # the start wave first (its jobs are returned), then every later wave
         if isinstance(node, Leaf):
@@ -2237,7 +2160,8 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
     results, failed = [], None
     for tree, record, refs, _job, carried in prepared:
         walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
-                           quality_fields(tree, record["id"], refs["record"]["kind"], carried), carried)
+                           quality_fields(tree, record["id"], refs["record"]["kind"], carried,
+                                         index_record_iri(args.index, record["id"])), carried)
         if isinstance(walked, Err):
             failed = _with_refs(walked, {**refs, "results": results})
             break
@@ -2253,10 +2177,11 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
 
 
 def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, results: list, per_choices: list,
-                    matched: list, nxt, verdict) -> tuple:
+                    matched: list, nxt, verdict, rank=None) -> tuple:
     """The events a wave logs, as (action, fields, correlation_id), and the wave's entry of the command's result.
     A per-statement wave logs one statement event per statement (its request is the request event with the same
     request_id), then a compact wave event: a single event holding every statement exceeds the logger's event size limit."""
+    rank_field = {} if rank is None else {"rule_rank": rank}  # the 1-based rank of the rule that fired (jj:rank in the tree)
     if node.per == "statement":
         reason, events = [], []
         for s, r, c in zip(statements, results, per_choices):
@@ -2266,7 +2191,7 @@ def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, re
         matched_statements = [statements[i]["index"] for i in matched]
         request_ids = [r["request_id"] for r in results]
         events.append(("wave", {**fields, "node": node_id, "per": "statement", "request_ids": request_ids,
-                                "matched_statements": matched_statements, "next": nxt, "verdict": verdict}, None))
+                                "matched_statements": matched_statements, "next": nxt, "verdict": verdict, **rank_field}, None))
         wave = {"node": node_id, "per": "statement", "request_ids": request_ids, "reason": reason,
                 "matched_statements": matched_statements, "next": nxt, "verdict": verdict}
         return events, wave
@@ -2274,7 +2199,7 @@ def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, re
     reason = wave_reason(node, result["answers"])
     events = [("wave", {**fields, "node": node_id, "request_id": result["request_id"], "request": result["request"],
                         "answers": result["answers"], "choices": choices, "reason": reason, "next": nxt,
-                        "verdict": verdict}, result["run_id"])]
+                        "verdict": verdict, **rank_field}, result["run_id"])]
     return events, {"node": node_id, "request_id": result["request_id"], "reason": reason, "next": nxt, "verdict": verdict}
 
 
@@ -2284,7 +2209,7 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
     Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
     request, answers and selected branch or verdict; the verdict is logged with the path."""
     node_id, path, waves = tree.start, [], []
-    verdict = None
+    verdict, decided_rank = None, None
     while verdict is None:
         node = tree.nodes[node_id]
         if isinstance(node, Leaf):
@@ -2317,20 +2242,22 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
             rule, matched = select_rule(node.next, branch_matches, per_choices)
             if rule is None:
                 return _tree_error(tree.path, f"no branch of wave {node_id} matches the answers {per_choices}")
-            nxt = rule.goto
+            nxt, rank = rule.goto, node.next.index(rule) + 1
         else:
             rule, matched = select_rule(node.verdict_rules, verdict_matches, per_choices)
             if rule is None:
                 return _tree_error(tree.path, f"no verdict rule of wave {node_id} matches the answers {per_choices}")
-            verdict = rule.verdict
-        events, wave = wave_log_events(fields, node_id, node, statements, pumped.value, per_choices, matched, nxt, verdict)
+            verdict, rank = rule.verdict, node.verdict_rules.index(rule) + 1
+            decided_rank = rank
+        events, wave = wave_log_events(fields, node_id, node, statements, pumped.value, per_choices, matched, nxt, verdict, rank)
         for action, event_fields, correlation_id in events:
             logged = log.event(action, event_fields, correlation_id=correlation_id)
             if isinstance(logged, Err):
                 return logged
         waves.append(wave)
         node_id = nxt
-    logged = log.event("verdict", {**fields, "verdict": verdict, "path": path})
+    logged = log.event("verdict", {**fields, "verdict": verdict, "path": path,
+                                   **({} if decided_rank is None else {"rule_rank": decided_rank})})
     if isinstance(logged, Err):
         return logged
     flushed = log.flush()
@@ -2536,7 +2463,7 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
         if isinstance(log, Err):
             return _with_refs(log, head)
         walked = walk_tree(tree, record, settings, api_key, arm_fixture(fixture, arm), log.value,
-                           {**quality_fields(tree, rid, kind, arm_carried), "arm": arm}, arm_carried, location)
+                           {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
         closed = log.value.close()
         if isinstance(walked, Err):
             return _with_refs(walked, {**head, "arm": arm})

@@ -51,6 +51,7 @@ from typing import Any, Optional
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import pyoxigraph as ox  # noqa: E402
 from result import Err, Ok, Result  # noqa: E402
+from jev_errors import JudgeError  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 SHAPES_PATH = HERE.parent / "assets" / "shapes" / "quality-tree.shacl.ttl"
@@ -61,23 +62,6 @@ SHAPES_DEFINITIONS_PATH = HERE.parent / "assets" / "shapes" / "definitions.shacl
 MAX_LISTED_VIOLATIONS = 25
 MAX_TREE_BYTES = 128 * 1024  # a tree file over 128 KiB is refused before it is parsed: shipped trees are 4 KiB, and shape checking grows with the square of a wave's questions (a 900 KiB wave took 155 s)
 MAX_DEFINITIONS_BYTES = MAX_TREE_BYTES  # a definitions file takes the tree limit and is refused before it is parsed
-
-
-class JudgeError:
-    """An expected failure, carried in Err; the same shape as ``jev_judge.JudgeError`` (code, message, action, data)."""
-
-    def __init__(self, code: str, message: str, recoverable: bool = False, action: str = ""):
-        self.code = code
-        self.message = message
-        self.recoverable = recoverable
-        self.action = action
-        self.status = None
-        self.retry_after = None
-        self.meta = {}
-        self.data = None
-
-    def __str__(self) -> str:
-        return self.message
 
 
 def _fail(code: str, message: str, action: str = "", data: Optional[dict] = None) -> Err[JudgeError]:

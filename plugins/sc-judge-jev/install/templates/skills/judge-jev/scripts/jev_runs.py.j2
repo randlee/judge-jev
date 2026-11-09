@@ -44,6 +44,7 @@ from result import Err, Ok, Result  # noqa: E402
 JJ = "urn:judge-jev:ontology#"
 RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 XSD_DOUBLE = "http://www.w3.org/2001/XMLSchema#double"
+XSD_INTEGER = "http://www.w3.org/2001/XMLSchema#integer"
 UNKNOWN_REPOSITORY = "urn:raptor:repo:unknown"
 LOG_SERVICE = "judge-jev"
 LOG_LIMIT = 1000  # the most events one sc-observability query returns
@@ -226,7 +227,9 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
             if statement is not None:
                 add(wave_run, "statement", ox.Literal(statement["text"]))
             if rank is not None and i in hit:
-                add(wave_run, "fired", ox.NamedNode(iris.rule(node_id, rank)))
+                rule_node = ox.NamedNode(iris.rule(node_id, rank))
+                add(wave_run, "fired", rule_node)
+                add(rule_node, "rank", ox.Literal(str(rank), datatype=ox.NamedNode(XSD_INTEGER)))  # the tree's own jj:rank of the rule
             for qid, ans in line["answers"].items():
                 choice, confidence = _choice(ans)
                 answer = ox.NamedNode(f"urn:judge-jev:answer:{run['name']}:{request_id}:{qid}")

@@ -4,6 +4,12 @@
 
 ## 0.3.0 — 2026-11-08
 
+- `quality` logs the rank of the rule that fired (`rule_rank` on the wave and
+  verdict events) and the record's Raptor IRI (`record_iri` on every event);
+  the run triples carry the fired rule's `jj:rank` beside `jj:fired`.
+- One `JudgeError`, defined in `jev_errors.py` and imported by `jev_judge` and
+  `jev_graph`: graph errors reach the CLI envelope as built, with no rewrapping;
+  codes and the envelope are unchanged.
 - The shipped quality trees (`quality-adr`, `quality-req`, `quality-nfr`, JSON
   and `quality-adr.ttl`) carry `approved: true`: Rand Lee approved the wave-1
   wording on 2026-11-08.
