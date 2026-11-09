@@ -137,6 +137,8 @@ BATCH_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")  # matched whole 
 MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
 ATTEMPT_MESSAGE_LIMIT = 500         # characters of an error message recorded in a result line: bounds its log events
+FIXTURE_CODE_LIMIT = 64             # characters of an answers-file {"__error__": code}: the code is logged unclipped, so it is bounded at load
+WORST_CHAR = "\U0001F600"           # the character that measures largest in the logger's ASCII-escaped JSON (12 bytes: a surrogate pair)
 WORST_PROBABILITY = 1.2345678901234567e-300  # the longest repr a probability in [0, 1] can have: sizes the largest possible answer
 
 
@@ -181,14 +183,7 @@ def fail(code: str, message: str, **fields) -> Err[JudgeError]:
     return Err(JudgeError(code, message, **fields))
 
 
-def redact_sensitive(value):
-    """Remove the live TypeSafe credential and bearer tokens from every emitted value."""
-    if isinstance(value, dict):
-        return {key: redact_sensitive(item) for key, item in value.items()}
-    if isinstance(value, list):
-        return [redact_sensitive(item) for item in value]
-    if isinstance(value, tuple):
-        return tuple(redact_sensitive(item) for item in value)
+def _redact_text(value):
     if not isinstance(value, str):
         return value
     text = value
@@ -196,6 +191,66 @@ def redact_sensitive(value):
     if api_key:
         text = text.replace(api_key, "<redacted>")
     return BEARER_RE.sub(r"\1<redacted>", text)
+
+
+def redact_sensitive(value):
+    """Remove the live TypeSafe credential and bearer tokens from every emitted value. Iterative (an explicit stack, no
+    recursion): a container nested a thousand deep is walked like any other and never raises RecursionError."""
+    if not isinstance(value, (dict, list, tuple)):
+        return _redact_text(value)
+    # a frame is [source container, iterator over its items, output container, key under which it joins its parent]
+    stack = [[value, iter(value.items() if isinstance(value, dict) else value), {} if isinstance(value, dict) else [], None]]
+    while True:
+        frame = stack[-1]
+        source, items, out, key = frame
+        try:
+            item = next(items)
+        except StopIteration:
+            stack.pop()
+            done = tuple(out) if isinstance(source, tuple) else out
+            if not stack:
+                return done
+            parent = stack[-1]
+            if isinstance(parent[2], dict):
+                parent[2][key] = done
+            else:
+                parent[2].append(done)
+            continue
+        child_key, child = item if isinstance(source, dict) else (None, item)
+        if isinstance(child, (dict, list, tuple)):
+            stack.append([child, iter(child.items() if isinstance(child, dict) else child), {} if isinstance(child, dict) else [], child_key])
+        elif isinstance(source, dict):
+            out[child_key] = _redact_text(child)
+        else:
+            out.append(_redact_text(child))
+
+
+EMIT_MAX_DEPTH = 100  # containers nested deeper than this are replaced by a marker in emitted output (json.dumps(indent=) recurses)
+EMIT_TRUNCATED = "<truncated: nested deeper than %d levels>" % EMIT_MAX_DEPTH
+
+
+def bound_depth(value, limit: int = EMIT_MAX_DEPTH):
+    """A copy of ``value`` whose containers nest at most ``limit`` deep; a deeper container becomes EMIT_TRUNCATED. Iterative."""
+    if not isinstance(value, (dict, list, tuple)):
+        return value
+    root = {} if isinstance(value, dict) else []
+    stack = [(value, root, 1)]
+    while stack:
+        source, out, depth = stack.pop()
+        for key, child in (source.items() if isinstance(source, dict) else enumerate(source)):
+            if isinstance(child, (dict, list, tuple)):
+                if depth >= limit:
+                    kid = EMIT_TRUNCATED
+                else:
+                    kid = {} if isinstance(child, dict) else []
+                    stack.append((child, kid, depth + 1))
+            else:
+                kid = child
+            if isinstance(out, dict):
+                out[key] = kid
+            else:
+                out.append(kid)
+    return root
 
 
 def _reject_constant(name: str):
@@ -221,7 +276,7 @@ def utf8_text(text: str) -> str:
 
 
 def emit(obj, fmt: str = "json") -> None:
-    obj = redact_sensitive(obj)
+    obj = bound_depth(redact_sensitive(obj))  # always printable: nesting beyond EMIT_MAX_DEPTH is marked, never a traceback
     if fmt == "json":
         text = json.dumps(obj, indent=2, ensure_ascii=False)
         try:
@@ -580,12 +635,14 @@ class NoulAnswer(Closed):
 
 
 class FixtureError(Closed):
-    code: str = Field(alias="__error__")  # BATCH_FIXTURE_ERROR: the attempt fails with this code
+    code: str = Field(alias="__error__", max_length=FIXTURE_CODE_LIMIT)  # BATCH_FIXTURE_ERROR: the attempt fails with this code
 
 
 def _fixture_problems(entries: dict) -> list:
-    """Each problem of an answers file as ``path: rule``: an entry is Jev's answers (question id -> choice or noul answer),
-    {"__error__": code}, or a non-empty list of those (successive attempts)."""
+    """Each envelope problem of an answers file as ``path: rule``. The envelope is what is decidable before any request: an
+    entry is an object, {"__error__": code} (a string code within FIXTURE_CODE_LIMIT, nothing else), or a non-empty list of
+    those (successive attempts). What an answer object holds (its questions, choices, probabilities) is Jev's response and is
+    checked after the send (JEV.RESPONSE_INVALID), so a test can feed an invalid answer on purpose."""
     problems = []
     for key, entry in entries.items():
         attempts = entry if isinstance(entry, list) else [entry]
@@ -599,17 +656,13 @@ def _fixture_problems(entries: dict) -> list:
                     problems.append(f"{where}: {parsed.error.text}")
             elif not isinstance(attempt, dict):
                 problems.append(f"{where}: Input should be an object of answers, an object with {BATCH_FIXTURE_ERROR}, or a list of them")
-            else:
-                for qid, ans in attempt.items():
-                    model = NoulAnswer if isinstance(ans, dict) and is_noul(ans) else ChoiceAnswer
-                    parsed = validate_model(model, ans)
-                    if isinstance(parsed, Err):
-                        problems.append(f"{where}.{qid}: {parsed.error.text}")
     return problems
 
 
 class AnswersFile(RootModel[dict[str, Any]]):
-    """An answers file: Jev's answers keyed by request (a list gives successive attempts; {"__error__": code} fails one)."""
+    """The envelope of an answers file, the one model `validate --answers` and every command that reads --answers-file apply
+    before the first request: an object of string keys, each an object or a non-empty list of objects, an object with
+    {"__error__": code} holding only a string code within FIXTURE_CODE_LIMIT."""
 
     model_config = ConfigDict(strict=True)
 
@@ -1027,7 +1080,21 @@ def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, JudgeError]:
     fixture = loaded.value
     if not isinstance(fixture, dict):
         return fail("INPUT.MALFORMED", f"answers fixture must be an object keyed by {keyed_by} (or '*')")
+    enveloped = answers_envelope_error(fixture, f"answers fixture {path}")
+    if enveloped is not None:
+        return Err(enveloped)
     return Ok(fixture)
+
+
+def answers_envelope_error(data, where: str) -> Optional[JudgeError]:
+    """None when ``data`` is a valid answers-file envelope (AnswersFile), else INPUT.MALFORMED naming the field path; the one
+    check behind `validate --answers` and --answers-file."""
+    parsed = validate_model(AnswersFile, data)
+    if isinstance(parsed, Ok):
+        return None
+    return JudgeError("INPUT.MALFORMED", f"{where}: {parsed.error.text}",
+                      action="An answers file maps a request key to Jev's answers (an object), a non-empty list of them, or "
+                             "an __error__ object with a string code of at most " + str(FIXTURE_CODE_LIMIT) + " characters and nothing else.")
 
 
 def check_threshold(value: float, name: str = "--threshold") -> Result[float, JudgeError]:
@@ -1498,9 +1565,11 @@ def worst_answers(questions: dict, pick=None) -> dict:
 
 def worst_line(job: BatchJob, settings: BatchSettings, pick=None) -> dict:
     """The largest result line ``job`` can produce: the largest answers, a first attempt that failed with the longest
-    message and a second that answered."""
+    message and a second that answered (only a transient failure is retried, and its code is short). Messages are clipped
+    by characters but the logger measures ASCII-escaped JSON, so the worst message is ATTEMPT_MESSAGE_LIMIT characters that
+    each escape to 12 bytes (WORST_CHAR), not "x"s."""
     raw = {"model": "m" * 64, "answers": worst_answers(job.questions, pick), "usage": {"input_tokens": 2 ** 63 - 1, "output_tokens": 2 ** 63 - 1}}
-    failed = {"attempt": 1, "ok": False, "error": {"code": "JEV.RESPONSE_INVALID", "message": "x" * ATTEMPT_MESSAGE_LIMIT, "recoverable": True}}
+    failed = {"attempt": 1, "ok": False, "error": {"code": "JEV.RESPONSE_INVALID", "message": WORST_CHAR * ATTEMPT_MESSAGE_LIMIT, "recoverable": True}}
     return _line(job, settings, raw, [failed, {"attempt": 2, "ok": True}], None, False)
 
 
@@ -2047,11 +2116,8 @@ def validate_input(kind: str, raw: str, path: str, args) -> Result[None, JudgeEr
     elif kind == "index":
         parsed = parse_index(data.value, path)
     else:
-        parsed = validate_model(AnswersFile, data.value)
-        if isinstance(parsed, Err):
-            return fail("INPUT.MALFORMED", f"answers file {path}: {parsed.error.text}",
-                        action="An answers file maps a request key to Jev's answers, a list of them, or {\"__error__\": code}; "
-                               "each answer is a choice or noul answer.")
+        enveloped = answers_envelope_error(data.value, f"answers file {path}")
+        return Err(enveloped) if enveloped is not None else Ok(None)
     return Ok(None) if isinstance(parsed, Ok) else parsed
 
 

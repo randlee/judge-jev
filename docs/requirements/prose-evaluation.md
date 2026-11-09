@@ -365,6 +365,13 @@ log.
   applies to that input kind before its first Jev request (ADR-JEV-0005).
 - Every refusal from `judge-jev validate` MUST name the field path and the
   rule the field breaks.
+- `judge-jev validate --answers` MUST apply the answers-file envelope that
+  `--answers-file` applies before the first request: an object of string keys,
+  each an object or a non-empty list of objects, an object with `__error__`
+  holding only a string code of at most 64 characters. The answers file
+  stands in for Jev's response, so what an answer holds (its questions,
+  choices and probabilities) is not part of the envelope; it is checked after
+  the send as `JEV.RESPONSE_INVALID`.
 
 **MUST NOT statements:**
 - `judge-jev validate` MUST NOT call Jev.

@@ -20,7 +20,6 @@ WRONG = [None, 0, True, "", "x", [], [1], ["x", 1], {}, {"x": 1}, [{"x": 1}], "w
 DELETED = object()
 EXTRA_KEYS = ["next", "verdict_rules", "questions", "per", "goto", "x"]
 TREE_SWEEP_CODES = {None, "QUALITY.TREE", "INPUT.MALFORMED", "RECORD.STATEMENTS"}  # accepted, refused as JSON or as a tree, or by its record
-TREE_SWEEP_CODES = {None, "QUALITY.TREE", "INPUT.MALFORMED", "RECORD.STATEMENTS"}  # accepted, refused as JSON or as a tree, or by its record
 RAW = {"big int": "9" * 5000, "deep": "[" * 50000 + "]" * 50000, "Infinity": "Infinity"}
 
 

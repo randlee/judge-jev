@@ -65,7 +65,8 @@ class ValidateKinds(unittest.TestCase):
         plan["roles"]["conflict"] = "nope"
         self.refused("--questions", write(self.d, "q.json", plan), "QUESTIONS.ROLES")
         self.refused("--index", write(self.d, "i.json", {"requirements": []}), "INPUT.MALFORMED")
-        self.refused("--answers", write(self.d, "a.json", {"k": {"q": {"type": "choice", "choice": "yes"}}}), "INPUT.MALFORMED")
+        # the answers file is Jev's response stand-in: only its envelope is refused here (an answer's body is checked after the send)
+        self.refused("--answers", write(self.d, "a.json", {"k": ["x"]}), "INPUT.MALFORMED")
         self.refused("--requests", write(self.d, "r.jsonl", jsonl([{"item": {"id": "x"}}])), "VALIDATION.INPUT")
         self.refused("--requests", write(self.d, "bad.jsonl", "{nope\n"), "INPUT.MALFORMED")
         self.refused("--tree", str(self.d / "missing.json"), "INPUT.MISSING")
@@ -162,10 +163,9 @@ class FieldPaths(unittest.TestCase):
         del index["decisions"][0]["id"]
         self.assertIn("decisions.0: needs a string id", self.message("--index", index, "INPUT.MALFORMED"))
         answers = {"ADR/wave-1": {"context": {"type": "choice", "choice": "a", "confidence": 2, "probabilities": {"a": 1}}}}
-        self.assertIn("ADR/wave-1.context: confidence: Input should be less than or equal to 1",
-                      self.message("--answers", answers, "INPUT.MALFORMED"))
-        listed = {"k": [{"__error__": "X"}, {"q": {"noul": 7}}]}
-        self.assertIn("k.1.q: noul: Input should be less than or equal to 1", self.message("--answers", listed, "INPUT.MALFORMED"))
+        self.assertEqual(validate("--answers", write(self.d, "body.json", answers))[0], 0)  # a bad answer body is JEV.RESPONSE_INVALID after the send
+        listed = {"k": [{"__error__": "X"}, {"__error__": 7}]}
+        self.assertIn("k.1: __error__: Input should be a valid string", self.message("--answers", listed, "INPUT.MALFORMED"))
         line = request_line()
         line["item"]["id"] = "bad id"
         code, out = validate("--requests", write(self.d, "r.jsonl", jsonl([line])))

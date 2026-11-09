@@ -107,6 +107,30 @@
   rebuilds the same triples from the sc-observability log alone (`rebuild_from_log`), and
   carries `TRACE_QUERY`, which walks a verdict to its fired rule, each answer, its question
   and the chosen option's label and criterion.
+- `redact_sensitive` no longer recurses: a container nested 600 deep raised
+  `RecursionError` (`SCRIPT.INTERNAL`) from `validate --requests` and
+  `batch --dry-run` (through the log-event size check), and `emit` printed a
+  traceback and no JSON for a `RECORD.DIAGNOSTICS` issue with a deeply nested
+  field. It is now iterative, and `emit` marks nesting deeper than 100 levels
+  with `<truncated: nested deeper than 100 levels>` so it always prints JSON.
+  The oversized request is `VALIDATION.INPUT` (the logger's depth limit of 32).
+- The log-size check models the worst attempt message at its escaped size: 500
+  astral characters (12 bytes each as ASCII-escaped JSON), not 500 `x`. A
+  batch that passed the check and then failed with `LOG.WRITE` after a Jev
+  request (an answers list of an invalid astral choice, then a valid answer)
+  is now `JEV.CONTEXT_EXCEEDED` with nothing sent. Per-statement waves carry
+  the same message and are covered.
+- An answers-file `{"__error__": code}` code is at most 64 characters; the code
+  was logged unclipped, so `{"*": {"__error__": "J" * 70000}}` was refused only
+  after the send.
+- One answers-file envelope, checked before the first request by `quality`,
+  `batch` and `validate --answers`: an object of string keys, each an object or
+  a non-empty list of objects; an `__error__` object holds only a string code
+  within the bound. `{"*": {"__error__": 5}}` and `{"*": ["x"]}` are
+  `INPUT.MALFORMED` at load for every command. An answer's own body stays
+  Jev's response stand-in, checked after the send (`JEV.RESPONSE_INVALID`), so
+  `validate --answers` no longer refuses a bad choice, probability or extra key
+  inside an answer (it did, and `quality` did not agree).
 
 ## 0.2.0 — 2026-11-08
 
