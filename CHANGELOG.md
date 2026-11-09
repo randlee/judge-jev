@@ -51,7 +51,9 @@
 - The tree graph layer refuses every bad input with a typed error (qa16). The
   shapes are closed (`sh:closed` on every `jj:` node shape, `rdf:type` the only
   ignored property; tree, wave, leaf, question, option and rule nodes must be IRIs)
-  and a rule says every subject is one of the shaped classes, so a blank node can
+  and two rules say every subject is one of the shaped classes and every `rdf:type`
+  object is one of them (conditions chained through their type triples validated and
+  took 77 s to digest at 1800 links), so a blank node can
   only be a condition: a 20000-deep blank-node chain riding beside a valid tree
   segfaulted `tree_digest`, and is now `QUALITY.TREE`. A tree file over
   `MAX_TREE_BYTES` (128 KiB) is `QUALITY.TREE` before it is parsed (a 900 KiB wave

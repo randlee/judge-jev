@@ -37,6 +37,7 @@ jjs:TreeShape a sh:NodeShape ;
                   sh:message "a tree has at least one jj:node, each a jj:Wave or jj:Leaf" ] ;
     sh:sparql jjs:TreeStartIsNode ;
     sh:sparql jjs:AllSubjectsShaped ;
+    sh:sparql jjs:TypesAreShapedClasses ;
     sh:sparql jjs:TreeNodeIdsUnique .
 
 jjs:AllSubjectsShaped a sh:SPARQLConstraint ;
@@ -49,6 +50,15 @@ jjs:AllSubjectsShaped a sh:SPARQLConstraint ;
                 ?value a ?class .
                 FILTER (?class IN (jj:Tree, jj:Wave, jj:Leaf, jj:Question, jj:Option, jj:BranchRule, jj:VerdictRule, jj:Condition))
             }
+        }""" .
+
+jjs:TypesAreShapedClasses a sh:SPARQLConstraint ;
+    sh:prefixes jjs:Prefixes ;
+    sh:message "{?value} is an rdf:type object but not jj:Tree, Wave, Leaf, Question, Option, BranchRule, VerdictRule or Condition; a tree file types its nodes with those classes only" ;
+    sh:select """
+        SELECT DISTINCT $this ?value WHERE {
+            ?s a ?value .
+            FILTER (?value NOT IN (jj:Tree, jj:Wave, jj:Leaf, jj:Question, jj:Option, jj:BranchRule, jj:VerdictRule, jj:Condition))
         }""" .
 
 jjs:TreeStartIsNode a sh:SPARQLConstraint ;

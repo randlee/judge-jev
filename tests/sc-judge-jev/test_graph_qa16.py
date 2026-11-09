@@ -68,6 +68,21 @@ class ClosedGraphTests(GraphCase):
         self.assertIsInstance(jev_graph.load_tree(write(self.dir, text, "exact.ttl")), Ok)
         self.assertEqual(jev_graph.load_tree(write(self.dir, text + "x", "over.ttl")).error.code, "QUALITY.TREE")
 
+    def test_conditions_chained_through_their_type_triples_are_refused(self):
+        """qa18: closed shapes ignore rdf:type, so `_:i a jj:Condition, _:i+1` chains valid conditions; refused, and the
+        shapes state the rule as well as the pre-check (pre-check patched out, SHACL alone refuses it)."""
+        head = "@prefix O: <urn:judge-jev:option:adr.context:> .\n@prefix Q: <urn:judge-jev:question:adr.> .\n"
+        links = "".join(f"_:t{i} a jj:Condition, _:t{i + 1} ; jj:question Q:context ; jj:choice O:missing .\n" for i in range(10))
+        text = ADR_TTL + head + links + "_:t10 a jj:Condition ; jj:question Q:context ; jj:choice O:missing .\n"
+        for name, patch in (("pre-check", contextlib.nullcontext()),
+                            ("shapes alone", mock.patch.object(jev_graph, "_stray_types", return_value=[]))):
+            with self.subTest(name), patch:
+                tree = self.load(text)
+                result = jev_graph.validate_tree(tree)
+                self.assertEqual(result.error.code, "QUALITY.TREE")
+                self.assertIn("jjs:TypesAreShapedClasses" if name == "pre-check" else "rdf:type object", result.error.message)
+                self.assertEqual(jev_graph.tree_digest(tree).error.code, "QUALITY.TREE")
+
     def test_a_subject_outside_the_shaped_classes_is_refused(self):
         for name, extra in (("untyped iri", "<urn:a> jj:x 1 .\n"),
                             ("other class", "<urn:a> a <urn:other:Thing> ; jj:id \"a\" .\n"),

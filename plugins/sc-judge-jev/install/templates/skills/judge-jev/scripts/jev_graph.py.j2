@@ -362,8 +362,9 @@ def iri_index(tree: TreeGraph) -> GraphIris:
 def tree_digest(tree: TreeGraph) -> Result[str, JudgeError]:
     """``Ok`` of the SHA-256 (lower-case hex) of the tree's RDFC-1.0 canonical N-Quads, one quad per line in sorted order.
 
-    The tree is validated first (once): the shapes are closed, so the only blank nodes are conditions and canonicalization
-    cannot meet a deep blank-node chain. A tree that does not validate is its ``QUALITY.TREE`` ``Err``.
+    The tree is validated first (once): the shapes are closed, every subject is a shaped class, every ``rdf:type`` object
+    is one of those classes and only conditions may be blank nodes, so canonicalization cannot meet a deep blank-node
+    chain. A tree that does not validate is its ``QUALITY.TREE`` ``Err``.
     Blank nodes are relabelled by pyoxigraph's RDFC-1.0 (``CanonicalizationAlgorithm.RDFC_1_0``), so triple order,
     prefixes, whitespace and blank node names do not change the digest; any change to a triple does.
     """
@@ -449,6 +450,8 @@ def _violation_text(v: dict) -> str:
 SHAPED_CLASSES = ("Tree", "Wave", "Leaf", "Question", "Option", "BranchRule", "VerdictRule", "Condition")
 UNSHAPED_QUERY = ("PREFIX jj: <%s> SELECT DISTINCT ?s WHERE { ?s ?p ?o . FILTER NOT EXISTS { ?s a ?c . FILTER (?c IN (%s)) } }"
                   % (JJ, ", ".join("jj:" + c for c in SHAPED_CLASSES)))
+STRAY_TYPE_QUERY = ("PREFIX jj: <%s> SELECT DISTINCT ?c WHERE { ?s a ?c . FILTER (?c NOT IN (%s)) }"
+                    % (JJ, ", ".join("jj:" + c for c in SHAPED_CLASSES)))
 
 
 def _describe_ox(store: ox.Store, term, depth: int = 0) -> str:
@@ -472,6 +475,13 @@ def _unshaped_subjects(tree: TreeGraph) -> list:
     return sorted(_describe_ox(tree.store, row["s"]) for row in tree.store.query(UNSHAPED_QUERY))
 
 
+def _stray_types(tree: TreeGraph) -> list:
+    """Descriptions (sorted) of the ``rdf:type`` objects that are none of the shaped ``jj:`` classes: the
+    ``jjs:TypesAreShapedClasses`` rule. Closed shapes ignore ``rdf:type``, so without it a chain of valid conditions linked
+    through their type triples (``_:i a jj:Condition, _:i+1``) would pass and make RDFC-1.0 canonicalization superlinear."""
+    return sorted(_describe_ox(tree.store, row["c"]) for row in tree.store.query(STRAY_TYPE_QUERY))
+
+
 def validate_tree(tree: TreeGraph) -> Result[None, JudgeError]:
     """Ok(None) when the graph conforms to the shapes; else ``QUALITY.TREE`` with each violation (``data["violations"]``).
 
@@ -482,12 +492,16 @@ def validate_tree(tree: TreeGraph) -> Result[None, JudgeError]:
     trees = _trees(tree)
     if len(trees) != 1:
         return _fail("QUALITY.TREE", f"quality tree {tree.path}: the file must define exactly one jj:Tree, it defines {len(trees)}", action)
-    stray = _unshaped_subjects(tree)
-    if stray:
-        message = ("is a subject of the graph but not a jj:Tree, Wave, Leaf, Question, Option, BranchRule, VerdictRule or "
-                   "Condition; a tree file holds nothing else")
-        violations = [{"focus": name, "path": "", "shape": "jjs:TreeShape", "constraint": "jjs:AllSubjectsShaped",
-                       "component": "SPARQLConstraintComponent", "value": name, "message": f"{name} {message}"} for name in stray]
+    subject_message = ("is a subject of the graph but not a jj:Tree, Wave, Leaf, Question, Option, BranchRule, VerdictRule or "
+                       "Condition; a tree file holds nothing else")
+    type_message = ("is an rdf:type object but not jj:Tree, Wave, Leaf, Question, Option, BranchRule, VerdictRule or "
+                    "Condition; a tree file types its nodes with those classes only")
+    violations = [{"focus": name, "path": "", "shape": "jjs:TreeShape", "constraint": constraint,
+                   "component": "SPARQLConstraintComponent", "value": name, "message": f"{name} {message}"}
+                  for constraint, message, names in (("jjs:AllSubjectsShaped", subject_message, _unshaped_subjects(tree)),
+                                                     ("jjs:TypesAreShapedClasses", type_message, _stray_types(tree)))
+                  for name in names]
+    if violations:
         listed = "; ".join(f"{v['focus']} [{v['constraint']}]: {v['message']}" for v in violations[:MAX_LISTED_VIOLATIONS])
         more = f"; and {len(violations) - MAX_LISTED_VIOLATIONS} more" if len(violations) > MAX_LISTED_VIOLATIONS else ""
         return _fail("QUALITY.TREE", f"quality tree {tree.path}: {len(violations)} SHACL violation(s): {listed}{more}", action,
