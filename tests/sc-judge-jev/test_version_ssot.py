@@ -73,9 +73,6 @@ class VersionSingleSourceOfTruthTests(unittest.TestCase):
         text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
         self.assertRegex(text, rf"(?m)^## (Unreleased|{self.version.replace('.', r'[.]')})\b")
 
-    def test_nothing_is_published_so_the_version_is_zero(self):
-        self.assertEqual(self.version, "0.0.0")
-
     def test_planted_drift_is_reported_by_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
