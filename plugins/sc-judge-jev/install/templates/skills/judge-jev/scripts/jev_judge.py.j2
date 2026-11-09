@@ -1757,6 +1757,13 @@ class QualityTree(NamedTuple):
     start: str
     nodes: dict          # node id -> Wave or Leaf
     kind: Optional[str]  # the tree's record kind, when it names one
+    rule_ranks: Optional[dict] = None  # TTL tree: {wave id: [jj:rank of each rule, in list order]}; JSON: rank = position
+
+    def rule_rank(self, node_id: str, position: int) -> int:
+        """The rank of the rule at 1-based ``position`` in wave ``node_id``'s rules: the tree's own ``jj:rank`` for a
+        TTL tree (unique, not necessarily consecutive), the position for a JSON tree, whose list order is its rank."""
+        ranks = (self.rule_ranks or {}).get(node_id)
+        return ranks[position - 1] if ranks else position
 
 
 def _tree_error(path: str, message: str) -> Err[JudgeError]:
@@ -1800,7 +1807,7 @@ def parse_quality_tree_ttl(raw: str, path: str, override: bool = False) -> Resul
     parsed = parse_quality_tree(json.dumps(jev_graph.tree_to_quality_json(loaded.value)), path, override)
     if isinstance(parsed, Err):
         return parsed
-    return Ok(parsed.value._replace(sha256=content_sha256(raw)))
+    return Ok(parsed.value._replace(sha256=content_sha256(raw), rule_ranks=jev_graph.rule_ranks(loaded.value)))
 
 
 def parse_quality_tree_file(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
@@ -2038,7 +2045,7 @@ def _longest(values: list):
 
 
 def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statements: list,
-                      settings: BatchSettings) -> Result[None, JudgeError]:
+                      settings: BatchSettings, rank: int) -> Result[None, JudgeError]:
     """REQ-JEV-0211: the statement, wave and verdict events a wave's walk logs, with the largest answers and the longest
     next or verdict, fit the logger's event limit. (The request, answer and result events were sized with the request.)"""
     where = f"wave {node_id}"
@@ -2051,7 +2058,7 @@ def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statem
     nxt = _longest([r.goto for r in node.next]) if node.next is not None else None
     verdict = _longest([r.verdict for r in node.verdict_rules]) if node.verdict_rules is not None else None
     events, _wave = wave_log_events({**fields, "node": node_id}, node_id, node, statements, results, per_choices,
-                                    list(range(len(results))), nxt, verdict, rank=len(node.next or node.verdict_rules))
+                                    list(range(len(results))), nxt, verdict, rank=rank)
     return check_event_sizes(events, where)
 
 
@@ -2094,7 +2101,9 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
             if isinstance(first, Err):
                 return _with_refs(first, refs)
             wave_jobs.append((statement, first.value[0]))
-        checked = check_wave_events(fields, node_id, node, [j for _s, j in wave_jobs], lines.value[1], settings)
+        last = len(node.next or node.verdict_rules)  # rules are in rank order: the last has the largest rank
+        checked = check_wave_events(fields, node_id, node, [j for _s, j in wave_jobs], lines.value[1], settings,
+                                    tree.rule_rank(node_id, last))
         if isinstance(checked, Err):
             return _with_refs(checked, refs)
         if node_id == tree.start:
@@ -2203,6 +2212,11 @@ def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, re
     return events, {"node": node_id, "request_id": result["request_id"], "reason": reason, "next": nxt, "verdict": verdict}
 
 
+def _position(rules: list, rule) -> int:
+    """The 1-based position of ``rule`` in ``rules``, by identity: two rules with equal bodies are still two rules."""
+    return next(i for i, r in enumerate(rules, 1) if r is rule)
+
+
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key: str, fixture, log: RunLog,
               fields: dict, definitions=(), location=None) -> Result[tuple, JudgeError]:
     """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
@@ -2242,12 +2256,12 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
             rule, matched = select_rule(node.next, branch_matches, per_choices)
             if rule is None:
                 return _tree_error(tree.path, f"no branch of wave {node_id} matches the answers {per_choices}")
-            nxt, rank = rule.goto, node.next.index(rule) + 1
+            nxt, rank = rule.goto, tree.rule_rank(node_id, _position(node.next, rule))
         else:
             rule, matched = select_rule(node.verdict_rules, verdict_matches, per_choices)
             if rule is None:
                 return _tree_error(tree.path, f"no verdict rule of wave {node_id} matches the answers {per_choices}")
-            verdict, rank = rule.verdict, node.verdict_rules.index(rule) + 1
+            verdict, rank = rule.verdict, tree.rule_rank(node_id, _position(node.verdict_rules, rule))
             decided_rank = rank
         events, wave = wave_log_events(fields, node_id, node, statements, pumped.value, per_choices, matched, nxt, verdict, rank)
         for action, event_fields, correlation_id in events:
@@ -2646,7 +2660,8 @@ def _doctor_file(scope: DoctorScope, path: str, root: pathlib.Path, index) -> No
 
 def doctor_scope_files(args) -> list:
     """The files of the scope, in order, each once: the shipped trees and question sets, the trees and definitions under
-    ``<root>/.sc/judge-jev/`` and the paths given as arguments (a directory is scanned like ``.sc/judge-jev/``)."""
+    ``<root>/.sc/judge-jev/`` (top level only) and the paths given as arguments (a directory is searched through all
+    its subfolders except ``jev_definitions.SKIPPED_DIRS``)."""
     root = pathlib.Path(args.repository_root or ".")
     files = sorted(str(p) for p in QUESTIONS_DIR.iterdir() if p.is_file() and p.suffix in (".json", ".ttl"))
     for found in jev_definitions.scan(root / jev_definitions.DEFINITIONS_DIR, recursive=False):  # as quality's discover: top level only

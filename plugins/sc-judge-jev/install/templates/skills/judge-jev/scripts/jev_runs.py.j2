@@ -170,13 +170,23 @@ def _matches(rule: dict, choices: dict) -> bool:
 
 
 def fired_rule(node: dict, per_choices: list) -> tuple:
-    """(rank, indexes): the 1-based rank of the first rule of the wave that matches any request's choices, and the
-    indexes (into ``per_choices``) it matched; (None, []) when no rule does."""
-    for rank, rule in enumerate(node.get("next") or node.get("verdict_rules") or [], 1):
+    """(position, indexes): the 1-based position, in rank order, of the first rule of the wave that matches any request's
+    choices, and the indexes (into ``per_choices``) it matched; (None, []) when no rule does. The position is the rule's
+    rank only in a JSON tree; ``_rule_rank`` gives a TTL tree's own ``jj:rank``."""
+    for position, rule in enumerate(node.get("next") or node.get("verdict_rules") or [], 1):
         hit = [i for i, choices in enumerate(per_choices) if _matches(rule, choices)]
         if hit:
-            return rank, hit
+            return position, hit
     return None, []
+
+
+def _rule_ranks(tree: Any) -> dict:
+    """``{wave id: [rank of each rule, in rank order]}`` for a TreeGraph (``jev_graph.rule_ranks``); {} for a JSON dict,
+    whose list order is its rank."""
+    if isinstance(tree, dict):
+        return {}
+    import jev_graph
+    return jev_graph.rule_ranks(tree)
 
 
 def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
@@ -192,6 +202,7 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
     import pyoxigraph as ox
     quality = _quality_json(tree)
     iris = _iris(tree, quality)
+    ranks = _rule_ranks(tree)
     by_request = {line["request_id"]: line for line in result_lines}
     run_node, rec = ox.NamedNode(run_iri(run)), ox.NamedNode(record_iri(run))
     quads: set = set()
@@ -217,7 +228,8 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
         statements = [r["statement"] for r in wave["reason"]] if per else [None]
         lines = [by_request[i] for i in ids]
         per_choices = [{qid: _choice(a)[0] for qid, a in line["answers"].items()} for line in lines]
-        rank, hit = fired_rule(node, per_choices)
+        position, hit = fired_rule(node, per_choices)
+        rank = None if position is None else (ranks[node_id][position - 1] if node_id in ranks else position)
         for i, (request_id, line, statement) in enumerate(zip(ids, lines, statements)):
             wave_run = ox.NamedNode(f"urn:judge-jev:waverun:{run['name']}:{request_id}")
             add(wave_run, RDF_TYPE, ox.NamedNode(JJ + "WaveRun"))
@@ -226,8 +238,8 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
             add(wave_run, "requestId", ox.Literal(request_id))
             if statement is not None:
                 add(wave_run, "statement", ox.Literal(statement["text"]))
-            if rank is not None and i in hit:
-                rule_node = ox.NamedNode(iris.rule(node_id, rank))
+            if position is not None and i in hit:
+                rule_node = ox.NamedNode(iris.rule(node_id, position))
                 add(wave_run, "fired", rule_node)
                 add(rule_node, "rank", ox.Literal(str(rank), datatype=ox.NamedNode(XSD_INTEGER)))  # the tree's own jj:rank of the rule
             for qid, ans in line["answers"].items():

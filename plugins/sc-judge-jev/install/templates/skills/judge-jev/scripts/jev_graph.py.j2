@@ -22,6 +22,9 @@ exactly this API:
   - ``tree_digest(tree)``: ``Ok(SHA-256 of the tree's RDFC-1.0 canonical N-Quads)``, or the ``QUALITY.TREE`` error of a
     tree that does not validate (the digest never runs over a graph the shapes have not accepted).
   - ``iri_index(tree)``: the tree graph's own IRIs for its tree, nodes, questions, options and rules, which run triples use.
+  - ``rule_ranks(tree)``: ``{wave id: [jj:rank of each rule, in rank order]}``. The compiled JSON lists rules in that
+    order without their ranks, and the shapes require ranks to be unique, not consecutive, so a rule's position is not
+    its rank.
   - ``load_definitions(path)``, ``validate_definitions(defs)``, ``definition_rows(defs)``: a definitions file (ADR-JEV-0008),
     the same graph machinery over ``jj:Definition`` and ``jj:Attachment`` with ``assets/shapes/definitions.shacl.ttl``.
     A definitions file is its own graph: it is never loaded into a tree's store, so it cannot change a tree's digest.
@@ -319,7 +322,8 @@ class GraphIris:
     """The tree graph's own IRIs, by the ids the walker and the log use.
 
     ``tree()``; ``node(node_id)``; ``question(node_id, question_id)``; ``option(node_id, question_id, label)``;
-    ``rule(node_id, rank)`` with ``rank`` the rule's 1-based position in rank order (as ``jev_runs.fired_rule`` counts).
+    ``rule(node_id, position)`` with ``position`` the rule's 1-based position in rank order (as ``jev_runs.fired_rule``
+    counts; ``rule_ranks`` gives its ``jj:rank``).
     A name the graph does not hold is a ``KeyError``. No naming scheme is assumed: the IRIs are whatever the tree file says.
     """
 
@@ -350,8 +354,19 @@ class GraphIris:
     def option(self, node_id: str, question_id: str, label: str) -> str:
         return self._options[(node_id, question_id, label)]
 
-    def rule(self, node_id: str, rank: int) -> str:
-        return self._rules[(node_id, rank)]
+    def rule(self, node_id: str, position: int) -> str:
+        return self._rules[(node_id, position)]
+
+
+def rule_ranks(tree: TreeGraph) -> dict:
+    """``{wave id: [jj:rank of each rule, in rank order]}`` of a valid tree (``TreeInvalid`` when it does not validate)."""
+    _ensure_valid(tree)
+    out = {}
+    for node in _objects(tree, _trees(tree)[0], "node"):
+        rules = _by_rank(tree, _objects(tree, node, "rule"))
+        if rules:
+            out[_one(tree, node, "id")] = [_one(tree, rule, "rank") for rule in rules]
+    return out
 
 
 def iri_index(tree: TreeGraph) -> GraphIris:

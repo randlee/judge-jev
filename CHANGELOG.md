@@ -7,6 +7,11 @@
 - `quality` logs the rank of the rule that fired (`rule_rank` on the wave and
   verdict events) and the record's Raptor IRI (`record_iri` on every event);
   the run triples carry the fired rule's `jj:rank` beside `jj:fired`.
+  For a TTL tree that rank is the rule's own `jj:rank` (ranks are unique, not
+  consecutive), not its position among the wave's rules.
+- `doctor` docs: a directory argument is searched through its subfolders
+  (except `logs`, `anchor-runs`, `node_modules` and `.git`); `.sc/judge-jev/`
+  is read at the top level only.
 - One `JudgeError`, defined in `jev_errors.py` and imported by `jev_judge` and
   `jev_graph`: graph errors reach the CLI envelope as built, with no rewrapping;
   codes and the envelope are unchanged.

@@ -224,8 +224,9 @@ judge-jev doctor [<path>...] [--index <raptor index>] [--repository-root <dir>]
 REQ-JEV-0214, REQ-JEV-0215. Checks everything judge-jev loads in a
 repository and calls nothing: no Jev, no key, no log, no file written.
 The scope is the shipped trees and question sets, every tree and definitions
-file under `<repository root>/.sc/judge-jev/`, and each argument (a file, or a
-directory scanned the same way).
+file at the top level of `<repository root>/.sc/judge-jev/` (its subfolders
+are not searched), and each argument: a file, or a directory searched through
+all its subfolders except `logs`, `anchor-runs`, `node_modules` and `.git`.
 
 - **Errors** (exit 2; the report is `data`, each entry has `severity`,
   `code`, `file`, `message`): a schema or pydantic failure, a SHACL
