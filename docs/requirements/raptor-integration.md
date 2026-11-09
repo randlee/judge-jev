@@ -23,9 +23,7 @@ batch command.
 
 ### Requirement Statement
 
-Definitions: Raptor is the requirements tool that imports Markdown records
-into its record store and serves them to other tools (ADR-JEV-0002). Its
-query interface is the way Raptor hands records to another tool.
+Definitions: Raptor is the tool that imports records.
 
 **MUST statements:**
 
@@ -230,9 +228,7 @@ pulled from Dolt, so the source can change without changing judge-jev.
 
 ### Requirement Statement
 
-Definitions: Raptor is the requirements tool that imports Markdown records.
-An issue is a diagnostic Raptor's import reports for a record, such as
-`UNKNOWN_SECTION`.
+Definitions: An issue is a diagnostic Raptor's import reports.
 
 **MUST statements:**
 
@@ -299,11 +295,7 @@ judge-jev.
 
 ### Requirement Statement
 
-Definitions: Jev is TypeSafe's hosted judge model: it answers each
-multiple-choice question about a text with one choice and a confidence from
-0 to 1. A Jev request is one call to it. Recorded Jev answers are an answers
-file (`--answers-file`): JSON answers given to judge-jev in place of a live
-Jev call.
+Definitions: Jev is a judge model. Recorded Jev answers are an answers file.
 
 **MUST statements:**
 

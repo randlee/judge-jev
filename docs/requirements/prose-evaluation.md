@@ -23,16 +23,11 @@ meets a Raptor-supplied REQ, NFR or ADR record. The CLI is defined in
 
 ### Requirement Statement
 
-Definitions: A record is one requirement (REQ), non-functional requirement
-(NFR) or architecture decision record (ADR) as Raptor imports it; REQ, NFR
-and ADR are its record kinds. A location is the text judged against a
-record: a whole file (`path`), a Markdown section (`path#Heading`) or a code
-symbol (`path::Symbol`) (REQ-JEV-0207). A mode (target mode) names what a
-location holds: `prompt` (prompt text), `skill` (a skill file), `task` (a
-task template) or `code` (source code). A question set is the data file of
-questions judge-jev sends to Jev about a location for one record kind and
-target class. `--profile` names a profile: a TOML file listing locations,
-each with its mode and the ids of the records that govern it (REQ-JEV-0204).
+Definitions: A record is one requirement, non-functional requirement or
+architecture decision record; these are its record kinds. A location is the
+text judged against a record. A question set is the data file of questions
+judge-jev sends to Jev about a location. `--profile` names a profile: a file
+listing locations to check.
 
 **MUST statements:**
 - `judge-jev check` MUST take one of two argument forms: a single record
@@ -65,16 +60,10 @@ violated in a different way.
 
 ### Requirement Statement
 
-Definitions: Jev is TypeSafe's hosted judge model: it answers each
-multiple-choice question about a text with one choice and a confidence from
-0 to 1. A Jev request is one call to it. A record is one requirement (REQ),
-non-functional requirement (NFR) or architecture decision record (ADR) as
-Raptor imports it; REQ, NFR and ADR are its record kinds. A location is the
-text judged against a record: a whole file (`path`), a Markdown section
-(`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207). A pair is
-one (record, location) pair. A stream of single requests is a sequence of
-Jev requests, one per pair, sent one at a time through the batch command
-(REQ-JEV-0002).
+Definitions: Jev is the judge model. A record is one requirement,
+non-functional requirement or architecture decision record. A location is
+the text judged against a record. A stream of single requests is a sequence
+of Jev requests, one per pair.
 
 **MUST statements:**
 - Each Jev request MUST carry exactly one record.
@@ -83,9 +72,9 @@ Jev requests, one per pair, sent one at a time through the batch command
 
 ### Rationale
 
-Jev judges one record and location at a time; packing records into one request hides
-which one failed. Batching is streaming single requests, which the batch
-command already does.
+Jev judges one record and location at a time; packing records into one
+request hides which one failed. Batching is streaming single requests, which
+the batch command already does.
 
 ### Success Criteria
 
@@ -198,27 +187,23 @@ all kinds.
 
 ### Requirement Statement
 
-Definitions: A record is one requirement (REQ), non-functional requirement
-(NFR) or architecture decision record (ADR) as Raptor imports it; REQ, NFR
-and ADR are its record kinds. A question set is the data file of questions
-judge-jev sends to Jev about a location for one record kind and target
-class. A target class is agent text (modes `prompt`, `skill` and `task`) or
-code (mode `code`). A quality decision tree is the data file of questions
-that judges whether a record is well written: waves of questions, with rules
-that turn Jev's answers into the next wave or a verdict (REQ-JEV-0101). A
-question-set id is the `id` field of a question set or tree file. The
-content digest of a file is the SHA-256 of its bytes. A log entry is one
-event a run writes through the sc-observability logger (REQ-JEV-0008).
+Definitions: A question set is the data file of questions judge-jev sends to
+Jev for one record kind and target class. A quality decision tree is the
+data file of questions that judges whether a record is well written. The
+content digest of a file is its SHA-256. An override file is a file that
+replaces the shipped question set or quality decision tree. A log entry is
+one event a run writes.
 
 **MUST statements:**
 - judge-jev MUST ship one question set per combination of record kind and
-  target class (agent text or code).
+  target class.
 - judge-jev MUST ship one quality decision tree per record kind.
 - Every shipped question and prompt text MUST be approved by Rand before
   it ships.
 - Question sets MUST be data files shipped with the tool.
 - Quality decision trees MUST be data files shipped with the tool.
-- The released tool MUST accept an override file for any question set.
+- The released tool MUST accept, with `--questions <file>`, an override file
+  for any question set.
 - The released tool MUST accept an override file for any quality decision
   tree.
 - Every result MUST carry the question-set id.
@@ -258,10 +243,11 @@ results from many variations of the same set be told apart and compared.
 
 ### Requirement Statement
 
+Definitions: A judgment is one Jev verdict on one record at one location.
+
 **MUST statements:**
-- When a record is satisfied in more than one location (prompt, skill,
-  agent, template or code), judge-jev MUST judge the record separately at
-  each location.
+- When a record is satisfied in more than one location, judge-jev MUST
+  judge the record separately at each location.
 - judge-jev MUST report one result per (record, location) pair.
 
 **MUST NOT statements:**
@@ -292,11 +278,8 @@ Rand (2026-11-08): "batching is simply streaming of single requests."
 
 ### Requirement Statement
 
-Definitions: Raptor is the requirements tool that imports Markdown records;
-its rules decide which text belongs to which heading. sc-agent is the agent
-tool whose Rust Jev tool will replace judge-jev's Python Jev core
-(ADR-JEV-0007). Tree-sitter grammars are the parsers that find a named
-symbol in source code.
+Definitions: Raptor is the requirements tool. sc-agent is the agent tool.
+Tree-sitter grammars are the parsers.
 
 **MUST statements:**
 - A location MUST take one of three forms: `path`, `path#Heading` or
@@ -306,8 +289,7 @@ symbol in source code.
   heading to the next heading of the same or higher level.
 - A `path::Symbol` location MUST select a code symbol resolved by
   sc-agent's tree-sitter grammars.
-- Markdown sections MUST be parsed by the same rules Raptor uses for the
-  same file.
+- Markdown sections MUST be parsed by the same rules Raptor uses.
 
 **MUST NOT statements:**
 - A location MUST NOT be a line range.
@@ -341,32 +323,22 @@ paths in a profile are relative to the profile or to the repository root.
 
 Definitions: Jev is TypeSafe's hosted judge model: it answers each
 multiple-choice question about a text with one choice and a confidence from
-0 to 1. A Jev request is one call to it. Raptor is the requirements tool
-that imports Markdown records into its record store and serves them to other
-tools (ADR-JEV-0002). A dry run is a run with `--dry-run`: it composes every
-request and sends none. A dry-run entry is its report of one request a live
-run would send. A composed request is the full JSON body judge-jev would
-send to Jev. The record's Raptor source is the Raptor index the record was
-read from. A location (resolved: its path, section or symbol) is the text
-judged against a record: a whole file (`path`), a Markdown section
-(`path#Heading`) or a code symbol (`path::Symbol`) (REQ-JEV-0207). The
-digest of a text is its SHA-256. A mode (target mode) names what a location
-holds: `prompt` (prompt text), `skill` (a skill file), `task` (a task
-template) or `code` (source code). A question set is the data file of
-questions sent to Jev; its shipped id is the `id` of a set shipped with the
-tool, its override path the file given with `--questions`. A vars file holds
-the values of a task template's variables. The request limit is 24000 bytes
-by default. A quality decision tree is the data file of questions that
-judges whether a record is well written: waves of questions, with rules that
-turn Jev's answers into the next wave or a verdict (REQ-JEV-0101). The
-wave-1 request is the request for its first wave. A typed error is a JSON
-error object with a stable `code` (such as `INPUT.MALFORMED`), a `message`
-and a `suggested_action`.
+0 to 1. Raptor is the requirements tool that imports Markdown records
+(ADR-JEV-0002). A dry run is a run with `--dry-run`: it composes every
+request and sends none. The digest of a text is its SHA-256. A mode (target
+mode) names what a location holds: `prompt` (prompt text), `skill` (a skill
+file), `task` (a task template) or `code` (source code). A question set is
+the data file of questions sent to Jev; its shipped id is the `id` of a set
+shipped with the tool, its override path the file given with `--questions`.
+A vars file holds the values of a task template's variables. The request
+limit is 24000 bytes by default. A quality decision tree is the data file of
+questions that judges whether a record is well written: waves of questions
+(REQ-JEV-0101). The wave-1 request is the request for its first wave.
 
 **MUST statements:**
 - `judge-jev quality` MUST accept `--dry-run`.
 - `judge-jev check` MUST accept `--dry-run`.
-- A dry run MUST compose every request without calling Jev.
+- A dry run MUST compose every request with no Jev call.
 - Each dry-run entry MUST report the record id.
 - Each dry-run entry MUST report the record's Raptor source.
 - Each dry-run entry MUST report the resolved location as its path, section
@@ -409,15 +381,17 @@ waves depend on live answers.
 
 ### Requirement Statement
 
-Definitions: A run name is the name every log event of one invocation
-carries (`--run-name`).
+Definitions: A run name is the name an invocation's log events carry. A
+record-kind flag is repeatable when one invocation may give it more than
+once.
 
 **MUST statements:**
 - `judge-jev quality` MUST take one or more record ids.
 - `judge-jev quality` MUST take each record id with one record-kind flag:
   `--req` (requirement), `--adr` (architecture decision record) or `--nfr`
   (non-functional requirement).
-- Every record-kind flag of `judge-jev quality` MUST be repeatable.
+- Every record-kind flag of `judge-jev quality` (the flags the statement
+  above lists) MUST be repeatable.
 - `judge-jev quality` MUST judge each record with its kind's quality
   decision tree (REQ-JEV-0101).
 - All records of one `judge-jev quality` invocation MUST be logged under
@@ -458,9 +432,7 @@ questions, choices or probabilities do not match the request.
 **MUST statements:**
 - `judge-jev validate` MUST take one input file.
 - `judge-jev validate` MUST take one input-kind flag with that file:
-  `--tree` (quality tree), `--questions` (question set), `--answers`
-  (answers file), `--index` (Raptor import index) or `--requests` (batch
-  request stream).
+  `--tree`, `--questions`, `--answers`, `--index` or `--requests`.
 - `judge-jev validate` MUST check the file with the model `judge-jev`
   applies to that input kind before its first Jev request (ADR-JEV-0005).
 - Every refusal from `judge-jev validate` MUST name the field path.
@@ -509,7 +481,8 @@ with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a
 `suggested_action`. A tree is a quality decision tree file, a question set a
 file of questions, an index a Raptor import index, a request stream the
 request lines of the batch command, and a run directory the folder that
-holds a run's log. A log event is one event written through the
+holds a run's log. An input is a tree, question set, index, request stream
+or run directory. A log event is one event written through the
 sc-observability logger; the logger's event size limit is 65536 bytes
 (sc-observability 1.5.0).
 
@@ -518,8 +491,14 @@ sc-observability logger; the logger's event size limit is 65536 bytes
   object.
 - The JSON object a `judge-jev` command prints MUST be its result or a
   typed error.
-- `judge-jev` MUST refuse an invalid tree, question set, index, request
-  stream or run directory before its first Jev request.
+- `judge-jev` MUST refuse an invalid tree before its first Jev request.
+- `judge-jev` MUST refuse an invalid question set before its first Jev
+  request.
+- `judge-jev` MUST refuse an invalid index before its first Jev request.
+- `judge-jev` MUST refuse an invalid request stream before its first Jev
+  request.
+- `judge-jev` MUST refuse an invalid run directory before its first Jev
+  request.
 - `judge-jev` MUST check that every log event of a request (the request,
   Jev's largest possible answer and the result) fits the logger's event
   size limit before sending the request.
@@ -546,17 +525,14 @@ after a paid call wastes the call; a crash loses its answer.
 
 ### Requirement Statement
 
-Definitions: A definition is a term with its meaning, from a
-`.sc/judge-jev/*.definitions.ttl` file (ADR-JEV-0008). It is attached to a
-record, or to a record and a location (the file, Markdown section or code
-symbol being judged). A request's state is the data it sends to Jev next to
-the questions, which holds the record. The size limit of a request is 24000
-bytes. A definition's digest is the SHA-256 of its term, text and source.
+Definitions: It is attached to a record, or to a record and a location. A
+request's state is the data it sends. The size limit is 24000 bytes. A
+definition's digest is the SHA-256.
 
 **MUST statements:**
 - A definition MUST be attachable to a record alone, or to a record and
   one location under evaluation.
-- A request about a record MUST carry, in its state next to the record, only
+- A request about a record MUST carry, in its state, only
   the definitions attached to that record alone, plus those attached to
   that record and the request's location.
 - A request with no matching definition MUST be identical to the request
@@ -702,9 +678,8 @@ is the record file Raptor's import writes.
   its schema.
 - `judge-jev doctor` MUST validate every definitions file in the scope
   against its schema.
-- `judge-jev doctor` MUST validate every tree, question set and definitions
-  file in the scope against the ontology's shapes, including edges and
-  cycles.
+- `judge-jev doctor` MUST validate every file in the scope against the
+  ontology's shapes, including edges and cycles.
 - `judge-jev doctor` MUST report each validation failure as an error.
 - `judge-jev doctor` MUST report a definition with no attachment as a
   warning.

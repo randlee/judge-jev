@@ -48,8 +48,9 @@ judge-jev.
 - Every wave MUST report, as its reason, each of its questions with the
   question's id and text, Jev's choice and Jev's confidence.
 - A wave the tree marks per statement MUST send one request for each MUST
-  and MUST NOT statement of the record, carrying that statement with the
-  whole record as context.
+  and MUST NOT statement of the record.
+- Each per-statement request MUST carry its statement with the whole record
+  as context.
 - A per-statement wave's reason MUST list each statement's index and text
   with each question's id, choice and confidence.
 - A per-statement wave's verdict rule MUST be able to fire when any one
