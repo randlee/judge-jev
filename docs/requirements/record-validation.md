@@ -21,6 +21,21 @@ judge-jev verifies that a REQ, NFR or ADR is well written.
 
 ### Requirement Statement
 
+Definitions: Jev is TypeSafe's hosted judge model: it answers each
+multiple-choice question about a text with one choice and a confidence from
+0 to 1. A Jev request is one call to it. Raptor is the requirements tool
+that imports Markdown records into its record store and serves them to other
+tools (ADR-JEV-0002). Diagnostics are the problems Raptor's import reports
+for a record, and the structure it checks is the record format. A quality
+decision tree is a data file of prompts (questions to Jev) in waves; a wave
+is one set of questions, and its reason is the report of its questions and
+Jev's answers. A per-statement wave asks its questions once for each MUST
+and MUST NOT statement. A verdict rule is a rule in the tree file that turns
+a wave's answers into a verdict (`yes` or `no`). The walk is the sequence of
+waves from the first to the one that gives the verdict; its decision-tree
+path is the list of those waves' ids. A consumer is a repository that uses
+judge-jev.
+
 **MUST statements:**
 
 - judge-jev MUST provide a mode that reports, for one requirement (REQ),
@@ -33,8 +48,9 @@ judge-jev verifies that a REQ, NFR or ADR is well written.
 - Every wave MUST report, as its reason, each of its questions with the
   question's id and text, Jev's choice and Jev's confidence.
 - A wave the tree marks per statement MUST send one request for each MUST
-  and MUST NOT statement of the record, carrying that statement with the
-  whole record as context.
+  and MUST NOT statement of the record.
+- Each per-statement request MUST carry its statement with the whole record
+  as context.
 - A per-statement wave's reason MUST list each statement's index and text
   with each question's id, choice and confidence.
 - A per-statement wave's verdict rule MUST be able to fire when any one
