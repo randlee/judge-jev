@@ -9,13 +9,13 @@ Rendered skill: `sc-compose render --strict --var version=0.3.0` of every `*.py.
 |---|---|---|
 | `earlier-482d79a/` | 482d79a (feat: definitions, compare-definition and doctor) | 0.3.0 code before the rule_rank and record_iri layer. Its events carry neither `rule_rank` nor `record_iri`. |
 | `quality-adr*`, `quality-nfr*`, `quality-req*` | 2512943 (fix/windows-ttl-digest, top of stack) | `quality` on every ADR, NFR and REQ of this branch's `docs/`. Includes rule_rank and record_iri. |
-| `compare-*` | 2512943 | `compare-definition` runs; definitions in `../definitions.ttl`. |
-| `doctor.*` | 2512943 | `doctor` on the scope. |
-| `../logs/judge-jev.log.jsonl` | 2512943 | Default tool log of the 2512943 runs. |
+| `compare-1..3` | 2512943 | `compare-definition` runs; definitions in `../definitions.ttl`. 1: REQ-JEV-0202 + `jev`; 2: NFR-JEV-0001 + `jev`; 3: REQ-JEV-0203 + `target-mode` and `raptor` together. |
+| `doctor.*` | 2512943 | `doctor --index .sc/judge-jev/runs/index.json --repository-root <worktree>`. |
+| `<run-dir>/logs/judge-jev.log.jsonl` | 2512943 | The tool's log of each run, written under its `--run-dir`. |
 
 ## Commands
 
-2512943 runs, from the worktree root:
+2512943 runs, from the worktree root (`jjpy` is the Python used; compare: `compare-definition --req|--nfr <id> --index ... --definition <iri>... --run-dir .sc/judge-jev/runs/compare-<n> --run-name compare-<n>-0.3.0`):
 
     PYTHONDONTWRITEBYTECODE=1 jjpy <rendered skill>/scripts/jev_judge.py quality --<kind> <id>... \
         --index .sc/judge-jev/runs/index.json --run-dir .sc/judge-jev/runs/quality-<kind> \

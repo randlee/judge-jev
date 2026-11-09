@@ -1,0 +1,617 @@
+{
+  "success": true,
+  "error": null,
+  "data": {
+    "dry_run": false,
+    "record": {
+      "id": "REQ-JEV-0203",
+      "kind": "req",
+      "source": {
+        "raptor_index": ".sc/judge-jev/runs/index.json"
+      }
+    },
+    "tree": {
+      "id": "quality-req",
+      "sha256": "7f01e2fba1cecb9ffd83fa0aebd1b9b149f4293b645b65c4992105de192cfe7f",
+      "source": "shipped",
+      "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-req.json"
+    },
+    "definitions": [
+      {
+        "iri": "urn:judge-jev:definition:target-mode",
+        "term": "target mode",
+        "digest": "cce3ae84259dd9b0949317e62dd65ac7879a936b1dbb190780dec6ec13007586",
+        "source": "docs/cli.md"
+      },
+      {
+        "iri": "urn:judge-jev:definition:raptor",
+        "term": "Raptor",
+        "digest": "b3fa6db94bd963317f2cbf93c0ae1420afc73b076b8f608034dab400dd9777a0",
+        "source": "docs/requirements/raptor-integration.md"
+      }
+    ],
+    "threshold": 0.6,
+    "material": true,
+    "answers_compared": 32,
+    "answers_material": 10,
+    "answers": [
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.99
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.99
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "term",
+        "without": {
+          "choice": "project term defined nowhere",
+          "confidence": 0.31
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.73
+        },
+        "choice_changed": true,
+        "confidence_change": 0.42,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "check",
+        "without": {
+          "choice": "CLI run",
+          "confidence": 0.54
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.75
+        },
+        "choice_changed": false,
+        "confidence_change": 0.21,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.99
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.01,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.42
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.82
+        },
+        "choice_changed": false,
+        "confidence_change": 0.4,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "check",
+        "without": {
+          "choice": "CLI run",
+          "confidence": 0.45
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.61
+        },
+        "choice_changed": false,
+        "confidence_change": 0.16,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.98
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.98
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.45
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.75
+        },
+        "choice_changed": false,
+        "confidence_change": 0.3,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "check",
+        "without": {
+          "choice": "CLI run",
+          "confidence": 0.4
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.6
+        },
+        "choice_changed": false,
+        "confidence_change": 0.2,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.99
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.01,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.6
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.82
+        },
+        "choice_changed": false,
+        "confidence_change": 0.22,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "check",
+        "without": {
+          "choice": "CLI run",
+          "confidence": 0.39
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.6
+        },
+        "choice_changed": false,
+        "confidence_change": 0.21,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 5,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 0.97
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 0.97
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 5,
+        "question": "joined_by",
+        "without": {
+          "choice": "condition+obligation",
+          "confidence": 0.75
+        },
+        "with": {
+          "choice": "condition+obligation",
+          "confidence": 0.74
+        },
+        "choice_changed": false,
+        "confidence_change": -0.01,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 5,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.39
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.74
+        },
+        "choice_changed": false,
+        "confidence_change": 0.35,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 5,
+        "question": "check",
+        "without": {
+          "choice": "CLI run",
+          "confidence": 0.41
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.56
+        },
+        "choice_changed": false,
+        "confidence_change": 0.15,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 6,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 0.35
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 0.48
+        },
+        "choice_changed": false,
+        "confidence_change": 0.13,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 6,
+        "question": "joined_by",
+        "without": {
+          "choice": "condition+obligation",
+          "confidence": 0.44
+        },
+        "with": {
+          "choice": "condition+obligation",
+          "confidence": 0.59
+        },
+        "choice_changed": false,
+        "confidence_change": 0.15,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 6,
+        "question": "term",
+        "without": {
+          "choice": "undefined acronym",
+          "confidence": 0.5
+        },
+        "with": {
+          "choice": "undefined acronym",
+          "confidence": 0.45
+        },
+        "choice_changed": false,
+        "confidence_change": -0.05,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 6,
+        "question": "check",
+        "without": {
+          "choice": "CLI run",
+          "confidence": 0.81
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.81
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 7,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 0.92
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 0.92
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 7,
+        "question": "joined_by",
+        "without": {
+          "choice": "condition+obligation",
+          "confidence": 0.8
+        },
+        "with": {
+          "choice": "condition+obligation",
+          "confidence": 0.86
+        },
+        "choice_changed": false,
+        "confidence_change": 0.06,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 7,
+        "question": "term",
+        "without": {
+          "choice": "project term defined nowhere",
+          "confidence": 0.37
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.31
+        },
+        "choice_changed": true,
+        "confidence_change": -0.06,
+        "crosses_threshold": false,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 7,
+        "question": "check",
+        "without": {
+          "choice": "unit test",
+          "confidence": 0.26
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.27
+        },
+        "choice_changed": true,
+        "confidence_change": 0.01,
+        "crosses_threshold": false,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 8,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 8,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.98
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.99
+        },
+        "choice_changed": false,
+        "confidence_change": 0.01,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 8,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.45
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.56
+        },
+        "choice_changed": false,
+        "confidence_change": 0.11,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 8,
+        "question": "check",
+        "without": {
+          "choice": "inspection or grep",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "inspection or grep",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      }
+    ],
+    "arms": {
+      "without": {
+        "verdict": "no",
+        "path": [
+          "wave-1"
+        ],
+        "run": "compare-3-0.3.0.without",
+        "definitions": []
+      },
+      "with": {
+        "verdict": "no",
+        "path": [
+          "wave-1"
+        ],
+        "run": "compare-3-0.3.0.with",
+        "definitions": [
+          {
+            "iri": "urn:judge-jev:definition:raptor",
+            "term": "Raptor",
+            "digest": "b3fa6db94bd963317f2cbf93c0ae1420afc73b076b8f608034dab400dd9777a0"
+          },
+          {
+            "iri": "urn:judge-jev:definition:target-mode",
+            "term": "target mode",
+            "digest": "cce3ae84259dd9b0949317e62dd65ac7879a936b1dbb190780dec6ec13007586"
+          }
+        ]
+      }
+    },
+    "log": {
+      "run": "compare-3-0.3.0",
+      "log_root": ".sc/judge-jev/runs/compare-3"
+    }
+  }
+}

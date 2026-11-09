@@ -1,0 +1,2643 @@
+{
+  "metadata": {
+    "repository": "urn:raptor:repo:judge-jev",
+    "generated": "2026-11-09T05:03:34.653567+00:00",
+    "files": 4,
+    "records": 33
+  },
+  "requirements": [
+    {
+      "id": "REQ-JEV-0201",
+      "title": "One record per check",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "`judge-jev check` MUST take one of two argument forms: a single record\nwith a location and a mode, or a `--profile`."
+          },
+          {
+            "modal": "Must",
+            "text": "In the single-record form, `judge-jev check` MUST take one record id,\ngiven with exactly one record-kind flag: `--req` (requirement), `--adr`\n(architecture decision record) or `--nfr` (non-functional requirement)."
+          },
+          {
+            "modal": "Must",
+            "text": "In the single-record form, `judge-jev check` MUST take exactly one\n`--location`."
+          },
+          {
+            "modal": "Must",
+            "text": "In the single-record form, `judge-jev check` MUST take exactly one\n`--mode`."
+          },
+          {
+            "modal": "Must",
+            "text": "Each record kind MUST use its own question set."
+          }
+        ]
+      },
+      "rationale": "A requirement, a decision and a non-functional requirement are each\nviolated in a different way.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "The same location checked with `--req` and with `--adr` sends\ndifferent question sets.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0202",
+      "title": "One record and one location per request",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "Each Jev request MUST carry exactly one record."
+          },
+          {
+            "modal": "Must",
+            "text": "Each Jev request MUST carry exactly one location."
+          },
+          {
+            "modal": "Must",
+            "text": "A run over many pairs MUST send them as a stream of single requests."
+          }
+        ]
+      },
+      "rationale": "Jev judges one record and location at a time; packing records into one request hides\nwhich one failed. Batching is streaming single requests, which the batch\ncommand already does.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A profile mapping one file to three records sends three requests.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0203",
+      "title": "Target modes",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST support the target mode `prompt`."
+          },
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST support the target mode `skill`."
+          },
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST support the target mode `task`."
+          },
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST support the target mode `code`."
+          },
+          {
+            "modal": "Must",
+            "text": "In `task` mode judge-jev MUST judge the raw template."
+          },
+          {
+            "modal": "Must",
+            "text": "In `task` mode judge-jev MUST judge an assignment rendered by sc-compose\nin strict mode from the vars file that `--vars` names, or, in a profile\nrun, that the profile names."
+          },
+          {
+            "modal": "Must",
+            "text": "In `code` mode judge-jev MUST resolve the location with the tree-sitter\ngrammars sc-agent defines."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev MUST NOT define its own tree-sitter grammars."
+          }
+        ]
+      },
+      "rationale": "The raw template shows which variables are substituted; a rendered\nassignment shows what an agent actually receives. Strict rendering fails on\na missing variable instead of judging a half-rendered assignment. sc-agent\nowns the grammars so every consumer selects code the same way.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A task template checked in `task` mode produces one result for the\nraw template and one for its rendered assignment.",
+            "checked": false
+          },
+          {
+            "text": "A vars file missing a template variable fails the render with the\nvariable named.",
+            "checked": false
+          },
+          {
+            "text": "The repository contains no tree-sitter grammar definitions.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "`code` mode waits for sc-agent's tree-sitter grammars (ADR-JEV-0004).",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0204",
+      "title": "Profiles map locations to records",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST read a TOML profile listing locations, each with its\nmode, the record ids that govern it, and for `task` mode a vars file."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev check --profile <profile>` MUST check every listed pair."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev check --profile <profile>` MUST report each pair's verdict."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev check --profile <profile>` MUST aggregate the verdicts per\nrecord."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev check --profile <profile>` MUST aggregate the verdicts per\nlocation."
+          },
+          {
+            "modal": "MustNot",
+            "text": "A profile run MUST NOT judge a pair the profile does not list."
+          }
+        ]
+      },
+      "rationale": "The profile states which records govern which locations, so a run checks\nexactly those pairs. A record id carries its kind, so one profile holds\nall kinds.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A run over a profile produces one result per (record, location)\npair and none for unlisted pairs.",
+            "checked": false
+          },
+          {
+            "text": "The report states, per record, whether it is met at every listed\nlocation, and names the failing locations.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0205",
+      "title": "Question sets ship with the tool",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST ship one question set per combination of record kind and\ntarget class (agent text or code)."
+          },
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST ship one quality decision tree per record kind."
+          },
+          {
+            "modal": "Must",
+            "text": "Every shipped question and prompt text MUST be approved by Rand before\nit ships."
+          },
+          {
+            "modal": "Must",
+            "text": "Question sets MUST be data files shipped with the tool."
+          },
+          {
+            "modal": "Must",
+            "text": "Quality decision trees MUST be data files shipped with the tool."
+          },
+          {
+            "modal": "Must",
+            "text": "The released tool MUST accept an override file for any question set."
+          },
+          {
+            "modal": "Must",
+            "text": "The released tool MUST accept an override file for any quality decision\ntree."
+          },
+          {
+            "modal": "Must",
+            "text": "Every result MUST carry the question-set id."
+          },
+          {
+            "modal": "Must",
+            "text": "Every result MUST carry the content digest of the file used."
+          },
+          {
+            "modal": "Must",
+            "text": "Every log entry MUST carry the question-set id."
+          },
+          {
+            "modal": "Must",
+            "text": "Every log entry MUST carry the content digest of the file used."
+          }
+        ]
+      },
+      "rationale": "Rand: \"I do not trust non-frontier agents to write prompts. I do not even\ntrust frontier agents to write them.\" The question sets are the tool's\nsystem prompts. Getting them production-worthy means running thousands of\nquestion variations against the released tool; a variation that needs a\ncode change cannot be run at that scale.\n\nBecause question sets and trees are data files, changing a question, a\ntree branch or a wave needs no code change. An override file lets a\nvariation be tried by writing a file, never by changing or rebuilding code.\nThe question-set id and file digest on every result and log entry let\nresults from many variations of the same set be told apart and compared.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "Each shipped question file names the approval that admitted its text.",
+            "checked": false
+          },
+          {
+            "text": "A result produced with an override names the override file and its\ndigest.",
+            "checked": false
+          },
+          {
+            "text": "Two override files differing in one question produce results with\ndifferent digests, run on the same released build.",
+            "checked": false
+          },
+          {
+            "text": "Adding a wave to a quality tree changes only the tree file.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0206",
+      "title": "One judgment per record and location",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "When a record is satisfied in more than one location (prompt, skill,\nagent, template or code), judge-jev MUST judge the record separately at\neach location."
+          },
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST report one result per (record, location) pair."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev MUST NOT combine a record's locations into one judgment."
+          }
+        ]
+      },
+      "rationale": "Rand (2026-11-07): \"from raptor config standpoint for judge-jev, we must\nhave single requirements mapped to multiple places in\nprompts/skills/agents/code I would expect a separate jev query for each\nlocation it is satisfied. We may be able to fan out a single jev call w/\n<location> - <question-1-req-1> | <question-2-req-1> | <question-3-req-2>\n| <question-4-req-2> | ... depending on how we can fit items in context\"\nRand (2026-11-08): \"batching is simply streaming of single requests.\"",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A record mapped to three locations produces three results, one per\nlocation.",
+            "checked": false
+          },
+          {
+            "text": "A failure at one location is reported against that location only.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0207",
+      "title": "Location syntax",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "A location MUST take one of three forms: `path`, `path#Heading` or\n`path::Symbol`."
+          },
+          {
+            "modal": "Must",
+            "text": "A `path` location MUST select the whole file."
+          },
+          {
+            "modal": "Must",
+            "text": "A `path#Heading` location MUST select a Markdown section, from the\nheading to the next heading of the same or higher level."
+          },
+          {
+            "modal": "Must",
+            "text": "A `path::Symbol` location MUST select a code symbol resolved by\nsc-agent's tree-sitter grammars."
+          },
+          {
+            "modal": "Must",
+            "text": "Markdown sections MUST be parsed by the same rules Raptor uses for the\nsame file."
+          },
+          {
+            "modal": "MustNot",
+            "text": "A location MUST NOT be a line range."
+          }
+        ]
+      },
+      "rationale": "Line ranges drift on every edit; headings and symbols survive. One\nMarkdown parsing rule keeps judge-jev and Raptor agreeing on what a\nsection is.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "`path#Heading` selects the same text Raptor attributes to that\nheading.",
+            "checked": false
+          },
+          {
+            "text": "A heading or symbol that does not resolve is a typed error naming the\nlocation.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "Open: which Raptor parser and heading rules judge-jev matches, and whether\npaths in a profile are relative to the profile or to the repository root.",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0208",
+      "title": "Dry run audits the composed request",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "`judge-jev quality` MUST accept `--dry-run`."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev check` MUST accept `--dry-run`."
+          },
+          {
+            "modal": "Must",
+            "text": "A dry run MUST compose every request without calling Jev."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the record id."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the record's Raptor source."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the resolved location as its path, section\nor symbol."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the digest of the location's selected\ntext."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the mode."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the question set as its shipped id or its\noverride path."
+          },
+          {
+            "modal": "Must",
+            "text": "In `task` mode, each dry-run entry MUST report the vars file."
+          },
+          {
+            "modal": "Must",
+            "text": "In `task` mode, each dry-run entry MUST report the rendered text."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the full composed request."
+          },
+          {
+            "modal": "Must",
+            "text": "Each dry-run entry MUST report the composed request's size against the\nrequest limit."
+          },
+          {
+            "modal": "Must",
+            "text": "For `quality`, the dry run MUST report the decision tree."
+          },
+          {
+            "modal": "Must",
+            "text": "For `quality`, the dry run MUST report the composed wave-1 request."
+          },
+          {
+            "modal": "Must",
+            "text": "A dry run MUST fail with a typed error on anything that would make the\nlive request wrong: an unresolved record or location, a render failure,\nor an oversize request."
+          }
+        ]
+      },
+      "rationale": "The caller must know the prompt will be built correctly before any text\nleaves the machine. A `quality` dry run stops at wave 1 because later\nwaves depend on live answers.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A dry run makes no network call and reports one entry per request a\nlive run would send.",
+            "checked": false
+          },
+          {
+            "text": "A dry run over a task location with a missing variable fails naming\nthe variable.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0209",
+      "title": "Record quality command",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "`judge-jev quality` MUST take one or more record ids."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev quality` MUST take each record id with one record-kind flag:\n`--req` (requirement), `--adr` (architecture decision record) or `--nfr`\n(non-functional requirement)."
+          },
+          {
+            "modal": "Must",
+            "text": "Every record-kind flag of `judge-jev quality` MUST be repeatable."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev quality` MUST judge each record with its kind's quality\ndecision tree (REQ-JEV-0101)."
+          },
+          {
+            "modal": "Must",
+            "text": "All records of one `judge-jev quality` invocation MUST be logged under\none run name."
+          }
+        ]
+      },
+      "rationale": "Quality and compliance are separate questions about separate inputs. One\nrun name per invocation groups a measurement over many records in the\nlog.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "Every request `judge-jev quality --req <id>` sends carries only the\nrecord and questions from the REQ quality tree.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0210",
+      "title": "Validate command",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "`judge-jev validate` MUST take one input file."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev validate` MUST take one input-kind flag with that file:\n`--tree` (quality tree), `--questions` (question set), `--answers`\n(answers file), `--index` (Raptor import index) or `--requests` (batch\nrequest stream)."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev validate` MUST check the file with the model `judge-jev`\napplies to that input kind before its first Jev request (ADR-JEV-0005)."
+          },
+          {
+            "modal": "Must",
+            "text": "Every refusal from `judge-jev validate` MUST name the field path."
+          },
+          {
+            "modal": "Must",
+            "text": "Every refusal from `judge-jev validate` MUST name the rule the field\nbreaks."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev validate --answers` MUST apply the answers-file envelope that\n`--answers-file` applies before the first request."
+          },
+          {
+            "modal": "Must",
+            "text": "The answers-file envelope MUST require an object of string keys."
+          },
+          {
+            "modal": "Must",
+            "text": "The answers-file envelope MUST require each key's value to be an object\nor a non-empty list of objects."
+          },
+          {
+            "modal": "Must",
+            "text": "The answers-file envelope MUST require an object with `__error__` to hold\nonly a string code of at most 64 characters."
+          },
+          {
+            "modal": "MustNot",
+            "text": "`judge-jev validate` MUST NOT call Jev."
+          }
+        ]
+      },
+      "rationale": "A tree variation checked before a run costs nothing; one refused after a\npaid call wastes it.\n\nThe answers file stands in for Jev's response, so what an answer holds\n(its questions, choices and probabilities) is not part of the envelope; it\nis checked after the send as `JEV.RESPONSE_INVALID`.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "Every input the sweep tests refuse in `quality` is refused by\n`judge-jev validate` with the same field path.",
+            "checked": false
+          },
+          {
+            "text": "The shipped trees and question sets pass `judge-jev validate`.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0211",
+      "title": "A typed result for every input",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "For every input, every `judge-jev` command MUST print exactly one JSON\nobject."
+          },
+          {
+            "modal": "Must",
+            "text": "The JSON object a `judge-jev` command prints MUST be its result or a\ntyped error."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev` MUST refuse an invalid tree, question set, index, request\nstream or run directory before its first Jev request."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev` MUST check that every log event of a request (the request,\nJev's largest possible answer and the result) fits the logger's event\nsize limit before sending the request."
+          }
+        ]
+      },
+      "rationale": "Rand Lee, 2026-11-08: \"Crash is not acceptable for any input.\" A refusal\nafter a paid call wastes the call; a crash loses its answer.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "The sweep tests (every field of a tree, index and answers file\nreplaced by each of a fixed list of wrong values, deleted or given an\nextra key, and raw JSON no value expresses) produce no `SCRIPT.INTERNAL`\nand no refusal after a request is sent.",
+            "checked": false
+          },
+          {
+            "text": "Invalid UTF-8 on stdin is refused with `INPUT.MALFORMED`.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0212",
+      "title": "Targeted definitions",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "A definition MUST be attachable to a record alone, or to a record and\none location under evaluation."
+          },
+          {
+            "modal": "Must",
+            "text": "A request about a record MUST carry, in its state next to the record, only\nthe definitions attached to that record alone, plus those attached to\nthat record and the request's location."
+          },
+          {
+            "modal": "Must",
+            "text": "A request with no matching definition MUST be identical to the request\nsent without definitions."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev` MUST refuse, before sending, a request whose definitions take\nit over the size limit."
+          },
+          {
+            "modal": "Must",
+            "text": "Every request's log event MUST record the digest of each definition it\ncarried."
+          },
+          {
+            "modal": "MustNot",
+            "text": "`judge-jev` MUST NOT truncate a definition."
+          }
+        ]
+      },
+      "rationale": "Rand Lee, 2026-11-08: \"we can NOT write a single definition file and add it\nto every prompt\" when running over 1000 to 2000 records with 1 to 200\nlocations each. A record-only definition \"makes the req/nfr/adr w/ confusing\nterm carry the definition w/ it for all jev calls\"; a record-and-location\ndefinition \"would only be added to specific data (code/prompt/skill) which\nrequires clarification\".",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "With definitions linked to record A only, the requests for record B\nare byte-identical to a run without definitions.",
+            "checked": false
+          },
+          {
+            "text": "The requests for record A carry exactly A's definitions, and their log\nevents list those definitions' digests.",
+            "checked": false
+          },
+          {
+            "text": "A definition attached to record A and location X is carried by A's\nrequest for X and by no other request about A.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0213",
+      "title": "A definition is kept only when it changes an answer",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "`judge-jev` MUST provide a comparison of one or more candidate\ndefinitions."
+          },
+          {
+            "modal": "Must",
+            "text": "The comparison MUST run the requests the candidate definitions would\nreach with the candidates."
+          },
+          {
+            "modal": "Must",
+            "text": "The comparison MUST run the same requests without the candidates."
+          },
+          {
+            "modal": "Must",
+            "text": "The comparison MUST report each answer's choice with and without the\ncandidates."
+          },
+          {
+            "modal": "Must",
+            "text": "The comparison MUST report each answer's confidence with and without the\ncandidates."
+          },
+          {
+            "modal": "Must",
+            "text": "The comparison MUST report the candidates as material when an answer's\nchoice flips or its confidence crosses the decision threshold, and as not\nmaterial when every change stays on the same side of the threshold."
+          },
+          {
+            "modal": "Must",
+            "text": "The comparison MUST record the threshold it applied."
+          }
+        ]
+      },
+      "rationale": "Rand Lee, 2026-11-08: \"if adding the definition does not impact the scores\nused in the rubric, they aren't necessary to add\"; \"Moving from 90->95\nconfidence doesn't matter. A change from 20%->50% would be material if\nother changes get it over the threshold.\"",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "With fixture answers where the definition flips one answer, the\ncomparison reports it as material.",
+            "checked": false
+          },
+          {
+            "text": "With fixture answers that are the same with and without the\ndefinition, the comparison reports it as not material.",
+            "checked": false
+          },
+          {
+            "text": "A confidence move from 0.90 to 0.95 on the same side of the threshold\nis not material. Two candidates that each move an answer part of the way,\nand together across the threshold, are material when compared together.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0214",
+      "title": "Question ids are unique within a scope",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "Every question IRI in one scope (by default the repository) MUST be\ndeclared in one tree file only, across judge-jev's trees and every\nconsumer extension's."
+          },
+          {
+            "modal": "Must",
+            "text": "Every `jj:id` in judge-jev's trees and in every consumer extension's\nMUST be unique within its tree."
+          }
+        ]
+      },
+      "rationale": "A question's identity is its IRI.\n\nRand Lee, 2026-11-08: \"We would need to make sure all questions in\njudge-jev AND in consumer extensions follow a naming policy for uniqueness\nw/in that scope (repo is typical scope).\"",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A question IRI declared in two tree files of one scope is reported\nas an error naming both files; two questions of one tree with the same\n`jj:id` are an error.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0215",
+      "title": "Doctor command",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST validate every tree in the scope against its\nschema."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST validate every question set in the scope against\nits schema."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST validate every definitions file in the scope\nagainst its schema."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST validate every tree, question set and definitions\nfile in the scope against the ontology's shapes, including edges and\ncycles."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST report each validation failure as an error."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST report a definition with no attachment as a\nwarning."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST report an attachment to a record the Raptor index\ndoes not hold as a warning."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST report an attachment to a location that does not\nexist as a warning."
+          },
+          {
+            "modal": "Must",
+            "text": "`judge-jev doctor` MUST report a definition whose source does not exist\nas a warning."
+          },
+          {
+            "modal": "MustNot",
+            "text": "`judge-jev doctor` MUST NOT call Jev."
+          },
+          {
+            "modal": "MustNot",
+            "text": "A `judge-jev doctor` warning MUST NOT fail the command."
+          }
+        ]
+      },
+      "rationale": "Rand Lee, 2026-11-08: \"I would expect judge-jev doctor to report orphans/dead\nlinks as warnings, it would also run schema validation and verify ontology\nfollowed and no cycles.\"",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A scope with one orphan definition exits 0 with one warning naming it.",
+            "checked": false
+          },
+          {
+            "text": "A scope with a tree that has a cycle exits non-zero with an error\nnaming the cycle.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0001",
+      "title": "Records come from Raptor",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST obtain records through Raptor's query interface."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev MUST NOT parse record Markdown itself."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself."
+          }
+        ]
+      },
+      "rationale": "Raptor owns the schema and every conversion; the Raptor team can change\nthem and notify judge-jev without breaking it.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "judge-jev contains no Markdown record parser and no SQL statement.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0002",
+      "title": "One batch command calls Jev",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST send every Jev request through one batch command."
+          },
+          {
+            "modal": "Must",
+            "text": "The batch command MUST read request lines."
+          },
+          {
+            "modal": "Must",
+            "text": "The batch command MUST write one result envelope per request."
+          },
+          {
+            "modal": "Must",
+            "text": "The batch command MUST use typed error codes."
+          },
+          {
+            "modal": "Must",
+            "text": "The batch command MUST apply a fixed retry policy."
+          },
+          {
+            "modal": "Must",
+            "text": "The batch command MUST enforce request size limits."
+          },
+          {
+            "modal": "Must",
+            "text": "The batch command MUST log every request through the sc-observability\nlogger (REQ-JEV-0008)."
+          },
+          {
+            "modal": "Must",
+            "text": "The batch command MUST log every answer through the sc-observability\nlogger (REQ-JEV-0008)."
+          }
+        ]
+      },
+      "rationale": "One call path keeps the Jev core stable while a Rust implementation\nreplaces it (ADR-JEV-0001).",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A request file of three lines produces three result envelopes and\nthree log entries.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0003",
+      "title": "TypeSafe key lookup",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST read the TypeSafe API key from `TYPESAFE_API_KEY` first,\nthen from the platform credential store, service `plan-anchor`, account\n`typesafe-api-key`."
+          }
+        ]
+      },
+      "rationale": "Tools that call Jev share one stored key, saved once.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A key stored under that service and account is found with no other\nsetup.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0004",
+      "title": "Remote-judge consent",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST refuse every live Jev call with\n`POLICY.REMOTE_JUDGE_DISABLED` unless the committed\n`.sc/judge-jev/settings.yaml` sets `allow_remote_judge: true`."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev MUST NOT write that setting without the user's answer."
+          }
+        ]
+      },
+      "rationale": "Text sent to Jev leaves the machine; the user decides once per repository.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "With the setting absent or false, a live call exits with\n`POLICY.REMOTE_JUDGE_DISABLED` and sends nothing.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0005",
+      "title": "Marketplace and installer",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST ship as a marketplace plugin for Claude."
+          },
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST ship as a marketplace plugin for Codex."
+          },
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST ship as a marketplace plugin for Cursor."
+          },
+          {
+            "modal": "Must",
+            "text": "An upgrade MUST update every harness that is locked, installed or present."
+          }
+        ]
+      },
+      "rationale": "No harness is left on an old version.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "Upgrading in a repository with Claude, Codex and Cursor installs\nupdates all three.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0006",
+      "title": "Local record database built through Raptor",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST obtain its record database by asking Raptor to build a\nlocal SQLite database from the repository's Raptor-parseable Markdown on\neach run."
+          },
+          {
+            "modal": "Must",
+            "text": "When Raptor supplies a SQLite snapshot of a Dolt branch, judge-jev MUST\nquery it through the same Raptor interface."
+          }
+        ]
+      },
+      "rationale": "Querying SQLite is the same work whether it was built from Markdown or\npulled from Dolt, so the source can change without changing judge-jev.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A run in a repository with a `.raptor/` configuration judges records\nfrom a database built in that run.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0007",
+      "title": "judge-jev's own records are Raptor-parseable",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev's requirements, non-functional requirements and decisions MUST\nimport through Raptor with no issues."
+          }
+        ]
+      },
+      "rationale": "judge-jev depends on Raptor's format, so its own records prove the format\nfirst.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "Raptor's import of this repository reports zero issues.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0008",
+      "title": "Logging through the sc-observability logger",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST write its run logs (requests, answers, quality-tree\nbranches, verdicts) through the sc-observability logger, the logger\nsc-agent uses."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev MUST NOT keep its own log format alongside it."
+          }
+        ]
+      },
+      "rationale": "Rand (2026-11-08): \"we will need to use sc-observability logger for both\n(this is what sc-agent uses). we should implement in judge-jev first then\nwe can upgrade plan-anchor which is currently working solidly.\"",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "A live `check` run's requests, answers and verdicts appear in the\nsc-observability log.",
+            "checked": false
+          },
+          {
+            "text": "No judge-jev command writes `anchor-runs/tournament-*.jsonl`.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "Today the copied core writes its own `anchor-runs/tournament-<run>.jsonl`\n(`jev_judge.py` `pump_batch`). plan-anchor moves to the same logger after\njudge-jev.",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "NFR-JEV-0001",
+      "title": "Deterministic offline tests",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-07",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev tests MUST run offline against recorded Jev answers."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev tests MUST NOT depend on timing."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev tests MUST NOT depend on sleeps."
+          },
+          {
+            "modal": "MustNot",
+            "text": "judge-jev tests MUST NOT depend on ordering."
+          }
+        ]
+      },
+      "rationale": "Flaky tests are prohibited; live Jev calls are neither free nor\nrepeatable.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "The test suite passes 20 consecutive runs with networking disabled.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "REQ-JEV-0101",
+      "title": "Record quality mode",
+      "status": "Proposed",
+      "version": "0.2.1",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "requirement_statement": {
+        "text": "",
+        "statements": [
+          {
+            "modal": "Must",
+            "text": "judge-jev MUST provide a mode that reports, for one requirement (REQ),\nnon-functional requirement (NFR) or architecture decision record (ADR),\nthe verdict of that record kind's quality decision tree."
+          },
+          {
+            "modal": "Must",
+            "text": "The mode MUST judge only records that Raptor imported without\ndiagnostics."
+          },
+          {
+            "modal": "Must",
+            "text": "The mode MUST run as a decision tree of prompts: each wave sends several\nquestions, and the answers to one wave select the next wave's questions."
+          },
+          {
+            "modal": "Must",
+            "text": "Every wave MUST report, as its reason, each of its questions with the\nquestion's id and text, Jev's choice and Jev's confidence."
+          },
+          {
+            "modal": "Must",
+            "text": "A wave the tree marks per statement MUST send one request for each MUST\nand MUST NOT statement of the record, carrying that statement with the\nwhole record as context."
+          },
+          {
+            "modal": "Must",
+            "text": "A per-statement wave's reason MUST list each statement's index and text\nwith each question's id, choice and confidence."
+          },
+          {
+            "modal": "Must",
+            "text": "A per-statement wave's verdict rule MUST be able to fire when any one\nstatement's answers match it."
+          },
+          {
+            "modal": "Must",
+            "text": "A per-statement wave's verdict MUST name the statements whose answers\nfired its rule."
+          },
+          {
+            "modal": "Must",
+            "text": "A per-statement request that gets no answer MUST fail with an error that\nnames its statement."
+          },
+          {
+            "modal": "Must",
+            "text": "A wave after the first MUST refine the answers of the wave before it."
+          },
+          {
+            "modal": "Must",
+            "text": "A wave after the first MUST be designed from the observed live results\nof the wave before it."
+          },
+          {
+            "modal": "Must",
+            "text": "A wave with no next wave MUST end the walk, with its verdict given by a\nrule in the tree file over that wave's answers."
+          },
+          {
+            "modal": "Must",
+            "text": "The tree MUST ship with the tool as a data file a consumer can override\n(REQ-JEV-0205); answers select the branch and the verdict, never a model\nchoosing the next questions."
+          },
+          {
+            "modal": "Must",
+            "text": "A failing answer MUST report the decision-tree path that failed."
+          },
+          {
+            "modal": "Must",
+            "text": "A live run MUST log every wave as output: its composed request, Jev's\nanswers, its reason and the branch or verdict they selected."
+          },
+          {
+            "modal": "MustNot",
+            "text": "The mode MUST NOT check structure that Raptor's import checks."
+          }
+        ]
+      },
+      "rationale": "Importing is part of complying with the schema: Raptor's import\ndiagnostics (REQ-RAP-0012) bring a document into the schema, then this\nmode judges whether each imported record is well written. Prose evaluation\nuses only records that pass both.\n\nRand (2026-11-08): \"for the 'is this adr/nfr/req high quality' mode, I\nwould expect this to be a decision tree of prompts. each layer of the tree\nwould output several questions which based on the wave-1 outputs would\nresult in a new set of questions to narrow in.\" On a dry run showing only\nwave 1: \"as long as real run logs all info as output (sc-agent will do logging and is\nalmost ready to start testing).\"\n\nRand (2026-11-08), after the first live run reported only fixed leaf text:\n\"every wave needs to provide some 'reason' the next wave is just to refine\nit. You can't design wave-2 until you see wave-1 results so you know what\nwave-2 should ask.\" The shipped trees therefore hold wave 1 only; a wave 2\nis designed from wave 1's observed answers.\n\nRand (2026-11-08) approved per-statement waves: one request per MUST / MUST\nNOT statement, with that statement plus the whole record as context, so a\nfailure names the statement to fix.",
+      "success_criteria": {
+        "text": "",
+        "acceptance_criteria": [
+          {
+            "text": "Fixed answers to a wave select the same next wave every run.",
+            "checked": false
+          },
+          {
+            "text": "Every wave's result lists each of its questions with id, text,\nchoice and confidence.",
+            "checked": false
+          },
+          {
+            "text": "A live run's log holds each wave's request, answers, reason and\nselected branch or verdict.",
+            "checked": false
+          },
+          {
+            "text": "A REQ with two MUST statements and one SHOULD statement sends two\nwave-1 requests, one per MUST statement.",
+            "checked": false
+          },
+          {
+            "text": "A REQ whose third statement answers `check: none` reports `no`, names\nstatement 3, and lists every statement's answers in wave 1's reason.",
+            "checked": false
+          },
+          {
+            "text": "A dry run shows the composed wave-1 request for every statement.",
+            "checked": false
+          },
+          {
+            "text": "A record Raptor rejected is not sent to Jev.",
+            "checked": false
+          }
+        ],
+        "test_evidence": []
+      },
+      "dependencies": {
+        "text": "",
+        "requires": [],
+        "related": []
+      },
+      "product_applicability": {
+        "text": "",
+        "applies_to": [],
+        "does_not_apply_to": []
+      },
+      "implementation_notes": {
+        "text": "Logging goes through the sc-observability logger (REQ-JEV-0008). A\nper-statement node sets `\"per\": \"statement\"`, `statements` (the record\nfield holding the statements) and `modals` (the modals judged); each\nstatement is one request whose item text is `{statement, record}`. The\nshipped REQ and NFR trees ask, per statement, `obligations`, `joined_by`,\n`term` and `check`; the ADR tree asks, per record, `context`,\n`alternatives` and `consequences`. Each option's criterion carries its fix\nhint, and the reason reports it.",
+        "key_considerations": []
+      },
+      "test_strategy": {
+        "text": "",
+        "test_types": []
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "id": "ADR-JEV-0001",
+      "title": "Keep the Jev core unchanged until its Rust replacement",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "judge-jev's Jev core (the batch command, request and result contracts,\nkey lookup and remote-judge consent) is copied from an existing\nimplementation, and a Rust implementation, exposed through PyO3 bindings or\na command-line interface (CLI), will replace that Python core. The problem\nis whether the Python core may change before then: any change to its\narchitecture or contracts is a change the Rust replacement must reproduce,\nor its callers break when the replacement lands.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "The Jev core keeps its architecture and contracts unchanged. It changes\nonly to fix a defect, or to replace its run log with the sc-observability\nlogger (REQ-JEV-0008).",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "An unchanged core lets the Rust implementation replace it with no change\nto its callers.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "The Rust replacement is a drop-in."
+        ],
+        "negative": [
+          "Improvements to the core wait for the Rust implementation."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "Improve the Python core before the Rust replacement",
+            "description": "Change the copied core's architecture or contracts now.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "The Rust implementation could then not replace the core\nwithout a change to its callers."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "ADR-JEV-0002",
+      "title": "Query records through Raptor over local SQLite",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "judge-jev needs requirement records to judge, and their source is\nchanging: requirements move from Markdown files to a Dolt server as the\nsingle source of truth, with the Raptor command-line interface (CLI) as\nthe access path. Raptor owns the record schema and every conversion\n(REQ-JEV-0001). The problem is how judge-jev reads records so that neither\nthe move to Dolt nor a Raptor schema change breaks it.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "judge-jev reads records only through Raptor, which queries a local SQLite\ndatabase: built on the fly from Markdown now, pulled from a Dolt branch\nlater.",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "Querying SQLite is the same work either way, so the source can change\nwithout touching judge-jev.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "The move to Dolt does not change judge-jev."
+        ],
+        "negative": [
+          "judge-jev depends on Raptor's query contract; Raptor notifies judge-jev\nmaintenance before changing it."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "Parse record Markdown directly",
+            "description": "judge-jev reads the record Markdown files itself.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Raptor owns the schema and every conversion; a parser in\njudge-jev breaks when Raptor changes them (REQ-JEV-0001)."
+          },
+          {
+            "name": "Query the record store with SQL directly",
+            "description": "judge-jev runs its own SQL against the record store.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Raptor owns the schema; judge-jev's own queries break when\nRaptor changes it (REQ-JEV-0001)."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "ADR-JEV-0003",
+      "title": "Judge record quality instead of loosening the schema",
+      "status": "Proposed",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "Raptor rejects records missing required sections, such as statements\nwritten as plain prose, so corpora with prose-only records do not import.\njudge-jev can judge only records with typed statements and criteria. The\nproblem is how such records get into a judgeable form: by loosening\nRaptor's schema to accept them, or by keeping it strict and explaining\nwhat to fix.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "Raptor's schema stays strict. Raptor's import diagnostics explain why a\nrecord does not fit the schema; judge-jev's quality mode then explains why\nan imported record is not well written.",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "An explained rejection gets the document fixed; a looser schema stores\nrecords that cannot be judged.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "Every record judge-jev uses has typed statements and criteria."
+        ],
+        "negative": [
+          "Corpora with prose-only records need editing before import, guided by\nthe import diagnostics."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "Loosen Raptor's schema",
+            "description": "Accept records missing required sections, such as\nprose-only statements.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "A looser schema stores records that cannot be judged."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "ADR-JEV-0004",
+      "title": "Code references are outside the first version",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "Records will eventually govern code as well as prompts, but selecting code\nneeds tree-sitter grammars, which sc-agent defines and which may not be\ncomplete yet. The problem is what the first version judges while those\ngrammars are unfinished.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "The first version judges prompts, skills and task templates only. Code\nreferences come later through tree-sitter grammars that sc-agent defines;\njudge-jev never defines its own grammars. sc-agent's grammars may not be\ncomplete yet.",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "Prompt and task wording is the immediate risk; code selection needs the\ntree-sitter work first.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "The first version ships without a code-reference model."
+        ],
+        "negative": [
+          "Code is not judged until the tree-sitter extension exists."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "judge-jev defines its own tree-sitter grammars",
+            "description": "Ship grammars inside judge-jev so code is judged now.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "sc-agent owns the grammars so every consumer selects code\nthe same way (REQ-JEV-0203)."
+          },
+          {
+            "name": "Line-range locations for code",
+            "description": "Reference code by file line ranges instead of symbols.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Line ranges drift on every edit; symbols survive\n(REQ-JEV-0207)."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "ADR-JEV-0005",
+      "title": "Pydantic models validate every JSON input",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "judge-jev reads JSON written by people and agents (quality trees, question\nsets, answers files, request streams), by Raptor (the import index) and by\nJev (responses). Quality trees will be varied thousands of times\n(REQ-JEV-0205). Hand-written type checks let fourteen input shapes crash\nthe script or fail only after a paid Jev call, found by review of PRs #13\nand #14. The problem is how to make every input either accepted, or refused\nwith the exact field, before the first call.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "Every JSON input is parsed into a pydantic v2 model in strict mode before\nit is used, and code after parsing receives model instances, not\ndictionaries. Each model is the single definition of its input's shape.\nRules that span fields (a rule's choices are options of its question, a\n`goto` names a node, no cycle, a final rule without conditions) are model\nvalidators. `judge-jev validate` (REQ-JEV-0210) runs the same models\nwithout calling Jev. The JSON shapes of the Jev core's contracts do not\nchange (ADR-JEV-0001); only how they are checked does.",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "One model per input replaces scattered checks that each had to anticipate\nevery wrong type, and pydantic reports the field path of every refusal.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "Every refusal names the field and the rule it breaks.",
+          "Tree authors check a variation with `judge-jev validate` before a run."
+        ],
+        "negative": [
+          "pydantic (with its compiled core) becomes a dependency, pinned in the\nscript's PEP 723 header and in CI.",
+          "Refusal wording follows pydantic's messages."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "Keep hand-written checks",
+            "description": "Extend the `isinstance` checks for each new crash found.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Each new shape needs a new check; review of #13 and #14\nfound fourteen that were missed."
+          },
+          {
+            "name": "JSON Schema validated by `jsonschema`",
+            "description": "One schema file per input, validated at load.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Rules that span fields stay hand-written, and code after\nvalidation still handles untyped dictionaries."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "ADR-JEV-0006",
+      "title": "Quality trees and their answers are an RDF graph",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "A quality tree is a graph: waves, questions, options and rules, with edges\nbetween them. As JSON, a question shared by two trees or two waves is\ncopied, list position carries rule priority, and every structural check is\ncode judge-jev maintains. Answers live in log files apart from the questions\nthat produced them, so comparing thousands of question variations means\nscraping logs. The problem is how to represent trees and answers so that\nquestions are shared, structure is checked by existing tools, and every\nverdict can be traced through its answers to the exact question and option.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "Quality trees are written in Turtle (TTL) against a judge-jev ontology:\nwaves, questions, options and rules are resources linked by edges, and a\nquestion is one resource with an IRI that any wave may use. Order is a\n`rank` property: rules are tried by rank and the reason lists questions by\nrank; questions within a wave are otherwise unordered. SHACL shapes over the\nontology validate the graph and its edges (each rule's choices are options\nof its question, each `goto` names a node, no cycle, a final rule without\nconditions). Pydantic models (ADR-JEV-0005) validate each node's body,\nincluding the per-wave JSON compiled from the graph and sent to Jev. Runs,\nanswers, fired rules and verdicts are recorded as triples linked to the\nquestions, options and Raptor records they concern, in an Oxigraph store\n(`pyoxigraph` in judge-jev). A tree's digest is the SHA-256 of its\ncanonical form (RDFC-1.0).\n\nThe vocabulary, prefix `jj: <urn:judge-jev:ontology#>`:\n\n- Tree: `jj:Tree` (`jj:start`, `jj:node`, `jj:kind`), `jj:Wave`\n  (`jj:asks` a `jj:Question`, `jj:rule`, `jj:per`, `jj:statements`,\n  `jj:modal`), `jj:Leaf` (`jj:verdict`).\n- Question: `jj:Question` (`jj:instructions`, `jj:option` a `jj:Option`,\n  `jj:rank`), `jj:Option` (`jj:label`, `jj:criterion`).\n- Rule: `jj:BranchRule` (`jj:goto`) and `jj:VerdictRule` (`jj:verdict`),\n  each with `jj:rank` and `jj:whenAll` / `jj:whenAny` a `jj:Condition`\n  (`jj:question`, `jj:choice` an `jj:Option`).\n- Run: `jj:Run` (`jj:tree`, `jj:treeDigest`, `jj:record` the Raptor\n  record's IRI), `jj:WaveRun` (`jj:inRun`, `jj:node`, `jj:requestId`,\n  `jj:statement`, `jj:fired` a rule), `jj:Answer` (`jj:ofWaveRun`,\n  `jj:toQuestion`, `jj:chose` an `jj:Option`, `jj:confidence`,\n  `jj:probability` a `jj:OptionProbability` with `jj:option` and `jj:p`),\n  `jj:verdictValue` on a run.",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "Validation of the graph moves to SHACL and of node bodies to pydantic, so\njudge-jev's own checking code shrinks to the compile step. One graph of\nrecords, questions and answers makes any verdict traceable and any two\nquestion variations comparable with one query.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "A question is written once and used by IRI.",
+          "A query over the graph compares question variations across runs.",
+          "The graph renders in a graph viewer for authoring and diagnosis.",
+          "The Rust Jev tool in sc-agent can process the same ontology with\nOxigraph."
+        ],
+        "negative": [
+          "`pyoxigraph` and a SHACL validator become dependencies.",
+          "Each wave needs a compile step from the graph to Jev's JSON request.",
+          "Tree authors write Turtle instead of JSON."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "JSON trees with references to shared question files",
+            "description": "Keep JSON; a wave lists `$ref`s that judge-jev resolves.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "It removes duplication only; structure checks stay in\njudge-jev's code, and answers stay apart from questions."
+          },
+          {
+            "name": "JSON trees as today",
+            "description": "Keep one JSON file per tree with inline questions.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Questions are copied, priority is list position, and\nanswers cannot be joined to questions without scraping logs."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "ADR-JEV-0007",
+      "title": "The seam to sc-agent's Jev tool",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "sc-agent's Rust Jev tool will replace judge-jev's Python Jev core\n(ADR-JEV-0001). Its first version will not include Oxigraph, though a later\none may. Quality trees and their answers become an RDF graph\n(ADR-JEV-0006). The problem is where the boundary lies, so that judge-jev\nworks with a Jev tool that has no graph store today, and one with Oxigraph\nlater takes over graph work without judge-jev changing its callers.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "judge-jev has two ports:\n\n- **Transport:** sends the request lines of one wave and returns their\n  result lines. Its contract is the existing batch request and result\n  schemas (`assets/schemas/jev-batch-request.schema.json`,\n  `jev-batch-result.schema.json`), unchanged. The Python core implements it\n  now; sc-agent's Jev tool implements it later.\n- **Graph store:** loads a tree, validates it with SHACL, compiles a wave\n  to its JSON questions, records a run's triples and answers queries.\n  judge-jev implements it now with `pyoxigraph` and a SHACL validator; a\n  Jev tool with Oxigraph may implement it later.\n\nOnly JSON crosses the transport. The result lines in the sc-observability\nlog are the record of a run; a run's triples are a projection of those\nlines and the tree, so they can be rebuilt from the log at any time. The\ntree walk (which wave next, which verdict) uses only the compiled waves and\nthe answers, so it runs on either side of the seam.",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "A Jev tool without a graph store needs only the JSON contract it already\nhas. Because the triples are rebuilt from the log, no run is lost when the\nstore moves to the other side of the seam.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "sc-agent's first Jev tool replaces the Python core with no graph work.",
+          "Moving the graph store into sc-agent changes the port's implementation,\nnot its callers."
+        ],
+        "negative": [
+          "Until sc-agent hosts the store, judge-jev carries the graph dependencies.",
+          "The projection from result lines to triples must stay in step with the\nontology."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "sc-agent's Jev tool reads trees and writes triples",
+            "description": "Send the TTL tree and the record; the tool walks the tree\nand stores the triples.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Its first version has no graph store, so judge-jev would\nwait for it."
+          },
+          {
+            "name": "Triples as the only record of a run",
+            "description": "Write runs to the graph store instead of the log.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "A tool without a store could not record a run, and a lost\nstore loses the runs."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    },
+    {
+      "id": "ADR-JEV-0008",
+      "title": "Definitions are graph nodes targeted at records",
+      "status": "Draft",
+      "version": "0.1.0",
+      "created": "2026-11-07",
+      "last_updated": "2026-11-08",
+      "owner": "Rand Lee",
+      "supersedes": null,
+      "superseded_by": null,
+      "decision_date": "2026-11-07",
+      "context": {
+        "text": "A record can use a term that neither the record nor anything Jev sees\ndefines, and Jev then has to guess. judge-jev runs over 1000 to 2000 REQ,\nADR and NFR records, each with 1 to 200 code locations. A single definitions\nfile prepended to every request would be sent tens of thousands of times,\nalmost always to requests that do not need it. Unrelated material lowers\nJev's accuracy and uses up the request budget. The problem is how to supply\na definition only where it changes an answer, and how to find definitions\nthat no longer serve anything.",
+        "background": "",
+        "problem_statement": ""
+      },
+      "decision": {
+        "text": "A definition is a node in the judge-jev graph (ADR-JEV-0006):\n\n- **`jj:Definition`** holds a `jj:term`, a `jj:text` (short, one line on\n  average) and a `jj:source`, the repository file or record that the\n  meaning comes from. Pydantic validates the body (ADR-JEV-0005), and SHACL\n  validates the edges.\n- **`jj:attachedTo`** links a definition to one or more attachments. Each\n  attachment names one record (`jj:record`, its Raptor IRI) and optionally\n  one location (`jj:location`, the code, prompt, skill or task template\n  under evaluation). That gives two cases:\n  - **Record only:** the record carries the definition into every Jev call\n    about it, every question and every location. Use this when the record's\n    own wording is the confusing part.\n  - **Record and location:** the definition is added only when that record\n    is checked against that location. Use this when the location's material\n    needs the clarification, not the record.\n\n  Every question of a request sees its definitions. An attachment is a node\n  because an RDF edge links only two things.\n- **Storage:** definitions are Turtle files committed in the repository\n  under `.sc/judge-jev/`. The per-requirement tree-sitter queries will be\n  kept there too, keyed by the same record IDs. Both may move into the\n  Raptor database later, once real runs show the feature earns schema\n  space. The files load into the store as their own named graph, so they\n  never change a tree's digest.\n\n- **Request:** a Jev request has two parts, the state (data) and the\n  questions, and Jev answers every question in parallel against the same\n  state. Definitions are data: a request carries\n  `state = {record, definitions}` (with the location when one is under\n  evaluation), followed by the questions. `definitions` holds the record's\n  record-only definitions plus those attached to this record and this\n  location. A request with no matching definition is the same as before.\n  `quality` evaluates the record alone, so it uses record-only definitions. Definitions are never\n  truncated. A request that the definitions push over the size limit is\n  refused before it is sent. Every request and its log event record the\n  digest of each definition carried, and a run's triples link the run to\n  them.\n\n- **Tuning:** definitions are added in tuning, and only when they make a\n  material change. The steps are:\n\n  1. A failing or `unclear` reason names a term the record leaves undefined.\n  2. A definition is written from the repository's own material and named as\n     its source.\n  3. The requests the definition would reach (the record's, or the record\n     and location's) are run with and without it.\n  4. The definition is kept only if it can change an answer: an answer's\n     choice flips, or its confidence crosses the threshold that decides it.\n     A move that stays on the same side of the threshold (90% to 95%) is not\n     material. Candidates can be compared together, so a move that does not\n     cross on its own (20% to 50%) is material when the set's combined\n     change crosses. A definition that changes nothing is removed.\n\n  The commit that adds a definition is its approval record.\n\n- **Question naming:** a question's identity is its IRI, and an IRI is\n  declared in one tree file only, across the repository: judge-jev's own trees\n  and any consumer extension's (two files declaring one IRI would silently merge\n  in the store). Its `jj:id`, the key in requests and reasons, is unique within\n  its tree. judge-jev's questions use\n  `urn:judge-jev:question:<kind>.<id>`. An extension mints its questions under\n  its own namespace.\n\n**`judge-jev doctor`** checks everything judge-jev loads in a repository and\ncalls nothing:\n- schema validation of every tree, question set and definitions file;\n- SHACL conformance to the ontology, including edges and the absence of\n  cycles;\n- duplicate question ids in the scope, as errors;\n- warnings, without failing, for:\n  - a definition with no attachment;\n  - an attachment to a record the Raptor index does not have, or to a\n    location that does not exist;\n  - a definition whose source does not exist.",
+        "chosen_approach": "",
+        "key_principles": []
+      },
+      "rationale": {
+        "text": "Measuring a definition by its effect on Jev's answers keeps the\nlow-value ones out. \"sc-agent\" read as \"a specific type of agent\" may\nalready be inferred correctly. Targeting by record keeps every request as\nsmall as before unless that record needs help. Definitions sourced from\nthe repository's own material and checked by A/B carry low risk.",
+        "benefits": [],
+        "trade_offs": []
+      },
+      "consequences": {
+        "text": "",
+        "positive": [
+          "Changing or removing a definition affects only the runs it reached, and\na graph query lists exactly those runs.",
+          "The A/B run spends Jev calls only on the records involved.",
+          "Orphaned definitions and dead links are found by `doctor` rather than\naccumulating."
+        ],
+        "negative": [
+          "A definition is seen by every question of its record's waves, not only\nthe one whose reason prompted it. The A/B run compares every answer, so\nan effect on another question is counted.",
+          "Consumer extensions must follow the question naming rule, or `doctor`\nrefuses the scope."
+        ],
+        "neutral": []
+      },
+      "alternatives": {
+        "text": "",
+        "groups": [
+          {
+            "name": "One definitions file in every request",
+            "description": "A repository-wide glossary sent as context with every\nrequest.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "At this scale it multiplies every request's size and\ngives Jev unrelated material."
+          },
+          {
+            "name": "Definitions inside the question text",
+            "description": "Append a definition to the instructions of the question\nthat needed it.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "Definitions are data, and Jev keeps data in the state.\nThe question text would also vary per record."
+          },
+          {
+            "name": "A Raptor table now",
+            "description": "Store definitions and their links in Raptor's schema\nfrom the start.",
+            "pros": [],
+            "cons": [],
+            "why_rejected": "The feature has to prove its value in real runs before\nit gets schema space in Raptor."
+          }
+        ]
+      },
+      "implementation": {
+        "text": "",
+        "key_components": [],
+        "integration_points": [],
+        "code_examples": ""
+      },
+      "impact_analysis": {
+        "text": "",
+        "affected_components": "",
+        "performance_impact": "",
+        "security_impact": "",
+        "maintainability_impact": ""
+      },
+      "related_documents": {
+        "text": "",
+        "requirements": [],
+        "architecture_decisions": [],
+        "design_documents": [],
+        "work_items": [],
+        "external_references": []
+      }
+    }
+  ],
+  "diagnostics": {
+    "issues": [],
+    "summary": {
+      "records": 33,
+      "counts": {},
+      "groups": [],
+      "aliases": {}
+    }
+  }
+}

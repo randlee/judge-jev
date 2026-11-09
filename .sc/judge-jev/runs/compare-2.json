@@ -1,0 +1,334 @@
+{
+  "success": true,
+  "error": null,
+  "data": {
+    "dry_run": false,
+    "record": {
+      "id": "NFR-JEV-0001",
+      "kind": "nfr",
+      "source": {
+        "raptor_index": ".sc/judge-jev/runs/index.json"
+      }
+    },
+    "tree": {
+      "id": "quality-nfr",
+      "sha256": "63b757fc3db98f2ae28c1f95dfbfa1851c22aeaa280356edde7a437937aaa570",
+      "source": "shipped",
+      "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-nfr.json"
+    },
+    "definitions": [
+      {
+        "iri": "urn:judge-jev:definition:jev",
+        "term": "Jev",
+        "digest": "a80e216c3f113fc29e705ded28c819fc3ff918bbdd9b029e2248cc31b5794e61",
+        "source": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2"
+      }
+    ],
+    "threshold": 0.6,
+    "material": true,
+    "answers_compared": 16,
+    "answers_material": 2,
+    "answers": [
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 0.8
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 0.68
+        },
+        "choice_changed": false,
+        "confidence_change": -0.12,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.85
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.82
+        },
+        "choice_changed": false,
+        "confidence_change": -0.03,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "term",
+        "without": {
+          "choice": "undefined acronym",
+          "confidence": 0.5
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.47
+        },
+        "choice_changed": true,
+        "confidence_change": -0.03,
+        "crosses_threshold": false,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 1,
+        "question": "check",
+        "without": {
+          "choice": "CLI run",
+          "confidence": 0.45
+        },
+        "with": {
+          "choice": "CLI run",
+          "confidence": 0.39
+        },
+        "choice_changed": false,
+        "confidence_change": -0.06,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.96
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.96
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.26
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.51
+        },
+        "choice_changed": false,
+        "confidence_change": 0.25,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 2,
+        "question": "check",
+        "without": {
+          "choice": "inspection or grep",
+          "confidence": 0.55
+        },
+        "with": {
+          "choice": "inspection or grep",
+          "confidence": 0.52
+        },
+        "choice_changed": false,
+        "confidence_change": -0.03,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.98
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.98
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.36
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.61
+        },
+        "choice_changed": false,
+        "confidence_change": 0.25,
+        "crosses_threshold": true,
+        "material": true
+      },
+      {
+        "node": "wave-1",
+        "statement": 3,
+        "question": "check",
+        "without": {
+          "choice": "inspection or grep",
+          "confidence": 0.86
+        },
+        "with": {
+          "choice": "inspection or grep",
+          "confidence": 0.82
+        },
+        "choice_changed": false,
+        "confidence_change": -0.04,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "obligations",
+        "without": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "with": {
+          "choice": "1",
+          "confidence": 1.0
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "joined_by",
+        "without": {
+          "choice": "none",
+          "confidence": 0.99
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.99
+        },
+        "choice_changed": false,
+        "confidence_change": 0.0,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "term",
+        "without": {
+          "choice": "none",
+          "confidence": 0.2
+        },
+        "with": {
+          "choice": "none",
+          "confidence": 0.25
+        },
+        "choice_changed": false,
+        "confidence_change": 0.05,
+        "crosses_threshold": false,
+        "material": false
+      },
+      {
+        "node": "wave-1",
+        "statement": 4,
+        "question": "check",
+        "without": {
+          "choice": "inspection or grep",
+          "confidence": 0.47
+        },
+        "with": {
+          "choice": "inspection or grep",
+          "confidence": 0.37
+        },
+        "choice_changed": false,
+        "confidence_change": -0.1,
+        "crosses_threshold": false,
+        "material": false
+      }
+    ],
+    "arms": {
+      "without": {
+        "verdict": "no",
+        "path": [
+          "wave-1"
+        ],
+        "run": "compare-2-0.3.0.without",
+        "definitions": []
+      },
+      "with": {
+        "verdict": "yes",
+        "path": [
+          "wave-1"
+        ],
+        "run": "compare-2-0.3.0.with",
+        "definitions": [
+          {
+            "iri": "urn:judge-jev:definition:jev",
+            "term": "Jev",
+            "digest": "a80e216c3f113fc29e705ded28c819fc3ff918bbdd9b029e2248cc31b5794e61"
+          }
+        ]
+      }
+    },
+    "log": {
+      "run": "compare-2-0.3.0",
+      "log_root": ".sc/judge-jev/runs/compare-2"
+    }
+  }
+}
