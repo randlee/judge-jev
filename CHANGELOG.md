@@ -1,8 +1,8 @@
 # Changelog
 
-`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. A PR that changes shipped content raises `VERSION`, moves every version with it, and adds a `## X.Y.Z — date` section here. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
+`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. Nothing is published yet, so `VERSION` stays `0.0.0` and no PR bumps it; changes accumulate under `## Unreleased` until the first publish. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
-## 0.3.0 — 2026-11-08
+## Unreleased
 
 - `quality` logs the rank of the rule that fired (`rule_rank` on the wave and
   verdict events) and the record's Raptor IRI (`record_iri` on every event);
@@ -48,8 +48,6 @@
   definitions without calling Jev; errors for invalid files and duplicate
   question IRIs declared in more than one tree file and duplicate `jj:id` within a tree, warnings for unattached definitions and
   missing records, locations or sources.
-
-## 0.2.1 — 2026-11-08
 
 - Every JSON input is parsed into a strict pydantic v2 model (ADR-JEV-0005;
   `pydantic>=2.7,<3` joins the script's inline dependencies and CI): the quality
@@ -213,8 +211,6 @@
   `validate --answers` no longer refuses a bad choice, probability or extra key
   inside an answer (it did, and `quality` did not agree).
 
-## 0.2.0 — 2026-11-08
-
 - `jev_judge.py batch` logs through the sc-observability logger
   (`sc-observability==1.5.0`, REQ-JEV-0008) instead of its own
   `anchor-runs/tournament-<run>.jsonl`: each result line is a `request`,
@@ -231,8 +227,6 @@
   log event carries the tree id and the file's sha256.
 - `batch` accepts a request line without `anchor`: it sends only the item,
   needs no roles and gets a null verdict. Anchored lines are gated as before.
-
-## 0.1.0 — 2026-11-07
 
 - The judge-jev marketplace: `.claude-plugin/`, `.cursor-plugin/` and
   `.agents/plugins/` catalogs list one plugin, `sc-judge-jev`, which ships only

@@ -69,9 +69,12 @@ class VersionSingleSourceOfTruthTests(unittest.TestCase):
         self.assertTrue(templates)
         self.assertEqual(sync.template_drift(ROOT), [])
 
-    def test_changelog_has_version_section(self):
+    def test_changelog_has_unreleased_or_version_section(self):
         text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        self.assertRegex(text, rf"(?m)^## {self.version.replace('.', r'[.]')}\b")
+        self.assertRegex(text, rf"(?m)^## (Unreleased|{self.version.replace('.', r'[.]')})\b")
+
+    def test_nothing_is_published_so_the_version_is_zero(self):
+        self.assertEqual(self.version, "0.0.0")
 
     def test_planted_drift_is_reported_by_path(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -112,8 +115,8 @@ class VersionSingleSourceOfTruthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _copy_shipped(root)
-            (root / "CHANGELOG.md").write_text("# Changelog\n\n## Unreleased\n", encoding="utf-8")
-            self.assertEqual(sync.ssot_drift(root, self.version), [f"CHANGELOG.md has no '## {self.version}' entry"])
+            (root / "CHANGELOG.md").write_text("# Changelog\n\n## 9.9.9\n", encoding="utf-8")
+            self.assertEqual(sync.ssot_drift(root, self.version), [f"CHANGELOG.md has neither a '## Unreleased' section nor a '## {self.version}' entry"])
 
 
 if __name__ == "__main__":

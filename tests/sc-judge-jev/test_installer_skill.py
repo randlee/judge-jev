@@ -25,7 +25,7 @@ import unittest
 from unittest import mock
 
 from layout_support import PLUGIN, SCRIPTS, TARGETS
-from test_install import VERSION, inst, needs_wheel
+from test_install import VERSION, inst, needs_wheel, staged_plugin
 
 sys.path.insert(0, str(SCRIPTS))
 import judge_jev_paths as paths  # noqa: E402
@@ -229,8 +229,8 @@ class ParentFolderInstallTests(Scratch):
 
 
 class SessionStartHookTests(Scratch):
-    def run_hook(self, cwd):
-        proc = subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"cwd": str(cwd), "hook_event_name": "SessionStart"}),
+    def run_hook(self, cwd, hook=HOOK):
+        proc = subprocess.run([sys.executable, str(hook)], input=json.dumps({"cwd": str(cwd), "hook_event_name": "SessionStart"}),
                               env=child_env(self.home), capture_output=True, text=True, encoding="utf-8", timeout=30)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(proc.stderr, "")
@@ -258,10 +258,13 @@ class SessionStartHookTests(Scratch):
 
     def test_one_line_when_older(self):
         repo = self.folder()
-        write_lock(repo.parent, "0.0.1")  # a parent-folder install covers the repository
+        write_lock(repo.parent, "0.0.0")  # a parent-folder install covers the repository
+        stage = tempfile.TemporaryDirectory()  # outside self.tmp: the hook's bytecode must not count as a write
+        self.addCleanup(stage.cleanup)
+        ahead = staged_plugin(Path(stage.name) / "plugin", "0.0.1")  # the shipped 0.0.0 has nothing older than it
         before = tree(self.tmp)
-        out = self.run_hook(repo / "src")
-        self.assertEqual(out, f"judge-jev 0.0.1 installed, {VERSION} available: run judge-jev-installer ({repo.parent})\n")
+        out = self.run_hook(repo / "src", hook=ahead / "hooks" / "check_install.py")
+        self.assertEqual(out, f"judge-jev 0.0.0 installed, 0.0.1 available: run judge-jev-installer ({repo.parent})\n")
         self.assertEqual(tree(self.tmp), before)
 
     def test_nearest_lock_wins_and_the_walk_stops_before_home(self):
@@ -298,9 +301,9 @@ class SessionStartHookTests(Scratch):
 
 
 class StatusTests(Scratch):
-    def status(self, dest):
+    def status(self, dest, **kw):
         with fake_home(self.home):
-            code, out = call_main(["--dest", str(dest), "--status"])
+            code, out = call_main(["--dest", str(dest), "--status"], **kw)
         self.assertEqual(code, 0, out)
         return out["data"]
 
@@ -314,9 +317,10 @@ class StatusTests(Scratch):
         data = self.status(repo)
         self.assertEqual(data["state"], "not_installed")
         self.assertEqual(data["covering_install"], {"root": str(repo.parent), "version": "0.0.1", "valid": True})
-        write_lock(repo, "0.0.1")
-        data = self.status(repo)
-        self.assertEqual((data["state"], data["message"]), ("older", f"installed 0.0.1, installer {VERSION}"))
+        write_lock(repo, "0.0.0")
+        ahead = staged_plugin(self.tmp / "ahead", "0.0.1")  # the shipped 0.0.0 has nothing older than it
+        data = self.status(repo, plugin_dir=ahead)
+        self.assertEqual((data["state"], data["message"]), ("older", "installed 0.0.0, installer 0.0.1"))
         write_lock(repo, VERSION)
         self.assertEqual(self.status(repo)["state"], "current")
         write_lock(repo, "99.0.0")

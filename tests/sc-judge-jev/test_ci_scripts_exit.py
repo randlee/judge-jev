@@ -1,7 +1,6 @@
 """0.8.3: the repository CI scripts exit 2 with a message, never 1 and never a traceback.
 
-check_version_sync.py runs as a real process: on the repository for a missing
-``--base`` ref, and on a scratch copy of the repository for version drift and a
+check_version_sync.py runs as a real process: on a scratch copy of the repository for version drift and a
 malformed manifest. gen_install_data.py and install_sc_compose_ci.py are driven
 in-process with the failing call stubbed (a failing git command, a corrupt
 legacy-owned.json, an unexpected exception), since provoking those for real needs a
@@ -42,11 +41,6 @@ class CheckVersionSync(unittest.TestCase):
                               capture_output=True, text=True, encoding="utf-8")
         self.assertNotIn("Traceback", proc.stderr)
         return proc
-
-    def test_a_missing_base_ref_exits_2(self):
-        proc = self.run_check(ROOT, "--base", "refs/heads/no-such-branch-0-8-3")
-        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
-        self.assertIn("no-such-branch-0-8-3", proc.stderr)
 
     def test_version_drift_exits_2(self):
         with tempfile.TemporaryDirectory() as td:

@@ -31,6 +31,21 @@ VERSION = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8"))["vers
 REQUIRE = os.environ.get("JUDGE_JEV_REQUIRE_SC_COMPOSE") == "1"
 
 
+def staged_plugin(dest, version):
+    """A copy of the plugin whose plugin.json declares ``version``.
+
+    The shipped version is 0.0.0 until the first publish, so no installed version can be older than it; a test of
+    the "older" state stages an installer one patch ahead of the lock it writes instead of depending on VERSION.
+    """
+    dest = Path(dest)
+    shutil.copytree(PLUGIN, dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    manifest = dest / "plugin.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["version"] = version
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    return dest
+
+
 def _load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
@@ -266,11 +281,15 @@ class HarnessTargetTests(unittest.TestCase):
         self.assertEqual(inst.status(repo.root).value["state"], "not_installed")
         lock = repo.path(inst.LOCK_RELPATH)
         lock.parent.mkdir(parents=True)
-        for version, state in (("0.0.1", "older"), (VERSION, "current"), ("99.0.0", "newer")):
+        stage = tempfile.TemporaryDirectory()
+        self.addCleanup(stage.cleanup)
+        ahead = staged_plugin(Path(stage.name) / "plugin", "0.0.1")
+        for version, state, plugin_dir in (("0.0.0", "older", ahead), (VERSION, "current", PLUGIN),
+                                           ("99.0.0", "newer", PLUGIN)):
             with self.subTest(version=version):
                 lock.write_text(json.dumps({"package": "sc-judge-jev", "version": version, "targets": ["claude"],
                                             "files": {}}), encoding="utf-8")
-                self.assertEqual(inst.status(repo.root).value["state"], state)
+                self.assertEqual(inst.status(repo.root, plugin_dir).value["state"], state)
 
     def test_status_reports_a_covering_install_above(self):
         repo = TempRepo(self)
