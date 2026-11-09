@@ -428,10 +428,13 @@ after a paid call wastes the call; a crash loses its answer.
 ### Requirement Statement
 
 **MUST statements:**
-- A request about a record MUST carry, in its state next to the record,
-  only the definitions linked to that record.
-- A request about a record with no linked definitions MUST be identical to
-  the request sent without definitions.
+- A definition MUST be attachable to a record alone, or to a record and
+  one location under evaluation.
+- A request about a record MUST carry, in its state next to the record, only
+  the definitions attached to that record alone, plus those attached to
+  that record and the request's location.
+- A request with no matching definition MUST be identical to the request
+  sent without definitions.
 - `judge-jev` MUST refuse, before sending, a request whose definitions take
   it over the size limit, and MUST NOT truncate a definition.
 - Every request's log event MUST record the digest of each definition it
@@ -441,7 +444,10 @@ after a paid call wastes the call; a crash loses its answer.
 
 Rand Lee, 2026-11-08: "we can NOT write a single definition file and add it
 to every prompt" when running over 1000 to 2000 records with 1 to 200
-locations each.
+locations each. A record-only definition "makes the req/nfr/adr w/ confusing
+term carry the definition w/ it for all jev calls"; a record-and-location
+definition "would only be added to specific data (code/prompt/skill) which
+requires clarification".
 
 ### Success Criteria
 
@@ -450,6 +456,8 @@ locations each.
   are byte-identical to a run without definitions.
 - [ ] The requests for record A carry exactly A's definitions, and their log
   events list those definitions' digests.
+- [ ] A definition attached to record A and location X is carried by A's
+  request for X and by no other request about A.
 
 ---
 
@@ -460,9 +468,9 @@ locations each.
 ### Requirement Statement
 
 **MUST statements:**
-- `judge-jev` MUST provide a comparison that runs a record's waves with and
-  without a candidate definition and reports, for each answer, the change
-  in choice and in confidence.
+- `judge-jev` MUST provide a comparison that runs the requests a candidate
+  definition would reach, with and without it, and reports for each answer
+  the change in choice and in confidence.
 - The comparison MUST report whether the definition is material: whether
   any answer's choice changed, or its confidence changed by at least the
   given minimum.
@@ -471,7 +479,7 @@ locations each.
 ### Rationale
 
 Rand Lee, 2026-11-08: "if adding the definition does not impact the scores
-used in the ruberic, they aren't necessary to add"; "material would need to
+used in the rubric, they aren't necessary to add"; "material would need to
 impact confidence or flip answer".
 
 ### Success Criteria
@@ -520,8 +528,9 @@ w/in that scope (repo is typical scope)."
   file in the scope against its schema and the ontology's shapes, including
   edges and cycles, and MUST report each failure as an error.
 - `judge-jev doctor` MUST report, as warnings that do not fail the command:
-  - a definition linked to no record;
-  - a definition linked to a record the Raptor index does not hold;
+  - a definition with no attachment;
+  - an attachment to a record the Raptor index does not hold, or to a
+    location that does not exist;
   - a definition whose source does not exist.
 - `judge-jev doctor` MUST NOT call Jev.
 

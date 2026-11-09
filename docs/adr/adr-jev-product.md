@@ -451,9 +451,19 @@ A definition is a node in the judge-jev graph (ADR-JEV-0006):
   average) and a `jj:source`, the repository file or record that the
   meaning comes from. Pydantic validates the body (ADR-JEV-0005), and SHACL
   validates the edges.
-- **`jj:appliesTo`** links a definition to one or more records by their
-  Raptor IRI. A record's definitions apply to every question asked about
-  that record and to every location checked against it.
+- **`jj:attachedTo`** links a definition to one or more attachments. Each
+  attachment names one record (`jj:record`, its Raptor IRI) and optionally
+  one location (`jj:location`, the code, prompt, skill or task template
+  under evaluation). That gives two cases:
+  - **Record only:** the record carries the definition into every Jev call
+    about it, every question and every location. Use this when the record's
+    own wording is the confusing part.
+  - **Record and location:** the definition is added only when that record
+    is checked against that location. Use this when the location's material
+    needs the clarification, not the record.
+
+  Every question of a request sees its definitions. An attachment is a node
+  because an RDF edge links only two things.
 - **Storage:** definitions are Turtle files committed in the repository
   under `.sc/judge-jev/`. The per-requirement tree-sitter queries will be
   kept there too, keyed by the same record IDs. Both may move into the
@@ -464,9 +474,11 @@ A definition is a node in the judge-jev graph (ADR-JEV-0006):
 **Request:** a Jev request has two parts, the state (data) and the
 questions, and Jev answers every question in parallel against the same
 state. Definitions are data: a request carries
-`state = {record, definitions}`, where `definitions` holds only that
-record's definitions, followed by the questions. A record with no
-definitions sends the same request as before. Definitions are never
+`state = {record, definitions}` (with the location when one is under
+evaluation), followed by the questions. `definitions` holds the record's
+record-only definitions plus those attached to this record and this
+location. A request with no matching definition is the same as before.
+`quality` evaluates the record alone, so it uses record-only definitions. Definitions are never
 truncated. A request that the definitions push over the size limit is
 refused before it is sent. Every request and its log event record the
 digest of each definition carried, and a run's triples link the run to
@@ -478,7 +490,8 @@ material change. The steps are:
 1. A failing or `unclear` reason names a term the record leaves undefined.
 2. A definition is written from the repository's own material and named as
    its source.
-3. The record's waves are run with and without the definition.
+3. The requests the definition would reach (the record's, or the record
+   and location's) are run with and without it.
 4. The definition is kept only if it changes the choice or the confidence
    of an answer. A definition that changes nothing is removed. The minimum
    confidence change counted is a tuning parameter, recorded with each
@@ -500,8 +513,9 @@ calls nothing:
   cycles;
 - duplicate question ids in the scope, as errors;
 - warnings, without failing, for:
-  - a definition with no `jj:appliesTo`;
-  - a definition that applies to a record the Raptor index does not have;
+  - a definition with no attachment;
+  - an attachment to a record the Raptor index does not have, or to a
+    location that does not exist;
   - a definition whose source does not exist.
 
 ### Rationale
@@ -516,8 +530,8 @@ the repository's own material and checked by A/B carry low risk.
 
 **Positive:**
 
-- Changing or removing a definition affects only the runs of its records,
-  and a graph query lists exactly those runs.
+- Changing or removing a definition affects only the runs it reached, and
+  a graph query lists exactly those runs.
 - The A/B run spends Jev calls only on the records involved.
 - Orphaned definitions and dead links are found by `doctor` rather than
   accumulating.
