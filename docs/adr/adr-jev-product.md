@@ -492,10 +492,12 @@ material change. The steps are:
    its source.
 3. The requests the definition would reach (the record's, or the record
    and location's) are run with and without it.
-4. The definition is kept only if it changes the choice or the confidence
-   of an answer. A definition that changes nothing is removed. The minimum
-   confidence change counted is a tuning parameter, recorded with each
-   comparison.
+4. The definition is kept only if it can change an answer: an answer's
+   choice flips, or its confidence crosses the threshold that decides it.
+   A move that stays on the same side of the threshold (90% to 95%) is not
+   material. Candidates can be compared together, so a move that does not
+   cross on its own (20% to 50%) is material when the set's combined
+   change crosses. A definition that changes nothing is removed.
 
 The commit that adds a definition is its approval record.
 

@@ -468,19 +468,20 @@ requires clarification".
 ### Requirement Statement
 
 **MUST statements:**
-- `judge-jev` MUST provide a comparison that runs the requests a candidate
-  definition would reach, with and without it, and reports for each answer
-  the change in choice and in confidence.
-- The comparison MUST report whether the definition is material: whether
-  any answer's choice changed, or its confidence changed by at least the
-  given minimum.
-- The comparison MUST record the minimum confidence change it applied.
+- `judge-jev` MUST provide a comparison that runs the requests one or more
+  candidate definitions would reach, with and without them, and reports
+  each answer's choice and confidence both ways.
+- The comparison MUST report the candidates as material when an answer's
+  choice flips or its confidence crosses the decision threshold, and as not
+  material when every change stays on the same side of the threshold.
+- The comparison MUST record the threshold it applied.
 
 ### Rationale
 
 Rand Lee, 2026-11-08: "if adding the definition does not impact the scores
-used in the rubric, they aren't necessary to add"; "material would need to
-impact confidence or flip answer".
+used in the rubric, they aren't necessary to add"; "Moving from 90->95
+confidence doesn't matter. A change from 20%->50% would be material if
+other changes get it over the threshold."
 
 ### Success Criteria
 
@@ -489,6 +490,9 @@ impact confidence or flip answer".
   comparison reports it as material.
 - [ ] With fixture answers that are the same with and without the
   definition, the comparison reports it as not material.
+- [ ] A confidence move from 0.90 to 0.95 on the same side of the threshold
+  is not material. Two candidates that each move an answer part of the way,
+  and together across the threshold, are material when compared together.
 
 ---
 
