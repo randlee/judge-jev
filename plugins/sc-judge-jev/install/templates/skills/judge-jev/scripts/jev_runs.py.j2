@@ -183,7 +183,8 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
 
     ``tree``: the quality JSON dict, or a TreeGraph. ``run``: ``name`` (the run name), ``tree_id`` unused beyond the tree,
     ``tree_sha256`` (the JSON digest, used for a dict tree), ``record_id`` and ``repository`` (optional; see the module
-    docstring). ``result_lines``: the batch result lines of the record's waves (``request_id``, ``candidate_id`` = the
+    docstring), ``definitions`` (optional: the IRIs of the definitions the run's requests carried, each linked from the run
+    by ``jj:carriedDefinition``). ``result_lines``: the batch result lines of the record's waves (``request_id``, ``candidate_id`` = the
     node id, ``answers``). ``walk``: one ``results[]`` entry of the ``quality`` output: ``verdict`` and ``waves``
     (``node``, ``request_id`` or, per statement, ``request_ids`` and ``reason`` = [{statement, ...}]).
     """
@@ -205,6 +206,8 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
     add(run_node, "treeDigest", ox.Literal(_digest(tree, run)))
     add(run_node, "record", rec)
     add(run_node, "verdictValue", ox.Literal(walk["verdict"]))
+    for definition in run.get("definitions") or ():  # ADR-JEV-0008: the definitions the run's requests carried
+        add(run_node, "carriedDefinition", ox.NamedNode(definition))
     for wave in walk["waves"]:
         node_id = wave["node"]
         node = quality["nodes"][node_id]
@@ -298,7 +301,8 @@ def rebuild_from_log(log_root, run_name: str, tree: Any, repository: Optional[st
         rec = record(fields)
         rec["lines"].append(fields)
         rec["run"] = {"name": run_name, "tree_sha256": fields.get("tree_sha256"), "record_id": fields.get("record_id"),
-                      "repository": fields.get("repository") or repository}
+                      "repository": fields.get("repository") or repository,
+                      "definitions": sorted(d["iri"] for d in fields.get("definitions") or ())}
     try:
         for fields in events.value["statement"]:
             record(fields)["statements"][fields["request_id"]] = fields["statement"]

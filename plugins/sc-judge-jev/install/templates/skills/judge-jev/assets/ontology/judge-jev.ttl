@@ -5,9 +5,10 @@
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
 # The judge-jev ontology (ADR-JEV-0006): quality trees, their questions and
-# rules, and the runs and answers recorded against them. Prefix
-# jj: <urn:judge-jev:ontology#>. Shapes for trees are in
-# assets/shapes/quality-tree.shacl.ttl.
+# rules, and the runs and answers recorded against them, and the definitions
+# (ADR-JEV-0008) attached to records. Prefix jj: <urn:judge-jev:ontology#>.
+# Shapes for trees are in assets/shapes/quality-tree.shacl.ttl, for definitions
+# files in assets/shapes/definitions.shacl.ttl.
 
 <urn:judge-jev:ontology> a owl:Ontology ;
     rdfs:label "judge-jev ontology" ;
@@ -209,8 +210,8 @@ jj:treeDigest a owl:DatatypeProperty ;
 
 jj:record a owl:ObjectProperty ;
     rdfs:label "record" ;
-    rdfs:comment "The IRI of the Raptor record the run judged." ;
-    rdfs:domain jj:Run .
+    rdfs:comment "The IRI of a Raptor record: the record a run judged, or the record an attachment names (<repository URN>#<record id>)." ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( jj:Run jj:Attachment ) ] .
 
 jj:inRun a owl:ObjectProperty ;
     rdfs:label "inRun" ;
@@ -258,3 +259,43 @@ jj:verdictValue a owl:DatatypeProperty ;
     rdfs:label "verdictValue" ;
     rdfs:comment "The verdict a run ended with." ;
     rdfs:domain jj:Run ; rdfs:range xsd:string .
+
+# ---- Definition (ADR-JEV-0008) ----------------------------------------------
+
+jj:Definition a owl:Class ;
+    rdfs:label "Definition" ;
+    rdfs:comment "A short meaning of a term, sourced from the repository's own material, carried in the requests about the records it is attached to. A definitions file holds only jj:Definition and jj:Attachment nodes." .
+
+jj:Attachment a owl:Class ;
+    rdfs:label "Attachment" ;
+    rdfs:comment "Where a definition applies: one Raptor record (jj:record) and optionally one location (jj:location). Record only: every request about the record carries the definition. Record and location: only the request about that record at that location does. An attachment is a node because an RDF edge links only two things; it may be a blank node." .
+
+jj:term a owl:DatatypeProperty ;
+    rdfs:label "term" ;
+    rdfs:comment "The term a definition defines (one non-blank string)." ;
+    rdfs:domain jj:Definition ; rdfs:range xsd:string .
+
+jj:text a owl:DatatypeProperty ;
+    rdfs:label "text" ;
+    rdfs:comment "The definition's meaning, short, sent to Jev whole (never truncated)." ;
+    rdfs:domain jj:Definition ; rdfs:range xsd:string .
+
+jj:source a owl:DatatypeProperty ;
+    rdfs:label "source" ;
+    rdfs:comment "Where the meaning comes from: a repo-relative path (optionally with #Heading or ::Symbol) or a record IRI, as a string." ;
+    rdfs:domain jj:Definition ; rdfs:range xsd:string .
+
+jj:attachedTo a owl:ObjectProperty ;
+    rdfs:label "attachedTo" ;
+    rdfs:comment "An attachment of the definition. A definition with none is carried by no request (doctor warns)." ;
+    rdfs:domain jj:Definition ; rdfs:range jj:Attachment .
+
+jj:location a owl:DatatypeProperty ;
+    rdfs:label "location" ;
+    rdfs:comment "The location under evaluation as the location string of judge-jev check (docs/cli.md, Locations): path, path#Heading or path::Symbol, relative to the repository. Absent: the attachment is record only." ;
+    rdfs:domain jj:Attachment ; rdfs:range xsd:string .
+
+jj:carriedDefinition a owl:ObjectProperty ;
+    rdfs:label "carriedDefinition" ;
+    rdfs:comment "A definition that the requests of the run carried." ;
+    rdfs:domain jj:Run ; rdfs:range jj:Definition .

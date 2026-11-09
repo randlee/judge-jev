@@ -458,7 +458,7 @@ class ErrorHandlingTests(unittest.TestCase):
     def test_batch_and_quality_are_the_subcommands(self):
         parser = jj.build_parser()
         sub = next(a for a in parser._actions if a.dest == "cmd")
-        self.assertEqual(sorted(sub.choices), ["batch", "quality", "validate"])
+        self.assertEqual(sorted(sub.choices), ["batch", "compare-definition", "doctor", "quality", "validate"])
 
 
 if __name__ == "__main__":

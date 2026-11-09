@@ -501,10 +501,11 @@ material change. The steps are:
 
 The commit that adds a definition is its approval record.
 
-**Question naming:** a question's identity is its IRI. Its `jj:id`, the key
-in requests and reasons, must be unique among all questions loaded in one
-scope, which is typically the repository. That covers judge-jev's own trees
-and any consumer extension's. judge-jev's questions use
+**Question naming:** a question's identity is its IRI, and an IRI is
+declared in one tree file only, across the repository: judge-jev's own trees
+and any consumer extension's (two files declaring one IRI would silently merge
+in the store). Its `jj:id`, the key in requests and reasons, is unique within
+its tree. judge-jev's questions use
 `urn:judge-jev:question:<kind>.<id>`. An extension mints its questions under
 its own namespace.
 

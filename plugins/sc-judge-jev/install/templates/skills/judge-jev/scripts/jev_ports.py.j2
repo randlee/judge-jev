@@ -150,6 +150,26 @@ class OxigraphGraphStore:
             return Err(JudgeError("VALIDATION.INPUT", f"the tree has no wave {node_id!r}",
                                   action="Pass the id of a wave of the tree."))
 
+    def load_definitions(self, paths: Iterable[str]) -> Result[int, Any]:
+        """Load definitions files into this store, each as its own named graph ``urn:judge-jev:definitions:<file name>``
+        (never the default graph, so a tree's digest does not change). Every file is validated first
+        (``jev_graph.load_definitions`` and ``validate_definitions``); the first bad one is the ``Err``. Returns the number
+        of quads added."""
+        import jev_graph
+        import pyoxigraph
+        before = len(self.store)
+        for path in paths:
+            loaded = jev_graph.load_definitions(path)
+            if isinstance(loaded, Err):
+                return loaded
+            checked = jev_graph.validate_definitions(loaded.value)
+            if isinstance(checked, Err):
+                return checked
+            graph = pyoxigraph.NamedNode("urn:judge-jev:definitions:" + pathlib.Path(path).name)
+            self.store.extend(pyoxigraph.Quad(q.subject, q.predicate, q.object, graph)
+                              for q in loaded.value.store.quads_for_pattern(None, None, None, pyoxigraph.DefaultGraph()))
+        return Ok(len(self.store) - before)
+
     def record_run(self, triples: Iterable[Any]) -> Result[int, Any]:
         try:
             before = len(self.store)

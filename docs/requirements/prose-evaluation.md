@@ -503,9 +503,10 @@ other changes get it over the threshold."
 ### Requirement Statement
 
 **MUST statements:**
-- Every question loaded in one scope (by default the repository) MUST have
-  a `jj:id` that no other question in that scope uses. This covers
-  judge-jev's trees and every consumer extension's.
+- A question's identity is its IRI. Every question IRI in one scope (by
+  default the repository) MUST be declared in one tree file only, and every
+  `jj:id` MUST be unique within its tree. This covers judge-jev's trees and
+  every consumer extension's.
 
 ### Rationale
 
@@ -516,8 +517,9 @@ w/in that scope (repo is typical scope)."
 ### Success Criteria
 
 **Acceptance Criteria:**
-- [ ] Two trees in one scope that each define a question with the same
-  `jj:id` but different IRIs are reported as an error naming both IRIs.
+- [ ] A question IRI declared in two tree files of one scope is reported
+  as an error naming both files; two questions of one tree with the same
+  `jj:id` are an error.
 
 ---
 

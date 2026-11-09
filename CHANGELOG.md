@@ -14,6 +14,23 @@
   tree as well as `.json` (by extension): it is loaded and SHACL-checked by
   `jev_graph`, so a refusal is `QUALITY.TREE` (with the violations) or
   `INPUT.MALFORMED` as before; the tree digest is that of the file's bytes.
+- Definitions (ADR-JEV-0008, REQ-JEV-0212): `jj:Definition` and `jj:Attachment`
+  in the ontology, closed shapes in `assets/shapes/definitions.shacl.ttl`
+  (a definition with no attachment is a warning), a pydantic body model,
+  `jev_definitions.py`. `.sc/judge-jev/*.definitions.ttl` loads as its own
+  named graph, so a tree's digest never changes. `quality --definitions`
+  puts `{term, text}` (sorted by term, never truncated) in the request state;
+  a request no definition reaches is byte-identical. Request, answer,
+  result, wave and verdict events carry each definition's digest, and run
+  triples link a run to its definitions (`jj:carriedDefinition`).
+- `compare-definition` (REQ-JEV-0213): one record's walk without and with one
+  or more candidate definitions, material when an answer's choice flips or
+  its confidence crosses the decision threshold; the threshold applied is
+  recorded. Works with `--answers-file` (arm-prefixed keys) and `--dry-run`.
+- `doctor` (REQ-JEV-0214, REQ-JEV-0215): checks trees, question sets and
+  definitions without calling Jev; errors for invalid files and duplicate
+  question IRIs declared in more than one tree file and duplicate `jj:id` within a tree, warnings for unattached definitions and
+  missing records, locations or sources.
 
 ## 0.2.1 — 2026-11-08
 
