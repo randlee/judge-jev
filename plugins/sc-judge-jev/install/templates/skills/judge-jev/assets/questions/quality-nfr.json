@@ -3,8 +3,8 @@
   "id": "quality-nfr",
   "kind": "nfr",
   "version": 3,
-  "approved": false,
-  "note": "draft, pending Rand approval",
+  "approved": true,
+  "note": "wave-1 wording approved by Rand Lee, 2026-11-08",
   "start": "wave-1",
   "nodes": {
     "wave-1": {

@@ -2,6 +2,12 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. A PR that changes shipped content raises `VERSION`, moves every version with it, and adds a `## X.Y.Z — date` section here. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
+## 0.3.0 — 2026-11-08
+
+- The shipped quality trees (`quality-adr`, `quality-req`, `quality-nfr`, JSON
+  and `quality-adr.ttl`) carry `approved: true`: Rand Lee approved the wave-1
+  wording on 2026-11-08.
+
 ## 0.2.1 — 2026-11-08
 
 - Every JSON input is parsed into a strict pydantic v2 model (ADR-JEV-0005;

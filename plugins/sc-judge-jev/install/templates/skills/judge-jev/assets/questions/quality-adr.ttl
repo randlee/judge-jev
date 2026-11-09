@@ -10,8 +10,8 @@ t:quality-adr a jj:Tree ;
     jj:id "quality-adr" ;
     jj:kind "adr" ;
     jj:version 3 ;
-    jj:approved false ;
-    jj:note "draft, pending Rand approval" ;
+    jj:approved true ;
+    jj:note "wave-1 wording approved by Rand Lee, 2026-11-08" ;
     jj:start t:quality-adr:wave-1 ;
     jj:node t:quality-adr:wave-1 .
 

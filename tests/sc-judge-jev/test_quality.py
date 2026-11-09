@@ -473,7 +473,7 @@ class ShippedTrees(unittest.TestCase):
             tree = jj.load_quality_tree(kind)
             self.assertIsInstance(tree, jj.Ok, kind)
             raw = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))
-            self.assertEqual((raw["id"], raw["approved"], raw["note"]), (f"quality-{kind}", False, "draft, pending Rand approval"))
+            self.assertEqual((raw["id"], raw["approved"], raw["note"]), (f"quality-{kind}", True, "wave-1 wording approved by Rand Lee, 2026-11-08"))
             self.assertEqual((raw["start"], list(raw["nodes"])), ("wave-1", ["wave-1"]))
 
     def test_req_and_nfr_ask_four_questions_per_statement_and_adr_three_per_record(self):

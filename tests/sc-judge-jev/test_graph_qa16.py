@@ -142,9 +142,9 @@ class DatatypeTests(GraphCase):
     def test_every_literal_property_refuses_a_wrong_datatype(self):
         cases = {
             "tree kind": (ADR_TTL.replace('jj:kind "adr"', "jj:kind 5"), "jj:kind"),
-            "tree note": (ADR_TTL.replace('jj:note "draft, pending Rand approval"', "jj:note 5"), "jj:note"),
+            "tree note": (ADR_TTL.replace('jj:note "wave-1 wording approved by Rand Lee, 2026-11-08"', "jj:note 5"), "jj:note"),
             "tree version": (ADR_TTL.replace("jj:version 3", 'jj:version "3"'), "jj:version"),
-            "tree approved": (ADR_TTL.replace("jj:approved false", 'jj:approved "false"'), "jj:approved"),
+            "tree approved": (ADR_TTL.replace("jj:approved true", 'jj:approved "false"'), "jj:approved"),
             "tree id": (ADR_TTL.replace('jj:id "quality-adr"', "jj:id 7"), "jj:id"),
             "wave per": (BRANCH_TTL.replace('jj:per "statement"', "jj:per 1"), "jj:per"),
             "wave statements": (BRANCH_TTL.replace('jj:statements "requirement_statement.statements"', "jj:statements 1"), "jj:statements"),
@@ -213,7 +213,7 @@ class LoggedInputTests(GraphCase):
         self.assertEqual((list(rdflib_logger.handlers), rdflib_logger.propagate, rdflib_logger.level), before)
 
     def test_an_ill_typed_boolean_warning_is_kept_not_printed(self):
-        tree = self.load(ADR_TTL.replace("jj:approved false", f'jj:approved "maybe"^^<{XSD}boolean>'))
+        tree = self.load(ADR_TTL.replace("jj:approved true", f'jj:approved "maybe"^^<{XSD}boolean>'))
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             result = jev_graph.validate_tree(tree)

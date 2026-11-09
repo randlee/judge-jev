@@ -97,7 +97,7 @@ class ValidateKinds(unittest.TestCase):
         tree_text = (tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8")
         for name, raw in (("NaN", "NaN"), ("Infinity", "Infinity"), ("big int", "9" * 5000), ("deep", "[" * 50000 + "]" * 50000),
                           ("lone surrogate", '"\\ud800"')):
-            path = write(self.d, "t.json", tree_text.replace('"approved": false', f'"approved": {raw}', 1))
+            path = write(self.d, "t.json", tree_text.replace('"approved": true', f'"approved": {raw}', 1))
             with self.subTest(name):
                 self.refused("--tree", path, "INPUT.MALFORMED")
 
