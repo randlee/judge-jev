@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest import mock
 
 import jev_support  # noqa: F401  (puts the rendered scripts on sys.path)
+import jev_definitions  # noqa: E402
 import jev_judge as jj  # noqa: E402
 
 from test_definitions import ADR, OTHER, definition, iri, ttl  # noqa: E402
@@ -132,6 +133,27 @@ class Warnings(DoctorCase):
         code, out = self.doctor(path)
         self.assertEqual((code, self.codes(out, "warnings")), (0, ["DEFINITION.SOURCE_MISSING"]), out)
         self.assertEqual(out["data"]["warnings"][0]["source"], "docs/gone.md")
+
+    def test_a_source_path_too_long_for_the_file_system_is_a_missing_source_warning(self):
+        path = self.defs(definition("x", "fast", "t", "docs/" + "a" * 300 + ".md", (ADR, None)))
+        code, out = self.doctor(path)
+        self.assertEqual((code, self.codes(out, "warnings"), out["data"]["errors"]), (0, ["DEFINITION.SOURCE_MISSING"], []), out)
+
+    def test_definitions_with_an_index_that_names_no_repository_warn(self):
+        index = json.loads(json.dumps(INDEX))
+        del index["metadata"]["repository"]
+        path = self.defs(definition("x", "fast", "t", "docs/r.md", (ADR, None)))
+        code, out = self.doctor(path, "--index", write(self.d, "norepo.json", index))
+        self.assertEqual((code, self.codes(out, "warnings")), (0, ["DEFINITION.REPOSITORY_UNKNOWN"]), out)
+        code, out = self.doctor(path, "--index", self.index)  # the index with a repository: no such warning
+        self.assertEqual(self.codes(out, "warnings"), [])
+
+    def test_a_definitions_file_in_a_subfolder_of_the_repository_folder_is_neither_loaded_nor_validated(self):
+        write(self.root, ".sc/judge-jev/team/bad.definitions.ttl", "this is not turtle")
+        code, out = self.doctor()
+        self.assertEqual((code, out["data"]["errors"]), (0, []), out)
+        self.assertFalse([c for c in out["data"]["checked"] if "team" in c["path"]])
+        self.assertEqual(jev_definitions.discover(self.root), [])
 
     def test_every_warning_at_once_still_exits_0(self):
         path = self.defs(definition("a", "one", "t", "docs/gone.md", (OTHER, "docs/none.md")), definition("b", "two", "t", "docs/r.md"))

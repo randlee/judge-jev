@@ -7,6 +7,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import pyoxigraph as ox
 
@@ -20,8 +21,8 @@ from result import Err, Ok  # noqa: E402
 
 from test_graph_tree import ADR_TTL, BRANCH_TTL  # noqa: E402
 from test_graph_runs import tree_fixture  # noqa: E402
-from test_jev_judge import answer, run_cli, write  # noqa: E402
-from test_quality import INDEX, QualityCase, tree_answers  # noqa: E402
+from test_jev_judge import answer, env, run_cli, write  # noqa: E402
+from test_quality import INDEX, QualityCase, never_called, tree_answers  # noqa: E402
 
 PREFIXES = """\
 @prefix jj: <urn:judge-jev:ontology#> .
@@ -307,8 +308,9 @@ class Composition(DefinitionCase):
 class Compare(DefinitionCase):
     def compare(self, *argv, answers=None, run="c1"):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
-        return run_cli(["compare-definition", "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", run,
-                        *argv, *extra])
+        with env(), mock.patch.object(jj, "call_jev", never_called):  # no real key, no real settings, no live Jev
+            return run_cli(["compare-definition", "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", run,
+                            *argv, *extra])
 
     def adr(self, *argv, **kw):
         return self.compare("--adr", "ADR-T-0001", *argv, **kw)
@@ -462,8 +464,7 @@ class Compare(DefinitionCase):
 
     def test_a_live_comparison_without_an_answers_file_needs_consent_before_any_call(self):
         got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"))
-        self.assertEqual(got, 2, out)
-        self.assertFalse(out["success"])
+        self.assertEqual((got, out["success"], out["error"]["code"]), (2, False, "AUTH.CREDENTIALS"), out)  # no key: stopped before any call
 
 
 if __name__ == "__main__":

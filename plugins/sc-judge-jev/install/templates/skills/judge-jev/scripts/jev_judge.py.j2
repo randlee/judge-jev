@@ -2546,7 +2546,11 @@ def definition_warnings(file: str, rows: list, root: pathlib.Path, index) -> lis
                                       definition=row["iri"], location=att["location"]))
         if not jev_definitions_source_is_iri(row["source"]):
             path = row["source"].partition("::")[0].partition("#")[0]
-            if not (root / path).is_file():
+            try:
+                present = (root / path).is_file()
+            except OSError:  # a component too long for the file system is a source that does not exist
+                present = False
+            if not present:
                 out.append(_issue("warning", "DEFINITION.SOURCE_MISSING", file, f"{who} has source {row['source']!r}: {path} does not exist in the repository",
                                   definition=row["iri"], source=row["source"]))
     return out
@@ -2645,7 +2649,7 @@ def doctor_scope_files(args) -> list:
     ``<root>/.sc/judge-jev/`` and the paths given as arguments (a directory is scanned like ``.sc/judge-jev/``)."""
     root = pathlib.Path(args.repository_root or ".")
     files = sorted(str(p) for p in QUESTIONS_DIR.iterdir() if p.is_file() and p.suffix in (".json", ".ttl"))
-    for found in jev_definitions.scan(root / jev_definitions.DEFINITIONS_DIR):
+    for found in jev_definitions.scan(root / jev_definitions.DEFINITIONS_DIR, recursive=False):  # as quality's discover: top level only
         files += found
     for given in args.paths:
         p = pathlib.Path(given)
@@ -2688,6 +2692,10 @@ def cmd_doctor(args) -> Result[Any, JudgeError]:
             scope.issues.append(_issue("error", "INPUT.MISSING", path, f"{path} does not exist"))
             continue
         _doctor_file(scope, path, root, index)
+    if index is not None and index[0] is None and any(rows for _f, rows in scope.definition_rows):
+        scope.issues.append(_issue("warning", "DEFINITION.REPOSITORY_UNKNOWN", args.index,
+                                   "the Raptor index names no metadata.repository, so a record IRI is urn:raptor:repo:unknown#<id> and no attachment "
+                                   "of these definitions can match: quality and compare-definition carry none of them"))
     built, problem = jev_definitions.build_set([(f, rows) for f, rows in scope.definition_rows])
     if built is None:
         scope.issues.append(_issue("error", "DEFINITIONS.INVALID", None, problem))

@@ -159,7 +159,7 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
   that location (`compare-definition --location`); `quality` judges a whole
   record, so it carries record-only definitions.
 - Files are `definitions.ttl` or `<name>.definitions.ttl` under
-  `.sc/judge-jev/`. They load as their own named graph: a tree's digest
+  `.sc/judge-jev/` (directly in that folder, not in a subfolder). They load as their own named graph: a tree's digest
   never changes because a definitions file exists. The same definition IRI
   in two files is `DEFINITIONS.INVALID` naming both.
 - Definitions are never truncated. They count toward the 24000-byte request

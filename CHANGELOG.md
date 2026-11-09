@@ -10,6 +10,12 @@
 - One `JudgeError`, defined in `jev_errors.py` and imported by `jev_judge` and
   `jev_graph`: graph errors reach the CLI envelope as built, with no rewrapping;
   codes and the envelope are unchanged.
+- Fixes in definitions and doctor: `compare-definition` tests no longer read the
+  real key or settings; a source path too long for the file system is a
+  `DEFINITION.SOURCE_MISSING` warning, not `SCRIPT.INTERNAL`; doctor warns
+  (`DEFINITION.REPOSITORY_UNKNOWN`) when definitions exist and the index names no
+  repository; `.sc/judge-jev/` is read directly, not in subfolders, by doctor,
+  `quality` and `compare-definition` alike.
 - The shipped quality trees (`quality-adr`, `quality-req`, `quality-nfr`, JSON
   and `quality-adr.ttl`) carry `approved: true`: Rand Lee approved the wave-1
   wording on 2026-11-08.

@@ -119,14 +119,14 @@ def discover(repository_root) -> list:
         return []
 
 
-def scan(directory) -> tuple:
-    """``(definitions files, tree files)`` under ``directory``, recursively and sorted, skipping ``SKIPPED_DIRS``: a
+def scan(directory, recursive: bool = True) -> tuple:
+    """``(definitions files, tree files)`` under ``directory``, recursively (or, with ``recursive=False``, directly in it) and sorted, skipping ``SKIPPED_DIRS``: a
     ``definitions.ttl`` or ``*.definitions.ttl`` is a definitions file, every other ``.ttl`` a tree. Nothing found, or an
     unreadable directory, is two empty lists."""
     definitions, trees = [], []
     try:
         for current, dirs, files in os.walk(directory):
-            dirs[:] = sorted(d for d in dirs if d not in SKIPPED_DIRS)
+            dirs[:] = sorted(d for d in dirs if d not in SKIPPED_DIRS) if recursive else []
             for name in sorted(files):
                 if name.endswith(".ttl"):
                     (definitions if is_definitions_file(name) else trees).append(str(pathlib.Path(current) / name))
