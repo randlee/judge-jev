@@ -56,7 +56,7 @@ o:b.size:huge a jj:Option ; jj:rank 3 ; jj:label "huge" ; jj:criterion "Huge." .
 
 def write(directory: str, text: str, name: str = "tree.ttl") -> str:
     path = Path(directory) / name
-    path.write_text(text, encoding="utf-8")
+    path.write_bytes(text.encode("utf-8"))  # exact bytes: write_text would turn \n into \r\n on Windows
     return str(path)
 
 

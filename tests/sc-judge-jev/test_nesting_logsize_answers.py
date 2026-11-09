@@ -92,24 +92,28 @@ class DeepInputIsATypedError(unittest.TestCase):
         return write(self.d, "r.jsonl", jsonl([line]))
 
     def test_validate_requests_and_batch_dry_run_refuse_a_deep_request_before_any_call(self):
-        for depth in (40, 600, 900):
+        # Within JSON_MAX_DEPTH the request parses and reaches the log-event check (redact_sensitive walks it); past it
+        # the line is INPUT.MALFORMED at parse, on every Python.
+        for depth, expected in ((40, "VALIDATION.INPUT"), (450, "VALIDATION.INPUT"), (600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
             src = self.request_with(nested(depth))
             with self.subTest(command="validate", depth=depth):
                 code, out = validate("--requests", src)
-                self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
-                self.assertIn("maximum container depth is 32", out["error"]["message"])
+                self.assertEqual((code, out["error"]["code"]), (2, expected), out)
+                self.assertIn("maximum container depth is 32" if expected == "VALIDATION.INPUT" else str(jj.JSON_MAX_DEPTH),
+                              out["error"]["message"])
             with self.subTest(command="batch", depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
                 code, out = run_cli(["batch", "--input", src, "--dry-run", "--run-dir", str(self.d / "logs")])
-                self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
+                self.assertEqual((code, out["error"]["code"]), (2, expected), out)
 
     def test_a_record_diagnostic_with_a_deep_field_still_prints_json(self):
-        for depth in (300, 600, 900):
+        # 450 reaches emit with an issue nested past EMIT_MAX_DEPTH; 600 and 900 are past JSON_MAX_DEPTH, refused at parse.
+        for depth, expected in ((300, "RECORD.DIAGNOSTICS"), (450, "RECORD.DIAGNOSTICS"), (600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
             index = copy.deepcopy(tq.INDEX)
             index["diagnostics"]["issues"].append({"id": "ADR-T-0001", "rule": "X", "extra": nested(depth)})
             with self.subTest(depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
-                self.assertEqual((code, out["error"]["code"]), (2, "RECORD.DIAGNOSTICS"), out)
+                self.assertEqual((code, out["error"]["code"]), (2, expected), out)
 
     def test_a_deep_record_field_is_a_typed_size_refusal(self):
         for depth in (300, 900):
@@ -129,6 +133,24 @@ def counting_pump(sent):
         sent.extend(lines)
         return real(lines, *args, **kwargs)
     return counting
+
+
+class JsonDepthIsTheSameOnEveryPython(unittest.TestCase):
+    """CI: Python 3.14's json parser accepts any depth where 3.11-3.13 raise RecursionError, so strict_loads states the
+    limit itself; the refusal must not depend on the interpreter."""
+
+    def test_the_depth_limit_is_inclusive_and_one_more_is_a_value_error(self):
+        limit = jj.JSON_MAX_DEPTH
+        self.assertEqual(jj.strict_loads("[" * limit + "]" * limit), jj.strict_loads("[" * limit + "]" * limit))
+        for text in ("[" * (limit + 1) + "]" * (limit + 1), '{"a":' * (limit + 1) + "1" + "}" * (limit + 1)):
+            with self.assertRaises(ValueError) as caught:
+                jj.strict_loads(text)
+            self.assertIn(str(limit), str(caught.exception))
+
+    def test_a_deep_value_whatever_the_parser_does_is_value_error_or_recursion_error(self):
+        with mock.patch.object(jj.json, "loads", return_value=[[[[[]]]]]), mock.patch.object(jj, "JSON_MAX_DEPTH", 3):
+            with self.assertRaises(ValueError):
+                jj.strict_loads("ignored")
 
 
 class LogSizeIsMeasuredEscaped(unittest.TestCase):

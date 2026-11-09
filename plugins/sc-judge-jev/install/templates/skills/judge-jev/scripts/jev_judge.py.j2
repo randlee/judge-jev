@@ -257,11 +257,30 @@ def _reject_constant(name: str):
     raise ValueError(f"{name} is not a JSON number")
 
 
+JSON_MAX_DEPTH = 500  # deepest container nesting accepted in any JSON input, on every Python (3.14's parser has no recursion limit)
+
+
+def _json_depth_exceeds(value, limit: int) -> bool:
+    """True when ``value``'s containers nest deeper than ``limit``. Iterative, so any depth is measured without recursing."""
+    stack = [(value, 1)] if isinstance(value, (dict, list)) else []
+    while stack:
+        node, depth = stack.pop()
+        if depth > limit:
+            return True
+        stack.extend((child, depth + 1) for child in (node.values() if isinstance(node, dict) else node)
+                     if isinstance(child, (dict, list)))
+    return False
+
+
 def strict_loads(text: str):
     """json.loads that also refuses what later breaks a request or the log: NaN and Infinity, a string that is not
-    encodable UTF-8 (a lone surrogate escape). Raises ValueError (oversized integers and malformed JSON included) or
-    RecursionError (nesting too deep); callers turn both into a typed error."""
+    encodable UTF-8 (a lone surrogate escape), containers nested deeper than JSON_MAX_DEPTH. Raises ValueError (oversized
+    integers, deep nesting and malformed JSON included) or RecursionError (nesting too deep for the parser); callers turn
+    both into a typed error. The depth limit makes the refusal the same on every Python: 3.11-3.13 raise RecursionError
+    near 1000 levels, 3.14 parses any depth."""
     value = json.loads(text, parse_constant=_reject_constant)
+    if _json_depth_exceeds(value, JSON_MAX_DEPTH):
+        raise ValueError(f"containers are nested deeper than {JSON_MAX_DEPTH} levels")
     json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")
     return value
 

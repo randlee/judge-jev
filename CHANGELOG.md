@@ -15,7 +15,9 @@
   names pydantic's field path and rule, e.g.
   `nodes.wave-1.questions.context.criteria: Dictionary should have at least 2
   items`. `strict_loads` still parses first (NaN and Infinity, integers over
-  4300 digits, deep nesting and lone surrogates are `INPUT.MALFORMED`).
+  4300 digits, containers nested deeper than `JSON_MAX_DEPTH` (500) and lone
+  surrogates are `INPUT.MALFORMED`; the depth limit is explicit because Python
+  3.14's parser accepts any depth where 3.11-3.13 raise `RecursionError`).
   Stricter than before: a tree, question or rule with an unknown field, a
   `version`, `approved` or `note` of the wrong type, or a Raptor record without
   a string `id`; an anchor `kind` outside the schema's enum is refused.
