@@ -7,6 +7,13 @@
 - The shipped quality trees (`quality-adr`, `quality-req`, `quality-nfr`, JSON
   and `quality-adr.ttl`) carry `approved: true`: Rand Lee approved the wave-1
   wording on 2026-11-08.
+- `quality-req.ttl` and `quality-nfr.ttl` join `quality-adr.ttl`: the same
+  trees as the JSON files (kept), wording byte-identical, validated by the
+  SHACL shapes and compiled back to the same JSON in tests.
+- `quality --questions <file>` and `validate --tree <file>` accept a `.ttl`
+  tree as well as `.json` (by extension): it is loaded and SHACL-checked by
+  `jev_graph`, so a refusal is `QUALITY.TREE` (with the violations) or
+  `INPUT.MALFORMED` as before; the tree digest is that of the file's bytes.
 
 ## 0.2.1 — 2026-11-08
 

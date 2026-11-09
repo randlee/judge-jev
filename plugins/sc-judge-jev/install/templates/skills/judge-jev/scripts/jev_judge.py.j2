@@ -1783,13 +1783,42 @@ def parse_quality_tree(raw: str, path: str, override: bool = False) -> Result[Qu
     return Ok(QualityTree(tree.id, content_sha256(raw), path, override, tree.start, tree.nodes, tree.kind))
 
 
+def parse_quality_tree_ttl(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+    """A tree file in Turtle: loaded and SHACL-validated by jev_graph (its errors as they are), compiled to the quality JSON,
+    then parsed as a JSON tree. The digest is that of the file's bytes."""
+    import jev_graph
+
+    def own(error) -> Err[JudgeError]:  # jev_graph's JudgeError has the same fields; main() needs this module's class
+        wrapped = JudgeError(error.code, error.message, error.recoverable, error.action)
+        wrapped.data = error.data
+        return Err(wrapped)
+
+    loaded = jev_graph.load_tree(path)
+    if isinstance(loaded, Err):
+        return own(loaded.error)
+    checked = jev_graph.validate_tree(loaded.value)
+    if isinstance(checked, Err):
+        return own(checked.error)
+    parsed = parse_quality_tree(json.dumps(jev_graph.tree_to_quality_json(loaded.value)), path, override)
+    if isinstance(parsed, Err):
+        return parsed
+    return Ok(parsed.value._replace(sha256=content_sha256(raw)))
+
+
+def parse_quality_tree_file(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+    """``parse_quality_tree`` for a .json tree, ``parse_quality_tree_ttl`` for a .ttl tree (by the path's extension)."""
+    if path.lower().endswith(".ttl"):
+        return parse_quality_tree_ttl(raw, path, override)
+    return parse_quality_tree(raw, path, override)
+
+
 def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree, JudgeError]:
-    """The record kind's shipped tree, or the --questions override (see parse_quality_tree)."""
+    """The record kind's shipped tree, or the --questions override (.json or .ttl; see parse_quality_tree)."""
     path = override_path or str(QUESTIONS_DIR / f"quality-{kind}.json")
     raw = read_source(path, "quality tree", action="Pass the path of an existing tree file.")
     if isinstance(raw, Err):
         return raw
-    return parse_quality_tree(raw.value, path, bool(override_path))
+    return parse_quality_tree_file(raw.value, path, bool(override_path))
 
 
 def _got(choices: dict, qid: str, wanted) -> bool:
@@ -2148,7 +2177,7 @@ def validate_input(kind: str, raw: str, path: str, args) -> Result[None, JudgeEr
     """``raw`` (the text of an input of ``kind``) accepted or refused exactly as the command that reads it would."""
     what = dict(VALIDATE_KINDS)[kind]
     if kind == "tree":
-        parsed = parse_quality_tree(raw, path)
+        parsed = parse_quality_tree_file(raw, path)
         return Ok(None) if isinstance(parsed, Ok) else parsed
     if kind == "requests":
         lines = parse_request_lines(raw, path)
@@ -2210,7 +2239,7 @@ def build_parser() -> argparse.ArgumentParser:
         q.add_argument(f"--{kind}", metavar="ID", action="append", default=[],
                        help=f"a {kind.upper()} record id; repeat it (and mix kinds) to judge several records under one run name")
     q.add_argument("--index", required=True, help="the Raptor import index (JSON written by Raptor's scripts/extract.py --output)")
-    q.add_argument("--questions", default="", help="a decision-tree file overriding the shipped assets/questions/quality-<kind>.json")
+    q.add_argument("--questions", default="", help="a decision-tree file (.json or .ttl) overriding the shipped assets/questions/quality-<kind>.json")
     q.add_argument("--dry-run", action="store_true", help="report each record's tree and composed wave-1 request (one per statement for a per-statement wave); call nothing")
     q.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/<node>/r1', '<record>/<node>', '<node>' or '*'; no network")
     q.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log (<run-dir>/logs/judge-jev.log.jsonl); default {QUALITY_LOG_DIR}")
@@ -2219,7 +2248,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.set_defaults(func=cmd_quality)
     v = sub.add_parser("validate", help="check one input file with the model the other commands apply before their first Jev request; calls nothing, needs no key, writes no log")
     group = v.add_mutually_exclusive_group(required=True)
-    group.add_argument("--tree", metavar="FILE", default=None, help="a quality decision tree (assets/questions/quality-<kind>.json); - is stdin")
+    group.add_argument("--tree", metavar="FILE", default=None, help="a quality decision tree (assets/questions/quality-<kind>.json or .ttl); - is stdin (JSON)")
     group.add_argument("--questions", metavar="FILE", default=None, help="a question set (assets/questions/plan.json); - is stdin")
     group.add_argument("--answers", metavar="FILE", default=None, help="an answers file (--answers-file); - is stdin")
     group.add_argument("--index", metavar="FILE", default=None, help="a Raptor import index (Raptor's scripts/extract.py --output); - is stdin")
