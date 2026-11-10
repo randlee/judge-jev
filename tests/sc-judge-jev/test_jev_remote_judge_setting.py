@@ -27,8 +27,8 @@ KEY = {"TYPESAFE_API_KEY": "sk-test-0001"}
 HEADER = ("# .sc/judge-jev/settings.yaml\n"
           "# Repository settings for the sc-judge-jev plugin; commit this file, never put secrets in it.\n"
           "schema_version: 1\n")
-REMOTE_COMMENT = "# allow_remote_judge: may plan text be sent to TypeSafe (Jev) for judging? Only the user decides it.\n"
-ABSENT_ACTION = ("Ask the user once whether plan text may be sent to TypeSafe (Jev) for judging, record the answer with "
+REMOTE_COMMENT = "# allow_remote_judge: may record text be sent to TypeSafe (Jev) for judging? Only the user decides it.\n"
+ABSENT_ACTION = ("Ask the user once whether record text may be sent to TypeSafe (Jev) for judging, record the answer with "
                  "`python3 scripts/judge_jev_settings.py set allow_remote_judge true|false`, and commit "
                  ".sc/judge-jev/settings.yaml. Never infer consent from existing run files or past runs. "
                  "Use --dry-run to inspect the request instead.")
@@ -106,7 +106,7 @@ class LiveCallConsentTests(unittest.TestCase):
         self.assertEqual(b.code, 2)
         self.assertEqual(b.out, {"success": False, "data": None, "error": {
             "code": "POLICY.REMOTE_JUDGE_DISABLED",
-            "message": f"Sending plan text to TypeSafe is disabled. {WHAT} would leave this "
+            "message": f"Sending record text to TypeSafe is disabled. {WHAT} would leave this "
                        "machine. .sc/judge-jev/settings.yaml does not set allow_remote_judge.",
             "recoverable": False, "suggested_action": ABSENT_ACTION}})
         self.assertEqual(b.transport.bodies, [])

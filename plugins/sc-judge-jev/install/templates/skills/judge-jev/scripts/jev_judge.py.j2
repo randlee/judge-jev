@@ -1039,7 +1039,7 @@ REMOTE_JUDGE_SET = "python3 scripts/judge_jev_settings.py set allow_remote_judge
 
 
 def remote_judge_consent(args, what: str) -> Result[None, JudgeError]:
-    """The repository's committed answer to whether plan text may go to TypeSafe: ``allow_remote_judge`` in
+    """The repository's committed answer to whether record text may go to TypeSafe: ``allow_remote_judge`` in
     .sc/judge-jev/settings.yaml. Only ``true`` passes; ``false`` and an absent answer refuse.
 
     The settings module (and PyYAML behind it) is imported only here, so only a live call needs it.
@@ -1055,7 +1055,7 @@ def remote_judge_consent(args, what: str) -> Result[None, JudgeError]:
     answer = settings.remote_judge_consent(start.resolve())
     if answer.ok and answer.value is True:
         return Ok(None)
-    disabled = f"Sending plan text to TypeSafe is disabled. {what} would leave this machine."
+    disabled = f"Sending record text to TypeSafe is disabled. {what} would leave this machine."
     if answer.ok:  # False: the user said no
         return fail("POLICY.REMOTE_JUDGE_DISABLED",
                     f"{disabled} {REMOTE_JUDGE_SETTING} sets allow_remote_judge: false.",
@@ -1064,7 +1064,7 @@ def remote_judge_consent(args, what: str) -> Result[None, JudgeError]:
     if answer.error.code == "SETTINGS.REMOTE_JUDGE_UNSET":
         return fail("POLICY.REMOTE_JUDGE_DISABLED",
                     f"{disabled} {REMOTE_JUDGE_SETTING} does not set allow_remote_judge.",
-                    action="Ask the user once whether plan text may be sent to TypeSafe (Jev) for judging, record the answer "
+                    action="Ask the user once whether record text may be sent to TypeSafe (Jev) for judging, record the answer "
                            f"with `{REMOTE_JUDGE_SET}`, and commit {REMOTE_JUDGE_SETTING}. Never infer consent from "
                            "existing run files or past runs. Use --dry-run to inspect the request instead.")
     return Err(_from_tool_error(answer.error))  # DEPENDENCY.PYYAML, SETTINGS.*: never a silent default
