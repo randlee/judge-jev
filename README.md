@@ -91,10 +91,34 @@ Out of scope:
 
 ## Install
 
-The `sc-judge-jev` plugin ships the `judge-jev-installer` skill. In a harness
-with the marketplace added, ask it to install judge-jev into a repository
-(never globally). Live Jev calls need a TypeSafe key and
-`allow_remote_judge: true` in `.sc/judge-jev/settings.yaml`.
+The marketplace plugin `sc-judge-jev` exposes one skill, `judge-jev-installer`, which installs the `judge-jev` skill into a folder you choose (a repository, or a parent folder of repositories; never a global location).
+
+Claude Code:
+
+```text
+/plugin marketplace add randlee/judge-jev
+/plugin install sc-judge-jev@judge-jev
+```
+
+Codex: `codex plugin marketplace add randlee/judge-jev`, then open `/plugins` and install **Judge Jev**. Cursor: in Customize, import this GitHub repository (it reads `.cursor-plugin/marketplace.json`), then install **sc-judge-jev**.
+
+Then ask the agent to install judge-jev, or run the `judge-jev-installer` skill. It reports the installed and available versions, asks once whether record text may be sent to TypeSafe, and runs:
+
+```bash
+uv run "${CLAUDE_PLUGIN_ROOT}/install.py" --dest <folder> --allow-remote-judge|--no-remote-judge [--target claude,codex,cursor]
+```
+
+From a checkout of this repository the same command is `uv run plugins/sc-judge-jev/install.py ...`; `--status --dest <folder>` reports the versions without writing. Rerun it to upgrade. Details: the installed `references/installation-and-troubleshooting.md`.
+
+| Need | For | Notes |
+| --- | --- | --- |
+| `uv` | the installer and every `jev_judge.py` run | `uv run --script` supplies the Python dependencies (pydantic, sc-observability, PyYAML, pyoxigraph, pyshacl) |
+| Python 3.11+ | everything | |
+| Raptor (`integration/judge-jev`) and a Rust toolchain | building the record index | `git clone -b integration/judge-jev https://github.com/randlee/raptor`, then `uv venv .venv -p 3.11 && uv pip install -p .venv/bin/python . markdown` in the clone; see its `templates/README.md` |
+| `TYPESAFE_API_KEY` | live Jev calls | Get a key at typesafe.ai; export it in the shell that launches the harness |
+| `allow_remote_judge: true` in `.sc/judge-jev/settings.yaml` | live Jev calls | The user's one-time answer, set by the installer; commit the file |
+
+`--dry-run`, `validate` and `doctor` need neither the key nor the setting.
 
 ## Requirements
 
