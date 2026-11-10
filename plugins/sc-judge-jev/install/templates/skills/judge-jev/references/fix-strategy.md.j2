@@ -82,14 +82,14 @@ Confidence: an answer at 0.5 or above did not flip between identical runs; below
 4. **State one choice over a named set** for alternatives ("exactly one of `--a` (x) or `--b` (y)" fails; define the set and require one of it). "Do X without Y" reads as two obligations; "do X with no Y" reads as one.
 5. **Move rationale** (because, so that, to ...) out of the statement into `### Rationale`.
 
-One tactic per candidate, so each result is attributable. Write a definition from how the record and the repository use the term: it must cover every use (a "question set" that may be a shipped id or an override path is not "the shipped set"), and each sentence needs a source file and line. Reword a statement only when it still fails after its terms are defined.
+One tactic per candidate, so each result is attributable. Write a definition from how the record and the repository use the term: it must cover every use (a "question set" that may be a shipped id or an override path is not "the shipped set"), and each sentence needs a source file and line. Keep the source's qualifiers: a number stated as a default or bounded by a flag stays a default ("24000 bytes by default", not "the largest size"). Reword a statement only when it still fails after its terms are defined.
 
 Low yield, do not lead with them: citing or linking a record; rewording, splitting or hardening statements that pass (splits aimed at passing statements almost never helped); any edit not aimed at a failing answer. Never delete words from a MUST or MUST NOT statement to raise a score: every such deletion that passed was drift.
 
 **ADR tactics.**
 
 - `context` = `background only` or `missing`: add one sentence starting "The problem is ...", built from the record's own Decision and Rationale.
-- `alternatives` = `none` or `named only`: add `### Alternatives Considered` with one `#### Alternative <n>: <name>` per option, each with `**Description:**` and `**Why Rejected:**`. Take the options from the Decision's "never" or "instead" clauses, the Rationale, or other records, and cite the REQ or ADR that rules each out. Never invent one.
+- `alternatives` = `none` or `named only`: add `### Alternatives Considered` with one `#### Alternative <n>: <name>` per option, each with `**Description:**` and `**Why Rejected:**`. Take the options from the Decision's "never" or "instead" clauses, the Rationale, or other records, and cite the REQ or ADR that rules each out. Each alternative is a different design; two that are rejected for the same reason are one. Never invent one.
 - `consequences` = `positive only` or `missing`: add the cost the record or code already shows.
 
 Fix every Raptor import diagnostic before judging.
