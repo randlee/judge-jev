@@ -50,7 +50,7 @@ Read `<folder>/.sc/judge-jev/settings.yaml` if it exists.
 
 - `allow_remote_judge`: when the folder's own file sets it, keep it (pass
   neither flag); the installer never copies a parent folder's answer.
-  Otherwise ask the user once whether plan text may be sent to TypeSafe (Jev)
+  Otherwise ask the user once whether record text may be sent to TypeSafe (Jev)
   for judging, and pass `--allow-remote-judge` or `--no-remote-judge` with the
   answer. Never infer consent from earlier runs, run files, committed evidence
   or other folders.

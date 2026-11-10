@@ -15,13 +15,13 @@ Consistency:
   paths, manifest identities and marketplace sources are checked too, and the
   plugin must expose only the judge-jev-installer skill.
 
-There is no pull-request bump rule: nothing is published, VERSION stays 0.1.0, and
+There is no pull-request bump rule: VERSION stays 0.1.0 (the first release), and
 no PR raises it. Changes accumulate under "## Unreleased" in CHANGELOG.md.
 
 Every other version number is locked too, with no exclusions: each template's
 own header `version:` (every *.j2) equals VERSION, and every integer version
 (a question set's or tree's `version` / `jj:version`, every `schema_version`)
-equals 1 until the first publish.
+equals 1.
 
 Exit 0 in sync; 2 when the check fails: drift (each on its own line on stdout)
 or missing files and bad input (on stderr): a manifest that is not valid JSON,
@@ -152,7 +152,7 @@ def locked_drift(root: pathlib.Path, want: str) -> list:
         for pattern in INT_VERSION_RES:
             for v in pattern.findall(text):
                 if v != LOCKED_INT_VERSION:
-                    drift.append(f"{_rel(f)}: integer version {v} != {LOCKED_INT_VERSION} (locked until the first publish)")
+                    drift.append(f"{_rel(f)}: integer version {v} != {LOCKED_INT_VERSION} (locked)")
     return drift
 
 

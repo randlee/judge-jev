@@ -1,6 +1,6 @@
 """allow_remote_judge: the committed answer that gates every live Jev call.
 
-The repository's .sc/judge-jev/settings.yaml records whether plan text may be
+The repository's .sc/judge-jev/settings.yaml records whether record text may be
 sent to TypeSafe. judge_jev_settings.py reads it (``show``,
 ``remote_judge_consent``) and records it (``set``). Tests that parse a present
 settings file need PyYAML and skip with the reason when it is missing. Every
@@ -30,7 +30,7 @@ NO_YAML = "PyYAML is not installed (python3 -m pip install pyyaml); parsing a pr
 HEADER = ("# .sc/judge-jev/settings.yaml\n"
           "# Repository settings for the sc-judge-jev plugin; commit this file, never put secrets in it.\n"
           "schema_version: 1\n")
-REMOTE_COMMENT = "# allow_remote_judge: may plan text be sent to TypeSafe (Jev) for judging? Only the user decides it.\n"
+REMOTE_COMMENT = "# allow_remote_judge: may record text be sent to TypeSafe (Jev) for judging? Only the user decides it.\n"
 
 
 class Repo:
@@ -239,7 +239,7 @@ class PromptAndDocsTests(unittest.TestCase):
 
     def test_installer_skill_asks_once_and_never_infers(self):
         text = (PLUGIN / "skills" / "judge-jev-installer" / "SKILL.md").read_text(encoding="utf-8")
-        self.assertIn("Otherwise ask the user once whether plan text may be sent to TypeSafe (Jev)", text)
+        self.assertIn("Otherwise ask the user once whether record text may be sent to TypeSafe (Jev)", text)
         self.assertIn("Never infer consent from earlier runs", text)
 
 
