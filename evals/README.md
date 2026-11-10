@@ -71,10 +71,17 @@ reference. A record is the section from its `## <ID>:` heading to the next
 
 ## Cost and time
 
-Measured with `--harness claude --model sonnet` on 2026-11-09 (see the
-results for exact numbers): a fix case takes about 5 to 15 minutes and 2 to 7
-USD of agent tokens, plus 20 to 60 live Jev requests and two scoring runs.
-`consent-off` takes about 1 to 2 minutes and makes no live Jev call.
+Measured with `--harness claude --model sonnet` on 2026-11-09, two runs each
+(agent time and the agent's `total_cost_usd`; the two scoring `quality` runs
+add about a minute per fix case):
+
+| Case | Agent time | Agent cost |
+| --- | --- | --- |
+| `fix-req` | 173 to 216 s | 0.61 to 0.69 USD |
+| `fix-adr-or-nfr` | 41 to 106 s | 0.17 to 0.53 USD |
+| `consent-off` | 12 to 14 s | 0.06 USD |
+
+Codex has not been run live yet; `--dry-run` checks its commands.
 
 The scorer's helpers are unit-tested without the network in
 `tests/sc-judge-jev/test_evals_scorer.py`.
