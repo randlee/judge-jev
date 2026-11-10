@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "plugins" / "sc-judge-jev"
 TEMPLATES = PLUGIN / "install" / "templates"
 SKILL_SRC = TEMPLATES / "skills" / "judge-jev"
+AGENT_TEMPLATES = TEMPLATES / "agents"
 INSTALLER = PLUGIN / "install.py"
 GENERATOR = ROOT / "scripts" / "gen_install_data.py"
 VERSION = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8"))["version"]
@@ -103,14 +104,14 @@ AGENT_BODY = ("---\nname: sc-judge-jev-demo-agent\nversion: 1.0.0\nformat: markd
 
 
 def plugin_with_agent(dest):
-    """A copy of the plugin that ships one agent: install.py supports agents; this package ships none yet."""
+    """A copy of the plugin that ships one agent: a planted agent the tests control."""
     shutil.copytree(PLUGIN, dest, ignore=shutil.ignore_patterns("__pycache__"))
     agents = dest / "install" / "templates" / "agents"
-    agents.mkdir()
+    agents.mkdir(exist_ok=True)
     (agents / f"{AGENT_NAME}.j2").write_text(AGENT_BODY, encoding="utf-8")
     for target in inst.TARGETS:
         front = dest / "install" / "harness" / target / "agents" / AGENT_NAME
-        front.parent.mkdir(parents=True)
+        front.parent.mkdir(parents=True, exist_ok=True)
         front.write_text(f"---\nname: demo-agent\nversion: {VERSION}\n---\n", encoding="utf-8")
     return dest
 
@@ -148,7 +149,7 @@ class RenderingTests(unittest.TestCase):
                      if p.name.endswith(".j2")}
         self.assertTrue({"scripts/result.py", "scripts/judge_jev_paths.py", "scripts/judge_jev_settings.py"} <= expected)
         self.assertEqual(set(self.package.rendered), expected)
-        self.assertEqual(self.package.agents, ())
+        self.assertEqual(self.package.agents, ("jev-fix-proposer.md",))
 
     def test_every_template_renders_strictly(self):
         templates = [t for t in sorted(TEMPLATES.rglob("*.j2")) if inst.is_install_template(t)]
@@ -361,7 +362,7 @@ class InstallTests(InstallCase):
         self.assertIn(f'version: "{VERSION}"', skill)
         registry = repo.path(".claude/skills/judge-jev/registry.yaml").read_text(encoding="utf-8")
         self.assertIn("path: .claude/skills/judge-jev/SKILL.md", registry)
-        self.assertFalse(repo.path(".claude/agents").exists())
+        self.assertTrue(repo.path(".claude/agents/jev-fix-proposer.md").is_file())
 
     def test_fresh_install_all_targets(self):
         repo = TempRepo(self)
@@ -443,7 +444,7 @@ class InstallTests(InstallCase):
         lock["files"][skill] = sha(b"older SKILL.md\n")
         lock["version"] = "0.0.9"
         repo.path(inst.LOCK_RELPATH).write_text(json.dumps(lock), encoding="utf-8")
-        repo.path(".claude/agents").mkdir()
+        repo.path(".claude/agents").mkdir(exist_ok=True)
         repo.path(".claude/agents/mine.md").write_text("consumer agent\n", encoding="utf-8")
         data = self.ok(run_install(repo))
         self.assertEqual(data["previous_version"], "0.0.9")
@@ -777,13 +778,15 @@ class RealInstallTests(unittest.TestCase):
                 if not path.is_file() or not rel.endswith((".md", ".py")):
                     continue
                 with self.subTest(path=rel):
-                    rest = rel.split("/skills/judge-jev/", 1)[1]
-                    source = SKILL_SRC / f"{rest}.j2"
+                    if "/agents/" in rel:
+                        source = AGENT_TEMPLATES / f"{path.name}.j2"
+                    else:
+                        source = SKILL_SRC / f"{rel.split('/skills/judge-jev/', 1)[1]}.j2"
                     self.assertTrue(source.is_file(), source)
                     self.assertTrue(inst.is_install_template(source), source)
                     checked += 1
         package = inst.load_package().value
-        self.assertEqual(checked, 3 * len([r for r in package.skill if r.endswith((".md", ".py"))]))
+        self.assertEqual(checked, 3 * (len([r for r in package.skill if r.endswith((".md", ".py"))]) + len(package.agents)))
         settings = (root / ".sc" / "judge-jev" / "settings.yaml").read_text(encoding="utf-8")
         self.assertTrue(settings.endswith("allow_remote_judge: false\n"), settings)
 

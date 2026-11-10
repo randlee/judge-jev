@@ -4,10 +4,18 @@
 
 ## Unreleased
 
-- The installed `judge-jev` skill has its workflow: verify dependencies, build
-  the Raptor index, judge with `quality`, fix failing records in a measured
-  tweak-and-rejudge loop, and test definitions with `compare-definition` and
-  `doctor`. It was a stub with no description.
+- The installed `judge-jev` skill routes two modes: quality (is a REQ, NFR or
+  ADR well written; `references/quality-workflow.md`) and compliance (does a
+  prompt, skill, template or code meet its record; not in this release, the
+  skill says so and stops). `references/fix-strategy.md` holds the fix loop:
+  route each failing answer to its cause, edit tactics ranked by measured
+  yield, noise and repeat rules, measuring and combining candidates, a token
+  guard and drift review against the author's text, known Jev misreads, stop
+  rules and the report. It was a stub with no description.
+- New agent `jev-fix-proposer` (Claude Code, Codex, Cursor): proposes candidate
+  edits for one failing record as fenced JSON, each naming the failing answer
+  it targets; run several in parallel on different models. Listed in each
+  harness registry.
 - README: install section with the marketplace commands for Claude Code, Codex
   and Cursor, the installer command, and a requirements table.
 - `quality` logs the rank of the rule that fired (`rule_rank` on the wave and
