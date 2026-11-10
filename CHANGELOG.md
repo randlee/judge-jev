@@ -16,6 +16,11 @@
   edits for one failing record as fenced JSON, each naming the failing answer
   it targets; run several in parallel on different models. Listed in each
   harness registry.
+- `evals/`: a real-use test of the skill. `evals/run.py --harness claude|codex
+  --model <m>` builds a scratch repository per case with pre-tuning records,
+  installs judge-jev from the checkout, launches the agent with only the case
+  prompt, and scores two live `quality` runs plus a token drift report against
+  the hand-tuned text. Cases: `fix-req`, `fix-adr-or-nfr`, `consent-off`.
 - README: install section with the marketplace commands for Claude Code, Codex
   and Cursor, the installer command, and a requirements table.
 - `quality` logs the rank of the rule that fired (`rule_rank` on the wave and

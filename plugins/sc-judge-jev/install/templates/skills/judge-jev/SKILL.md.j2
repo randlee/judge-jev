@@ -70,11 +70,12 @@ You stay the author: you apply, measure, combine and review every candidate. A p
 
 ## Hard stops
 
+- Every round launches the `jev-fix-proposer` agents before any candidate is measured (`references/fix-strategy.md` step 4). Your own candidates join theirs; they never replace them.
 - Never edit a question, tree, criterion or threshold to make a record pass.
 - Never answer for Jev. A failed call is rerun once, then reported with its code and verbatim message; it is never a verdict.
 - Never show the user a proposed edit, or call a record passing, before live runs show it passing.
 - Never keep an edit that drops, weakens or adds an obligation, even when Jev scores it higher.
-- Never invent a number, term definition or alternative; take it from the repository and cite the file and line.
+- Never invent a number, term definition or alternative; take it from the repository and cite the file and line in your report, never in the record.
 - Every round of edits ends with a live Jev run. Keep the run files and `.sc/judge-jev/logs/`.
 
 Jev request format, limits and every error code: `references/jev-api.md`.

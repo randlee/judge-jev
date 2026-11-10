@@ -77,19 +77,19 @@ Confidence: an answer at 0.5 or above did not flip between identical runs; below
 ## 3. Tactics, ranked by measured yield
 
 1. **Define the term in the record.** Add one sentence to the record's `Definitions:` paragraph (the first paragraph under `### Requirement Statement`, starting `Definitions:`; create it if absent). Leave the statement unchanged. Take the meaning from the repository; if another record already defines the term, reuse its wording (`grep -rn "<term> is" docs/`). Expand acronyms; define product names once ("sc-agent is ..."). Undefined terms caused about nine failures in ten, and definitions alone took most records from failing to passing. The `Fix:` line says "define it or link the record": linking never worked. Define it here.
-2. **Replace a vague qualifier with the measure the code uses.** Find the number in the code or tests and cite the file and line. If the repository states no number, do not invent one: the statement is unresolved and needs the user's decision.
+2. **Replace a vague qualifier with the measure the code uses.** Find the number in the code or tests and cite the file and line in your report. If the repository states no number, do not invent one: the statement is unresolved and needs the user's decision.
 3. **Split a list-joined statement** into one statement per item, each with the original subject and modal, every item and gloss kept. Never move the items into a definition and leave the statement naming only the set.
 4. **State one choice over a named set** for alternatives ("exactly one of `--a` (x) or `--b` (y)" fails; define the set and require one of it). "Do X without Y" reads as two obligations; "do X with no Y" reads as one.
 5. **Move rationale** (because, so that, to ...) out of the statement into `### Rationale`.
 
-One tactic per candidate, so each result is attributable. Write a definition from how the record and the repository use the term: it must cover every use (a "question set" that may be a shipped id or an override path is not "the shipped set"), and each sentence needs a source file and line. Keep the source's qualifiers: a number stated as a default or bounded by a flag stays a default ("24000 bytes by default", not "the largest size"). Reword a statement only when it still fails after its terms are defined.
+One tactic per candidate, so each result is attributable. Write a definition from how the record and the repository use the term: it must cover every use (a "question set" that may be a shipped id or an override path is not "the shipped set"), and each sentence needs a source file and line, cited in your report. The record cites only record ids: no file paths or line numbers. Keep the source's qualifiers: a number stated as a default or bounded by a flag stays a default ("24000 bytes by default", not "the largest size"). Reword a statement only when it still fails after its terms are defined.
 
 Low yield, do not lead with them: citing or linking a record; rewording, splitting or hardening statements that pass (splits aimed at passing statements almost never helped); any edit not aimed at a failing answer. Never delete words from a MUST or MUST NOT statement to raise a score: every such deletion that passed was drift.
 
 **ADR tactics.**
 
 - `context` = `background only` or `missing`: add one sentence starting "The problem is ...", built from the record's own Decision and Rationale.
-- `alternatives` = `none` or `named only`: add `### Alternatives Considered` with one `#### Alternative <n>: <name>` per option, each with `**Description:**` and `**Why Rejected:**`. Take the options from the Decision's "never" or "instead" clauses, the Rationale, or other records, and cite the REQ or ADR that rules each out. Each alternative is a different design; two that are rejected for the same reason are one. Never invent one.
+- `alternatives` = `none` or `named only`: add `### Alternatives Considered` with one `#### Alternative <n>: <name>` per option, each with `**Description:**` and `**Why Rejected:**`. Take the options from the Decision's "never" or "instead" clauses, the Rationale, or other records, and cite the REQ or ADR id that rules each out. Each alternative is a different design; two that are rejected for the same reason are one. Never invent one.
 - `consequences` = `positive only` or `missing`: add the cost the record or code already shows.
 
 Fix every Raptor import diagnostic before judging.
@@ -117,7 +117,7 @@ Always launch proposers, even when the fixes look obvious: your own candidates a
 
 ## 5. Screen
 
-Reject a candidate, before spending runs on it, when:
+Wait until every proposer has returned or failed, then screen. Reject a candidate, before spending runs on it, when:
 
 - its `old` text does not occur exactly once in the file;
 - it targets no answer that failed in your runs;
