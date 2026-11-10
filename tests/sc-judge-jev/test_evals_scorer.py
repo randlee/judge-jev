@@ -118,7 +118,7 @@ class AgentCommandTests(unittest.TestCase):
         cmd = run.agent_command("codex", "luna", "P", Path("/r"), Path("/o.txt"))
         self.assertEqual(cmd[:4], ["codex", "exec", "-m", "luna"])
         self.assertEqual(cmd[-1], "P")
-        self.assertIn("/o.txt", cmd)
+        self.assertIn(str(Path("/o.txt")), cmd)
 
     def test_claude_command(self):
         cmd = run.agent_command("claude", "sonnet", "P", Path("/r"), Path("/o.txt"))
