@@ -24,9 +24,10 @@ F=docs/requirements/abc.md         # the file that holds the record
 W=.sc/judge-jev/fix/$ID; mkdir -p "$W"
 cp "$F" "$W/original.md"           # the author's text: every drift check compares against it
 cp "$F" "$W/current.md"            # the best accepted text so far
+printf 'J=%s\nRAPTOR=%s\nID=%s\nKIND=%s\nF=%s\nW=%s\n' "$J" "$RAPTOR" "$ID" "$KIND" "$F" "$W" > "$W/env"
 ```
 
-Set `J`, `RAPTOR`, `ID`, `KIND`, `F` and `W` in every shell. Work on one record per file at a time.
+Shell variables do not survive between tool calls: start every later command with `. .sc/judge-jev/fix/<ID>/env`. Work on one record per file at a time.
 
 Three commands do all the measuring.
 
@@ -67,15 +68,21 @@ Snapshot `base` and judge it 3 times. For every failing statement (ADR: every fa
 | ADR `context`, `alternatives` or `consequences` fails | missing ADR content | ADR tactics |
 | The record already states what the answer says is missing, and it persists after one fix | question misfit or Jev misread | Known misreads; do not reword |
 
+Route by the answer that fired a fail rule, and only that answer. `joined_by` = `condition+obligation` never fails; a statement whose wave passed needs no edit.
+
+Fix `term` failures first, with definitions alone, and re-measure before anything else: structure answers below 0.5 (`obligations`, `joined_by`) often settle once the terms are defined.
+
 Confidence: an answer at 0.5 or above did not flip between identical runs; below 0.5 it can, below 0.35 often. A confident failing answer (0.75 or above) is a real defect in the text. Jev sees only this record: a term defined in another record or file is undefined to Jev.
 
 ## 3. Tactics, ranked by measured yield
 
 1. **Define the term in the record.** Add one sentence to the record's `Definitions:` paragraph (the first paragraph under `### Requirement Statement`, starting `Definitions:`; create it if absent). Leave the statement unchanged. Take the meaning from the repository; if another record already defines the term, reuse its wording (`grep -rn "<term> is" docs/`). Expand acronyms; define product names once ("sc-agent is ..."). Undefined terms caused about nine failures in ten, and definitions alone took most records from failing to passing. The `Fix:` line says "define it or link the record": linking never worked. Define it here.
 2. **Replace a vague qualifier with the measure the code uses.** Find the number in the code or tests and cite the file and line. If the repository states no number, do not invent one: the statement is unresolved and needs the user's decision.
-3. **Split a list-joined statement** into one statement per item, each with the original subject and modal, every item and gloss kept. Or name the set in `Definitions:` and write one obligation over it.
+3. **Split a list-joined statement** into one statement per item, each with the original subject and modal, every item and gloss kept. Never move the items into a definition and leave the statement naming only the set.
 4. **State one choice over a named set** for alternatives ("exactly one of `--a` (x) or `--b` (y)" fails; define the set and require one of it). "Do X without Y" reads as two obligations; "do X with no Y" reads as one.
 5. **Move rationale** (because, so that, to ...) out of the statement into `### Rationale`.
+
+One tactic per candidate, so each result is attributable. Write a definition from how the record and the repository use the term: it must cover every use (a "question set" that may be a shipped id or an override path is not "the shipped set"), and each sentence needs a source file and line. Reword a statement only when it still fails after its terms are defined.
 
 Low yield, do not lead with them: citing or linking a record; rewording, splitting or hardening statements that pass (splits aimed at passing statements almost never helped); any edit not aimed at a failing answer. Never delete words from a MUST or MUST NOT statement to raise a score: every such deletion that passed was drift.
 
@@ -89,7 +96,7 @@ Fix every Raptor import diagnostic before judging.
 
 ## 4. Propose candidates
 
-Launch `jev-fix-proposer` agents in parallel, each on a different model (Claude Code: `haiku`, `sonnet`, `opus`; Codex: `luna`, `sol`; Cursor: `composer`, `grok`), with no shared context. Use at least two models; if one is unavailable, say so and continue with the others. Each gets one fenced JSON object:
+Always launch proposers, even when the fixes look obvious: your own candidates are one model's view. Launch `jev-fix-proposer` agents in parallel, each on a different model (Claude Code: `haiku`, `sonnet`, `opus`; Codex: `luna`, `sol`; Cursor: `composer`, `grok`), with no shared context. Use at least two models; if one is unavailable, say so and continue with the others. Each gets one fenced JSON object:
 
 ```json
 {
@@ -149,6 +156,8 @@ Run the token guard on `$W/original.md` against `$F`, then read `diff -u "$W/ori
 - abstracts a concrete item away (`--profile` becoming "the profile form");
 - turns rationale or description into a MUST, or adds a condition the original lacked ("When a command completes ...");
 - widens or narrows the scope ("every tree, question set and definitions file" becoming "every file in the scope");
+- changes one of two parallel statements but not the other (two statements that described the same entry the same way must still match);
+- defines a term more narrowly or widely than the record uses it (a location that excludes code when the record allows `code` mode);
 - leaves a definition false, circular ("Recorded answers are an answers file"), cut short ("The digest is the SHA-256.") or starting with a pronoun that has no antecedent;
 - defines a term differently from another record in the repository;
 - states a fact the repository does not support, or changes a user's quoted words;
@@ -158,7 +167,7 @@ Keep changes that make the record more specific, testable or accurate. After any
 
 ## 9. Confirm
 
-Snapshot `final` and judge it 6 times. The record passes when all 6 verdicts are `yes`. Otherwise start a new round at step 2 with the statements that failed.
+Run the token guard on `$W/original.md` against `$F`; it must print `guard ok`, or every loss is a deliberate, reviewed move. Snapshot `final` and judge it 6 times. The record passes when all 6 verdicts are `yes`. Otherwise start a new round at step 2 with the statements that failed.
 
 ## Stop
 
@@ -174,7 +183,7 @@ Snapshot `final` and judge it 6 times. The record passes when all 6 verdicts are
 
 Only measured results:
 
-- each passing record: runs passed before and after (for example 0/3 to 6/6), `diff -u "$W/original.md" "$F"`, and one line per change naming the answer it fixed;
+- each passing record: runs passed before and after (for example 0/3 to 6/6), the token guard's output, the proposer models used, `diff -u "$W/original.md" "$F"`, and one line per change naming the answer it fixed;
 - each unresolved statement: its text, Jev's answers per run verbatim (`question=choice @confidence`), what was tried and its measured result, your diagnosis, and the decision you need from the user (for example a number the repository does not state).
 
 Leave `$W` and `.sc/judge-jev/logs/` in place.
