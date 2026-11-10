@@ -96,7 +96,7 @@ Fix every Raptor import diagnostic before judging.
 
 ## 4. Propose candidates
 
-Always launch proposers, even when the fixes look obvious: your own candidates are one model's view. Launch `jev-fix-proposer` agents in parallel, each on a different model (Claude Code: `haiku`, `sonnet`, `opus`; Codex: `luna`, `sol`; Cursor: `composer`, `grok`), with no shared context. Use at least two models; if one is unavailable, say so and continue with the others. Each gets one fenced JSON object:
+Always launch proposers, even when the fixes look obvious: your own candidates are one model's view. Launch at least two `jev-fix-proposer` agents in parallel, with no shared context. The agent runs on the frontier model (Claude Code: `opus`; Codex: `sol`; Cursor: `grok`, high effort); do not override it. When another harness is available, add one proposer there. Each gets one fenced JSON object:
 
 ```json
 {

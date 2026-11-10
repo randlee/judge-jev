@@ -40,6 +40,10 @@ verbatim, `final-message.md`, `docs.diff` (the agent's edits), the scorer's
 gitignored. Exit status: 0 when every case passes, 1 otherwise, 2 on a usage
 error.
 
+## Models
+
+`--model` sets the agent under test: use `sonnet` (Claude Code) and `luna` (Codex) so a mid-tier agent proves the skill is clear enough. The skill's `jev-fix-proposer` agents run on the model the skill ships (`opus`, `sol`), not on `--model`.
+
 ## Cases
 
 | Case | Records | Expect |
