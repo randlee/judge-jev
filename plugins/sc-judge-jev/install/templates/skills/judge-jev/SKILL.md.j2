@@ -22,19 +22,28 @@ This file is the table of contents. Do Steps 1 and 2, then read only the referen
 ## Step 1 - Verify dependencies
 
 ```bash
+for cli in uv jq; do
+  command -v "$cli" >/dev/null && continue
+  for d in /opt/homebrew/bin /usr/local/bin "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+    [ -x "$d/$cli" ] && echo "$cli found at: $d/$cli" && break
+  done
+done
 which uv && uv --version
 which jq && jq --version
 J="<this skill's directory>/scripts/jev_judge.py"
+RAPTOR="${RAPTOR:-$HOME/.local/share/raptor}"
 uv run --script "$J" --help >/dev/null && echo "judge-jev ok"
+test -x "$RAPTOR/.venv/bin/python" && test -f "$RAPTOR/scripts/extract.py" && echo "raptor ok" || echo "raptor missing at $RAPTOR"
 test -n "$TYPESAFE_API_KEY" && echo "TYPESAFE_API_KEY set" || echo "TYPESAFE_API_KEY missing"
-uv run -q --no-project --with pyyaml python "<this skill's directory>/scripts/judge_jev_settings.py" show | jq '.data.allow_remote_judge'   # true, false, or null
+uv run -q --no-project --with pyyaml python "<this skill's directory>/scripts/judge_jev_settings.py" show \
+  | jq -r 'if .success then .data.allow_remote_judge else "ERROR \(.error.code): \(.error.message)" end'   # true, false, null, or ERROR
 ```
 
-Run `jev_judge.py` only with `uv run --script "$J"`: its inline metadata supplies its dependencies, and plain `python3` fails with `DEPENDENCY.*`. Shell variables do not persist between tool calls; set `J` (and `RAPTOR`, below) in every shell.
+A tool found off PATH: `export PATH="<dir>:$PATH"` for the session. Run `jev_judge.py` only with `uv run --script "$J"`: its inline metadata supplies its dependencies, and plain `python3` fails with `DEPENDENCY.*`. Shell variables do not persist between tool calls; set `J` and `RAPTOR` in every shell.
 
-`allow_remote_judge` in the committed `.sc/judge-jev/settings.yaml` is the user's answer to whether record text may be sent to TypeSafe (Jev). `true`: continue. `false`: live calls are refused with `POLICY.REMOTE_JUDGE_DISABLED`; tell the user and work offline only (`--dry-run`, `validate`, `doctor`). `null`: ask the user once, record the answer with the same command and `set allow_remote_judge true|false`, and commit the file. Never infer consent from run files or other repositories.
+`allow_remote_judge` in the committed `.sc/judge-jev/settings.yaml` is the user's answer to whether record text may be sent to TypeSafe (Jev). `true`: continue. `false`: live calls are refused with `POLICY.REMOTE_JUDGE_DISABLED`; tell the user and work offline only (`--dry-run`, `validate`, `doctor`). `null`: ask the user once, record the answer with the same command and `set allow_remote_judge true|false`, and commit the file. An `ERROR` line means the settings could not be read: it is not an answer, so do not ask for consent or write the file; stop and read `references/installation-and-troubleshooting.md`. Never infer consent from run files or other repositories.
 
-Raptor, once per machine (needs a Rust toolchain; it builds the `raptor_schema` PyO3 module):
+`raptor missing`: install Raptor once per machine at `$RAPTOR` (its build prerequisites are in Raptor's README), then rerun the check:
 
 ```bash
 git clone -b integration/judge-jev https://github.com/randlee/raptor "$RAPTOR"
@@ -65,7 +74,7 @@ Exit 0 with `"issues": 0` means every record imported. Otherwise fix each diagno
 
 | Agent | Role | Returns |
 | --- | --- | --- |
-| `jev-fix-proposer` | Proposes candidate edits for one record's failing answers. Run several in parallel with no shared context; they share no context. | Fenced JSON: candidate edits, each naming the failing answer it targets |
+| `jev-fix-proposer` | Proposes candidate edits for one record's failing answers. Run 2 to 4 in parallel, each with its own `proposer` id and no shared context. | Fenced JSON: candidate edits, each naming the failing answer it targets |
 
 You stay the author: you apply, measure, combine and review every candidate. A proposer never edits a file or calls Jev. Agents load when a session starts: if `jev-fix-proposer` is not available by name, launch a general-purpose agent whose prompt is the body of `.<harness>/agents/jev-fix-proposer.md` (at the install root) followed by the input object. If no agent can be launched, say so and write the candidates yourself from that file.
 

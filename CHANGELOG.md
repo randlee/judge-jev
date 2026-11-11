@@ -4,6 +4,15 @@
 
 ## Unreleased
 
+- Skill guideline review fixes. `SKILL.md` Step 1 sets `RAPTOR` (default `~/.local/share/raptor`) and checks Raptor
+  before using it, searches the usual folders for `uv` and `jq`, and prints `ERROR <code>: <message>` when the settings
+  cannot be read, instead of `null`, which the skill read as "ask the user for consent". The installer skill verifies
+  `uv` first. `installation-and-troubleshooting.md` covers uv, jq and Raptor (install, find, minimum versions) and adds
+  a Validation section; every settings command uses the `uv run ... --with pyyaml` form. `jev-api.md` documents a
+  `quality` wave's request and response, the size limits and the single retry, and the exit codes of `quality`,
+  `compare-definition`, `doctor` and `validate`; the batch runner is marked as not used by the skill.
+  `jev-fix-proposer` documents `data.unfixable` in its output. The fix loop runs 2 to 4 proposers, each with a
+  `proposer` id, and counts one that has not returned after 15 minutes as failed.
 - New `jev_report.py` and `references/report.md` (loaded only for the report): an HTML report of judge-jev runs, in the
   evidence-report look, rendered with the sc-compose CLI. `quality` reports one fix run from its workspace
   (`.sc/judge-jev/fix/<ID>`): each statement a rule fired on in `base`, whether it still fires in `final`, the Jev

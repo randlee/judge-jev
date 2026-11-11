@@ -25,6 +25,23 @@ the settings file and, with
 `--overwrite`, `.backup/<UTC>/` and `.backup/.gitignore`; it removes unchanged files
 this version no longer ships. It runs no external command.
 
+## Verify uv first
+
+The installer runs only under `uv`, which supplies its dependencies:
+
+```bash
+command -v uv >/dev/null || for d in /opt/homebrew/bin /usr/local/bin "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+  [ -x "$d/uv" ] && echo "uv found at: $d/uv" && break
+done
+which uv && uv --version
+```
+
+Found off PATH: `export PATH="<dir>:$PATH"` for the session. Not found: install it
+(macOS/Linux `curl -LsSf https://astral.sh/uv/install.sh | sh` or
+`brew install uv`; Windows `winget install astral-sh.uv`), then rerun the
+check. Do not run `install.py` with plain `python3`. More help:
+`${CLAUDE_PLUGIN_ROOT}/install/templates/skills/judge-jev/references/installation-and-troubleshooting.md.j2`.
+
 ## 1. Pick the folder and report versions
 
 Ask which folder to install into when the user has not said: the current

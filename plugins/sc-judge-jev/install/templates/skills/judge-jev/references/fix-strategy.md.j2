@@ -98,7 +98,7 @@ Fix every Raptor import diagnostic before judging.
 
 ## 4. Propose candidates
 
-Always launch proposers, even when the fixes look obvious: your own candidates are one model's view. Launch at least two `jev-fix-proposer` agents in parallel, with no shared context. The agent runs on the frontier model (Claude Code: `opus`; Codex: `sol`; Cursor: `grok`, high effort); do not override it. When another harness is available, add one proposer there. Each gets one fenced JSON object:
+Always launch proposers, even when the fixes look obvious: your own candidates are one model's view. Launch 2 to 4 `jev-fix-proposer` agents in parallel, with no shared context, each with its own `proposer` id (`p1`, `p2`, ...): the id goes on every line of `tried.jsonl` its candidates produce. The agent runs on the frontier model (Claude Code: `opus`; Codex: `sol`; Cursor: `grok`, high effort); do not override it. When another harness is available, add one proposer there. Each gets one fenced JSON object:
 
 ```json
 {
@@ -119,7 +119,7 @@ Always launch proposers, even when the fixes look obvious: your own candidates a
 
 ## 5. Screen
 
-Wait until every proposer has returned or failed, then screen. Reject a candidate, before spending runs on it, when:
+Wait until every proposer has returned or failed; one that has not returned after 15 minutes counts as failed (stop it, note its id in the report). Then screen. Reject a candidate, before spending runs on it, when:
 
 - its `old` text does not occur exactly once in the file;
 - it targets no answer that failed in your runs;

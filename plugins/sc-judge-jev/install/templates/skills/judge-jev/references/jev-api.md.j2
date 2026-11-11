@@ -9,7 +9,7 @@ required_variables:
 ---
 name: jev-api
 version: {{ version }}
-description: How jev_judge.py talks to TypeSafe's Jev - endpoint, auth, request and response shape, validation, limits, the retry and context-shortening policy, every error code and flag, model pinning, and the committed allow_remote_judge setting that gates every call.
+description: How jev_judge.py talks to TypeSafe's Jev - endpoint, auth, the request and response of a quality wave, validation, size limits and retries, error and exit codes of quality, compare-definition, doctor and validate, model pinning, and the committed allow_remote_judge setting that gates every call.
 ---
 
 # Jev API as used by this skill
@@ -21,9 +21,11 @@ Jev is TypeSafe's decision model: it answers typed questions about a piece of st
 A live run sends record text off the machine: `quality` sends each record and its wave's questions, `batch` sends each request line. Sending it to TypeSafe is the user's decision, so the script fails closed:
 
 - `TYPESAFE_API_KEY`, when present, must be well-formed (non-empty, ASCII, no control characters); when it is absent the script tries the documented platform credential store, and
-- the repository's committed `.sc/judge-jev/settings.yaml` must set `allow_remote_judge: true`. `false` is the user's no; an absent resolved credential means the live call is refused. Both are refused.
+- the repository's committed `.sc/judge-jev/settings.yaml` must set `allow_remote_judge: true`.
 
-The answer is recorded once per repository, never per session: ask the user, then `python3 scripts/judge_jev_settings.py set allow_remote_judge true|false` (or the installer's `--allow-remote-judge` / `--no-remote-judge`), and commit the file. Only the user decides it: agents never write it and never infer it from existing run files or past runs. The setting is found from `--repository-root` (default `.`); reading a present settings file needs PyYAML (`DEPENDENCY.PYYAML`, exit 2, otherwise), and nothing else in `jev_judge.py` does. `--dry-run` writes request previews after normal presentation redaction and `totals {requests, bytes}` to the run directory. Previews may differ from canonical request bodies when text is redacted. `--answers-file` runs the gating with fixture answers, offline. The key is never printed, logged, written to a run file, or included in an error.
+A live call is refused when no credential resolves (`AUTH.CREDENTIALS`) and when the setting is `false` (the user's no) or absent (`POLICY.REMOTE_JUDGE_DISABLED`).
+
+The answer is recorded once per repository, never per session: ask the user, then `uv run -q --no-project --with pyyaml python scripts/judge_jev_settings.py set allow_remote_judge true|false` (or the installer's `--allow-remote-judge` / `--no-remote-judge`), and commit the file. Only the user decides it: agents never write it and never infer it from existing run files or past runs. The setting is found from `--repository-root` (default `.`); reading a present settings file needs PyYAML (`DEPENDENCY.PYYAML`, exit 2, otherwise), and nothing else in `jev_judge.py` does. `--dry-run` writes request previews after normal presentation redaction and `totals {requests, bytes}` to the run directory. Previews may differ from canonical request bodies when text is redacted. `--answers-file` runs the gating with fixture answers, offline. The key is never printed, logged, written to a run file, or included in an error.
 
 ## Endpoint and auth
 
@@ -32,48 +34,50 @@ The answer is recorded once per repository, never per session: ask the user, the
 
 ## Request
 
+One `quality` wave of a per-statement tree sends one request per statement; a record-level wave (ADR) sends one per record. The state is `item`, whose `text` is JSON: the statement and the whole record as Raptor imported it.
+
 ```json
 {
   "model": "jev-latest",
   "state": {
-    "anchor": {"id": "ANC-012", "statement": "...", "scope": "..."},
-    "item": {"id": "ex-42", "title": "...", "text": "..."}
+    "item": {"id": "REQ-ABC-0001.s1", "text": "{\"statement\": {\"index\": 1, \"modal\": \"Must\", \"text\": \"...\"}, \"record\": {\"id\": \"REQ-ABC-0001\", ...}}"}
   },
   "questions": {
-    "relevant":     {"type": "choice", "instructions": "...", "criteria": {"yes": "...", "no": "...", "unclear": "..."}},
-    "addressed":    {"type": "choice", "instructions": "...", "criteria": {"yes": "...", "no": "...", "unclear": "..."}},
-    "contradicted": {"type": "choice", "instructions": "...", "criteria": {"yes": "...", "no": "...", "unclear": "..."}}
+    "check": {"type": "choice", "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement ... What would check this statement?",
+              "criteria": {"CLI run": "...", "unit test": "...", "inspection or grep": "...", "needs a measure": "...", "none": "... Fix: ..."}},
+    "term":  {"type": "choice", "instructions": "...", "criteria": {"none": "...", "project term defined nowhere": "... Fix: define it or link the record."}}
   }
 }
 ```
 
-- `state` may be a string, object, or array; questions reference fields with backticked paths such as `item.text`.
-- `questions` is keyed by your own IDs; the `instructions` are sent, the ID is not.
+- `state` may be a string, object, or array; questions reference fields with backticked paths such as `item.text`. Definitions (below) are added as `state.definitions`.
+- `questions` are the wave's questions from the tree, keyed by their IDs; the `instructions` are sent, the ID is not.
 - Types: `choice` (criteria map option to description; up to 255 options), `score` (2 to 10 ordered level descriptions), `noul` (probability of yes, no confidence). This skill uses `choice` so every answer carries a confidence.
 
 ## Response
 
 ```json
 {
-  "model": "jev-1.13.0",
+  "model": "jev-1.14.0",
   "answers": {
-    "relevant":     {"type": "choice", "choice": "yes", "probabilities": {"yes": 0.96, "no": 0.03, "unclear": 0.01}, "confidence": 0.94},
-    "addressed":    {"type": "choice", "choice": "no",  "probabilities": {"yes": 0.08, "no": 0.88, "unclear": 0.04}, "confidence": 0.85},
-    "contradicted": {"type": "choice", "choice": "no",  "probabilities": {"yes": 0.30, "no": 0.62, "unclear": 0.08}, "confidence": 0.55}
+    "check": {"type": "choice", "choice": "CLI run", "probabilities": {"CLI run": 0.63, "unit test": 0.27, "inspection or grep": 0.09, "needs a measure": 0.0, "none": 0.01}, "confidence": 0.54},
+    "term":  {"type": "choice", "choice": "none", "probabilities": {"none": 0.91, "project term defined nowhere": 0.09}, "confidence": 0.88}
   },
-  "usage": {"input_tokens": 410, "output_tokens": 9}
+  "usage": {"input_tokens": 1726, "output_tokens": 230}
 }
 ```
 
 `probabilities` says which option; `confidence` says whether to trust the call. The script validates every response before gating: answer IDs equal the question IDs, each `choice` is a criteria option, `confidence` and every probability lie in [0, 1], and probabilities sum to 1 within rounding. Anything else is `JEV.RESPONSE_INVALID`, retried as transient. The response read is bounded at 1 MiB. The run file stores the full answers so thresholds can be re-tuned without re-judging.
 
-## Size, context window, and shortening
+## Size limits and retries
 
 - Jev allows about 32k tokens for state plus the longest question and about 64k for state plus all questions.
+- `quality` and `compare-definition` check every request against 24000 bytes before the first call: what Jev reads reliably (a contradiction planted 28k bytes deep scored 0.46, against 0.79 near the top). A record over it is `JEV.CONTEXT_EXCEEDED`; shorten the record. Nothing is shortened automatically.
+- A transient failure (`JEV.RATE_LIMITED`, `JEV.OVERLOADED`, `JEV.HTTP`, `JEV.NETWORK`, `JEV.RESPONSE_INVALID`) is retried once, after the server's `Retry-After` when it sends one; `AUTH.CREDENTIALS` and `POLICY.*` are not retried and stop the remaining calls.
 
 ## Models
 
-`jev-latest` moves with releases. Once thresholds are tuned, pin the version the response reported (`model_answered` in the run file) with `--model jev-1.13.0`.
+`jev-latest` moves with releases. Once thresholds are tuned, pin the version the response reported (`model_answered` in the run log) with `--model jev-1.14.0`.
 
 ## Error codes
 
@@ -82,14 +86,17 @@ The answer is recorded once per repository, never per session: ask the user, the
 | `AUTH.CREDENTIALS` | pre-flight, 401 | Key missing, malformed, or rejected. Not retried |
 | `POLICY.REMOTE_JUDGE_DISABLED` | pre-flight | `allow_remote_judge` is `false` or absent. Absent: ask the user once, record it with `judge_jev_settings.py set`, commit. `false`: only the user changes it. `--dry-run` works either way |
 | `DEPENDENCY.PYYAML`, `SETTINGS.*`, `REPO.NOT_FOUND` | pre-flight | The settings file could not be read; fix what the error names. Never a silent default |
-| `JEV.RATE_LIMITED`, `JEV.OVERLOADED`, `JEV.HTTP`, `JEV.NETWORK` | transport | Transient; retried 3 times, then the command exits 2 (the cell is `error` in the partial run) |
-| `JEV.RESPONSE_INVALID` | validation | Malformed or oversized response; retried, then the command exits 2 (the cell is `error` in the partial run) |
-| `JEV.CONTEXT_EXCEEDED` | 422 token limit (development gate) | Evidence could not be shortened enough; shorten it |
+| `JEV.RATE_LIMITED`, `JEV.OVERLOADED`, `JEV.HTTP`, `JEV.NETWORK` | transport | Transient; retried once, then the command exits 2 with the completed results |
+| `JEV.RESPONSE_INVALID` | validation | Malformed or oversized response; retried once, then the command exits 2 with the completed results |
+| `JEV.CONTEXT_EXCEEDED` | size check, 422 token limit | The request is over the byte limit or Jev's context; shorten the record |
 | `JEV.VALIDATION` | 422 other | Request rejected; usually a malformed override |
-| `VALIDATION.ANCHORS`, `VALIDATION.INPUT` | record / arguments | Fix `anchors.json` (`validate`) or the flags |
+| `VALIDATION.INPUT` | arguments | Fix the flags the message names |
+| `RECORD.NOT_FOUND`, `RECORD.DIAGNOSTICS` | index | The id is not in the index, or Raptor imported it with diagnostics; fix the record and rebuild the index |
+| `QUALITY.TREE` | tree | A tree or `--questions` file failed its checks; the message names the wave, question or rule |
+| `LOG.WRITE` | run log | The run log is not writable or did not grow; pass a writable `--run-dir` |
 | `QUESTIONS.ROLES` | question set | An override renamed a question ID; keep the default IDs |
 | `INPUT.MISSING`, `INPUT.MALFORMED`, `INPUT.EMPTY` | files | A path is not a file, not JSON, or the item text is empty |
-| `FIXTURE.MISSING`, `FIXTURE.NONE` | `--answers-file` | No fixture answer for an anchor; no anchor has fixtures |
+| `VALIDATION.ANCHORS`, `FIXTURE.MISSING`, `FIXTURE.NONE` | `batch` only | Anchor-file and fixture errors of the shared batch runner |
 | `SCRIPT.INTERNAL` | anywhere | Unexpected exception, reported as JSON with exit 2 |
 
 ## Exit codes
@@ -98,13 +105,17 @@ A tool failure is the only nonzero exit. Exit 0 means the command ran (`success:
 
 | Subcommand | Outcome field (exit 0) |
 | --- | --- |
+| `quality` | `data.results[].verdict` (`yes` or `no`) per record; a wave left without an answer is exit 2 with the completed `results` |
+| `compare-definition` | `data.material` (and each answer's `material`) |
+| `doctor` | warnings in `data`; any error is exit 2 with the report in `data` |
+| `validate` | `data` `{kind, path, sha256}`; an invalid file is exit 2 |
 | `batch` | No envelope: stdout is the result lines. Exit 0 when every line has an answer; exit 2 with the error envelope on stderr when any line has `ok: false` |
 
 Exit 2 covers bad arguments, missing or unreadable files, invalid settings, `POLICY.REMOTE_JUDGE_DISABLED`, credential failure, any Jev call left without an answer, a missing dependency, and `SCRIPT.INTERNAL`. Exit 130 (`CANCELED`, `recoverable: true`) is an interrupt.
 
 ## Batch runner
 
-Two layers and a logged stream. Nothing in them writes to the tracker: reading the results, choosing a candidate and sealing it stay with the anchor-tuning agent.
+The judge-jev skill's workflows do not run `batch`, the low-level anchor-gate runner `jev_judge.py` also carries; it is documented here for troubleshooting only. Nothing in it writes to a tracker.
 
 | Subcommand | Input | Output |
 | --- | --- | --- |
@@ -134,7 +145,7 @@ Invalid UTF-8 on stdin is `INPUT.MALFORMED`. Before the first call (and in `--dr
 
 ## Cost and latency
 
-TypeSafe prices input tokens only (output is free) at a fraction of a cent per million tokens and quotes roughly 100 ms per request. A `quality` run is one request per wave per record, so judging 100 records costs effectively nothing; re-run after every edit. `--dry-run` reports `totals.bytes` to size a run without a key.
+TypeSafe prices input tokens only (output is free) at a fraction of a cent per million tokens and quotes roughly 100 ms per request. A `quality` run is one request per statement for each per-statement wave (one per record for a record-level wave): about 2k input tokens each, so judging 100 records costs effectively nothing. Judge each edited text once. `--dry-run` reports `totals.bytes` to size a run without a key.
 
 ## Environment variables
 
@@ -142,6 +153,6 @@ TypeSafe prices input tokens only (output is free) at a fraction of a cent per m
 | --- | --- | --- |
 | `TYPESAFE_API_KEY` | none | Preferred TypeSafe credential for live runs; when absent, use the documented platform credential store |
 
-It is the only environment variable the plugin reads. Model, threshold, size limits and near-threshold confirmation are the flags above, with checked-in defaults. The installed troubleshooting reference specifies the Keychain, Credential Manager, and Secret Service fallback entries.
+It is the only environment variable the plugin reads. Model, threshold and size limits are the flags above, with checked-in defaults. The installed troubleshooting reference specifies the Keychain, Credential Manager, and Secret Service fallback entries.
 
 Codex environment policy for `TYPESAFE_API_KEY`: `installation-and-troubleshooting.md`.
