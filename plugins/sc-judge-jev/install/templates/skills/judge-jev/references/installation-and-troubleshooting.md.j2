@@ -32,7 +32,7 @@ The marketplace plugin (`/plugin install sc-judge-jev`, the Codex and Cursor plu
 uv run "<installer plugin>/install.py" --dest <folder> --allow-remote-judge|--no-remote-judge [--target claude,codex,cursor] [--dry-run]
 ```
 
-`uv` reads the script's inline dependencies (PyYAML and the `sc-compose` wheel) and needs no pip step; from a judge-jev checkout, `uv run plugins/sc-judge-jev/install.py ...` is the same command. The installer writes `<folder>/.claude/skills/judge-jev/` (and `.codex/`, `.cursor/`: without `--target` every harness the folder uses, meaning the locked targets, existing installs and every harness directory present, `claude` when there is none; `--target` only adds one). It records the version, targets and the sha256 of every file it wrote in `<folder>/.sc/judge-jev/install-lock.json`; commit that file with the installed files. When no settings file says so yet, the installer skill asks once whether plan text may be sent to TypeSafe (Jev); it never infers that consent from earlier runs.
+`uv` reads the script's inline dependencies (PyYAML and the `sc-compose` wheel) and needs no pip step; from a judge-jev checkout, `uv run plugins/sc-judge-jev/install.py ...` is the same command. The installer writes `<folder>/.claude/skills/judge-jev/` (and `.codex/`, `.cursor/`: without `--target` every harness the folder uses, meaning the locked targets, existing installs and every harness directory present, `claude` when there is none; `--target` only adds one). It records the version, targets and the sha256 of every file it wrote in `<folder>/.sc/judge-jev/install-lock.json`; commit that file with the installed files. When no settings file says so yet, the installer skill asks once whether record text may be sent to TypeSafe (Jev); it never infers that consent from earlier runs.
 
 **Destination.** `<folder>` is a repository, or a parent folder that holds several repositories (it need not be a git repository). Global locations are refused with `INSTALL.DEST_GLOBAL` (exit 2): the home directory itself, `~/.claude`, `~/.codex`, `~/.cursor`, `~/.agents`, `/etc/codex`, and any plugin cache under them.
 
@@ -46,7 +46,7 @@ uv run "<installer plugin>/install.py" --dest <folder> --allow-remote-judge|--no
 # .sc/judge-jev/settings.yaml
 # Repository settings for the sc-judge-jev plugin; commit this file, never put secrets in it.
 schema_version: 1
-# allow_remote_judge: may plan text be sent to TypeSafe (Jev) for judging? Only the user decides it.
+# allow_remote_judge: may record text be sent to TypeSafe (Jev) for judging? Only the user decides it.
 allow_remote_judge: true
 ```
 

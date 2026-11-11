@@ -18,7 +18,7 @@ Jev is TypeSafe's decision model: it answers typed questions about a piece of st
 
 ## Remote judging consent (read first)
 
-A gate run sends the anchor statement and scope and the item text (a plan bead or an account of delivered work) off the machine. Sending a plan to TypeSafe is the user's decision, so the script fails closed:
+A live run sends record text off the machine: `quality` sends each record and its wave's questions, `batch` sends each request line. Sending it to TypeSafe is the user's decision, so the script fails closed:
 
 - `TYPESAFE_API_KEY`, when present, must be well-formed (non-empty, ASCII, no control characters); when it is absent the script tries the documented platform credential store, and
 - the repository's committed `.sc/judge-jev/settings.yaml` must set `allow_remote_judge: true`. `false` is the user's no; an absent resolved credential means the live call is refused. Both are refused.
@@ -134,7 +134,7 @@ Invalid UTF-8 on stdin is `INPUT.MALFORMED`. Before the first call (and in `--dr
 
 ## Cost and latency
 
-TypeSafe prices input tokens only (output is free) at a fraction of a cent per million tokens and quotes roughly 100 ms per request. A planning gate over 15 beads and 20 anchors is 300 requests and costs effectively nothing; re-run after every plan edit. `--dry-run` reports `totals.bytes` to size a run without a key.
+TypeSafe prices input tokens only (output is free) at a fraction of a cent per million tokens and quotes roughly 100 ms per request. A `quality` run is one request per wave per record, so judging 100 records costs effectively nothing; re-run after every edit. `--dry-run` reports `totals.bytes` to size a run without a key.
 
 ## Environment variables
 

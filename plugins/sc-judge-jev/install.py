@@ -80,7 +80,7 @@ verbatim. A ``.j2`` file is an install-time template when its frontmatter
 ``install/harness/<target>/registry.yaml``.
 
 Remote judging. ``--allow-remote-judge`` / ``--no-remote-judge`` record the
-user's answer to whether plan text may be sent to TypeSafe (Jev) as
+user's answer to whether record text may be sent to TypeSafe (Jev) as
 ``allow_remote_judge: true|false``; live Jev calls are refused until it is
 ``true``. Without either flag the destination's existing value (or its
 absence) is kept; a parent folder's consent is never copied.
@@ -436,7 +436,7 @@ SETTINGS_HEADER = """\
 schema_version: {schema_version}
 """
 REMOTE_JUDGE_LINES = """\
-# allow_remote_judge: may plan text be sent to TypeSafe (Jev) for judging? Only the user decides it.
+# allow_remote_judge: may record text be sent to TypeSafe (Jev) for judging? Only the user decides it.
 allow_remote_judge: {value}
 """
 
@@ -967,7 +967,7 @@ def install(opts: Options, *, plugin_dir: Path = PLUGIN_DIR) -> Result[dict, Too
     notes = []
     if plan.allow_remote_judge is None:
         notes.append(f"{SETTINGS_RELPATH} does not set allow_remote_judge, so live Jev calls are refused. Ask the user "
-                     "once whether plan text may be sent to TypeSafe (Jev), then rerun with --allow-remote-judge or "
+                     "once whether record text may be sent to TypeSafe (Jev), then rerun with --allow-remote-judge or "
                      "--no-remote-judge (or run 'judge_jev_settings.py set allow_remote_judge true|false') and commit it.")
     if repository is None:
         notes.append(f"{root.value} is not a repository: repositories below it inherit this install and its "
@@ -1042,7 +1042,7 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true", help="print the plan and write nothing")
     remote = p.add_mutually_exclusive_group()
     remote.add_argument("--allow-remote-judge", dest="allow_remote_judge", action="store_const", const=True, default=None,
-                        help="record allow_remote_judge: true (the user agreed plan text may be sent to TypeSafe)")
+                        help="record allow_remote_judge: true (the user agreed record text may be sent to TypeSafe)")
     remote.add_argument("--no-remote-judge", dest="allow_remote_judge", action="store_const", const=False,
                         help="record allow_remote_judge: false (live Jev calls stay refused)")
     return p

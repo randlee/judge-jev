@@ -5,13 +5,13 @@
 - **Script and docs together.** A new flag, field, verdict, error code or exit code lands with its reference text and a test. Existing names are never renamed or removed in a patch; add only.
 - **Prompts and scripts are templates.** Every installed prompt (the skill, its references and assets templates, the agent bodies) and every script has its source in `plugins/sc-judge-jev/install/templates/` as a `<file>.md.j2` or `<script>.py.j2` (sc-compose, rendered with `version`) and is installed only by `install.py`. Agent frontmatter and registries live in `install/harness/<target>/`. The plugin itself exposes only `skills/judge-jev-installer/`. After a release, run `python3 scripts/gen_install_data.py` to refresh `install/legacy-owned.json` (the byte list of earlier releases).
 - **Tests green.** `uv run --no-project --python 3.11 --with sc-observability==1.5.0 --with pyyaml --with 'jsonschema>=4,<5' --with 'sc-compose>=1.7.0,<2' --with 'pydantic>=2.7,<3' --with 'pyoxigraph>=0.5,<0.6' --with 'pyshacl>=0.30,<1' python -m unittest discover -s tests/sc-judge-jev` (or `python3 -m unittest ...` in an interpreter that has those packages) and `python3 scripts/check_version_sync.py` both pass before you open the PR.
-- **Never a secret.** No keys, no live run output containing private plan text. Fixture answers and dry runs are how tests touch Jev.
+- **Never a secret.** No keys, no live run output containing private record text. Fixture answers and dry runs are how tests touch Jev.
 
 ## Versioning
 
 `VERSION` at the repo root is the single source of truth. Every version declared in shipped metadata equals it exactly: the plugin manifests, the marketplace manifests that carry a version, `SKILL.md`, each `references/*.md`, each harness agent, and each `registry.yaml` entry. Nothing has its own patch line.
 
-`judge-jev` is unpublished, so every version number is locked until the first publish: `VERSION` and every template's own `version:` stay `0.1.0`, and every integer version (question sets, trees, `schema_version`) stays `1`. No PR bumps any of them. Describe each change under `## Unreleased` in `CHANGELOG.md`.
+Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, and every integer version (question sets, trees, `schema_version`) stays `1`. No PR bumps any of them. Describe each change under `## Unreleased` in `CHANGELOG.md` (add the section above `## 0.1.0` if it is not there).
 
 `scripts/check_version_sync.py` enforces this: by default it checks that every declaration it finds by glob equals `VERSION` and that the changelog has a `## Unreleased` section or a `## <VERSION>` entry. `tests/sc-judge-jev/test_version_ssot.py` runs the same discovery in the suite. Template `metadata.version` and `schema_version` values are wire-contract versions pinned by the JSON schemas, not release versions.
 
