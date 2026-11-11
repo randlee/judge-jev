@@ -23,6 +23,22 @@ PASSING = {"*": tree_answers("quality-req.json")}
 EDITED = "The CLI MUST exit 2 when the input file is missing."
 
 
+ORIGINAL_MD = """# Requirements
+
+## REQ-T-0001: Exit codes
+
+The CLI MUST exit 2 on a missing input file.
+
+- The CLI SHOULD be quick.
+
+## REQ-T-0002: Other
+
+Untouched by this run.
+"""
+FINAL_MD = ORIGINAL_MD.replace("on a missing input file.", "when the input file is missing.").replace(
+    "Untouched by this run.", "Edited by another run.")
+
+
 def report(argv):
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
@@ -41,47 +57,57 @@ class ReportCase(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
-        self.run_dir = self.d / "runs"
+        self.w = self.d / "fix" / RECORD
+        self.w.mkdir(parents=True)
+        (self.w / "env").write_text(f"ID={RECORD}\nKIND=req\nF=docs/req.md\nW=.sc/judge-jev/fix/{RECORD}\n", encoding="utf-8")
+        (self.w / "original.md").write_text(ORIGINAL_MD, encoding="utf-8")
+        (self.w / "current.md").write_text(FINAL_MD, encoding="utf-8")
 
-    def judge(self, run_name, index, answers):
+    def judge(self, variant, n, index, answers):
+        """One real ``quality`` run, its envelope saved as the fix loop saves it: ``<variant>-r<n>.json``."""
         with env(), mock.patch.object(jj, "call_jev", never_called):
-            code, out = run_cli(["quality", "--req", RECORD, "--index", write(self.d, f"{run_name}.index.json", index),
-                                 "--run-dir", str(self.run_dir), "--run-name", run_name,
-                                 "--answers-file", write(self.d, f"{run_name}.answers.json", answers)])
+            code, out = run_cli(["quality", "--req", RECORD, "--index", write(self.d, f"{variant}.index.json", index),
+                                 "--run-dir", str(self.d / "runs"), "--run-name", f"{RECORD}-{variant}-r{n}",
+                                 "--answers-file", write(self.d, f"{variant}-{n}.answers.json", answers)])
         self.assertEqual(code, 0, out)
+        (self.w / f"{variant}-r{n}.json").write_text(json.dumps(out), encoding="utf-8")
         return out["data"]["results"][0]["verdict"]
 
     def fix_loop(self):
-        """Two repeats of a failing base step, then one run of the edited record."""
-        verdicts = [self.judge("t-base-r1", INDEX, FAILING), self.judge("t-base-r2", INDEX, FAILING),
-                    self.judge("t-final-r1", edited_index(), PASSING)]
-        self.assertEqual(verdicts, ["no", "no", "yes"])
+        """Two base runs fail s1 on its check; candidate c1 and final pass."""
+        verdicts = [self.judge("base", 1, INDEX, FAILING), self.judge("base", 2, INDEX, FAILING),
+                    self.judge("c1", 1, edited_index(), PASSING), self.judge("final", 1, edited_index(), PASSING)]
+        self.assertEqual(verdicts, ["no", "no", "yes", "yes"])
 
     def quality_report(self, *extra):
-        return report(["quality", "--run-dir", str(self.run_dir), "--out", str(self.d / "out"), *extra])
+        return report(["quality", "--fix-dir", str(self.w), "--out", str(self.d / "out"), *extra])
+
+    def sidecar(self, out):
+        return json.loads(Path(out["data"]["sidecar"]).read_text(encoding="utf-8"))["record"]
 
 
 class QualityReport(ReportCase):
-    def test_steps_answers_and_text_diff_come_from_the_log(self):
+    def test_the_report_names_what_improved_why_and_which_step_cleared_it(self):
         self.fix_loop()
         code, out = self.quality_report()
         self.assertEqual(code, 0, out)
         data = out["data"]
-        self.assertEqual((data["status"], data["records"], data["passing_first"], data["passing_last"]), ("PASS", 1, 0, 1))
-        sidecar = json.loads(Path(data["sidecar"]).read_text(encoding="utf-8"))
-        self.assertEqual(sidecar["schema"], "judge-jev/report/1")
-        (unit,) = sidecar["records"]
-        self.assertEqual([(s["step"], s["runs"], s["tally"]) for s in unit["steps"]],
-                         [("t-base", 2, "no 2/2"), ("t-final", 1, "yes 1/1")])
-        self.assertEqual([a["item"] for a in unit["first_failing"]], ["wave-1 · s1 · check"])
-        self.assertIn("Fix:", unit["first_failing"][0]["criterion"])
-        self.assertEqual(unit["last_failing"], [])
-        (change,) = unit["changes"]
-        self.assertEqual(change["field"], "requirement_statement.statements")
-        self.assertIn(EDITED, change["after"])
-        self.assertEqual([t["run"] for t in unit["trail"]], ["t-base-r1", "t-base-r2", "t-final-r1"])
+        self.assertEqual((data["status"], data["before"], data["after"], data["fixed"], data["regressed"]),
+                         ("PASS", "no 2/2", "yes 1/1", 1, 0))
+        rec = self.sidecar(out)
+        self.assertEqual([(s["step"], s["runs"], s["tally"], s["fired"], s["clears"]) for s in rec["steps"]],
+                         [("base", 2, "no 2/2", "s1", "-"), ("c1", 1, "yes 1/1", "-", "s1"),
+                          ("final", 1, "yes 1/1", "-", "s1")])
+        (o,) = rec["outcomes"]
+        self.assertEqual((o["key"], o["before"], o["after"], o["state"], o["fixed_by"]),
+                         ("wave-1 · s1", "2/2", "0/1", "fixed", "c1"))
+        (why,) = o["why"]
+        self.assertEqual((why["question"], why["before"]["choice"], why["before"]["count"], why["before"]["of"]),
+                         ("check", "none", 2, 2))
+        self.assertIn("Fix:", why["before"]["criterion"])
+        self.assertFalse(why["after"]["failing"])
 
-    def test_the_panel_is_well_formed_xhtml_with_the_diff_and_one_dot_per_answer(self):
+    def test_the_panel_is_xhtml_with_the_record_section_diff_and_a_tab_per_question(self):
         self.fix_loop()
         code, out = self.quality_report()
         self.assertEqual(code, 0, out)
@@ -90,43 +116,66 @@ class QualityReport(ReportCase):
         self.assertEqual(dom.documentElement.getAttribute("id"), f"record-{RECORD}")
         text = Path(panel).read_text(encoding="utf-8")
         for fragment in ("<del>on</del><ins>when</ins>", "<del>file.</del><ins>file is missing.</ins>",
-                         '<div class="eq">Should: The CLI SHOULD be quick.</div>'):
-            self.assertTrue(fragment in text, fragment)
-        chart = json.loads(dom.getElementsByTagName("div")[[d.getAttribute("class") for d in dom.getElementsByTagName("div")]
-                                                            .index("conf-chart")].getAttribute("data-chart"))
-        questions = len(json.loads((SKILL / "assets" / "questions" / "quality-req.json").read_text(encoding="utf-8"))
-                        ["nodes"]["wave-1"]["questions"])
-        self.assertEqual(len(chart["rows"]), 2 * questions)  # REQ-T-0001's MUST and MUST NOT statements
-        self.assertTrue(all(len(r["dots"]) == 3 for r in chart["rows"]))  # three runs
-        self.assertEqual([s["style"] for s in chart["series"]], ["first", "last"])
+                         '<div class="md md-li eq lv0">The CLI SHOULD be quick.</div>'):
+            self.assertIn(fragment, text)
+        self.assertNotIn("Edited by another run", text)  # only the record's own section is diffed
+        chart = json.loads([d for d in dom.getElementsByTagName("div") if d.getAttribute("class") == "conf-chart"][0]
+                           .getAttribute("data-chart"))
+        questions = json.loads((SKILL / "assets" / "questions" / "quality-req.json").read_text(encoding="utf-8"))[
+            "nodes"]["wave-1"]["questions"]
+        self.assertEqual(len(chart["groups"]), len(questions))
+        self.assertEqual(len(chart["rows"]), 2 * len(questions))  # REQ-T-0001's MUST and MUST NOT statements
+        for row in chart["rows"]:
+            self.assertEqual([d["series"] for d in row["dots"]], ["before", "before", "after"])  # 2 base, 1 final run
+        check = next(g for g in chart["groups"] if g["id"] == "check")
+        self.assertEqual((check["fix_before"], check["fix_after"]), (2, 0))
         page = Path(out["data"]["html"]).read_text(encoding="utf-8")
         self.assertIn(text.strip()[:200], page)  # the page embeds the panel as rendered
 
-    def test_run_and_record_filters_narrow_the_report(self):
-        self.fix_loop()
-        code, out = self.quality_report("--run", "t-base-r1")
-        self.assertEqual(code, 0, out)
-        unit = json.loads(Path(out["data"]["sidecar"]).read_text(encoding="utf-8"))["records"][0]
-        self.assertEqual([t["run"] for t in unit["trail"]], ["t-base-r1"])
-        self.assertEqual(out["data"]["status"], "FAIL")
-        code, out = self.quality_report("--record", "REQ-T-9999")
-        self.assertEqual((code, out["error"]["code"]), (2, "REPORT.NO_RUNS"))
-
-    def test_a_run_name_used_twice_is_two_runs_each_with_its_own_answers(self):
-        self.judge("t-base-r1", INDEX, FAILING)
-        self.judge("t-base-r1", edited_index(), PASSING)
+    def test_a_statement_that_starts_failing_is_a_regression(self):
+        self.judge("base", 1, INDEX, PASSING)
+        self.judge("final", 1, INDEX, FAILING)
         code, out = self.quality_report()
         self.assertEqual(code, 0, out)
-        unit = json.loads(Path(out["data"]["sidecar"]).read_text(encoding="utf-8"))["records"][0]
-        self.assertEqual([(t["run"], t["verdict"], t["failing"]) for t in unit["trail"]],
-                         [("t-base-r1", "no", 1), ("t-base-r1 (2)", "yes", 0)])
-        self.assertEqual(len(unit["first_failing"]), 1)
-        self.assertIn(EDITED, unit["changes"][0]["after"])
+        self.assertEqual((out["data"]["status"], out["data"]["regressed"]), ("FAIL", 1))
+        self.assertEqual(self.sidecar(out)["outcomes"][0]["state"], "regressed")
+
+    def test_a_run_without_final_compares_base_with_its_latest_step(self):
+        self.judge("base", 1, INDEX, FAILING)
+        self.judge("c1", 1, edited_index(), PASSING)
+        code, out = self.quality_report()
+        self.assertEqual(code, 0, out)
+        rec = self.sidecar(out)
+        self.assertEqual((rec["finished"], rec["after_step"], out["data"]["status"]), (False, "c1", "FAIL"))
+        self.assertIn("has no <span class=\"mono\">final</span> step yet", Path(out["data"]["panels"][0]).read_text(encoding="utf-8"))
+
+    def test_a_failed_run_is_an_error_row_not_a_verdict(self):
+        self.fix_loop()
+        (self.w / "final-r2.json").write_text(json.dumps({"success": False, "data": None, "error": {
+            "code": "JEV.HTTP", "message": "503"}}), encoding="utf-8")
+        code, out = self.quality_report()
+        self.assertEqual(code, 0, out)
+        final = self.sidecar(out)["steps"][-1]
+        self.assertEqual((final["tally"], final["status"], final["errors"]), ("yes 1/1, 1 error", "flaky",
+                                                                                ["final-r2: JEV.HTTP: 503"]))
+        self.assertEqual(out["data"]["status"], "FAIL")
+
+    def test_what_is_not_a_fix_workspace_is_refused(self):
+        code, out = report(["quality", "--fix-dir", str(self.d), "--out", str(self.d / "out")])
+        self.assertEqual((code, out["error"]["code"]), (2, "REPORT.NO_RUNS"))
+        code, out = self.quality_report()  # a workspace with no base run
+        self.assertEqual((code, out["error"]["code"]), (2, "REPORT.NO_RUNS"))
+        self.judge("base", 1, INDEX, FAILING)
+        other = json.loads((self.w / "base-r1.json").read_text(encoding="utf-8"))
+        other["data"]["results"][0]["record"]["id"] = "REQ-T-0404"
+        (self.w / "c1-r1.json").write_text(json.dumps(other), encoding="utf-8")
+        code, out = self.quality_report()
+        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))
+        self.assertIn("REQ-T-0404", out["error"]["message"])
 
     def test_record_text_is_escaped(self):
-        index = copy.deepcopy(INDEX)
-        index["requirements"][0]["title"] = "<script>alert(1)</script>"
-        self.judge("t-r1", index, PASSING)
+        self.judge("base", 1, INDEX, PASSING)
+        (self.w / "current.md").write_text(ORIGINAL_MD.replace("Exit codes", "<script>alert(1)</script>"), encoding="utf-8")
         code, out = self.quality_report()
         self.assertEqual(code, 0, out)
         page = Path(out["data"]["html"]).read_text(encoding="utf-8")
@@ -137,23 +186,21 @@ class QualityReport(ReportCase):
 class DriftReview(ReportCase):
     def test_kept_and_discarded_changes_are_in_the_panel(self):
         self.fix_loop()
-        review = {"reviewed_at": "2026-11-10", "records": {
-            RECORD: {"kept": [{"change": "missing file as a condition", "why": "testable", "authority": "docs/cli.md:12"}],
-                     "discarded": [{"change": "dropped exit code", "why": "drift"}]},
-            "REQ-T-0404": {"kept": []}}}
+        review = {"reviewed_at": "2026-11-10",
+                  "kept": [{"change": "missing file as a condition", "why": "testable", "authority": "docs/cli.md:12"}],
+                  "discarded": [{"change": "dropped exit code", "why": "drift"}]}
         code, out = self.quality_report("--review", write(self.d, "review.json", review))
         self.assertEqual(code, 0, out)
         text = Path(out["data"]["panels"][0]).read_text(encoding="utf-8")
         for expected in ("missing file as a condition", "docs/cli.md:12", "dropped exit code"):
             self.assertIn(expected, text)
-        self.assertEqual(out["data"]["warnings"], ["review names REQ-T-0404, which no run in this report judged"])
 
     def test_a_review_off_contract_is_validation_input(self):
         self.fix_loop()
-        bad = {"reviewed_at": "2026-11-10", "records": {RECORD: {"kept": [{"change": "x"}]}}}
+        bad = {"reviewed_at": "2026-11-10", "kept": [{"change": "x"}]}
         code, out = self.quality_report("--review", write(self.d, "review.json", bad))
         self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))
-        self.assertIn("records.REQ-T-0001.kept.0.why", out["error"]["message"])
+        self.assertIn("kept.0.why", out["error"]["message"])
 
 
 def answers(*fix):
@@ -188,6 +235,12 @@ class CheckReport(ReportCase):
         task = Path(out["data"]["panels"][-1]).read_text(encoding="utf-8")
         self.assertIn("the raw template, then the rendered assignment", task)
         self.assertIn("Misses covered. Fix: add it.", task)
+        dom = xml.dom.minidom.parse(out["data"]["panels"][-1])
+        chart = json.loads([d for d in dom.getElementsByTagName("div") if d.getAttribute("class") == "conf-chart"][0]
+                           .getAttribute("data-chart"))
+        self.assertEqual([(g["id"], g["fix_before"], g["fix_after"]) for g in chart["groups"]],
+                         [("contradicts", 0, 0), ("covered", 0, 1)])
+        self.assertEqual([[d["series"] for d in r["dots"]] for r in chart["rows"]], [["before", "after"]] * 2)
 
     def test_task_mode_needs_raw_then_rendered(self):
         bad = copy.deepcopy(CHECK)

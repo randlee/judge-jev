@@ -1,104 +1,111 @@
 ---
 metadata:
   name: quality-record-panel
-  description: One record's copyable XHTML panel in the judge-jev quality report.
+  description: One fix run's copyable XHTML panel in the judge-jev quality report.
 required_variables:
   - id
   - dom
   - kind
-  - title
   - status
+  - finished
+  - before_step
+  - after_step
+  - outcomes
   - steps
-  - first_step
-  - last_step
-  - first_run
-  - last_run
-  - first_failing
-  - last_failing
-  - trail
-  - changes
+  - candidates
   - chart_json
   - reviewed
+  - runs
   - copy_json
   - context_text
 defaults:
-  iri: ""
-  flaky: ""
-  text_note: ""
+  title: ""
+  file: ""
+  doc_html: ""
+  doc_changed: 0
+  doc_stats: ""
   review_kept: []
   review_discarded: []
 ---
 <section xmlns="http://www.w3.org/1999/xhtml" class="card unit unit-record" id="{{ dom | e }}">
   <div class="card-head">
     <h2><span class="mono">{{ id | e }}</span> {{ title | e }} <span class="pill pill-{{ status | e }}"><i></i>{{ status | e }}</span></h2>
-    <div class="tabs" role="group" aria-label="Copy record data">
+    <div class="tabs" role="group" aria-label="Copy run data">
       <button type="button" class="icon-button" title="Copy JSON" data-copy-text="{{ copy_json | e }}">{}</button>
       <button type="button" class="icon-button" title="Copy Context" data-copy-text="{{ context_text | e }}">&#x2398;</button>
     </div>
   </div>
-  <div class="muted small">{{ kind | e }}{% if iri %} · <span class="mono">{{ iri | e }}</span>{% endif %}</div>
+  <div class="muted small">{{ kind | e }}{% if file %} · <span class="mono">{{ file | e }}</span>{% endif %} · <span class="mono">{{ before_step | e }}</span> → <span class="mono">{{ after_step | e }}</span></div>
+{% if not finished %}
+  <div class="callout warn">The run has no <span class="mono">final</span> step yet: this compares <span class="mono">base</span> with its latest step, <span class="mono">{{ after_step | e }}</span>.</div>
+{% endif %}
 
-  <h3>Steps</h3>
+  <h3 id="{{ dom | e }}-improved">What improved and why</h3>
+  <p class="sub small">Each statement a rule fired on (a whole-record wave for an ADR), in how many runs it fired before and after, and the answers that explain it: Jev's choice, its confidence and the criterion it chose. Red is the Fix Jev asked for; green is the answer after the edit.</p>
+{% if outcomes %}
+  <div class="scroll"><table class="outcomes">
+    <thead><tr><th scope="col">Statement</th><th scope="col">Fired</th><th scope="col">Outcome</th><th scope="col">Why: {{ before_step | e }} → {{ after_step | e }}</th><th scope="col">Cleared by</th></tr></thead>
+    <tbody>
+{% for o in outcomes %}
+      <tr>
+        <td><span class="mono">{{ o.key | e }}</span><div class="small">{{ o.statement | e }}</div></td>
+        <td class="mono">{{ o.before | e }} → {{ o.after | e }}</td>
+        <td><span class="pill pill-{{ o.pill | e }}"><i></i>{{ o.state | e }}</span></td>
+        <td>
+{% for w in o.why %}
+          <div class="why"><span class="mono q">{{ w.question | e }}</span>
+{% if w.before %}<div class="was{% if w.before.failing %} fix{% endif %}"><b>{{ w.before.choice | e }}</b> <span class="mono muted">{{ w.before.confidence | e }} · {{ w.before.count | e }}/{{ w.before.of | e }}</span> {{ w.before.criterion | e }}</div>{% endif %}
+{% if w.after %}<div class="now{% if w.after.failing %} fix{% endif %}"><b>{{ w.after.choice | e }}</b> <span class="mono muted">{{ w.after.confidence | e }} · {{ w.after.count | e }}/{{ w.after.of | e }}</span> {{ w.after.criterion | e }}</div>{% endif %}
+          </div>
+{% endfor %}
+        </td>
+        <td class="mono small">{% if o.fixed_by %}{{ o.fixed_by | e }}{% else %}-{% endif %}</td>
+      </tr>
+{% endfor %}
+    </tbody>
+  </table></div>
+{% else %}
+  <p class="small">No rule fired in either step.</p>
+{% endif %}
+
+  <h3 id="{{ dom | e }}-chart">Confidence per answer</h3>
+  <p class="sub small">Pick a question. One row per statement; ○ hollow = a <span class="mono">{{ before_step | e }}</span> run, ● solid = a <span class="mono">{{ after_step | e }}</span> run; red = a Fix answer. Hover or tap a row for the statement and every answer.</p>
+  <div class="conf-chart" data-unit="{{ dom | e }}" data-chart="{{ chart_json | e }}"><div class="tabs chart-tabs" role="group" aria-label="Question"></div><div class="legend"></div><div class="chart-svg"></div></div>
+
+  <h3 id="{{ dom | e }}-steps">Steps</h3>
   <div class="scroll"><table class="steps">
-    <thead><tr><th scope="col">Step</th><th scope="col">Runs</th><th scope="col">Verdict</th><th scope="col">Fix answers</th><th scope="col">Weakest answer</th></tr></thead>
+    <thead><tr><th scope="col">Step</th><th scope="col">Runs</th><th scope="col">Verdict</th><th scope="col">Fires on</th><th scope="col">Clears (vs base)</th></tr></thead>
     <tbody>
 {% for s in steps %}
-      <tr><td class="mono">{{ s.step | e }}</td><td class="mono">{{ s.runs | e }}</td><td><span class="pill pill-{{ s.status | e }}"><i></i>{{ s.tally | e }}</span></td><td class="mono">{{ s.failing | e }}</td><td class="mono">{{ s.weakest | e }}</td></tr>
+      <tr><td class="mono">{{ s.step | e }}</td><td class="mono">{{ s.runs | e }}</td><td><span class="pill pill-{{ s.status | e }}"><i></i>{{ s.tally | e }}</span></td><td class="mono small">{{ s.fired | e }}</td><td class="mono small">{{ s.clears | e }}</td></tr>
+{% for err in s.errors %}
+      <tr><td></td><td colspan="4" class="small muted">{{ err | e }}</td></tr>
+{% endfor %}
 {% endfor %}
     </tbody>
   </table></div>
 
-  <h3>Confidence per answer, every run</h3>
-  <p class="sub small">One row per question (per statement for a per-statement wave); one dot per run. A ringed dot is a Fix answer: its chosen criterion carries a Fix. The verdict comes from the tree's rules, so a run can pass with Fix answers left. Hover or tap a row for its question and every answer.</p>
-  <div class="legend"></div>
-  <div class="conf-chart" data-unit="{{ dom | e }}" data-chart="{{ chart_json | e }}"><div class="chart-svg"></div></div>
-{% if flaky %}
-  <div class="callout warn">Answers whose choice changed between repeats of <span class="mono">{{ last_step | e }}</span>: <span class="mono">{{ flaky | e }}</span>. A choice that flips between identical requests is noise, not a defect to fix.</div>
+  <div class="card-head">
+    <h3 id="{{ dom | e }}-text">Text: <span class="mono">original.md</span> → <span class="mono">current.md</span></h3>
+{% if doc_html %}
+    <div class="tabs" role="group" aria-label="Document view"><button type="button" aria-pressed="true" data-doc="changes">Changes only</button><button type="button" aria-pressed="false" data-doc="whole">Whole document</button></div>
 {% endif %}
-
-  <div class="two">
-    <div>
-      <h3>Fix answers, first run <span class="mono">{{ first_run | e }}</span></h3>
-{% if first_failing %}
-      <table class="failing"><tbody>
-{% for a in first_failing %}
-        <tr><td class="mono">{{ a.item | e }}</td><td><b>{{ a.choice | e }}</b> <span class="mono muted">{{ a.confidence | e }}</span><div class="crit fix">{{ a.criterion | e }}</div></td></tr>
-{% endfor %}
-      </tbody></table>
-{% else %}
-      <p class="small">None.</p>
-{% endif %}
-    </div>
-    <div>
-      <h3>Fix answers, last run <span class="mono">{{ last_run | e }}</span></h3>
-{% if last_failing %}
-      <table class="failing"><tbody>
-{% for a in last_failing %}
-        <tr><td class="mono">{{ a.item | e }}</td><td><b>{{ a.choice | e }}</b> <span class="mono muted">{{ a.confidence | e }}</span><div class="crit fix">{{ a.criterion | e }}</div></td></tr>
-{% endfor %}
-      </tbody></table>
-{% else %}
-      <p class="small">None.</p>
-{% endif %}
-    </div>
   </div>
-
-  <h3>Text: <span class="mono">{{ first_step | e }}</span> to <span class="mono">{{ last_step | e }}</span></h3>
-{% if text_note %}
-  <div class="callout warn">{{ text_note | e }}</div>
+{% if doc_html %}
+  <p class="sub small">The record's own section of {% if file %}<span class="mono">{{ file | e }}</span>{% else %}the file{% endif %}. {{ doc_stats | e }}. Struck red = removed, green = added.</p>
+  <div class="doc">{{ doc_html | safe }}</div>
+{% else %}
+  <p class="small">The workspace has no original.md and current.md to compare.</p>
 {% endif %}
-{% for c in changes %}
-  <details open="open">
-    <summary class="mono">{{ c.field | e }}</summary>
-    <div class="diff-inline">{{ c.html | safe }}</div>
-    <div class="diff-side"><div class="old">{{ c.before | e }}</div><div class="new">{{ c.after | e }}</div></div>
+{% for c in candidates %}
+  <details>
+    <summary>Candidate <span class="mono">{{ c.step | e }}</span>: its edit to original.md ({{ c.changed | e }} changed)</summary>
+    <div class="tabs" role="group" aria-label="Document view"><button type="button" aria-pressed="true" data-doc="changes">Changes only</button><button type="button" aria-pressed="false" data-doc="whole">Whole document</button></div>
+    <div class="doc">{{ c.html | safe }}</div>
   </details>
 {% endfor %}
-{% if not changes and not text_note %}
-  <p class="small">Unchanged.</p>
-{% endif %}
 
-  <h3>Drift review</h3>
+  <h3 id="{{ dom | e }}-review">Drift review</h3>
 {% if reviewed %}
   <div class="two">
     <div>
@@ -127,16 +134,16 @@ defaults:
     </div>
   </div>
 {% else %}
-  <p class="small">No drift review was passed for this record (--review).</p>
+  <p class="small">No drift review was passed (--review).</p>
 {% endif %}
 
   <details>
-    <summary>All {{ trail | length }} runs</summary>
+    <summary>All {{ runs | length }} runs</summary>
     <div class="scroll"><table>
-      <thead><tr><th scope="col">Run</th><th scope="col">Step</th><th scope="col">At</th><th scope="col">Verdict</th><th scope="col">Fix answers</th><th scope="col">Weakest</th></tr></thead>
+      <thead><tr><th scope="col">Run</th><th scope="col">Step</th><th scope="col">Verdict</th><th scope="col">Fix answers</th></tr></thead>
       <tbody>
-{% for r in trail %}
-        <tr><td class="mono">{{ r.run | e }}</td><td class="mono">{{ r.step | e }}</td><td class="mono small">{{ r.at | e }}</td><td>{{ r.verdict | e }}</td><td class="mono">{{ r.failing | e }}</td><td class="mono">{{ r.weakest | e }}</td></tr>
+{% for r in runs %}
+        <tr><td class="mono">{{ r.run | e }}</td><td class="mono">{{ r.step | e }}</td><td>{{ r.verdict | e }}{% if r.error %} <span class="small muted">{{ r.error | e }}</span>{% endif %}</td><td class="mono">{{ r.fix_answers | e }}</td></tr>
 {% endfor %}
       </tbody>
     </table></div>

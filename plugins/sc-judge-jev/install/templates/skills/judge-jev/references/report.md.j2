@@ -9,57 +9,51 @@ required_variables:
 ---
 name: report
 version: {{ version }}
-description: Generate the HTML report of quality runs (each record's progress, the confidence of every Jev answer per run, and a diff of the record's first and last text) with jev_report.py, and the check report from the check results contract.
+description: Generate the HTML report of one fix run (what improved from base to final and why: the statements fixed, the Jev answers behind each, the candidate that cleared it, answer confidence before and after, and the Markdown diff of the record) with jev_report.py, and the check report from the check results contract.
 ---
 
 # Report
 
-`jev_report.py` writes an HTML page from what judge-jev already recorded. It reads local files and the run log only and never calls Jev, so it needs no key and no consent. It renders with the `sc-compose` CLI, which must be on PATH.
+`jev_report.py` writes an HTML page from files judge-jev already wrote. It never calls Jev, so it needs no key and no consent. It renders with the `sc-compose` CLI, which must be on PATH.
 
 ```bash
 R="<this skill's directory>/scripts/jev_report.py"
 ```
 
-## Quality report
+## Quality report: one fix run
 
-Run it after a fix loop (`references/fix-strategy.md`), from the repository root:
+A quality report covers one fix run (`references/fix-strategy.md`): one record, from the author's text (`base`) to the text you are handing back (`final`). It reads the run's workspace, not the log, so runs from other loops never mix in. Run it from the repository root after the drift review:
 
 ```bash
-uv run -q --script "$R" quality --record "$ID" --review "$W/review.json" --out .sc/judge-jev/reports
+. .sc/judge-jev/fix/<ID>/env
+uv run -q --script "$R" quality --fix-dir "$W" --review "$W/review.json" --out .sc/judge-jev/reports --name "$ID"
 ```
 
-- Runs come from the sc-observability log under `--run-dir` (default `.sc/judge-jev`). `--run <name>` and `--record <id>` repeat and narrow the report; with neither, every run in the log is read.
-- A run named `<step>-r<N>` is repeat N of `<step>`, so the fix loop's `$ID-base-r1`, `$ID-base-r2` and `$ID-base-r3` form the step `$ID-base`. Any other name is a step of one run. Steps are ordered by their first run's time.
-- The first step is the record as the author wrote it and the last step is the record now. The text diff compares the record each step sent to Jev, so it is the text Jev judged, field by field.
+From the workspace it reads `env` (`ID`, `KIND`, `F`), every `<step>-r<N>.json` (the `quality` output of run N of step `base`, `c1`, `comb`, `final`, ...), `original.md`, `current.md` and each candidate's `<step>.md`. Without a `final` step the page compares `base` with the latest step and says so.
 
-Per record the page shows:
+The page shows, in order:
 
-- each step's verdict tally (`no 3/3`, `yes 6/6`), its Fix answers and its weakest answer;
-- the confidence chart: one row per question (per statement in a per-statement wave), one dot per run, the first step orange, the last step blue, the steps between them hollow. A ringed dot is a Fix answer: its chosen criterion carries a `Fix:` line. The dashed lines are the threshold (0.6) and the noise boundary (0.5);
-- the Fix answers of the first and the last run, with their criteria;
-- answers whose choice changed between repeats of the last step: these are noise, not defects;
-- the text diff, inline (removed words struck in red, added words in green) or side by side;
-- your drift review, if you passed one.
+- **What improved and why.** One row per statement a rule fired on (an ADR's whole-record wave is one row): in how many runs it fired in `base` and in `final`, the outcome (`fixed`, `improved`, `still fails`, `regressed`), the answers that explain it (Jev's choice, its confidence, how many runs chose it, and the criterion; the base answers are taken from the runs it fired in) and the candidate steps that cleared it on their own.
+- **Confidence.** One tab per question; one row per statement; a hollow dot per `base` run, a solid dot per `final` run; red is a Fix answer (its criterion carries `Fix:`). The dashed lines are the threshold (0.6) and the noise boundary (0.5). A Fix answer can remain in a passing run: the verdict comes from the tree's rules.
+- **Steps.** Each step's verdict tally (`no 3/3`, `yes 6/6`), the statements it fires on and those it clears against `base`. A run file that holds an error envelope counts as an error, not a verdict.
+- **Text.** The diff of the record's own section (from its heading to the next heading of the same level) from `original.md` to `current.md`, rendered as Markdown: removed text struck in red, added text in green. "Changes only" shows the changed blocks with one block of context; "Whole document" shows the full section. Each candidate's edit to `original.md` is listed below it.
+- Your **drift review**, if you passed one, and every run.
 
-A record passes when every run of its last step is `yes`; the page is PASS when every record passes.
+The page is PASS when every `final` run is `yes`.
 
 ### Drift review file
 
-`--review` takes the author's drift review (`references/fix-strategy.md` step 8) as JSON. One entry per change you kept or reverted:
+`--review` takes your drift review (`references/fix-strategy.md` step 8) as JSON. One entry per change you kept or reverted:
 
 ```json
 {
   "reviewed_at": "2026-11-10",
-  "records": {
-    "REQ-ABC-0001": {
-      "kept": [{"change": "defined 'profile'", "why": "covers every use in the record", "authority": "docs/cli.md:79"}],
-      "discarded": [{"change": "dropped 'for the same file'", "why": "narrowed the scope", "authority": "REQ-ABC-0001 original"}]
-    }
-  }
+  "kept": [{"change": "defined 'profile'", "why": "covers every use in the record", "authority": "docs/cli.md:79"}],
+  "discarded": [{"change": "dropped 'for the same file'", "why": "narrowed the scope", "authority": "REQ-ABC-0001 original"}]
 }
 ```
 
-`change` and `why` are required; `authority` names the record, file and line the change aligns with or drifts from. A file off this shape is `VALIDATION.INPUT`, naming each bad field. A record the report did not judge is listed in `data.warnings`.
+`change` and `why` are required; `authority` names the record, file and line the change aligns with or drifts from. A file off this shape is `VALIDATION.INPUT`, naming each bad field.
 
 ## Check report
 
@@ -89,11 +83,11 @@ uv run -q --script "$R" check --results check-results.json --out .sc/judge-jev/r
 - Each `reason` entry is one answer: `id`, `text`, `choice`, `confidence` and `criterion`, as `quality` reports them.
 - A pair meets its record when every request's verdict is `yes`.
 
-The page aggregates per record (met at every location, or the failing locations) and per location (the records it meets and fails), with one panel per location: the confidence chart (one row per record and question, one dot per request), each request's answers, and the text it sent.
+The page aggregates per record (met at every location, or the failing locations) and per location (the records it meets and fails), with one panel per location: the confidence chart (one tab per question, one row per record; in `task` mode the raw template hollow and the rendered assignment solid), each request's answers, and the text it sent.
 
 ## Output
 
-`--out DIR` receives `<name>.html`, the sidecar `<name>.json` (the same data, for agents) and one XHTML panel per record or location in `<name>/`. `--name` defaults to `quality-report` or `check-report`. Each panel has Copy JSON and Copy Context buttons; Copy Context is a plain-text summary to paste into the next step.
+`--out DIR` receives `<name>.html`, the sidecar `<name>.json` (the same data, for agents) and one XHTML panel per run or location in `<name>/`. `--name` defaults to `quality-report` or `check-report`. Each panel has Copy JSON and Copy Context buttons; Copy Context is a plain-text summary to paste into the next step.
 
 Open the page and look at it before you report it. Report the path to the user with the pass counts it shows. Do not commit the report unless the user asks.
 
@@ -103,9 +97,8 @@ One JSON envelope on stdout; exit 0 when the report was written, 2 with a typed 
 
 | Code | Cause | Fix |
 | --- | --- | --- |
-| `REPORT.NO_RUNS` | No verdict in the log matches `--run` and `--record`. | Run `quality` first, or check `--run-dir`, `--run` and `--record`. |
-| `LOG.READ` | The log cannot be opened, or 1000 or more verdicts match. | Pass the right `--run-dir`; narrow with `--run` or `--record`. |
-| `VALIDATION.INPUT` | A bad argument, review file or check results file. | Fix the fields named in the message. |
+| `REPORT.NO_RUNS` | `--fix-dir` has no `env` file, or no `base-r<N>.json`. | Pass `.sc/judge-jev/fix/<ID>` after the loop's base step. |
+| `VALIDATION.INPUT` | A bad argument, review file or check results file, or a run file of another record. | Fix the fields named in the message. |
 | `DEPENDENCY.SC_COMPOSE` | `sc-compose` is not on PATH. | `references/installation-and-troubleshooting.md`. |
 | `RENDER.FAILED` | sc-compose rejected a template or its variables. | Report it with the command line. |
 | `SCRIPT.IO` | A file cannot be read or written. | Pass a readable input and a writable `--out`. |

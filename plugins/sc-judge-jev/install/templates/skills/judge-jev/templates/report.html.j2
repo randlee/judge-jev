@@ -103,14 +103,27 @@ details{border-top:1px solid var(--grid);padding:6px 0}
 details summary{cursor:pointer;font-size:13px}
 del{background:var(--del-bg);color:var(--del-fg);text-decoration:line-through}
 ins{background:var(--ins-bg);color:var(--ins-fg);text-decoration:none}
-.diff-inline{font:12.5px/1.55 ui-monospace,Menlo,monospace;background:var(--surface-2);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;margin:6px 0}
-.diff-inline .rm{background:var(--del-bg)} .diff-inline .ad{background:var(--ins-bg)} .diff-inline .ch{background:var(--ch-bg)} .diff-inline .eq{color:var(--text-muted)}
-.diff-side{display:none;grid-template-columns:1fr;gap:4px;margin:6px 0 4px}
-.diff-side div{font-size:12.5px;padding:6px 8px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
-.diff-side .old{background:color-mix(in oklab,var(--critical) 10%,transparent)}
-.diff-side .new{background:color-mix(in oklab,var(--good) 12%,transparent)}
-@media(min-width:760px){.diff-side{grid-template-columns:1fr 1fr}}
-.viz-root.side .diff-inline{display:none} .viz-root.side .diff-side{display:grid}
+.doc{background:var(--surface-2);border-radius:10px;padding:10px 16px;margin:6px 0 10px;font-size:13.5px;line-height:1.6}
+.doc .md{margin:2px 0;padding:1px 0 1px 8px;font-weight:400;color:var(--text-primary)}
+.doc h2.md{font-size:17px;font-weight:650;margin-top:12px} .doc h3.md{font-size:15px;font-weight:650;margin-top:10px;color:var(--text-primary)}
+.doc h4.md,.doc h5.md,.doc h6.md{font-size:13.5px;font-weight:650;margin-top:8px}
+.doc .md-li{padding-left:24px;position:relative} .doc .md-li::before{content:"\2022";position:absolute;left:11px;color:var(--text-muted)}
+.doc .md-li.lv1{padding-left:40px} .doc .md-li.lv1::before{left:27px} .doc .md-li.lv2,.doc .md-li.lv3{padding-left:56px} .doc .md-li.lv2::before,.doc .md-li.lv3::before{left:43px}
+.doc .md-code,.doc .md-row{font:12px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word}
+.doc .md-hr{height:0;border-top:1px solid var(--line);margin:10px 0;padding:0;font-size:0}
+.doc code{font:12px ui-monospace,Menlo,monospace;background:var(--surface-1);border-radius:4px;padding:0 3px}
+.doc .rm{box-shadow:inset 3px 0 var(--critical)} .doc .ad{box-shadow:inset 3px 0 var(--good)} .doc .ch{box-shadow:inset 3px 0 var(--warning)}
+.doc:not(.whole) .far{display:none}
+.doc:not(.whole) .gap{margin-top:12px} .doc:not(.whole) .gap::after{content:"";display:block}
+.doc:not(.whole) .gap::before{content:"\22EF";display:block;color:var(--text-muted);font-size:12px;font-weight:400;line-height:1;margin:0 0 6px -8px}
+.doc .md-li.gap::before{content:"\2022"}
+.why{margin:2px 0 8px} .why .q{display:block;color:var(--text-secondary)}
+.why .was,.why .now{font-size:12.5px;padding:2px 6px;border-radius:5px;margin-top:2px}
+.why .was{background:color-mix(in oklab,var(--critical) 7%,transparent)} .why .was:not(.fix){background:var(--surface-2)}
+.why .now{background:color-mix(in oklab,var(--good) 10%,transparent)} .why .now.fix{background:color-mix(in oklab,var(--critical) 10%,transparent)}
+.why .fix{color:var(--text-primary)}
+.chart-tabs{flex-wrap:wrap;margin:6px 0 4px}
+.chart-tabs .n{font-size:11px;margin-left:5px;opacity:.75}
 .crit{font-size:12.5px} .crit .fix{color:var(--critical)}
 pre.text{font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-2);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto}
 #tip{position:fixed;pointer-events:none;z-index:9;max-width:340px;background:var(--surface-1);color:var(--text-primary);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.18);display:none}
@@ -174,13 +187,6 @@ pre.text{font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-2);
 </section>
 {% endfor %}
 
-{% if kind == "quality" %}
-<div class="card-head" style="margin:0 0 10px">
-  <span class="sub small">Text diffs:</span>
-  <div class="tabs" id="diffTabs"><button type="button" aria-pressed="true" data-diff="inline">inline</button><button type="button" aria-pressed="false" data-diff="side">side by side</button></div>
-</div>
-{% endif %}
-
 {% for section in sections %}
 {{ section | safe }}
 {% endfor %}
@@ -213,55 +219,70 @@ pre.text{font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-2);
     node.addEventListener("mouseleave", function () { tip.style.display = "none"; });
     node.addEventListener("click", function (e) { tip.innerHTML = html(); tip.style.display = "block"; moveTip(e); e.stopPropagation(); });
   }
-  var STYLE = {first: ["var(--series-2)", false], last: ["var(--series-1)", false], mid: ["var(--text-muted)", true]};
-
-  // One row per answer (question, per statement); one dot per run. Dashed lines: the threshold and the noise boundary.
+  // One tab per question; one row per statement (or record); hollow dots = before (base / raw), solid = after.
   function drawChart(box) {
     var C = JSON.parse(box.getAttribute("data-chart"));
-    var legend = $(".legend", box.parentNode);
-    if (legend && !legend.childNodes.length) {
-      C.series.forEach(function (s) { var st = STYLE[s.style] || STYLE.mid; legend.insertAdjacentHTML("beforeend", "<span><span class=\"sw\" style=\"" + (st[1] ? "border:1.5px solid " + st[0] : "background:" + st[0]) + "\"></span>" + esc(s.label) + "</span>"); });
-      legend.insertAdjacentHTML("beforeend", "<span><span class=\"sw\" style=\"border:2px solid var(--critical)\"></span>Fix answer</span><span><span class=\"ln\"></span>" + C.threshold + " threshold</span><span><span class=\"ln\" style=\"border-color:var(--seq-250)\"></span>" + C.noise + " noise</span>");
+    var tabs = $(".chart-tabs", box), legend = $(".legend", box);
+    if (box.dataset.sel == null) {
+      var first = C.groups.slice().sort(function (a, b) { return (b.fix_before + b.fix_after) - (a.fix_before + a.fix_after); })[0];
+      box.dataset.sel = first ? first.id : "";
     }
-    var order = C.series.map(function (s) { return s.key; });
-    var W = Math.max(320, Math.min(1040, box.clientWidth || 700)), labW = W < 560 ? 120 : 240, rowH = 22, top = 22;
-    var H = top + C.rows.length * rowH + 8, x0 = labW + 8, x1 = W - 14;
+    if (tabs && !tabs.childNodes.length) {
+      C.groups.forEach(function (g) {
+        var b = document.createElement("button");
+        b.type = "button"; b.setAttribute("data-question", g.id); b.title = g.text;
+        b.textContent = g.id;
+        if (g.fix_before || g.fix_after) b.insertAdjacentHTML("beforeend", "<span class=\"n\">" + (C.before ? g.fix_before + "→" : "") + g.fix_after + " fix</span>");
+        tabs.appendChild(b);
+      });
+    }
+    if (tabs) tabs.querySelectorAll("[data-question]").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-question") === box.dataset.sel ? "true" : "false"); });
+    if (legend && !legend.childNodes.length) {
+      if (C.before) legend.insertAdjacentHTML("beforeend", "<span><span class=\"sw\" style=\"border:1.5px solid var(--text-muted)\"></span>" + esc(C.before.label) + "</span>");
+      legend.insertAdjacentHTML("beforeend", "<span><span class=\"sw\" style=\"background:var(--series-1)\"></span>" + esc(C.after.label) + "</span><span><span class=\"sw\" style=\"background:var(--critical)\"></span>Fix answer</span><span><span class=\"ln\"></span>" + C.threshold + " threshold</span><span><span class=\"ln\" style=\"border-color:var(--seq-250)\"></span>" + C.noise + " noise</span>");
+    }
+    var rows = C.rows.filter(function (r) { return r.group === box.dataset.sel; });
+    var W = Math.max(320, Math.min(1040, box.clientWidth || 700)), labW = W < 560 ? 130 : 300, rowH = 22, top = 22;
+    var H = top + rows.length * rowH + 8, x0 = labW + 10, x1 = W - 14;
     var sx = function (v) { return x0 + Math.max(0, Math.min(1, v)) * (x1 - x0); };
-    var s = sv("svg", {width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Confidence of each Jev answer per run"});
+    var s = sv("svg", {width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Confidence of each Jev answer, before and after"});
     [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(function (v) {
       s.appendChild(sv("line", {x1: sx(v), x2: sx(v), y1: top - 4, y2: H - 6, stroke: "var(--grid)"}));
       var t = sv("text", {x: sx(v), y: 12, "text-anchor": "middle"}); t.textContent = v.toFixed(1); s.appendChild(t);
     });
-    s.appendChild(sv("line", {x1: sx(C.threshold), x2: sx(C.threshold), y1: top - 4, y2: H - 6, stroke: "var(--text-muted)", "stroke-dasharray": "4 3", "stroke-width": 1.5}));
-    s.appendChild(sv("line", {x1: sx(C.noise), x2: sx(C.noise), y1: top - 4, y2: H - 6, stroke: "var(--seq-250)", "stroke-dasharray": "4 3", "stroke-width": 1.5}));
-    var lastKey = order[order.length - 1];
-    C.rows.forEach(function (r, i) {
+    s.appendChild(sv("line", {x1: sx(C.threshold), x2: sx(C.threshold), y1: top - 4, y2: H - 6, stroke: "var(--text-muted)", "stroke-dasharray": "4 3"}));
+    s.appendChild(sv("line", {x1: sx(C.noise), x2: sx(C.noise), y1: top - 4, y2: H - 6, stroke: "var(--seq-250)", "stroke-dasharray": "4 3"}));
+    rows.forEach(function (r, i) {
       var y = top + i * rowH + rowH / 2, g = sv("g", {"class": "rowhit"});
       g.appendChild(sv("rect", {"class": "bg", x: 0, y: y - rowH / 2, width: W, height: rowH, fill: "transparent", rx: 4}));
-      var bad = r.dots.some(function (d) { return d.series === lastKey && d.failing; });
+      var bad = r.dots.some(function (d) { return d.series === "after" && d.failing; });
       var lab = sv("text", {x: labW, y: y + 4, "text-anchor": "end", "class": "lbl"});
-      var name = r.label.length > (W < 560 ? 18 : 36) ? r.label.slice(0, W < 560 ? 17 : 35) + "…" : r.label;
-      lab.textContent = (bad ? "⚠ " : "") + name; g.appendChild(lab);
+      var max = W < 560 ? 20 : 46;
+      lab.textContent = r.label.length > max ? r.label.slice(0, max - 1) + "…" : r.label;
+      if (bad) lab.setAttribute("style", "fill:var(--critical)");
+      g.appendChild(lab);
       var cs = r.dots.map(function (d) { return d.confidence; });
-      if (cs.length) g.appendChild(sv("line", {x1: sx(Math.min.apply(null, cs)), x2: sx(Math.max.apply(null, cs)), y1: y, y2: y, stroke: "var(--line)", "stroke-width": 2}));
-      r.dots.forEach(function (d) {
-        var k = order.indexOf(d.series), st = STYLE[(C.series[k] || {}).style] || STYLE.mid;
-        var off = order.length > 1 ? (k / (order.length - 1) - 0.5) * 6 : 0;
-        g.appendChild(sv("circle", {cx: sx(d.confidence), cy: y + off, r: 4.5, fill: st[1] ? "none" : st[0], stroke: st[1] ? st[0] : "var(--surface-1)", "stroke-width": st[1] ? 1.5 : 2}));
-        if (d.failing) g.appendChild(sv("circle", {cx: sx(d.confidence), cy: y + off, r: 7.5, fill: "none", stroke: "var(--critical)", "stroke-width": 1.5}));
+      if (cs.length > 1) g.appendChild(sv("line", {x1: sx(Math.min.apply(null, cs)), x2: sx(Math.max.apply(null, cs)), y1: y, y2: y, stroke: "var(--line)", "stroke-width": 1}));
+      r.dots.filter(function (d) { return d.series === "before"; }).forEach(function (d) {
+        g.appendChild(sv("circle", {cx: sx(d.confidence), cy: y, r: 3.5, fill: "none", stroke: d.failing ? "var(--critical)" : "var(--text-muted)", "stroke-width": 1.5, opacity: 0.85}));
+      });
+      r.dots.filter(function (d) { return d.series === "after"; }).forEach(function (d) {
+        g.appendChild(sv("circle", {cx: sx(d.confidence), cy: y, r: 4, fill: d.failing ? "var(--critical)" : "var(--series-1)", stroke: "var(--surface-1)", "stroke-width": 1.5}));
       });
       bindTip(g, function () {
-        var lines = order.map(function (key) {
-          var ds = r.dots.filter(function (d) { return d.series === key; });
-          return ds.length ? "<b>" + esc(key) + "</b>: " + ds.map(function (d) { return esc(d.choice) + " " + f2(d.confidence) + (d.failing ? " ✗" : ""); }).join(", ") : "";
-        }).filter(Boolean).join("<br>");
-        var last = r.dots.filter(function (d) { return d.series === lastKey; }).pop();
-        return "<div class=\"t\">" + esc(r.label) + "</div>" + (r.statement ? "<div class=\"muted\">" + esc(r.statement).slice(0, 220) + "</div>" : "") + "<div class=\"muted\">" + esc(r.question).slice(0, 220) + "</div><br>" + lines + (last ? "<br><br><span class=\"muted\">Last: " + esc(last.criterion) + "</span>" : "");
+        var list = function (key) {
+          return r.dots.filter(function (d) { return d.series === key; }).map(function (d) { return (d.failing ? "<span style=\"color:var(--critical)\">" : "<span>") + esc(d.choice) + " " + f2(d.confidence) + "</span>"; }).join(", ");
+        };
+        var last = r.dots.filter(function (d) { return d.series === "after"; }).pop();
+        return "<div class=\"t\">" + esc(r.label) + "</div>" + (r.statement ? "<div>" + esc(r.statement).slice(0, 260) + "</div>" : "") +
+          "<div class=\"muted\" style=\"margin-top:4px\">" + esc(r.question).slice(0, 220) + "</div><br>" +
+          (C.before ? "<b>" + esc(C.before.label) + "</b>: " + list("before") + "<br>" : "") + "<b>" + esc(C.after.label) + "</b>: " + list("after") +
+          (last ? "<br><br><span class=\"muted\">" + esc(last.criterion) + "</span>" : "");
       });
       s.appendChild(g);
     });
-    var holder = $(".chart-svg", box) || box;
-    holder.replaceChildren(s);
+    if (!rows.length) { var t = sv("text", {x: x0, y: top + 12}); t.textContent = "No answers for this question."; s.appendChild(t); }
+    $(".chart-svg", box).replaceChildren(s);
   }
   function drawAll() { document.querySelectorAll(".conf-chart").forEach(drawChart); }
   drawAll();
@@ -276,10 +297,20 @@ pre.text{font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-2);
       root.setAttribute("data-theme", dark ? "light" : "dark");
       return;
     }
-    var diff = event.target.closest("[data-diff]");
-    if (diff) {
-      $("#root").classList.toggle("side", diff.getAttribute("data-diff") === "side");
-      document.querySelectorAll("[data-diff]").forEach(function (b) { b.setAttribute("aria-pressed", b === diff ? "true" : "false"); });
+    var q = event.target.closest("[data-question]");
+    if (q) {
+      var box = q.closest(".conf-chart");
+      box.dataset.sel = q.getAttribute("data-question");
+      drawChart(box);
+      return;
+    }
+    var view = event.target.closest("[data-doc]");
+    if (view) {
+      var bar = view.closest(".tabs"), from = bar.parentElement.classList.contains("card-head") ? bar.parentElement : bar;
+      var doc = from.nextElementSibling;
+      while (doc && !doc.classList.contains("doc")) doc = doc.nextElementSibling;
+      if (doc) doc.classList.toggle("whole", view.getAttribute("data-doc") === "whole");
+      bar.querySelectorAll("[data-doc]").forEach(function (b) { b.setAttribute("aria-pressed", b === view ? "true" : "false"); });
       return;
     }
     var button = event.target.closest("[data-copy-text]");

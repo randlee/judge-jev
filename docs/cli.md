@@ -96,19 +96,20 @@ Diagram: [diagrams/check-profile.md](diagrams/check-profile.md)
 ## `judge-jev report`
 
 ```
-jev_report.py quality [--run-dir <dir>] [--run <name>]... [--record <id>]... [--review <file>] --out <dir>
+jev_report.py quality --fix-dir .sc/judge-jev/fix/<ID> [--review <file>] --out <dir>
 jev_report.py check --results <file> --out <dir>
 ```
 
 Writes an HTML report from what judge-jev recorded; never calls Jev.
 
-- `quality`: each record's runs from the log, grouped into steps (`<step>-r<N>`
-  is repeat N), with the verdict per step, every answer's confidence per run,
-  and a diff of the record's first and last judged text. `--review` adds the
+- `quality`: one fix run, read from its workspace: what improved from `base`
+  to `final` and why (the statements that stopped failing, the answers that
+  explain it, the candidate that cleared it), every answer's confidence before
+  and after, and the Markdown diff of the record's section. `--review` adds the
   author's drift review (kept and discarded changes).
 - `check`: the results of `check` / `check --profile`, aggregated per record
   and per location, one panel per location.
-- Output: the page, a JSON sidecar and one XHTML panel per record or location.
+- Output: the page, a JSON sidecar and one XHTML panel per run or location.
 
 ## `judge-jev validate`
 

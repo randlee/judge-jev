@@ -272,36 +272,31 @@ def _plain(value):
     return value
 
 
-RUN_ACTIONS = ("result", "statement", "wave", "verdict")
-
-
-def read_run_events(log_root, run_name: str, actions: tuple = RUN_ACTIONS, timestamps: bool = False) -> Result[dict, Any]:
-    """The run's events of each of ``actions`` (default ``result``, ``statement``, ``wave`` and ``verdict``), oldest first,
-    through sc-observability's query API: {action: [fields]}. One query per action, matched on the run name; a query holds
-    at most LOG_LIMIT events, so a run with more of one action is refused rather than silently cut. With ``timestamps``
-    each fields dict also carries its event's time as ``_timestamp``."""
+def read_run_events(log_root, run_name: str) -> Result[dict, Any]:
+    """The run's ``result``, ``statement``, ``wave`` and ``verdict`` events, oldest first, through sc-observability's query
+    API: {action: [fields]}. One query per action, matched on the run name; a query holds at most LOG_LIMIT events, so a
+    run with more of one action is refused rather than silently cut."""
     import sc_observability as sco
     created = sco.create_logger(sco.LoggerConfig(service=LOG_SERVICE, log_root=str(log_root)))
     if isinstance(created, sco.Err):
         return _log_error(f"could not open the log under {log_root}: {created.error}")
     logger, out = created.value, {}
     try:
-        for action in actions:
+        for action in ("result", "statement", "wave", "verdict"):
             got = logger.query(sco.LogQuery(service=LOG_SERVICE, action=action, limit=LOG_LIMIT,
                                             field_matches=(sco.FieldMatch(field="run", value=run_name),)))
             if isinstance(got, sco.Err):
                 return _log_error(f"log query failed: {got.error}")
             if len(got.value.events) >= LOG_LIMIT:
                 return _log_error(f"run {run_name} has {LOG_LIMIT} or more {action} events; one query returns at most {LOG_LIMIT}")
-            out[action] = [dict(_plain(e.fields), **({"_timestamp": str(e.timestamp)} if timestamps else {}))
-                           for e in got.value.events]
+            out[action] = [_plain(e.fields) for e in got.value.events]
     finally:
         logger.shutdown()
     return Ok(out)
 
 
 def _log_error(message: str) -> Err:
-    from jev_errors import JudgeError
+    from jev_judge import JudgeError
     return Err(JudgeError("LOG.READ", message, action="Pass the --run-dir of a finished quality run."))
 
 

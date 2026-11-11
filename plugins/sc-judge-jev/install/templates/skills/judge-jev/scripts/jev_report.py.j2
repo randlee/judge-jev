@@ -11,17 +11,16 @@ required_variables:
 # requires-python = ">=3.11"
 # dependencies = [
 #   "pydantic>=2.7,<3",
-#   "sc-observability==1.5.0",
 # ]
 # ///
-"""jev_report.py: an HTML report of judge-jev runs (references/report.md). It reads local files and the run log only;
-it never calls Jev.
+"""jev_report.py: an HTML report of judge-jev runs (references/report.md). It reads local files only; it never calls
+Jev.
 
-quality  Each record's progress across its quality runs: the verdict per step, every Jev answer's confidence per
-         run (one dot per answer), the failing answers first and last, and a diff of the record's text from its
-         first judged version to its last. Runs come from the sc-observability log under --run-dir. A run named
-         ``<step>-r<N>`` is repeat N of ``<step>``; any other name is a step of one run. Steps are ordered by time.
-         --review FILE adds the author's drift review: per record, the changes kept and discarded, and why.
+quality  One fix run (references/fix-strategy.md): the record's fix workspace, ``.sc/judge-jev/fix/<ID>``. It shows
+         what improved and why: each statement a rule fired on in ``base`` and whether it still fires in ``final``,
+         the Jev answers that explained it before and after, the candidate step that cleared it, every answer's
+         confidence (base hollow, final solid, one tab per question), and the Markdown diff of ``original.md`` to
+         ``current.md``. --review FILE adds the author's drift review: the changes kept and discarded, and why.
 check    Each location's verdict against the records that govern it, aggregated per record and per location, from a
          check results file (the contract is ``CheckResults`` below). judge-jev has no ``check`` command yet: this mode
          renders that contract so the report exists when the command does.
@@ -32,8 +31,7 @@ here (escaped text inside <del>/<ins>).
 
 Output: --out DIR receives <name>.html, the sidecar <name>.json and one XHTML panel per unit in <name>/. One JSON
 envelope ``{success, data, error}`` on stdout; exit 0 when the report was written, 2 with a typed error
-(VALIDATION.INPUT, LOG.READ, REPORT.NO_RUNS, SCRIPT.IO, DEPENDENCY.SC_COMPOSE, RENDER.FAILED, SCRIPT.INTERNAL),
-130 on interrupt.
+(VALIDATION.INPUT, REPORT.NO_RUNS, SCRIPT.IO, DEPENDENCY.SC_COMPOSE, RENDER.FAILED, SCRIPT.INTERNAL), 130 on interrupt.
 """
 
 from __future__ import annotations
@@ -54,7 +52,6 @@ from typing import Any, Callable, Literal, Optional
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, run_main  # noqa: E402
 from jev_errors import JudgeError  # noqa: E402
-import jev_runs  # noqa: E402
 
 VERSION = "{{ version }}"
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
@@ -64,9 +61,6 @@ NOISE = 0.5          # below it an answer is a coin flip (references/fix-strateg
 DEFAULT_THRESHOLD = 0.6
 ERROR_EXIT = 2
 TIMEOUT = 120
-REPEAT_RE = re.compile(r"^(?P<step>.+)-r(?P<n>\d+)$")
-METADATA_FIELDS = {"id", "status", "version", "created", "last_updated", "owner", "supersedes", "superseded_by",
-                   "decision_date"}
 
 Runner = Callable[[list, pathlib.Path], tuple]
 
@@ -93,7 +87,7 @@ def fail(code: str, message: str, action: str, data: Any = None) -> Err:
 
 
 def _models():
-    """The report's JSON inputs. Built on first use so ``--help`` and the log reader need no pydantic."""
+    """The report's JSON inputs. Built on first use so ``--help`` needs no pydantic."""
     from pydantic import BaseModel, ConfigDict, Field, model_validator
 
     class Strict(BaseModel):
@@ -104,14 +98,11 @@ def _models():
         why: str = Field(min_length=1, description="why it was kept or discarded")
         authority: str = Field("", description="the REQ, ADR, file and line it aligns with or drifts from")
 
-    class RecordReview(Strict):
+    class Review(Strict):
+        """The author's drift review of the run's original-to-final change (references/report.md)."""
+        reviewed_at: str = Field(min_length=1)
         kept: list[ReviewChange] = []
         discarded: list[ReviewChange] = []
-
-    class Review(Strict):
-        """The author's drift review of each record's first-to-last change (references/report.md)."""
-        reviewed_at: str = Field(min_length=1)
-        records: dict[str, RecordReview]
 
     class Answer(Strict):
         id: str
@@ -171,10 +162,12 @@ def _load(path: str, model, what: str) -> Result[Any, JudgeError]:
                     "Fix the fields named; references/report.md gives the format.")
 
 
-# ---------------------------------------------------------------- diffs
+# ---------------------------------------------------------------- the Markdown diff
 
 
 E = html.escape
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
+ITEM_RE = re.compile(r"^(\s*)(?:[-*+]|\d+[.)])\s+(.*)$")
 
 
 def word_diff(a: str, b: str) -> str:
@@ -192,58 +185,97 @@ def word_diff(a: str, b: str) -> str:
     return "".join(out)
 
 
-def line_diff(a: str, b: str) -> str:
-    """Line diff: unchanged lines, word diffs of replaced lines, removed and added lines; escaped."""
-    x, y = (a or "").splitlines(), (b or "").splitlines()
-    rows = []
-    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, x, y, autojunk=False).get_opcodes():
-        if op == "equal":
-            rows += [f'<div class="eq">{E(line)}</div>' for line in x[i1:i2]]
-        elif op == "replace" and i2 - i1 == j2 - j1:
-            rows += [f'<div class="ch">{word_diff(p, q)}</div>' for p, q in zip(x[i1:i2], y[j1:j2])]
-        else:
-            rows += [f'<div class="rm">- {E(line)}</div>' for line in x[i1:i2]]
-            rows += [f'<div class="ad">+ {E(line)}</div>' for line in y[j1:j2]]
-    return "".join(rows)
-
-
-def flatten(record: dict, prefix: str = "") -> dict:
-    """A record's text fields, ``{dotted path: text}``; metadata (id, status, dates, owner) left out. A list of
-    statements becomes one field, a ``Modal: text`` line each."""
-    out: dict = {}
-    for key, value in record.items():
-        if not prefix and key in METADATA_FIELDS:
+def md_blocks(text: str) -> list:
+    """A Markdown text's non-blank lines as (kind, level, content): ``h`` (level 1-6), ``li`` (level = indent),
+    ``code`` (inside a fence, and the fences), ``row`` (a table row) or ``p``."""
+    out, fence = [], False
+    for line in (text or "").splitlines():
+        if line.lstrip().startswith("```"):
+            fence = not fence
+            out.append(("code", 0, line))
+        elif fence:
+            out.append(("code", 0, line))
+        elif not line.strip():
             continue
-        path = prefix + key
-        if isinstance(value, dict):
-            out.update(flatten(value, path + "."))
-        elif isinstance(value, list):
-            lines = []
-            for item in value:
-                if isinstance(item, dict) and "text" in item:
-                    lines.append(f"{item['modal']}: {item['text']}" if item.get("modal") else str(item["text"]))
-                elif isinstance(item, str):
-                    lines.append(item)
-                else:
-                    lines.append(json.dumps(item, sort_keys=True, ensure_ascii=False))
-            if lines:
-                out[path] = "\n".join(lines)
-        elif value not in (None, ""):
-            out[path] = str(value)
+        elif re.fullmatch(r"\s*([-*_])(\s*\1){2,}\s*", line):
+            out.append(("hr", 0, line.strip()))
+        elif m := HEADING_RE.match(line):
+            out.append(("h", len(m.group(1)), m.group(2)))
+        elif m := ITEM_RE.match(line):
+            out.append(("li", len(m.group(1)) // 2, m.group(2)))
+        elif line.lstrip().startswith("|"):
+            out.append(("row", 0, line.strip()))
+        else:
+            out.append(("p", 0, line.strip()))
     return out
 
 
-def text_changes(before: dict, after: dict) -> list:
-    a, b = flatten(before), flatten(after)
-    changes = []
-    for field in list(a) + [k for k in b if k not in a]:
-        old, new = a.get(field, ""), b.get(field, "")
-        if old != new:
-            changes.append({"field": field, "before": old, "after": new, "html": line_diff(old, new)})
-    return changes
+INLINE = ((re.compile(r"`([^`<>]+)`"), r"<code>\1</code>"), (re.compile(r"\*\*([^*<>]+)\*\*"), r"<b>\1</b>"))
 
 
-# ---------------------------------------------------------------- the quality log
+def _inline(fragment: str, kind: str) -> str:
+    """Code spans and bold in an escaped fragment, where the markers do not straddle a <del>/<ins> tag."""
+    if kind in ("code", "row"):
+        return fragment
+    for pattern, repl in INLINE:
+        fragment = pattern.sub(repl, fragment)
+    return fragment
+
+
+def md_diff(before: str, after: str) -> dict:
+    """The rendered document diff of two Markdown texts: every block of ``after`` in order, with removed blocks and
+    words in <del> and added ones in <ins>. A block far from every change (and a heading whose section has none) has
+    class ``far``: the page hides those in "Changes only" and shows them in "Whole document"."""
+    a, b = md_blocks(before), md_blocks(after)
+    rows = []  # (state, kind, level, html)
+    sm = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == "equal":
+            rows += [("eq", k, lv, _inline(E(t), k)) for k, lv, t in b[j1:j2]]
+        elif op == "replace" and i2 - i1 == j2 - j1 and all(p[0] == q[0] for p, q in zip(a[i1:i2], b[j1:j2])):
+            rows += [("ch", q[0], q[1], _inline(word_diff(p[2], q[2]), q[0])) for p, q in zip(a[i1:i2], b[j1:j2])]
+        else:
+            rows += [("rm", k, lv, "<del>" + _inline(E(t), k) + "</del>") for k, lv, t in a[i1:i2]]
+            rows += [("ad", k, lv, "<ins>" + _inline(E(t), k) + "</ins>") for k, lv, t in b[j1:j2]]
+    changed = [i for i, r in enumerate(rows) if r[0] != "eq"]
+    shown = {j for i in changed for j in (i - 1, i, i + 1) if 0 <= j < len(rows)}
+    stack: list = []  # the headings above the current block: (level, row index)
+    for i, (state, kind, level, _) in enumerate(rows):
+        if kind == "h":
+            stack = [h for h in stack if h[0] < level] + [(level, i)]
+        if i in changed:
+            shown.update(h[1] for h in stack)
+    parts, hidden_before = [], False
+    for i, (state, kind, level, body) in enumerate(rows):
+        tag = f"h{min(level + 1, 6)}" if kind == "h" else "div"
+        cls = ["md", f"md-{kind}", state] + ([f"lv{min(level, 3)}"] if kind == "li" else [])
+        if i not in shown:
+            cls.append("far")
+        elif hidden_before:
+            cls.append("gap")
+        hidden_before = i not in shown
+        parts.append(f'<{tag} class="{" ".join(cls)}">{body}</{tag}>')
+    return {"html": "".join(parts), "changed": len(changed),
+            "removed": sum(1 for r in rows if r[0] == "rm"), "added": sum(1 for r in rows if r[0] == "ad"),
+            "edited": sum(1 for r in rows if r[0] == "ch")}
+
+
+def record_section(text: Optional[str], record_id: str) -> Optional[str]:
+    """The record's own section of a Markdown file: from the heading naming ``record_id`` to the next heading of the
+    same or a higher level. The whole text when no heading names it."""
+    if text is None:
+        return None
+    lines = text.splitlines()
+    start = next((i for i, line in enumerate(lines) if HEADING_RE.match(line) and record_id in line), None)
+    if start is None:
+        return text
+    level = len(HEADING_RE.match(lines[start]).group(1))
+    end = next((i for i in range(start + 1, len(lines))
+                if (m := HEADING_RE.match(lines[i])) and len(m.group(1)) <= level), len(lines))
+    return "\n".join(lines[start:end])
+
+
+# ---------------------------------------------------------------- one fix run (the workspace)
 
 
 def dom_id(prefix: str, value: str) -> str:
@@ -254,128 +286,99 @@ def natural(text: str) -> list:
     return [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", text)]
 
 
-def step_of(run_name: str) -> str:
-    m = REPEAT_RE.match(run_name)
-    return m.group("step") if m else run_name
-
-
-def when(text: str) -> datetime.datetime:
-    """An sc-observability timestamp (``Z``, 1 to 9 fraction digits) as an aware datetime, so times compare exactly."""
-    s = re.sub(r"(\.\d{6})\d+", r"\1", text.strip().replace("Z", "+00:00"))
-    s = re.sub(r"\.(\d{1,5})(?=[+-])", lambda m: "." + m.group(1).ljust(6, "0"), s)
-    value = datetime.datetime.fromisoformat(s)
-    return value if value.tzinfo else value.replace(tzinfo=datetime.timezone.utc)
-
-
-def list_verdicts(run_dir: pathlib.Path, runs: list, records: list) -> Result[list, JudgeError]:
-    """Every ``verdict`` event under the run dir, narrowed to ``runs`` and ``records``: [(time, fields)], oldest first.
-    Each is one invocation: a run name used twice gives two. One query per named run (or record, or one for all); a
-    query that reaches LOG_LIMIT is refused."""
-    import sc_observability as sco
-    created = sco.create_logger(sco.LoggerConfig(service=jev_runs.LOG_SERVICE, log_root=str(run_dir)))
-    if isinstance(created, sco.Err):
-        return fail("LOG.READ", f"could not open the log under {run_dir}: {created.error}",
-                    "Pass the --run-dir of a finished quality run.")
-    logger = created.value
-    matches = ([("run", r) for r in runs] or [("record_id", r) for r in records] or [None])
-    found: dict = {}
-    try:
-        for match in matches:
-            query = sco.LogQuery(service=jev_runs.LOG_SERVICE, action="verdict", limit=jev_runs.LOG_LIMIT,
-                                 field_matches=() if match is None else (sco.FieldMatch(field=match[0], value=match[1]),))
-            got = logger.query(query)
-            if isinstance(got, sco.Err):
-                return fail("LOG.READ", f"log query failed: {got.error}", "Pass the --run-dir of a finished quality run.")
-            if len(got.value.events) >= jev_runs.LOG_LIMIT:
-                return fail("LOG.READ", f"{jev_runs.LOG_LIMIT} or more verdicts match {match or 'the whole log'}; "
-                            f"one query returns at most {jev_runs.LOG_LIMIT}", "Narrow the report with --run or --record.")
-            for e in got.value.events:
-                fields = jev_runs._plain(e.fields)
-                at = when(str(e.timestamp))
-                found[(at, fields.get("run"), fields.get("record_id"))] = (at, fields)
-    finally:
-        logger.shutdown()
-    out = [v for v in found.values()
-           if (not runs or v[1].get("run") in runs) and (not records or v[1].get("record_id") in records)]
-    return Ok(sorted(out, key=lambda v: v[0]))
-
-
-def _record_of(request_fields: dict) -> Optional[dict]:
-    """The Raptor record a request sent: its ``item.text`` JSON, or that JSON's ``record`` in a per-statement request."""
-    try:
-        sent = json.loads(request_fields["request"]["state"]["item"]["text"])
-    except (KeyError, TypeError, ValueError):
-        return None
-    if isinstance(sent, dict) and "statement" in sent and isinstance(sent.get("record"), dict):
-        return sent["record"]
-    return sent if isinstance(sent, dict) else None
-
-
-def _answers(events: dict, record_id: str) -> list:
-    """Every answer of the record's run: one per question per request, from ``statement`` and per-record ``wave``
-    events (each reason entry carries the question, Jev's choice, its confidence and the chosen criterion)."""
-    rows = []
-    for fields in events.get("statement", []):
-        if fields.get("record_id") != record_id:
-            continue
-        st = fields.get("statement") or {}
-        for r in fields.get("reason") or []:
-            rows.append({"node": fields.get("node"), "statement": st.get("index"), "statement_text": st.get("text", ""),
-                         **_answer(r)})
-    for fields in events.get("wave", []):
-        if fields.get("record_id") != record_id or fields.get("per") == "statement":
-            continue
-        for r in fields.get("reason") or []:
-            rows.append({"node": fields.get("node"), "statement": None, "statement_text": "", **_answer(r)})
-    for row in rows:
-        row["item"] = " · ".join(str(p) for p in (row["node"], None if row["statement"] is None else f"s{row['statement']}",
-                                                   row["question"]) if p is not None)
-    return rows
-
-
 def _answer(reason: dict) -> dict:
     criterion = reason.get("criterion") or ""
     return {"question": reason.get("id"), "question_text": reason.get("text", ""), "choice": reason.get("choice"),
             "confidence": float(reason.get("confidence") or 0.0), "criterion": criterion, "failing": "Fix:" in criterion}
 
 
-def read_quality(run_dir: pathlib.Path, runs: list, records: list) -> Result[list, JudgeError]:
-    """One entry per invocation (verdict event) the log holds, oldest first: run, step, at, record id/kind/iri,
-    verdict, threshold, the record as sent, and its answers. An invocation owns the record's events after the previous
-    verdict for the same run name and record and up to its own, so a run name reused is two runs, never one merged."""
-    verdicts = list_verdicts(run_dir, runs, records)
-    if isinstance(verdicts, Err):
-        return verdicts
-    by_run: dict = {}
-    seen: dict = {}
-    out = []
-    for at, v in verdicts.value:
-        run, rid = v.get("run"), v.get("record_id")
-        if run not in by_run:
-            events = jev_runs.read_run_events(run_dir, run, actions=("request", "result", "statement", "wave"), timestamps=True)
-            if isinstance(events, Err):
-                return events
-            by_run[run] = events.value
-        since = seen.get((run, rid))
-        seen[(run, rid)] = at
-        mine = {action: [f for f in fields if f.get("record_id") == rid and (since is None or when(f["_timestamp"]) > since)
-                         and when(f["_timestamp"]) <= at]
-                for action, fields in by_run[run].items()}
-        repeats = sum(1 for e in out if e["run_name"] == run and e["record_id"] == rid)
-        thresholds = [f["threshold"] for f in mine["result"] if f.get("threshold") is not None]
-        out.append({"run": run if not repeats else f"{run} ({repeats + 1})", "run_name": run, "step": step_of(run),
-                    "at": at.isoformat().replace("+00:00", "Z"), "record_id": rid, "record_kind": v.get("record_kind"),
-                    "record_iri": v.get("record_iri"), "verdict": v.get("verdict"),
-                    "threshold": float(thresholds[0]) if thresholds else DEFAULT_THRESHOLD,
-                    "record": _record_of(mine["request"][0]) if mine["request"] else None, "answers": _answers(mine, rid)})
-    return Ok(out)
+def _read_env(path: pathlib.Path) -> dict:
+    out = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key.strip():
+            out[key.strip()] = value.strip()
+    return out
+
+
+def parse_run(name: str, variant: str, n: int, envelope: Any, record_id: str) -> Result[dict, JudgeError]:
+    """One run file (a ``quality`` envelope): its verdict, its units and its answers. A unit is what a rule fires on:
+    one statement of a per-statement wave, or a whole record-level wave. ``fired`` lists the units whose wave said no."""
+    run = {"name": name, "variant": variant, "n": n, "verdict": "error", "error": "", "units": {}, "answers": []}
+    if not isinstance(envelope, dict) or not envelope.get("success"):
+        err = (envelope or {}).get("error") if isinstance(envelope, dict) else None
+        run["error"] = f"{(err or {}).get('code', 'not an envelope')}: {(err or {}).get('message', '')}".strip()
+        return Ok(run)
+    try:
+        (result,) = envelope["data"]["results"]
+        rid = result["record"]["id"]
+        if rid != record_id:
+            return fail("VALIDATION.INPUT", f"{name}.json judged {rid}, not {record_id}",
+                        "Keep one record per fix workspace (references/fix-strategy.md).")
+        run["verdict"] = result["verdict"]
+        for wave in result["waves"]:
+            node = wave["node"]
+            if wave.get("per") == "statement":
+                fired = set(wave.get("matched_statements") or []) if wave["verdict"] == "no" else set()
+                for entry in wave["reason"]:
+                    st = entry["statement"]
+                    key = f"{node} · s{st['index']}"
+                    run["units"][key] = {"key": key, "node": node, "statement": st["index"], "text": st["text"],
+                                         "modal": st.get("modal", ""), "fired": st["index"] in fired}
+                    run["answers"] += [dict(_answer(a), unit=key) for a in entry["answers"]]
+            else:
+                key = f"{node} · record"
+                run["units"][key] = {"key": key, "node": node, "statement": None, "text": "", "modal": "",
+                                     "fired": wave["verdict"] == "no"}
+                run["answers"] += [dict(_answer(a), unit=key) for a in wave["reason"]]
+    except (KeyError, TypeError, ValueError) as exc:
+        return fail("VALIDATION.INPUT", f"{name}.json is not a quality result ({type(exc).__name__}: {exc})",
+                    "Pass the fix workspace whose <variant>-r<N>.json files hold the 'quality' output.")
+    return Ok(run)
+
+
+RUN_FILE_RE = re.compile(r"^(?P<variant>[A-Za-z0-9_.]+)-r(?P<n>\d+)\.json$")
+
+
+def _variant_order(name: str) -> tuple:
+    return (0 if name == "base" else 2 if name == "final" else 1, natural(name))
+
+
+def read_fix_dir(fix_dir: pathlib.Path) -> Result[dict, JudgeError]:
+    """The fix workspace: env (ID, KIND, F), original.md, current.md, every ``<variant>-r<N>.json`` and ``<variant>.md``."""
+    env_file = fix_dir / "env"
+    if not env_file.is_file():
+        return fail("REPORT.NO_RUNS", f"{fix_dir} is not a fix workspace: it has no env file",
+                    "Pass the folder the fix loop wrote (.sc/judge-jev/fix/<ID>; references/fix-strategy.md step 1).")
+    try:
+        env = _read_env(env_file)
+        texts = {p.stem: p.read_text(encoding="utf-8") for p in sorted(fix_dir.glob("*.md"))}
+        files = sorted((p for p in fix_dir.glob("*.json") if RUN_FILE_RE.match(p.name)), key=lambda p: natural(p.name))
+        raw = {p: p.read_text(encoding="utf-8") for p in files}
+    except (OSError, UnicodeError) as exc:
+        return fail("SCRIPT.IO", f"{fix_dir} could not be read: {type(exc).__name__}: {exc}", "Make the workspace readable.")
+    record_id = env.get("ID", "")
+    if not record_id:
+        return fail("VALIDATION.INPUT", f"{env_file} names no ID", "Write the env file as fix-strategy.md step 1 does.")
+    runs = []
+    for p in files:
+        m = RUN_FILE_RE.match(p.name)
+        try:
+            envelope = json.loads(raw[p]) if raw[p].strip() else None
+        except json.JSONDecodeError:
+            envelope = None
+        got = parse_run(p.stem, m.group("variant"), int(m.group("n")), envelope, record_id)
+        if isinstance(got, Err):
+            return got
+        runs.append(got.value)
+    if not any(r["variant"] == "base" for r in runs):
+        return fail("REPORT.NO_RUNS", f"{fix_dir} holds no base-r<N>.json: the loop has not judged the author's text",
+                    "Run the loop's base step first (references/fix-strategy.md step 2).")
+    variants = sorted({r["variant"] for r in runs}, key=_variant_order)
+    return Ok({"env": env, "record_id": record_id, "texts": texts, "runs": runs, "variants": variants})
 
 
 # ---------------------------------------------------------------- the quality model
-
-
-def _weakest(answers: list) -> Optional[float]:
-    return min((a["confidence"] for a in answers), default=None)
 
 
 def _f2(value: Optional[float]) -> str:
@@ -383,85 +386,257 @@ def _f2(value: Optional[float]) -> str:
 
 
 def _tally(runs: list) -> str:
-    yes = sum(1 for r in runs if r["verdict"] == "yes")
-    return f"yes {yes}/{len(runs)}" if yes * 2 >= len(runs) else f"no {len(runs) - yes}/{len(runs)}"
+    judged = [r for r in runs if r["verdict"] in ("yes", "no")]
+    yes = sum(1 for r in judged if r["verdict"] == "yes")
+    tally = f"yes {yes}/{len(judged)}" if judged and yes * 2 >= len(judged) else f"no {len(judged) - yes}/{len(judged)}"
+    errors = len(runs) - len(judged)
+    return tally + (f", {errors} error{'s' if errors > 1 else ''}" if errors else "")
 
 
-def _step_status(runs: list) -> str:
+def _status(runs: list) -> str:
     verdicts = {r["verdict"] for r in runs}
-    return "pass" if verdicts == {"yes"} else "fail" if verdicts == {"no"} else "flaky"
+    return "pass" if verdicts == {"yes"} else "fail" if verdicts <= {"no", "error"} else "flaky"
 
 
-def quality_unit(record_id: str, entries: list, review: Optional[dict]) -> dict:
-    """One record's panel model from its (run, record) entries, oldest first."""
-    steps: dict = {}
-    for e in entries:
-        steps.setdefault(e["step"], []).append(e)
-    order = list(steps)
-    first_run, last_run = steps[order[0]][0], steps[order[-1]][-1]
-    last_step = steps[order[-1]]
-    record = last_run["record"] or first_run["record"] or {}
-    choices: dict = {}
-    for e in last_step:
-        for a in e["answers"]:
-            choices.setdefault(a["item"], set()).add(a["choice"])
-    flaky = sorted((item for item, c in choices.items() if len(c) > 1), key=natural)
-    changes = text_changes(first_run["record"] or {}, last_run["record"] or {})
-    if first_run["record"] is None or last_run["record"] is None:
-        text_note = "The log holds no request for the first or last run, so the record text could not be compared."
-    else:
-        text_note = ""
-    series = []
-    for i, step in enumerate(order):
-        key = "first" if i == 0 else "last" if i == len(order) - 1 else "mid"
-        series.append({"key": step, "label": f"{step} ({len(steps[step])} run{'s' if len(steps[step]) > 1 else ''})",
-                       "style": key})
-    items: dict = {}
-    for step in order:
-        for e in steps[step]:
-            for a in e["answers"]:
-                row = items.setdefault(a["item"], {"label": a["item"], "question": a["question_text"],
-                                                   "statement": a["statement_text"], "dots": []})
-                row["dots"].append({"series": step, "run": e["run"], "choice": a["choice"],
-                                    "confidence": a["confidence"], "failing": a["failing"],
-                                    "criterion": a["criterion"]})
-    chart = {"threshold": last_run["threshold"], "noise": NOISE, "series": series,
-             "rows": [items[k] for k in sorted(items, key=natural)]}
-    rev = (review or {}).get(record_id)
-    trail = [{"run": e["run"], "step": e["step"], "at": e["at"], "verdict": e["verdict"],
-              "failing": sum(1 for a in e["answers"] if a["failing"]), "weakest": _f2(_weakest(e["answers"]))}
-             for e in entries]
-    status = _step_status(last_step)
+def _fired(runs: list, key: str) -> int:
+    return sum(1 for r in runs if r["units"].get(key, {}).get("fired"))
+
+
+def _answers_for(runs: list, unit: str) -> dict:
+    """{question: [answers, one per run]} of one unit."""
+    out: dict = {}
+    for r in runs:
+        for a in r["answers"]:
+            if a["unit"] == unit:
+                out.setdefault(a["question"], []).append(dict(a, run=r["name"]))
+    return out
+
+
+def _common(answers: list, fix_first: bool = False) -> dict:
+    """The most frequent choice among a question's answers (with ``fix_first``, among its Fix answers if it has any),
+    with its mean confidence and a criterion it chose."""
+    by_choice: dict = {}
+    pool = [a for a in answers if a["failing"]] if fix_first and any(a["failing"] for a in answers) else answers
+    for a in pool:
+        by_choice.setdefault(a["choice"], []).append(a)
+    choice, hits = max(by_choice.items(), key=lambda kv: (len(kv[1]), kv[0] or ""))
+    return {"choice": choice, "count": len(hits), "of": len(answers),
+            "confidence": _f2(sum(a["confidence"] for a in hits) / len(hits)), "criterion": hits[0]["criterion"],
+            "failing": any(a["failing"] for a in hits)}
+
+
+def _short(text: str, n: int = 90) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= n else text[: n - 1] + "…"
+
+
+def quality_model(ws: dict, review: Optional[dict]) -> dict:
+    runs, variants = ws["runs"], ws["variants"]
+    by_variant = {v: [r for r in runs if r["variant"] == v] for v in variants}
+    after_name = "final" if "final" in by_variant else variants[-1]
+    base, after = by_variant["base"], by_variant[after_name]
+    finished = after_name == "final"
+    units: dict = {}
+    for r in runs:
+        for key, u in r["units"].items():
+            units.setdefault(key, u)
+    keys = sorted(units, key=natural)
+
+    def unit_label(key: str) -> str:
+        u = units[key]
+        return f"s{u['statement']} · {_short(u['text'], 70)}" if u["statement"] is not None else f"{u['node']} (whole record)"
+
+    def short_key(key: str) -> str:
+        u = units[key]
+        return f"s{u['statement']}" if u["statement"] is not None else u["node"]
+
+    outcomes = []
+    for key in keys:
+        b, f = _fired(base, key), _fired(after, key)
+        if not b and not f:
+            continue
+        # before: the base runs the rule fired in (they hold the answers that fired it); after: every last-step run
+        before_q, after_q = _answers_for([r for r in base if r["units"].get(key, {}).get("fired")] or base, key), \
+            _answers_for(after, key)
+        why = []
+        for q in sorted(set(before_q) | set(after_q), key=natural):
+            bq = _common(before_q[q], fix_first=True) if q in before_q else None
+            aq = _common(after_q[q]) if q in after_q else None
+            if (bq and bq["failing"]) or (aq and aq["failing"]):
+                why.append({"question": q, "before": bq, "after": aq})
+        fixed_by = [v for v in variants[1:] if v != after_name and by_variant[v] and not _fired(by_variant[v], key)]
+        outcomes.append({
+            "key": key, "label": unit_label(key), "statement": units[key]["text"],
+            "before": f"{b}/{len(base)}", "after": f"{f}/{len(after)}",
+            "state": "fixed" if b and not f else "regressed" if f and not b else "still fails" if f >= b else "improved",
+            "why": why, "fixed_by": ", ".join(fixed_by)})
+    order = {"fixed": 0, "improved": 1, "still fails": 2, "regressed": 3}
+    outcomes.sort(key=lambda o: (order[o["state"]], natural(o["key"])))
+
+    # the chart: one tab per question; one row per unit; hollow dots = base runs, solid dots = the last step's runs
+    groups: dict = {}
+    rows = []
+    for key in keys:
+        before_q, after_q = _answers_for(base, key), _answers_for(after, key)
+        for q in sorted(set(before_q) | set(after_q), key=natural):
+            sample = (before_q.get(q) or after_q.get(q))[0]
+            g = groups.setdefault(q, {"id": q, "text": sample["question_text"], "fix_before": 0, "fix_after": 0})
+            g["fix_before"] += sum(1 for a in before_q.get(q, []) if a["failing"])
+            g["fix_after"] += sum(1 for a in after_q.get(q, []) if a["failing"])
+            dots = [{"series": "before", "run": a["run"], "choice": a["choice"], "confidence": a["confidence"],
+                     "failing": a["failing"], "criterion": a["criterion"]} for a in before_q.get(q, [])]
+            dots += [{"series": "after", "run": a["run"], "choice": a["choice"], "confidence": a["confidence"],
+                      "failing": a["failing"], "criterion": a["criterion"]} for a in after_q.get(q, [])]
+            rows.append({"group": q, "label": unit_label(key), "statement": units[key]["text"],
+                         "question": sample["question_text"], "dots": dots})
+    chart = {"threshold": DEFAULT_THRESHOLD, "noise": NOISE,
+             "before": {"key": "before", "label": f"base ({len(base)} runs)"},
+             "after": {"key": "after", "label": f"{after_name} ({len(after)} runs)"},
+             "groups": sorted(groups.values(), key=lambda g: natural(g["id"])), "rows": rows}
+
+    steps = []
+    for v in variants:
+        rs = by_variant[v]
+        fired = [k for k in keys if _fired(rs, k)]
+        fixes = [o["key"] for o in outcomes if _fired(base, o["key"]) and not _fired(rs, o["key"])] if v != "base" else []
+        steps.append({"step": v, "runs": len(rs), "tally": _tally(rs), "status": _status(rs),
+                      "fired": ", ".join(short_key(k) for k in fired) or "-",
+                      "clears": ", ".join(short_key(k) for k in fixes) or "-",
+                      "errors": [f"{r['name']}: {r['error']}" for r in rs if r["verdict"] == "error"]})
+
+    texts = ws["texts"]
+    rid = ws["record_id"]
+    original = record_section(texts.get("original"), rid)
+    final_text = record_section(texts.get("current"), rid)
+    doc = md_diff(original, final_text) if original is not None and final_text is not None else None
+    candidates = [{"step": v, "dom": dom_id("cand", v), "diff": md_diff(original, record_section(texts[v], rid))}
+                  for v in variants if v not in ("base", "final") and v in texts and original is not None]
+    status = "pass" if finished and _status(after) == "pass" else "fail"
+    env = ws["env"]
     return {
-        "id": record_id, "dom": dom_id("record", record_id), "kind": (first_run["record_kind"] or "").upper(),
-        "iri": first_run["record_iri"] or "", "title": str(record.get("title") or ""), "status": status,
-        "steps": [{"step": s, "runs": len(steps[s]), "tally": _tally(steps[s]), "status": _step_status(steps[s]),
-                   "failing": sum(1 for e in steps[s] for a in e["answers"] if a["failing"]),
-                   "weakest": _f2(_weakest([a for e in steps[s] for a in e["answers"]]))} for s in order],
-        "first_step": order[0], "last_step": order[-1],
-        "first_failing": [a for a in first_run["answers"] if a["failing"]],
-        "last_failing": [a for a in last_run["answers"] if a["failing"]],
-        "first_run": first_run["run"], "last_run": last_run["run"],
-        "flaky": flaky, "trail": trail, "changes": changes, "text_note": text_note, "chart": chart,
-        "review": rev, "answers": sum(len(e["answers"]) for e in entries),
+        "id": ws["record_id"], "kind": env.get("KIND", "").upper(), "file": env.get("F", ""), "status": status,
+        "finished": finished, "before_step": "base", "after_step": after_name,
+        "before_tally": _tally(base), "after_tally": _tally(after),
+        "before_status": _status(base), "after_status": _status(after),
+        "fired_before": sum(1 for k in keys if _fired(base, k)), "fired_after": sum(1 for k in keys if _fired(after, k)),
+        "fixed": sum(1 for o in outcomes if o["state"] == "fixed"),
+        "regressed": sum(1 for o in outcomes if o["state"] == "regressed"),
+        "fix_answers_before": sum(1 for r in base for a in r["answers"] if a["failing"]),
+        "fix_answers_after": sum(1 for r in after for a in r["answers"] if a["failing"]),
+        "outcomes": outcomes, "steps": steps, "chart": chart, "doc": doc, "candidates": candidates,
+        "review": review, "runs": [{"run": r["name"], "step": r["variant"], "verdict": r["verdict"], "error": r["error"],
+                                    "fix_answers": sum(1 for a in r["answers"] if a["failing"])} for r in runs],
     }
 
 
-def quality_context(u: dict) -> str:
-    """A panel's Copy Context: the plain-text summary an agent pastes into its next step."""
-    lines = [f"{u['id']} ({u['kind']}) {u['title']}: {u['status'].upper()}",
-             "Steps: " + "; ".join(f"{s['step']} {s['tally']}" for s in u["steps"])]
-    lines += [f"Fix answer left ({u['last_run']}): {a['item']} = {a['choice']} ({a['confidence']:.2f}) - {a['criterion']}"
-              for a in u["last_failing"]]
-    if u["flaky"]:
-        lines.append("Answers that changed between repeats of the last step: " + ", ".join(u["flaky"]))
-    lines += [f"Changed {c['field']}:\n  - {c['before']}\n  + {c['after']}" for c in u["changes"]]
+def quality_context(m: dict) -> str:
+    """Copy Context: the plain-text account of the run an agent pastes into its next step."""
+    lines = [f"{m['id']} ({m['kind']}) fix run: {m['before_step']} {m['before_tally']} -> {m['after_step']} {m['after_tally']}"]
+    for o in m["outcomes"]:
+        lines.append(f"{o['state'].upper()} {o['key']}: fired {o['before']} -> {o['after']}"
+                     + (f" (cleared by {o['fixed_by']})" if o["fixed_by"] else ""))
+        for w in o["why"]:
+            b, a = w["before"], w["after"]
+            lines.append(f"  {w['question']}: " + (f"{b['choice']} ({b['confidence']}) - {b['criterion']}" if b else "-")
+                         + " => " + (f"{a['choice']} ({a['confidence']})" if a else "-"))
+    if m["review"]:
+        lines += [f"Kept: {k['change']} - {k['why']}" for k in m["review"]["kept"]]
+        lines += [f"Discarded: {k['change']} - {k['why']}" for k in m["review"]["discarded"]]
     return "\n".join(lines)
 
 
-def _strip(u: dict) -> dict:
-    """A unit without its HTML fragments (the sidecar and Copy JSON carry text, not markup)."""
-    return dict(u, changes=[{k: v for k, v in c.items() if k != "html"} for c in u["changes"]])
+def _sidecar(m: dict) -> dict:
+    """The model without HTML fragments (the sidecar and Copy JSON carry data, not markup)."""
+    doc = {k: v for k, v in m["doc"].items() if k != "html"} if m["doc"] else None
+    return dict(m, chart=None, doc=doc,
+                candidates=[{"step": c["step"], **{k: v for k, v in c["diff"].items() if k != "html"}} for c in m["candidates"]])
+
+
+def _title(fix_dir: pathlib.Path, record_id: str) -> str:
+    """The record's title from the workspace's last Raptor snapshot, if any."""
+    for name in ("index-final.json", "index-comb.json", "index-base.json"):
+        try:
+            data = json.loads((fix_dir / name).read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, ValueError):
+            continue
+        stack = [data]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, dict):
+                if node.get("id") == record_id and isinstance(node.get("title"), str):
+                    return node["title"]
+                stack.extend(node.values())
+            elif isinstance(node, list):
+                stack.extend(node)
+    return ""
+
+
+OUTCOME_PILL = {"fixed": "pass", "improved": "flaky", "still fails": "fail", "regressed": "fail"}
+
+
+def quality_panel_vars(m: dict) -> dict:
+    return {
+        "id": m["id"], "dom": m["dom"], "kind": m["kind"], "title": m["title"], "file": m["file"], "status": m["status"],
+        "finished": m["finished"], "before_step": m["before_step"], "after_step": m["after_step"],
+        "outcomes": [dict(o, pill=OUTCOME_PILL[o["state"]]) for o in m["outcomes"]], "steps": m["steps"],
+        "doc_html": m["doc"]["html"] if m["doc"] else "", "doc_changed": m["doc"]["changed"] if m["doc"] else 0,
+        "doc_stats": (f"Blocks: {m['doc']['edited']} edited, {m['doc']['added']} added, {m['doc']['removed']} removed"
+                      if m["doc"] else ""),
+        "candidates": [{"step": c["step"], "html": c["diff"]["html"], "changed": c["diff"]["changed"]}
+                       for c in m["candidates"]],
+        "chart_json": json.dumps(m["chart"], ensure_ascii=False, sort_keys=True),
+        "reviewed": m["review"] is not None,
+        "review_kept": (m["review"] or {}).get("kept", []), "review_discarded": (m["review"] or {}).get("discarded", []),
+        "runs": m["runs"], "copy_json": _dump(_sidecar(m)), "context_text": quality_context(m),
+    }
+
+
+def build_quality(args, run: Runner = run_command) -> Result[dict, JudgeError]:
+    review = None
+    if args.review:
+        Review, _ = _models()
+        got = _load(args.review, Review, "review file")
+        if isinstance(got, Err):
+            return got
+        review = got.value.model_dump()
+    fix_dir = pathlib.Path(args.fix_dir)
+    ws = read_fix_dir(fix_dir)
+    if isinstance(ws, Err):
+        return ws
+    m = quality_model(ws.value, review)
+    m["dom"], m["title"] = dom_id("record", m["id"]), _title(fix_dir, m["id"])
+    status = m["status"].upper()
+    shell = {
+        "title": args.title or f"{m['id']} fix run",
+        "subtitle": f"What the fix loop changed in {m['file'] or 'the record'} and why Jev's verdict moved "
+                    f"from {m['before_step']} to {m['after_step']}.",
+        "status": status,
+        "tiles": [{"k": "Verdict", "v": f"{m['before_tally']} → {m['after_tally']}",
+                   "n": f"{m['before_step']} → {m['after_step']}, majority over its runs"},
+                  {"k": "Failing statements", "v": f"{m['fired_before']} → {m['fired_after']}",
+                   "n": "statements (or record-level waves) a rule fired on in any run"},
+                  {"k": "Fixed", "v": str(m["fixed"]), "n": f"failed in {m['before_step']}, pass in every {m['after_step']} run"},
+                  {"k": "Regressed", "v": str(m["regressed"]), "n": f"passed in {m['before_step']}, fail in {m['after_step']}"},
+                  {"k": "Fix answers", "v": f"{m['fix_answers_before']} → {m['fix_answers_after']}",
+                   "n": "answers whose criterion carries a Fix, summed over runs"}],
+        "tables": [],
+        "toc_rows": [{"id": f"{m['dom']}-{part}", "title": title} for part, title in
+                     (("improved", "What improved and why"), ("chart", "Confidence"), ("steps", "Steps"),
+                      ("text", "Text changes"), ("review", "Drift review"))],
+        "metadata_rows": [{"label": "Fix workspace", "value": str(fix_dir)},
+                          {"label": "Record file", "value": m["file"] or "-"},
+                          {"label": "Steps", "value": ", ".join(s["step"] for s in m["steps"])},
+                          {"label": "Drift review", "value": args.review or "-"},
+                          {"label": "Noise boundary", "value": f"{NOISE} (answers below it flip between repeats)"}],
+        "summary_copy_json": "", "summary_copy_context": "",
+    }
+    model = {"schema": REPORT_SCHEMA, "mode": "quality", "generated_at": _now(), "status": status,
+             "fix_dir": str(fix_dir), "record": _sidecar(m)}
+    written = write_report(args, "quality", [m], "quality-record-panel.xhtml.j2", quality_panel_vars, shell, model, run)
+    if isinstance(written, Err):
+        return written
+    return Ok(dict(written.value, record=m["id"], before=m["before_tally"], after=m["after_tally"], fixed=m["fixed"],
+                   regressed=m["regressed"], still_failing=m["fired_after"]))
 
 
 # ---------------------------------------------------------------- rendering
@@ -537,100 +712,18 @@ def _now() -> str:
     return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def quality_panel_vars(u: dict) -> dict:
-    return {
-        "id": u["id"], "dom": u["dom"], "kind": u["kind"], "title": u["title"], "status": u["status"], "iri": u["iri"],
-        "steps": u["steps"], "first_step": u["first_step"], "last_step": u["last_step"],
-        "first_run": u["first_run"], "last_run": u["last_run"],
-        "first_failing": [dict(a, confidence=_f2(a["confidence"])) for a in u["first_failing"]],
-        "last_failing": [dict(a, confidence=_f2(a["confidence"])) for a in u["last_failing"]],
-        "flaky": ", ".join(u["flaky"]), "trail": u["trail"], "changes": u["changes"], "text_note": u["text_note"],
-        "chart_json": json.dumps(u["chart"], ensure_ascii=False, sort_keys=True),
-        "review_kept": (u["review"] or {}).get("kept", []), "review_discarded": (u["review"] or {}).get("discarded", []),
-        "reviewed": u["review"] is not None,
-        "copy_json": _dump(_strip(dict(u, chart=None))), "context_text": quality_context(u),
-    }
-
-
-def build_quality(args, run: Runner = run_command) -> Result[dict, JudgeError]:
-    review = None
-    if args.review:
-        Review, _ = _models()
-        got = _load(args.review, Review, "review file")
-        if isinstance(got, Err):
-            return got
-        review = got.value.model_dump()
-    run_dir = pathlib.Path(args.run_dir)
-    entries = read_quality(run_dir, args.run, args.record)
-    if isinstance(entries, Err):
-        return entries
-    if not entries.value:
-        return fail("REPORT.NO_RUNS", f"no quality verdict under {run_dir} matches the runs and records named",
-                    "Run 'jev_judge.py quality' first, or check --run-dir, --run and --record.")
-    per_record: dict = {}
-    for e in entries.value:
-        per_record.setdefault(e["record_id"], []).append(e)
-    units = [quality_unit(rid, per_record[rid], (review or {}).get("records")) for rid in sorted(per_record, key=natural)]
-    warnings = [f"review names {rid}, which no run in this report judged" for rid in sorted((review or {}).get("records", {}))
-                if rid not in per_record]
-    passing_first = sum(1 for u in units if u["steps"][0]["status"] == "pass")
-    passing_last = sum(1 for u in units if u["status"] == "pass")
-    flaky = sum(len(u["flaky"]) for u in units)
-    status = "PASS" if passing_last == len(units) else "FAIL"
-    rows = [{"dom": u["dom"], "cells": [
-        {"text": u["id"], "href": "#" + u["dom"], "mono": True}, {"text": u["kind"]}, {"text": u["title"]},
-        {"text": u["steps"][0]["tally"], "pill": u["steps"][0]["status"]},
-        {"text": u["steps"][-1]["tally"], "pill": u["status"]},
-        {"text": f"{len(u['first_failing'])} → {len(u['last_failing'])}", "mono": True},
-        {"text": u["steps"][-1]["weakest"], "mono": True},
-        {"text": str(len(u["flaky"])), "mono": True},
-        {"text": ", ".join(c["field"] for c in u["changes"]) or "-", "small": True}]} for u in units]
-    shell = {
-        "title": args.title or "judge-jev quality report",
-        "subtitle": "Each record from its first judged step to its last. Struck red = removed text, green = added.",
-        "status": status,
-        "tiles": [{"k": "Records", "v": str(len(units)), "n": f"{len(entries.value)} judged runs"},
-                  {"k": "Passing at the start", "v": f"{passing_first}/{len(units)}", "n": "every run of the first step yes"},
-                  {"k": "Passing now", "v": f"{passing_last}/{len(units)}", "n": "every run of the last step yes"},
-                  {"k": "Jev answers", "v": str(sum(u["answers"] for u in units)), "n": "one dot each below"},
-                  {"k": "Unstable answers", "v": str(flaky), "n": "choice changed between repeats of the last step"}],
-        "tables": [{"title": "Records: first step to last", "id": "summary",
-                    "note": "A step is the runs named <step>-r1, -r2, ...; its tally is the majority verdict over its runs. "
-                            "Fix answers = answers whose chosen criterion carries a Fix (first run → last run); the verdict comes from the tree's rules.",
-                    "columns": ["Record", "Kind", "Title", "First step", "Last step", "Fix answers", "Weakest now",
-                                "Unstable", "Text changed"], "rows": rows}],
-        "toc_rows": [{"id": u["dom"], "title": f"{u['id']} {u['title']}", "status": u["status"]} for u in units],
-        "metadata_rows": [{"label": "Run dir", "value": str(run_dir)},
-                          {"label": "Runs", "value": ", ".join(args.run) or "every run in the log"},
-                          {"label": "Records", "value": ", ".join(args.record) or "every record judged"},
-                          {"label": "Drift review", "value": args.review or "-"},
-                          {"label": "Noise boundary", "value": f"{NOISE} (answers below it flip between repeats)"}],
-        "summary_copy_json": _dump([{c: r["cells"][i]["text"] for i, c in enumerate(["record", "kind", "title", "first",
-                                     "last", "failing", "weakest", "unstable", "changed"])} for r in rows]),
-        "summary_copy_context": "\n".join(f"{u['id']}: {u['steps'][0]['tally']} -> {u['steps'][-1]['tally']}" for u in units),
-    }
-    model = {"schema": REPORT_SCHEMA, "mode": "quality", "generated_at": _now(), "status": status,
-             "run_dir": str(run_dir), "records": [_strip(u) for u in units], "review": review, "warnings": warnings}
-    written = write_report(args, "quality", units, "quality-record-panel.xhtml.j2", quality_panel_vars, shell, model, run)
-    if isinstance(written, Err):
-        return written
-    return Ok(dict(written.value, records=len(units), passing_first=passing_first, passing_last=passing_last,
-                   warnings=warnings))
-
-
 # ---------------------------------------------------------------- check (the contract; no check command yet)
 
 
 def check_unit(location: str, pairs: list) -> dict:
     """One location's panel model: every record judged at it, each request's answers, and the dot chart."""
     mode = pairs[0]["mode"]
-    records, series, rows = [], {}, []
+    records, rows, groups = [], [], {}
     for p in pairs:
         verdict = "yes" if all(r["verdict"] == "yes" for r in p["requests"]) else "no"
         requests = []
         for r in p["requests"]:
             name = r["variant"] or "request"
-            series.setdefault(name, {"key": name, "label": name, "style": "first" if name == "raw" else "last"})
             requests.append({"variant": name, "request_id": r["request_id"], "verdict": r["verdict"], "text": r["text"],
                              "answers": [dict(_answer(a), confidence=_f2(a["confidence"])) for a in r["reason"]]})
         for a in p["requests"][0]["reason"]:
@@ -638,16 +731,22 @@ def check_unit(location: str, pairs: list) -> dict:
             for r in p["requests"]:
                 hit = next((x for x in r["reason"] if x["id"] == a["id"]), None)
                 if hit is not None:
-                    dots.append({"series": r["variant"] or "request", "run": r["request_id"], "choice": hit["choice"],
-                                 "confidence": hit["confidence"], "failing": "Fix:" in hit["criterion"],
-                                 "criterion": hit["criterion"]})
-            rows.append({"label": f"{p['record_id']} · {a['id']}", "question": a["text"], "statement": "", "dots": dots})
+                    dots.append({"series": "before" if r["variant"] == "raw" else "after", "run": r["request_id"],
+                                 "choice": hit["choice"], "confidence": hit["confidence"],
+                                 "failing": "Fix:" in hit["criterion"], "criterion": hit["criterion"]})
+            g = groups.setdefault(a["id"], {"id": a["id"], "text": a["text"], "fix_before": 0, "fix_after": 0})
+            g["fix_before"] += sum(1 for d in dots if d["series"] == "before" and d["failing"])
+            g["fix_after"] += sum(1 for d in dots if d["series"] == "after" and d["failing"])
+            rows.append({"group": a["id"], "label": p["record_id"], "question": a["text"], "statement": "", "dots": dots})
         records.append({"id": p["record_id"], "kind": p["record_kind"].upper(), "title": p["record_title"],
                         "verdict": verdict, "status": "pass" if verdict == "yes" else "fail", "requests": requests})
     status = "pass" if all(r["verdict"] == "yes" for r in records) else "fail"
     return {"id": location, "dom": dom_id("location", location), "mode": mode,
             "target_class": "code" if mode == "code" else "agent text", "status": status, "records": records,
-            "chart": {"threshold": DEFAULT_THRESHOLD, "noise": NOISE, "series": list(series.values()), "rows": rows}}
+            "chart": {"threshold": DEFAULT_THRESHOLD, "noise": NOISE,
+                      "before": {"key": "before", "label": "raw template"} if mode == "task" else None,
+                      "after": {"key": "after", "label": "rendered assignment" if mode == "task" else "request"},
+                      "groups": sorted(groups.values(), key=lambda g: natural(g["id"])), "rows": rows}}
 
 
 def check_panel_vars(u: dict) -> dict:
@@ -736,10 +835,8 @@ class _JsonArgumentParser(argparse.ArgumentParser):
 def _parser() -> argparse.ArgumentParser:
     p = _JsonArgumentParser(prog="jev_report.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="command", required=True, parser_class=_JsonArgumentParser)
-    q = sub.add_parser("quality", help="each record's progress across its quality runs")
-    q.add_argument("--run-dir", default=".sc/judge-jev", help="the quality runs' --run-dir (default .sc/judge-jev)")
-    q.add_argument("--run", action="append", default=[], help="a run name; repeatable (default: every run)")
-    q.add_argument("--record", action="append", default=[], help="a record id; repeatable (default: every record)")
+    q = sub.add_parser("quality", help="one fix run: what improved from base to final, and why")
+    q.add_argument("--fix-dir", required=True, help="the run's fix workspace, .sc/judge-jev/fix/<ID>")
     q.add_argument("--review", default="", help="the author's drift review JSON (references/report.md)")
     q.set_defaults(func=build_quality)
     c = sub.add_parser("check", help="each location against the records that govern it")

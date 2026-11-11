@@ -5,14 +5,15 @@
 ## Unreleased
 
 - New `jev_report.py` and `references/report.md` (loaded only for the report): an HTML report of judge-jev runs, in the
-  evidence-report look, rendered with the sc-compose CLI. `quality` reads the run log and shows each record's steps
-  (runs named `<step>-r<N>` grouped), a dot chart of every Jev answer's confidence per run with the 0.6 threshold and
-  0.5 noise lines, the Fix answers of the first and last run, answers that changed between repeats, a diff of the
-  record's first and last text (inline or side by side), and the author's drift review (`--review`). `check` renders
+  evidence-report look, rendered with the sc-compose CLI. `quality` reports one fix run from its workspace
+  (`.sc/judge-jev/fix/<ID>`): each statement a rule fired on in `base`, whether it still fires in `final`, the Jev
+  answers that explain the change and the candidate step that cleared it; a confidence chart with one tab per question
+  (base runs hollow, final runs solid, Fix answers red, 0.6 threshold and 0.5 noise lines); the Markdown diff of the
+  record's section from `original.md` to `current.md` (changes only or the whole section, removed text red, added
+  green) and of each candidate; and the author's drift review (`--review`). `check` renders
   the results contract of the coming `check` command (agent text and code modes), aggregated per record and per
   location; there is no `check` command yet. Writes the page, a JSON sidecar and one XHTML panel per record or location.
   `fix-strategy.md` ends the loop with the report; `SKILL.md` routes to it.
-- `jev_runs.read_run_events` takes the actions to read.
 
 ## 0.1.0 — 2026-11-10
 
