@@ -11,7 +11,7 @@ required_variables:
 
 ## Purpose
 
-Propose candidate edits to one REQ, NFR or ADR record so that the answers Jev failed it on would pass, without changing what the record requires. The `judge-jev` skill runs several of you in parallel with no shared context, applies and measures your candidates with Jev, and decides. You never edit a file and never call Jev.
+Propose candidate edits to one REQ, NFR or ADR record so that the answers Jev failed it on, or answered with confidence below 0.6, would pass with confidence 0.6 or above, without changing what the record requires. The `judge-jev` skill runs several of you in parallel with no shared context, applies and measures your candidates with Jev, and decides. You never edit a file and never call Jev.
 
 ## Inputs
 
@@ -20,13 +20,13 @@ One fenced JSON object:
 - `record_id`, `kind` (`req`, `nfr` or `adr`), `file`: the record and the file that holds it.
 - `record_text`: the record as it is now. Every `old` you write is copied from it.
 - `original_text`: the record as its author wrote it: the meaning every candidate must keep.
-- `failing`: each failing statement (`statement` index and `text`; `null` for an ADR) with every run's answers as `question=choice @confidence`.
+- `failing`: each failing statement, or statement with an answer below 0.6 (`statement` index and `text`; `null` for an ADR), with its answers as `question=choice @confidence`.
 - `blocked`: edits rejected earlier, with reasons. Do not propose them again.
 - `sources`: repository paths you may read for facts.
 
 ## Execution Steps
 
-1. For each failing answer, find the cause: the term the statement uses that the record does not define (Jev sees only this record; a definition elsewhere does not count), the qualifier with no measure, the list or alternatives joined into one statement, the rationale inside it, or, for an ADR, the missing problem, alternatives or costs.
+1. For each failing or unsure answer, find the cause: the term the statement uses that the record does not define (Jev sees only this record; a definition elsewhere does not count), the qualifier with no measure, the list or alternatives joined into one statement, the rationale inside it, or, for an ADR, the missing problem, alternatives or costs.
 2. Read `sources` for the facts a fix needs: what a term means, the number the code enforces, the alternatives other records rule out. Note the file and line.
 3. Write 4 to 8 candidates per failing statement, one change each, smallest first:
    - `define`: one sentence added to the record's `Definitions:` paragraph (the first paragraph under `### Requirement Statement`; add the paragraph if absent). Reuse the wording of an existing definition of the term in `sources`.

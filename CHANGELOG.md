@@ -8,12 +8,17 @@
   evidence-report look, rendered with the sc-compose CLI. `quality` reports one fix run from its workspace
   (`.sc/judge-jev/fix/<ID>`): each statement a rule fired on in `base`, whether it still fires in `final`, the Jev
   answers that explain the change and the candidate step that cleared it; a confidence chart with one tab per question
-  (base runs hollow, final runs solid, Fix answers red, 0.6 threshold and 0.5 noise lines); the Markdown diff of the
+  (base hollow, final solid, the steps between light gray, Fix answers red, a 0.6 line), an unsure-answers table; the Markdown diff of the
   record's section from `original.md` to `current.md` (changes only or the whole section, removed text red, added
   green) and of each candidate; and the author's drift review (`--review`). `check` renders
   the results contract of the coming `check` command (agent text and code modes), aggregated per record and per
   location; there is no `check` command yet. Writes the page, a JSON sidecar and one XHTML panel per record or location.
   `fix-strategy.md` ends the loop with the report; `SKILL.md` routes to it.
+- The fix loop judges each text once. Measured on 488 repeated answers to byte-identical requests (jev-1.14.0), only
+  answers below 0.40 confidence ever changed, so a rerun of unchanged text adds nothing. An answer below 0.6 is unsure;
+  a record is done when it passes with every answer at 0.6 or above, with at most 2 more rounds on unsure answers after
+  it passes. `fix-strategy.md`, `quality-workflow.md` and `jev-fix-proposer` (which now also targets unsure answers)
+  say so; the report marks a pass with unsure answers left as UNSURE.
 
 ## 0.1.0 — 2026-11-10
 

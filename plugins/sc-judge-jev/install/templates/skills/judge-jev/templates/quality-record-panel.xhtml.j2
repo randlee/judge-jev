@@ -11,6 +11,7 @@ required_variables:
   - before_step
   - after_step
   - outcomes
+  - unsure
   - steps
   - candidates
   - chart_json
@@ -68,18 +69,36 @@ defaults:
   <p class="small">No rule fired in either step.</p>
 {% endif %}
 
+  <h3 id="{{ dom | e }}-unsure">Unsure answers</h3>
+  <p class="sub small">An answer below 0.6 confidence is unsure: the text leaves Jev undecided, and the same request can get a different answer next time. Each answer below 0.6 in either step, with Jev's choice and confidence before and after.</p>
+{% if unsure %}
+  <div class="scroll"><table>
+    <thead><tr><th scope="col">Answer</th><th scope="col">{{ before_step | e }}</th><th scope="col">{{ after_step | e }}</th><th scope="col">Outcome</th></tr></thead>
+    <tbody>
+{% for u in unsure %}
+      <tr><td><span class="mono">{{ u.key | e }}</span><div class="small">{{ u.statement | e }}</div></td>
+        <td>{% if u.before %}{{ u.before.choice | e }} <span class="mono muted">{{ u.before.confidence | e }}</span>{% else %}-{% endif %}</td>
+        <td>{% if u.after %}{{ u.after.choice | e }} <span class="mono muted">{{ u.after.confidence | e }}</span>{% else %}-{% endif %}</td>
+        <td><span class="pill pill-{% if u.state == 'now confident' %}pass{% else %}unsure{% endif %}"><i></i>{{ u.state | e }}</span></td></tr>
+{% endfor %}
+    </tbody>
+  </table></div>
+{% else %}
+  <p class="small">None: every answer is at 0.6 or above.</p>
+{% endif %}
+
   <h3 id="{{ dom | e }}-chart">Confidence per answer</h3>
-  <p class="sub small">Pick a question. One row per statement; ○ hollow = a <span class="mono">{{ before_step | e }}</span> run, ● solid = a <span class="mono">{{ after_step | e }}</span> run; red = a Fix answer. Hover or tap a row for the statement and every answer.</p>
+  <p class="sub small">Jev answers the same questions about every statement. Pick a question; each row is one statement and each dot is Jev's answer in one run, placed by how confident Jev was (0 to 1). Hollow circle = the original text, solid dot = the fixed text, light gray = the edits tried between them. Red = the answer asked for a fix. Left of the dashed 0.6 line the answer is unsure. Hover a row for the statement and the answers.</p>
   <div class="conf-chart" data-unit="{{ dom | e }}" data-chart="{{ chart_json | e }}"><div class="tabs chart-tabs" role="group" aria-label="Question"></div><div class="legend"></div><div class="chart-svg"></div></div>
 
   <h3 id="{{ dom | e }}-steps">Steps</h3>
   <div class="scroll"><table class="steps">
-    <thead><tr><th scope="col">Step</th><th scope="col">Runs</th><th scope="col">Verdict</th><th scope="col">Fires on</th><th scope="col">Clears (vs base)</th></tr></thead>
+    <thead><tr><th scope="col">Step</th><th scope="col">Runs</th><th scope="col">Runs passing</th><th scope="col">Unsure answers</th><th scope="col">Fails on</th><th scope="col">Clears (vs base)</th></tr></thead>
     <tbody>
 {% for s in steps %}
-      <tr><td class="mono">{{ s.step | e }}</td><td class="mono">{{ s.runs | e }}</td><td><span class="pill pill-{{ s.status | e }}"><i></i>{{ s.tally | e }}</span></td><td class="mono small">{{ s.fired | e }}</td><td class="mono small">{{ s.clears | e }}</td></tr>
+      <tr><td class="mono">{{ s.step | e }}</td><td class="mono">{{ s.runs | e }}</td><td><span class="pill pill-{{ s.status | e }}"><i></i>{{ s.tally | e }}</span></td><td class="mono">{{ s.unsure | e }}</td><td class="mono small">{{ s.fired | e }}</td><td class="mono small">{{ s.clears | e }}</td></tr>
 {% for err in s.errors %}
-      <tr><td></td><td colspan="4" class="small muted">{{ err | e }}</td></tr>
+      <tr><td></td><td colspan="5" class="small muted">{{ err | e }}</td></tr>
 {% endfor %}
 {% endfor %}
     </tbody>
@@ -140,10 +159,10 @@ defaults:
   <details>
     <summary>All {{ runs | length }} runs</summary>
     <div class="scroll"><table>
-      <thead><tr><th scope="col">Run</th><th scope="col">Step</th><th scope="col">Verdict</th><th scope="col">Fix answers</th></tr></thead>
+      <thead><tr><th scope="col">Run</th><th scope="col">Step</th><th scope="col">Verdict</th><th scope="col">Unsure answers</th></tr></thead>
       <tbody>
 {% for r in runs %}
-        <tr><td class="mono">{{ r.run | e }}</td><td class="mono">{{ r.step | e }}</td><td>{{ r.verdict | e }}{% if r.error %} <span class="small muted">{{ r.error | e }}</span>{% endif %}</td><td class="mono">{{ r.fix_answers | e }}</td></tr>
+        <tr><td class="mono">{{ r.run | e }}</td><td class="mono">{{ r.step | e }}</td><td>{{ r.verdict | e }}{% if r.error %} <span class="small muted">{{ r.error | e }}</span>{% endif %}</td><td class="mono">{{ r.unsure | e }}</td></tr>
 {% endfor %}
       </tbody>
     </table></div>

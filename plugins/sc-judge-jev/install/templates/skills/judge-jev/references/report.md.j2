@@ -33,13 +33,15 @@ From the workspace it reads `env` (`ID`, `KIND`, `F`), every `<step>-r<N>.json` 
 
 The page shows, in order:
 
-- **What improved and why.** One row per statement a rule fired on (an ADR's whole-record wave is one row): in how many runs it fired in `base` and in `final`, the outcome (`fixed`, `improved`, `still fails`, `regressed`), the answers that explain it (Jev's choice, its confidence, how many runs chose it, and the criterion; the base answers are taken from the runs it fired in) and the candidate steps that cleared it on their own.
-- **Confidence.** One tab per question; one row per statement; a hollow dot per `base` run, a solid dot per `final` run; red is a Fix answer (its criterion carries `Fix:`). The dashed lines are the threshold (0.6) and the noise boundary (0.5). A Fix answer can remain in a passing run: the verdict comes from the tree's rules.
-- **Steps.** Each step's verdict tally (`no 3/3`, `yes 6/6`), the statements it fires on and those it clears against `base`. A run file that holds an error envelope counts as an error, not a verdict.
+- **Tiles.** Failing statements, unsure answers (below 0.6 confidence), statements fixed and statements regressed, from `base` to `final`.
+- **What improved and why.** One row per statement that failed (an ADR's whole-record wave is one row): whether it fails in `base` and in `final`, the outcome (`fixed`, `improved`, `still fails`, `regressed`), the answers that explain it (Jev's choice, its confidence and the criterion; `base` answers come from the runs it failed in) and the candidate steps that cleared it on their own.
+- **Unsure answers.** Each answer below 0.6 in `base` or `final`, with its choice and confidence in both, and the outcome: `now confident`, `still unsure` or `newly unsure`.
+- **Confidence.** One tab per question; one row per statement; a hollow circle for `base`, a solid dot for `final`, light-gray dots for the candidate steps between them; red is an answer whose criterion carries `Fix:`. The dashed line is 0.6: left of it an answer is unsure. A `Fix:` answer can remain in a passing run: the verdict comes from the tree's rules.
+- **Steps.** Each step's passing runs over its runs (one run per step in the current loop), its unsure answers, the statements it fails on and those it clears against `base`. A run file that holds an error envelope counts as an error, not a verdict.
 - **Text.** The diff of the record's own section (from its heading to the next heading of the same level) from `original.md` to `current.md`, rendered as Markdown: removed text struck in red, added text in green. "Changes only" shows the changed blocks with one block of context; "Whole document" shows the full section. Each candidate's edit to `original.md` is listed below it.
 - Your **drift review**, if you passed one, and every run.
 
-The page is PASS when every `final` run is `yes`.
+The page is PASS when the `final` run passes with every answer at 0.6 or above, UNSURE when it passes with answers below 0.6 left, and FAIL otherwise.
 
 ### Drift review file
 

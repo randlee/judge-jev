@@ -57,7 +57,7 @@ VERSION = "{{ version }}"
 SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
 TEMPLATES = SKILL_DIR / "templates"
 REPORT_SCHEMA = "judge-jev/report/1"
-NOISE = 0.5          # below it an answer is a coin flip (references/fix-strategy.md)
+UNSURE = 0.6         # an answer below it is unsure: the text leaves Jev undecided (references/fix-strategy.md)
 DEFAULT_THRESHOLD = 0.6
 ERROR_EXIT = 2
 TIMEOUT = 120
@@ -386,11 +386,11 @@ def _f2(value: Optional[float]) -> str:
 
 
 def _tally(runs: list) -> str:
+    """Passing runs over runs judged: ``0/3``; a run that errored is not judged and is counted apart."""
     judged = [r for r in runs if r["verdict"] in ("yes", "no")]
     yes = sum(1 for r in judged if r["verdict"] == "yes")
-    tally = f"yes {yes}/{len(judged)}" if judged and yes * 2 >= len(judged) else f"no {len(judged) - yes}/{len(judged)}"
     errors = len(runs) - len(judged)
-    return tally + (f", {errors} error{'s' if errors > 1 else ''}" if errors else "")
+    return f"{yes}/{len(judged)}" + (f", {errors} error{'s' if errors > 1 else ''}" if errors else "")
 
 
 def _status(runs: list) -> str:
@@ -473,11 +473,13 @@ def quality_model(ws: dict, review: Optional[dict]) -> dict:
     order = {"fixed": 0, "improved": 1, "still fails": 2, "regressed": 3}
     outcomes.sort(key=lambda o: (order[o["state"]], natural(o["key"])))
 
-    # the chart: one tab per question; one row per unit; hollow dots = base runs, solid dots = the last step's runs
+    # the chart: one tab per question; one row per unit; hollow dots = base runs, solid dots = the last step's runs,
+    # light-gray dots = the steps between them (the candidates and their combination)
+    mid_runs = [r for v in variants if v not in ("base", after_name) for r in by_variant[v]]
     groups: dict = {}
     rows = []
     for key in keys:
-        before_q, after_q = _answers_for(base, key), _answers_for(after, key)
+        before_q, after_q, mid_q = _answers_for(base, key), _answers_for(after, key), _answers_for(mid_runs, key)
         for q in sorted(set(before_q) | set(after_q), key=natural):
             sample = (before_q.get(q) or after_q.get(q))[0]
             g = groups.setdefault(q, {"id": q, "text": sample["question_text"], "fix_before": 0, "fix_after": 0})
@@ -485,13 +487,17 @@ def quality_model(ws: dict, review: Optional[dict]) -> dict:
             g["fix_after"] += sum(1 for a in after_q.get(q, []) if a["failing"])
             dots = [{"series": "before", "run": a["run"], "choice": a["choice"], "confidence": a["confidence"],
                      "failing": a["failing"], "criterion": a["criterion"]} for a in before_q.get(q, [])]
+            dots += [{"series": "mid", "run": a["run"], "choice": a["choice"], "confidence": a["confidence"],
+                      "failing": a["failing"], "criterion": a["criterion"]} for a in mid_q.get(q, [])]
             dots += [{"series": "after", "run": a["run"], "choice": a["choice"], "confidence": a["confidence"],
                       "failing": a["failing"], "criterion": a["criterion"]} for a in after_q.get(q, [])]
             rows.append({"group": q, "label": unit_label(key), "statement": units[key]["text"],
                          "question": sample["question_text"], "dots": dots})
-    chart = {"threshold": DEFAULT_THRESHOLD, "noise": NOISE,
-             "before": {"key": "before", "label": f"base ({len(base)} runs)"},
-             "after": {"key": "after", "label": f"{after_name} ({len(after)} runs)"},
+    chart = {"threshold": UNSURE,
+             "before": {"key": "before", "label": f"original text (base, {len(base)} runs)"},
+             "after": {"key": "after", "label": f"fixed text ({after_name}, {len(after)} runs)"},
+             "mid": {"key": "mid", "label": "steps between (" + ", ".join(v for v in variants if v not in ("base", after_name)) + ")"}
+             if mid_runs else None,
              "groups": sorted(groups.values(), key=lambda g: natural(g["id"])), "rows": rows}
 
     steps = []
@@ -500,6 +506,7 @@ def quality_model(ws: dict, review: Optional[dict]) -> dict:
         fired = [k for k in keys if _fired(rs, k)]
         fixes = [o["key"] for o in outcomes if _fired(base, o["key"]) and not _fired(rs, o["key"])] if v != "base" else []
         steps.append({"step": v, "runs": len(rs), "tally": _tally(rs), "status": _status(rs),
+                      "unsure": sum(1 for r in rs for a in r["answers"] if a["confidence"] < UNSURE),
                       "fired": ", ".join(short_key(k) for k in fired) or "-",
                       "clears": ", ".join(short_key(k) for k in fixes) or "-",
                       "errors": [f"{r['name']}: {r['error']}" for r in rs if r["verdict"] == "error"]})
@@ -511,7 +518,32 @@ def quality_model(ws: dict, review: Optional[dict]) -> dict:
     doc = md_diff(original, final_text) if original is not None and final_text is not None else None
     candidates = [{"step": v, "dom": dom_id("cand", v), "diff": md_diff(original, record_section(texts[v], rid))}
                   for v in variants if v not in ("base", "final") and v in texts and original is not None]
-    status = "pass" if finished and _status(after) == "pass" else "fail"
+    # confidence: every (statement, question) whose answer is below UNSURE in either step (lowest across its runs)
+    def lowest(runs: list) -> dict:
+        out: dict = {}
+        for r in runs:
+            for a in r["answers"]:
+                k = (a["unit"], a["question"])
+                if k not in out or a["confidence"] < out[k]["confidence"]:
+                    out[k] = a
+        return out
+
+    low_b, low_a = lowest(base), lowest(after)
+    unsure = []
+    for k in sorted(set(low_b) | set(low_a), key=lambda k: (natural(k[0]), natural(k[1] or ""))):
+        b, a = low_b.get(k), low_a.get(k)
+        was, now = b is not None and b["confidence"] < UNSURE, a is not None and a["confidence"] < UNSURE
+        if not (was or now):
+            continue
+        unsure.append({"key": f"{short_key(k[0])} · {k[1]}", "statement": units[k[0]]["text"],
+                       "before": {"choice": b["choice"], "confidence": _f2(b["confidence"])} if b else None,
+                       "after": {"choice": a["choice"], "confidence": _f2(a["confidence"])} if a else None,
+                       "state": "still unsure" if was and now else "now confident" if was else "newly unsure"})
+    unsure.sort(key=lambda u: ({"newly unsure": 0, "still unsure": 1, "now confident": 2}[u["state"]], natural(u["key"])))
+    unsure_before = sum(1 for k, a in low_b.items() if a["confidence"] < UNSURE)
+    unsure_after = sum(1 for k, a in low_a.items() if a["confidence"] < UNSURE)
+    passed = finished and _status(after) == "pass"
+    status = "fail" if not passed else "pass" if not unsure_after else "unsure"
     env = ws["env"]
     return {
         "id": ws["record_id"], "kind": env.get("KIND", "").upper(), "file": env.get("F", ""), "status": status,
@@ -521,17 +553,17 @@ def quality_model(ws: dict, review: Optional[dict]) -> dict:
         "fired_before": sum(1 for k in keys if _fired(base, k)), "fired_after": sum(1 for k in keys if _fired(after, k)),
         "fixed": sum(1 for o in outcomes if o["state"] == "fixed"),
         "regressed": sum(1 for o in outcomes if o["state"] == "regressed"),
-        "fix_answers_before": sum(1 for r in base for a in r["answers"] if a["failing"]),
-        "fix_answers_after": sum(1 for r in after for a in r["answers"] if a["failing"]),
+        "unsure_before": unsure_before, "unsure_after": unsure_after, "unsure": unsure,
         "outcomes": outcomes, "steps": steps, "chart": chart, "doc": doc, "candidates": candidates,
         "review": review, "runs": [{"run": r["name"], "step": r["variant"], "verdict": r["verdict"], "error": r["error"],
-                                    "fix_answers": sum(1 for a in r["answers"] if a["failing"])} for r in runs],
+                                    "unsure": sum(1 for a in r["answers"] if a["confidence"] < UNSURE)} for r in runs],
     }
 
 
 def quality_context(m: dict) -> str:
     """Copy Context: the plain-text account of the run an agent pastes into its next step."""
-    lines = [f"{m['id']} ({m['kind']}) fix run: {m['before_step']} {m['before_tally']} -> {m['after_step']} {m['after_tally']}"]
+    lines = [f"{m['id']} ({m['kind']}) fix run, runs passing: {m['before_step']} {m['before_tally']} -> "
+             f"{m['after_step']} {m['after_tally']}"]
     for o in m["outcomes"]:
         lines.append(f"{o['state'].upper()} {o['key']}: fired {o['before']} -> {o['after']}"
                      + (f" (cleared by {o['fixed_by']})" if o["fixed_by"] else ""))
@@ -539,6 +571,9 @@ def quality_context(m: dict) -> str:
             b, a = w["before"], w["after"]
             lines.append(f"  {w['question']}: " + (f"{b['choice']} ({b['confidence']}) - {b['criterion']}" if b else "-")
                          + " => " + (f"{a['choice']} ({a['confidence']})" if a else "-"))
+    lines += [f"{u['state'].upper()} {u['key']}: "
+              + (f"{u['before']['choice']} ({u['before']['confidence']})" if u["before"] else "-") + " => "
+              + (f"{u['after']['choice']} ({u['after']['confidence']})" if u["after"] else "-") for u in m["unsure"]]
     if m["review"]:
         lines += [f"Kept: {k['change']} - {k['why']}" for k in m["review"]["kept"]]
         lines += [f"Discarded: {k['change']} - {k['why']}" for k in m["review"]["discarded"]]
@@ -579,6 +614,7 @@ def quality_panel_vars(m: dict) -> dict:
         "id": m["id"], "dom": m["dom"], "kind": m["kind"], "title": m["title"], "file": m["file"], "status": m["status"],
         "finished": m["finished"], "before_step": m["before_step"], "after_step": m["after_step"],
         "outcomes": [dict(o, pill=OUTCOME_PILL[o["state"]]) for o in m["outcomes"]], "steps": m["steps"],
+        "unsure": m["unsure"],
         "doc_html": m["doc"]["html"] if m["doc"] else "", "doc_changed": m["doc"]["changed"] if m["doc"] else 0,
         "doc_stats": (f"Blocks: {m['doc']['edited']} edited, {m['doc']['added']} added, {m['doc']['removed']} removed"
                       if m["doc"] else ""),
@@ -611,23 +647,25 @@ def build_quality(args, run: Runner = run_command) -> Result[dict, JudgeError]:
         "subtitle": f"What the fix loop changed in {m['file'] or 'the record'} and why Jev's verdict moved "
                     f"from {m['before_step']} to {m['after_step']}.",
         "status": status,
-        "tiles": [{"k": "Verdict", "v": f"{m['before_tally']} → {m['after_tally']}",
-                   "n": f"{m['before_step']} → {m['after_step']}, majority over its runs"},
+        "tiles": [{"k": "Runs passing", "v": f"{m['before_tally']} → {m['after_tally']}",
+                   "n": f"each run is one full judgement of the record; {m['before_step']} is the original text, "
+                        f"{m['after_step']} the fixed text"},
                   {"k": "Failing statements", "v": f"{m['fired_before']} → {m['fired_after']}",
                    "n": "statements (or record-level waves) a rule fired on in any run"},
                   {"k": "Fixed", "v": str(m["fixed"]), "n": f"failed in {m['before_step']}, pass in every {m['after_step']} run"},
                   {"k": "Regressed", "v": str(m["regressed"]), "n": f"passed in {m['before_step']}, fail in {m['after_step']}"},
-                  {"k": "Fix answers", "v": f"{m['fix_answers_before']} → {m['fix_answers_after']}",
-                   "n": "answers whose criterion carries a Fix, summed over runs"}],
+                  {"k": "Unsure answers", "v": f"{m['unsure_before']} → {m['unsure_after']}",
+                   "n": f"answers below {UNSURE} confidence, which Jev may answer differently next time"}],
         "tables": [],
         "toc_rows": [{"id": f"{m['dom']}-{part}", "title": title} for part, title in
-                     (("improved", "What improved and why"), ("chart", "Confidence"), ("steps", "Steps"),
+                     (("improved", "What improved and why"), ("unsure", "Unsure answers"), ("chart", "Confidence"),
+                      ("steps", "Steps"),
                       ("text", "Text changes"), ("review", "Drift review"))],
         "metadata_rows": [{"label": "Fix workspace", "value": str(fix_dir)},
                           {"label": "Record file", "value": m["file"] or "-"},
                           {"label": "Steps", "value": ", ".join(s["step"] for s in m["steps"])},
                           {"label": "Drift review", "value": args.review or "-"},
-                          {"label": "Noise boundary", "value": f"{NOISE} (answers below it flip between repeats)"}],
+                          {"label": "Unsure below", "value": f"{UNSURE} confidence"}],
         "summary_copy_json": "", "summary_copy_context": "",
     }
     model = {"schema": REPORT_SCHEMA, "mode": "quality", "generated_at": _now(), "status": status,
@@ -636,7 +674,8 @@ def build_quality(args, run: Runner = run_command) -> Result[dict, JudgeError]:
     if isinstance(written, Err):
         return written
     return Ok(dict(written.value, record=m["id"], before=m["before_tally"], after=m["after_tally"], fixed=m["fixed"],
-                   regressed=m["regressed"], still_failing=m["fired_after"]))
+                   regressed=m["regressed"], still_failing=m["fired_after"], unsure_before=m["unsure_before"],
+                   unsure_after=m["unsure_after"]))
 
 
 # ---------------------------------------------------------------- rendering
@@ -743,7 +782,7 @@ def check_unit(location: str, pairs: list) -> dict:
     status = "pass" if all(r["verdict"] == "yes" for r in records) else "fail"
     return {"id": location, "dom": dom_id("location", location), "mode": mode,
             "target_class": "code" if mode == "code" else "agent text", "status": status, "records": records,
-            "chart": {"threshold": DEFAULT_THRESHOLD, "noise": NOISE,
+            "chart": {"threshold": UNSURE,
                       "before": {"key": "before", "label": "raw template"} if mode == "task" else None,
                       "after": {"key": "after", "label": "rendered assignment" if mode == "task" else "request"},
                       "groups": sorted(groups.values(), key=lambda g: natural(g["id"])), "rows": rows}}

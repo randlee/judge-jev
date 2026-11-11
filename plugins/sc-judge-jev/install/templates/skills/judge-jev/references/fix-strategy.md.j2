@@ -9,12 +9,12 @@ required_variables:
 ---
 name: fix-strategy
 version: {{ version }}
-description: How to turn Jev's answers on a failing REQ, NFR or ADR into edits that pass Jev and keep the author's intent - routing each failure, edit tactics ranked by measured yield, noise rules, measuring and combining candidates, the drift review, known Jev misreads, stop rules and the report.
+description: How to turn Jev's answers on a failing REQ, NFR or ADR into edits that pass Jev and keep the author's intent - routing each failure, edit tactics ranked by measured yield, the confidence rule, measuring and combining candidates, the drift review, known Jev misreads, stop rules and the report.
 ---
 
 # Fix strategy
 
-An accepted edit does two things: the record passes Jev in repeated runs, and it still requires exactly what the author's text required. Jev scores clarity; it cannot see a lost obligation. You are the author: proposers suggest, Jev measures, you decide and review. This is a loop you run to the end, not a proposal for the user to approve.
+An accepted edit does two things: the record passes Jev with its answers at 0.6 confidence or above, and it still requires exactly what the author's text required. Jev scores clarity; it cannot see a lost obligation. You are the author: proposers suggest, Jev measures, you decide and review. This is a loop you run to the end, not a proposal for the user to approve.
 
 ## 0. Set up
 
@@ -37,42 +37,44 @@ Snapshot the file as it is now, as variant `<v>` (`base`, `c1`, `comb`, `final`)
 "$RAPTOR/.venv/bin/python" "$RAPTOR/scripts/extract.py" --project-root . --output "$W/index-<v>.json" | jq '.issues'   # must print 0
 ```
 
-Judge variants interleaved, the same number of runs each:
+Judge each variant once. A variant's text never changes, so never judge it again:
 
 ```bash
-for r in 1 2 3; do for v in base c1 c2; do
-  uv run -q --script "$J" quality --$KIND "$ID" --index "$W/index-$v.json" --run-name "$ID-$v-r$r" > "$W/$v-r$r.json"
-done; done
+for v in c1 c2; do
+  uv run -q --script "$J" quality --$KIND "$ID" --index "$W/index-$v.json" --run-name "$ID-$v-r1" > "$W/$v-r1.json"
+done
 ```
 
-Score every run:
+Score every run: its verdict, the failing statements, and every unsure answer (below 0.6) as `s<statement>.<question>@<confidence>`:
 
 ```bash
-for f in "$W"/*-r*.json; do jq -r --arg run "$(basename "$f" .json)" 'if .success | not then "\($run) ERROR \(.error.code): \(.error.message)" else .data.results[] | "\($run) \(.verdict) failing=\([.waves[] | select(.verdict == "no") | .matched_statements // ["record"]] | flatten)" end' "$f"; done | sort
+for f in "$W"/*-r*.json; do jq -r --arg run "$(basename "$f" .json)" 'if .success | not then "\($run) ERROR \(.error.code): \(.error.message)" else .data.results[] | "\($run) \(.verdict) failing=\([.waves[] | select(.verdict == "no") | .matched_statements // ["record"]] | flatten) unsure=\([.waves[].reason[] | if .answers then (.statement.index | tostring) as $s | .answers[] | select(.confidence < 0.6) | "s\($s).\(.id)@\(.confidence)" else select(.confidence < 0.6) | "\(.id)@\(.confidence)" end])" end' "$f"; done | sort
 ```
+
+A run that ended in an error is not a judgement: fix the cause and judge the variant again.
 
 Read one run's answers with the step 2 command of `references/quality-workflow.md`.
 
 ## 1. Baseline
 
-Snapshot `base` and judge it 3 times. For every failing statement (ADR: every failing answer) note, per run, the answer that fired the rule and its confidence.
+Snapshot `base` and judge it once. Note every failing statement (ADR: every failing answer) with the answer that fired the rule, and every unsure answer, with its choice and confidence.
 
 ## 2. Route each failure before editing
 
 | What the answers show | Cause | Action |
 | --- | --- | --- |
-| It fails in 1 of 3 runs, deciding answer below 0.35 | noise | Judge 6 more runs. Act only if it recurs. |
+| An answer below 0.6 on a statement that passes | Jev cannot decide from the text | Route by its question as the rows below do; in the rounds after the record passes (section 9) |
 | `term` = `project term defined nowhere` or `undefined acronym` | a term the record does not define | Tactic 1 |
 | `term` = `vague qualifier`, or `check` = `needs a measure` or `none` | text not specific | Tactic 2 |
 | `obligations` 2+ with `and-list`, `alternatives` or `obligation+rationale` | compound statement | Tactics 3 to 5 |
 | ADR `context`, `alternatives` or `consequences` fails | missing ADR content | ADR tactics |
 | The record already states what the answer says is missing, and it persists after one fix | question misfit or Jev misread | Known misreads; do not reword |
 
-Route by the answer that fired a fail rule, and only that answer. `joined_by` = `condition+obligation` never fails; a statement whose wave passed needs no edit.
+Fix the failing statements first, routed by the answer that fired the fail rule. `joined_by` = `condition+obligation` never fails; a statement that passes with every answer at 0.6 or above needs no edit.
 
-Fix `term` failures first, with definitions alone, and re-measure before anything else: structure answers below 0.5 (`obligations`, `joined_by`) often settle once the terms are defined.
+Fix `term` failures first, with definitions alone, and re-measure before anything else: unsure structure answers (`obligations`, `joined_by`) often settle once the terms are defined.
 
-Confidence: an answer at 0.5 or above did not flip between identical runs; below 0.5 it can, below 0.35 often. A confident failing answer (0.75 or above) is a real defect in the text. Jev sees only this record: a term defined in another record or file is undefined to Jev.
+Confidence: one run is enough. Jev answers identical requests the same way unless it is undecided: across 488 answers to byte-identical requests (jev-1.14.0), every answer that changed had confidence below 0.40, with its top two choices within 0.06 of each other, and none at 0.40 or above changed. So never rerun a text to settle an answer: an answer below 0.6 is **unsure**, a sign the text leaves Jev undecided, and the fix is an edit, not another run. A confident failing answer (0.75 or above) is a real defect in the text. Jev sees only this record: a term defined in another record or file is undefined to Jev.
 
 ## 3. Tactics, ranked by measured yield
 
@@ -106,14 +108,14 @@ Always launch proposers, even when the fixes look obvious: your own candidates a
   "record_text": "<the record as it is now>",
   "original_text": "<the record as the author wrote it>",
   "failing": [
-    {"statement": 3, "text": "<statement text>", "runs": ["obligations=1 @0.93; joined_by=none @0.79; term=project term defined nowhere @0.44; check=CLI run @0.94"]}
+    {"statement": 3, "text": "<statement text>", "answers": "obligations=1 @0.93; joined_by=none @0.79; term=project term defined nowhere @0.44; check=CLI run @0.94"}
   ],
   "blocked": ["<a span or edit rejected in an earlier round, with the reason>"],
   "sources": ["docs/", "src/"]
 }
 ```
 
-`failing` holds every failing statement (ADR: `"statement": null` and the three answers) with each run's answers. Add your own candidates from the tactics, then drop duplicates.
+`failing` holds every failing statement, and in the rounds after the record passes every statement with an unsure answer (ADR: `"statement": null` and the three answers), with its answers from the latest run. Add your own candidates from the tactics, then drop duplicates.
 
 ## 5. Screen
 
@@ -142,11 +144,11 @@ Append one line per candidate to `$W/tried.jsonl`: `{"id", "proposer", "statemen
 
 ## 6. Measure each candidate alone
 
-For candidate `<n>`: apply its edit to `$F`, `cp "$F" "$W/c<n>.md"`, snapshot `c<n>`, then `cp "$W/current.md" "$F"`. Judge `base` and every candidate interleaved, 3 runs each. Keep a candidate when the statement it targets passes in all 3 runs where `base` failed it in at least 2, and no other statement fails more often than in `base`. Anything less clear: 3 more runs of both. One rejudge is never evidence.
+For candidate `<n>`: apply its edit to `$F`, `cp "$F" "$W/c<n>.md"`, snapshot `c<n>`, then `cp "$W/current.md" "$F"`. Judge every candidate once; `base` keeps its run from step 1. Keep a candidate when the statement it targets passes with the targeted answer at 0.6 or above, no other statement fails, and no answer that was at 0.6 or above in `base` falls below it. A candidate that passes the statement but leaves the targeted answer below 0.6 is partial: keep it only when no candidate for that statement reaches 0.6.
 
 ## 7. Combine
 
-Apply all kept candidates to `$F` together. Where two target the same statement, take the one with fewer failing runs, then fewer words. Snapshot `comb` and judge it 6 times, interleaved with `base`. Candidates that pass alone often fail together: if `comb` fails, drop one candidate at a time, the weakest first, and re-measure. When it holds, `cp "$F" "$W/current.md"`.
+Apply all kept candidates to `$F` together. Where two target the same statement, take the one with fewer failing runs, then fewer words. Snapshot `comb` and judge it once. Candidates that pass alone often fail together: if `comb` fails, or an answer a candidate raised to 0.6 falls below it, drop one candidate at a time, the weakest first, and re-measure. When it holds, `cp "$F" "$W/current.md"`.
 
 ## 8. Drift review
 
@@ -167,24 +169,25 @@ Keep changes that make the record more specific, testable or accurate. After any
 
 ## 9. Confirm
 
-Run the token guard on `$W/original.md` against `$F`; it must print `guard ok`, or every loss is a deliberate, reviewed move. Snapshot `final` and judge it 6 times. The record passes when all 6 verdicts are `yes`. Otherwise start a new round at step 2 with the statements that failed.
+Run the token guard on `$W/original.md` against `$F`; it must print `guard ok`, or every loss is a deliberate, reviewed move. Snapshot `final` and judge it once. The record is done when its verdict is `yes` and every answer is at 0.6 or above. A failing statement starts a new round at step 2. When the record passes with unsure answers left, run up to 2 more rounds aimed only at those answers (steps 2 to 9, the unsure answers as the targets); an edit there must not fail any statement or lower any answer below 0.6.
 
 ## Stop
 
-- A record is done when it passes 6 of 6.
+- A record is done when its `final` run passes with every answer at 0.6 or above.
 - A statement still failing after 3 rounds, or whose only passing candidates drift, is unresolved: keep its `current.md` text and move on to the next record.
+- An answer still below 0.6 after its 2 rounds is left unsure: keep the passing text and report the answer. One that stays low after its term is defined and its statement split is likely a question misfit, not a text defect.
 - Known Jev misreads; report them, do not reword:
   - a lowercase or hyphenated product name (`sc-agent`, `judge-jev`) read as `undefined acronym` at low confidence, even once defined;
   - `undefined acronym` on a statement with no acronym, at low confidence;
   - `project term defined nowhere` near 0.3 for a term this record defines.
-- Never rerun until a pass appears, ask the user to approve wording mid-loop, or build scripts and harnesses beyond these commands. Jev answers in about 100 ms; a record takes minutes.
+- Never judge an unchanged text again (a rerun only redraws the unsure answers), ask the user to approve wording mid-loop, or build scripts and harnesses beyond these commands. Jev answers in about 100 ms; a record takes minutes.
 
 ## Report to the user
 
 Only measured results:
 
-- each passing record: runs passed before and after (for example 0/3 to 6/6), the token guard's output, the proposer models used, `diff -u "$W/original.md" "$F"`, and one line per change naming the answer it fixed;
-- each unresolved statement: its text, Jev's answers per run verbatim (`question=choice @confidence`), what was tried and its measured result, your diagnosis, and the decision you need from the user (for example a number the repository does not state).
+- each passing record: failing statements and unsure answers before and after (for example 10 failing and 13 unsure, to 0 failing and 2 unsure), the token guard's output, the proposer models used, `diff -u "$W/original.md" "$F"`, and one line per change naming the answer it fixed;
+- each unresolved statement and each answer left unsure: its text, Jev's answers verbatim (`question=choice @confidence`), what was tried and its measured result, your diagnosis, and the decision you need from the user (for example a number the repository does not state).
 
 Then write the HTML report of the loop and give the user its path: `references/report.md` (pass your drift review as `--review`).
 

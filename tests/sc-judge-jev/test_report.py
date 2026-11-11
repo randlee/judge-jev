@@ -93,11 +93,11 @@ class QualityReport(ReportCase):
         self.assertEqual(code, 0, out)
         data = out["data"]
         self.assertEqual((data["status"], data["before"], data["after"], data["fixed"], data["regressed"]),
-                         ("PASS", "no 2/2", "yes 1/1", 1, 0))
+                         ("PASS", "0/2", "1/1", 1, 0))
         rec = self.sidecar(out)
         self.assertEqual([(s["step"], s["runs"], s["tally"], s["fired"], s["clears"]) for s in rec["steps"]],
-                         [("base", 2, "no 2/2", "s1", "-"), ("c1", 1, "yes 1/1", "-", "s1"),
-                          ("final", 1, "yes 1/1", "-", "s1")])
+                         [("base", 2, "0/2", "s1", "-"), ("c1", 1, "1/1", "-", "s1"),
+                          ("final", 1, "1/1", "-", "s1")])
         (o,) = rec["outcomes"]
         self.assertEqual((o["key"], o["before"], o["after"], o["state"], o["fixed_by"]),
                          ("wave-1 · s1", "2/2", "0/1", "fixed", "c1"))
@@ -126,7 +126,7 @@ class QualityReport(ReportCase):
         self.assertEqual(len(chart["groups"]), len(questions))
         self.assertEqual(len(chart["rows"]), 2 * len(questions))  # REQ-T-0001's MUST and MUST NOT statements
         for row in chart["rows"]:
-            self.assertEqual([d["series"] for d in row["dots"]], ["before", "before", "after"])  # 2 base, 1 final run
+            self.assertEqual([d["series"] for d in row["dots"]], ["before", "before", "mid", "after"])  # 2 base runs, c1, final
         check = next(g for g in chart["groups"] if g["id"] == "check")
         self.assertEqual((check["fix_before"], check["fix_after"]), (2, 0))
         page = Path(out["data"]["html"]).read_text(encoding="utf-8")
@@ -139,6 +139,18 @@ class QualityReport(ReportCase):
         self.assertEqual(code, 0, out)
         self.assertEqual((out["data"]["status"], out["data"]["regressed"]), ("FAIL", 1))
         self.assertEqual(self.sidecar(out)["outcomes"][0]["state"], "regressed")
+
+    def test_a_pass_with_answers_below_0_6_is_unsure_not_pass(self):
+        self.judge("base", 1, INDEX, FAILING)
+        self.judge("final", 1, edited_index(), {"*": tree_answers("quality-req.json", p=0.55)})
+        code, out = self.quality_report()
+        self.assertEqual(code, 0, out)
+        rec = self.sidecar(out)
+        self.assertEqual((out["data"]["status"], out["data"]["after"], out["data"]["unsure_before"]), ("UNSURE", "1/1", 0))
+        self.assertGreater(out["data"]["unsure_after"], 0)
+        self.assertEqual(len(rec["unsure"]), out["data"]["unsure_after"])
+        self.assertEqual({u["state"] for u in rec["unsure"]}, {"newly unsure"})
+        self.assertTrue(all(float(u["after"]["confidence"]) < 0.6 <= float(u["before"]["confidence"]) for u in rec["unsure"]))
 
     def test_a_run_without_final_compares_base_with_its_latest_step(self):
         self.judge("base", 1, INDEX, FAILING)
@@ -156,7 +168,7 @@ class QualityReport(ReportCase):
         code, out = self.quality_report()
         self.assertEqual(code, 0, out)
         final = self.sidecar(out)["steps"][-1]
-        self.assertEqual((final["tally"], final["status"], final["errors"]), ("yes 1/1, 1 error", "flaky",
+        self.assertEqual((final["tally"], final["status"], final["errors"]), ("1/1, 1 error", "flaky",
                                                                                 ["final-r2: JEV.HTTP: 503"]))
         self.assertEqual(out["data"]["status"], "FAIL")
 

@@ -67,7 +67,7 @@ uv run -q --script "$J" doctor --index index.json
 uv run -q --script "$J" compare-definition --req REQ-ABC-0001 --index index.json --definition urn:judge-jev:definition:fast
 ```
 
-`doctor` exits 2 on an invalid file and warns on an unattached definition or a record the index lacks. `compare-definition` judges the record without and with the candidates. Keep a definition only when `data.material` is `true`: an answer's choice flips, or its confidence crosses the threshold (default 0.6). Moving from one failing choice to another, or from 0.90 to 0.95, is not material. Jev is noisy below 0.5: confirm a material result with a second comparison before keeping it. Remove a definition that changes nothing.
+`doctor` exits 2 on an invalid file and warns on an unattached definition or a record the index lacks. `compare-definition` judges the record without and with the candidates. Keep a definition only when `data.material` is `true`: an answer's choice flips, or its confidence crosses the threshold (default 0.6). Moving from one failing choice to another, or from 0.90 to 0.95, is not material. An answer below 0.6 is unsure (`references/fix-strategy.md` section 2): a material result that leaves the deciding answer below 0.6 is not settled, and rerunning the comparison does not settle it. Remove a definition that changes nothing.
 
 ## Offline checks
 
