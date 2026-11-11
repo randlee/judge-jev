@@ -2,6 +2,18 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. 0.1.0 is the first release. Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, every integer version (question sets, trees, `schema_version`) stays `1`, and no PR bumps any of them; changes after 0.1.0 go under a `## Unreleased` section. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
+## Unreleased
+
+- Skill guideline review fixes. `SKILL.md` Step 1 sets `RAPTOR` (default `~/.local/share/raptor`) and checks Raptor
+  before using it, searches the usual folders for `uv` and `jq`, and prints `ERROR <code>: <message>` when the settings
+  cannot be read, instead of `null`, which the skill read as "ask the user for consent". The installer skill verifies
+  `uv` first. `installation-and-troubleshooting.md` covers uv, jq and Raptor (install, find, minimum versions) and adds
+  a Validation section; every settings command uses the `uv run ... --with pyyaml` form. `jev-api.md` documents a
+  `quality` wave's request and response, the size limits and the single retry, and the exit codes of `quality`,
+  `compare-definition`, `doctor` and `validate`; the batch runner is marked as not used by the skill.
+  `jev-fix-proposer` documents `data.unfixable` in its output. The fix loop runs 2 to 4 proposers, each with a
+  `proposer` id, and counts one that has not returned after 15 minutes as failed.
+
 ## 0.1.0 — 2026-11-10
 
 First release. The `sc-judge-jev` plugin (Claude Code, Codex, Cursor) exposes one skill, `judge-jev-installer`, which installs the `judge-jev` skill and the `jev-fix-proposer` agent into a repository with `install.py`, the way plan-anchor installs. The skill's quality mode judges whether REQ, NFR and ADR records read from a Raptor import index are well written (`quality`), and fixes failing records; compliance mode (does a prompt, skill, template or code meet its record) is not in this release. Also: `validate`, `doctor`, `compare-definition` and `batch`, and the `evals/` real-use test. The entries below record how 0.1.0 was built.

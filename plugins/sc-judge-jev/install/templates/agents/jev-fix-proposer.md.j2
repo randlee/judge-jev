@@ -57,18 +57,25 @@ Return fenced JSON:
         "evidence": "src/limits.py:12",
         "reason": "<one line: why this answer would pass>"
       }
+    ],
+    "unfixable": [
+      {"statement": 5, "question": "term", "needs": "<the fact the sources do not hold>"}
     ]
   },
   "error": null
 }
 ```
 
-`old` is copied exactly from `record_text` and occurs there once; to add text, include the neighbouring text in `old` and `new`. `evidence` is `file:line` for every fact the edit adds, else `null`. For an ADR, `targets.statement` is `null`.
+`old` is copied exactly from `record_text` and occurs there once; to add text, include the neighbouring text in `old` and `new`. `evidence` is `file:line` for every fact the edit adds, else `null`. For an ADR, `targets.statement` is `null`. `unfixable` lists each failing answer you could not fix without a fact the sources do not hold (`[]` when none).
 
 ## Error Handling
 
+Propagated to the caller:
+
 - Input missing a field or not one JSON object: return `success: false` with `error` `{"code": "VALIDATION.INPUT", "message": "<what is missing>", "recoverable": false, "suggested_action": "Resend the full input object"}`.
-- A failing answer you cannot fix without a fact the sources do not hold: propose nothing for it and name it in `data.unfixable` as `{"statement", "question", "needs"}`.
+Handled by the agent:
+
+- A failing answer you cannot fix without a fact the sources do not hold: propose nothing for it and name it in `data.unfixable` as `{"statement", "question", "needs"}`; the run still returns `success: true`.
 
 ## Constraints
 

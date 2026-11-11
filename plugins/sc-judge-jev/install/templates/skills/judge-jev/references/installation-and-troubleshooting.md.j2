@@ -9,7 +9,7 @@ required_variables:
 ---
 name: installation-and-troubleshooting
 version: {{ version }}
-description: Installing judge-jev into a repository or a parent folder with the judge-jev-installer skill (install.py), per-repository overrides and per-folder upgrades, the CLIs and credentials judge-jev depends on (python3, PyYAML, TypeSafe API key), minimum versions, PATH issues in Claude Code, Codex and Cursor environment policy, and known issues.
+description: Installing judge-jev into a repository or a parent folder with the judge-jev-installer skill (install.py), per-repository overrides and per-folder upgrades, the CLIs and credentials judge-jev depends on (uv, jq, Raptor, TypeSafe API key; uv supplies Python and the Python packages), minimum versions, validation, PATH issues in Claude Code, Codex and Cursor environment policy, and known issues.
 ---
 
 # Installation and troubleshooting
@@ -17,10 +17,14 @@ description: Installing judge-jev into a repository or a parent folder with the 
 ## Check first
 
 ```bash
-which python3 && python3 --version
-python3 -c 'import yaml; print("PyYAML", yaml.__version__)'
+which uv && uv --version
+which jq && jq --version
+RAPTOR="${RAPTOR:-$HOME/.local/share/raptor}"
+test -x "$RAPTOR/.venv/bin/python" && test -f "$RAPTOR/scripts/extract.py" && echo "raptor ok" || echo "raptor missing at $RAPTOR"
 test -n "$TYPESAFE_API_KEY" && echo "environment key set (preferred)" || echo "environment key absent; check the documented platform credential store"
 ```
+
+A missing tool: install it (below), or find an existing install off PATH (Find an existing install).
 
 The environment-key message is informational: a documented local platform credential can also satisfy live Jev authentication.
 
@@ -54,23 +58,25 @@ allow_remote_judge: true
 
 ## Install the CLIs
 
-**python3** (3.11 or newer; `jev_judge.py` also needs `pydantic` and `sc-observability`, and `judge_jev_settings.py` needs PyYAML)
+**uv** (0.5 or newer). Runs every judge-jev script: `uv run --script` reads each script's inline metadata and supplies Python 3.11+, pydantic, sc-observability and PyYAML, so no pip step is needed.
 
-- macOS: `brew install python` or the Xcode command line tools' `/usr/bin/python3`
-- Linux: `apt install python3` / `dnf install python3`
-- Windows: `winget install Python.Python.3.12`; use forward slashes in paths
+- macOS / Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`, or `brew install uv`
+- Windows: `winget install astral-sh.uv`; use forward slashes in paths
+- Without it nothing runs. Plain `python3 jev_judge.py` fails with `DEPENDENCY.PYDANTIC` or `DEPENDENCY.SC_OBSERVABILITY`, and `judge_jev_settings.py` fails with `DEPENDENCY.PYYAML` (exit 2; never a fallback to defaults).
 
-**PyYAML** (5.1 or newer; read only by `judge_jev_settings.py` for `.sc/judge-jev/settings.yaml`)
+**jq** (1.6 or newer). Reads the JSON envelopes in the skill's commands.
 
-- `python3 -m pip install pyyaml` (into the interpreter the skill runs). Without it `judge_jev_settings.py` returns `DEPENDENCY.PYYAML` and exits 2; it never falls back to defaults.
+- macOS: `brew install jq`; Linux: `apt install jq` / `dnf install jq`; Windows: `winget install jqlang.jq`
 
-**pydantic** (2.7 or newer, below 3; the model of every JSON input of `jev_judge.py`)
+**Raptor** (branch `integration/judge-jev`). Builds the import index judge-jev reads its records from. Install it once per machine at `$RAPTOR` (default `~/.local/share/raptor`); its build prerequisites are in Raptor's README:
 
-- `uv run --script jev_judge.py ...` installs it from the script's inline metadata, or `python3 -m pip install 'pydantic>=2.7,<3'`. Without it `jev_judge.py` returns `DEPENDENCY.PYDANTIC` and exits 2.
+```bash
+RAPTOR="${RAPTOR:-$HOME/.local/share/raptor}"
+git clone -b integration/judge-jev https://github.com/randlee/raptor "$RAPTOR"
+uv venv "$RAPTOR/.venv" -p 3.11 && uv pip install -p "$RAPTOR/.venv/bin/python" "$RAPTOR" markdown
+```
 
-**sc-observability** (1.5.0; the run log of `jev_judge.py`)
-
-- `uv run --script jev_judge.py ...` installs it from the script's inline metadata, or `python3 -m pip install 'sc-observability==1.5.0'`. Without it `jev_judge.py` returns `DEPENDENCY.SC_OBSERVABILITY` and exits 2.
+To update it: `git -C "$RAPTOR" pull` and rerun the `uv pip install` line. Installed elsewhere: export `RAPTOR=<that folder>` in the shell that launches the agent.
 
 **TypeSafe API key**
 
@@ -93,15 +99,21 @@ The live judge looks for the key in this order: `TYPESAFE_API_KEY` in the proces
   GUI-launched apps do not read shell files; use `launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"` (macOS, until reboot). Never commit or echo the key.
 - Under Codex, `TYPESAFE_API_KEY` matches the default `*KEY*` exclusion for command environments. If you restrict `[shell_environment_policy]` in `config.toml`, keep `ignore_default_excludes = true`, and with an allowlist under `[shell_environment_policy.filters]` add `"TYPESAFE_API_KEY" = "include"`.
 - Cursor's agent shell uses the environment of the Cursor app. A GUI launch does not read shell rc files, so set `TYPESAFE_API_KEY` with `launchctl setenv` (macOS, until reboot) before starting Cursor. A plugin variable does not export into `python3 jev_judge.py`.
-- Live Jev calls also need the user's committed answer `allow_remote_judge: true` in `.sc/judge-jev/settings.yaml`. Record it once, at install time with `--allow-remote-judge` (or `--no-remote-judge`), or later with `python3 <skill>/scripts/judge_jev_settings.py set allow_remote_judge true|false`, and commit the file.
+- Live Jev calls also need the user's committed answer `allow_remote_judge: true` in `.sc/judge-jev/settings.yaml`. Record it once, at install time with `--allow-remote-judge` (or `--no-remote-judge`), or later with `uv run -q --no-project --with pyyaml python <skill>/scripts/judge_jev_settings.py set allow_remote_judge true|false`, and commit the file.
 
 ## Find an existing install
 
 Claude Code's bash inherits a minimal PATH that can miss Homebrew, Go, pyenv, and `~/.local/bin`:
 
 ```bash
-for p in /opt/homebrew/bin/python3 /usr/local/bin/python3 /usr/bin/python3 "$HOME/.pyenv/shims/python3"; do [ -x "$p" ] && echo "python3 at $p"; done
+for cli in uv jq; do
+  for d in /opt/homebrew/bin /usr/local/bin /usr/bin "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+    [ -x "$d/$cli" ] && echo "$cli at $d/$cli"
+  done
+done
 ```
+
+Raptor is not on PATH: it is the folder `$RAPTOR`. If `raptor missing` but you installed it, find the clone (`find ~ -maxdepth 4 -path '*/raptor/scripts/extract.py' 2>/dev/null`) and export `RAPTOR` to its folder.
 
 Use the full path, or `export PATH="/opt/homebrew/bin:$PATH"` for the session.
 
@@ -109,11 +121,30 @@ Use the full path, or `export PATH="/opt/homebrew/bin:$PATH"` for the session.
 
 | Tool | Minimum | Why |
 | --- | --- | --- |
-| python3 | 3.11 | tested floor; standard library only, except `judge_jev_settings.py` |
+| uv | 0.5 | `uv run --script` with inline metadata; supplies Python and the packages below |
+| jq | 1.6 | the skill's envelope filters |
+| Raptor | branch `integration/judge-jev` | the import index format judge-jev reads |
+| python3 | 3.11 | supplied by uv; tested floor |
 | pydantic | 2.7 (below 3) | the strict model of every JSON input of `jev_judge.py` (ADR-JEV-0005) |
 | sc-observability | 1.5.0 | the run log of `jev_judge.py` (REQ-JEV-0008) |
 | PyYAML | 5.1 | `SafeLoader`-based strict reading of `.sc/judge-jev/settings.yaml`; CI tests 5.1 and the latest release |
 | Jev | `jev-latest` | pin a version once thresholds are tuned |
+
+## Validation
+
+After installing, each line must print its OK form; run them from the repository root:
+
+```bash
+uv --version && jq --version
+J="<this skill's directory>/scripts/jev_judge.py"
+uv run --script "$J" --help >/dev/null && echo "judge-jev ok"
+uv run --script "$J" doctor | jq -r 'if .success then "doctor ok" else "ERROR \(.error.code): \(.error.message)" end'
+uv run -q --no-project --with pyyaml python "<this skill's directory>/scripts/judge_jev_settings.py" show \
+  | jq -r 'if .success then "settings ok: allow_remote_judge=\(.data.allow_remote_judge)" else "ERROR \(.error.code): \(.error.message)" end'
+"$RAPTOR/.venv/bin/python" "$RAPTOR/scripts/extract.py" --project-root . --output "$(mktemp)" | jq -r '"raptor ok: \(.issues) issues"'
+```
+
+`doctor` calls nothing remote and needs no key. A live call is checked by the skill's first `quality` run.
 
 ## PATH troubleshooting
 
