@@ -8,7 +8,8 @@
   evidence-report look, rendered with the sc-compose CLI. `quality` reports one fix run from its workspace
   (`.sc/judge-jev/fix/<ID>`): each statement a rule fired on in `base`, whether it still fires in `final`, the Jev
   answers that explain the change and the candidate step that cleared it; a confidence chart with one tab per question
-  (base hollow, final solid, the steps between light gray, Fix answers red, a 0.6 line), an unsure-answers table; the Markdown diff of the
+  (base hollow, final solid, the steps between light gray, Fix answers red, a 0.6 line), an unsure-answers table;
+  Jev requests and tokens per step and per run, read from the run log; the Markdown diff of the
   record's section from `original.md` to `current.md` (changes only or the whole section, removed text red, added
   green) and of each candidate; and the author's drift review (`--review`). `check` renders
   the results contract of the coming `check` command (agent text and code modes), aggregated per record and per

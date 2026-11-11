@@ -304,7 +304,8 @@ def _read_env(path: pathlib.Path) -> dict:
 def parse_run(name: str, variant: str, n: int, envelope: Any, record_id: str) -> Result[dict, JudgeError]:
     """One run file (a ``quality`` envelope): its verdict, its units and its answers. A unit is what a rule fires on:
     one statement of a per-statement wave, or a whole record-level wave. ``fired`` lists the units whose wave said no."""
-    run = {"name": name, "variant": variant, "n": n, "verdict": "error", "error": "", "units": {}, "answers": []}
+    run = {"name": name, "variant": variant, "n": n, "verdict": "error", "error": "", "units": {}, "answers": [],
+           "log": None, "usage": None}
     if not isinstance(envelope, dict) or not envelope.get("success"):
         err = (envelope or {}).get("error") if isinstance(envelope, dict) else None
         run["error"] = f"{(err or {}).get('code', 'not an envelope')}: {(err or {}).get('message', '')}".strip()
@@ -316,6 +317,9 @@ def parse_run(name: str, variant: str, n: int, envelope: Any, record_id: str) ->
             return fail("VALIDATION.INPUT", f"{name}.json judged {rid}, not {record_id}",
                         "Keep one record per fix workspace (references/fix-strategy.md).")
         run["verdict"] = result["verdict"]
+        log = envelope["data"].get("log")
+        if isinstance(log, dict) and log.get("run") and log.get("log_root"):
+            run["log"] = {"run": str(log["run"]), "log_root": str(log["log_root"])}
         for wave in result["waves"]:
             node = wave["node"]
             if wave.get("per") == "statement":
@@ -335,6 +339,82 @@ def parse_run(name: str, variant: str, n: int, envelope: Any, record_id: str) ->
         return fail("VALIDATION.INPUT", f"{name}.json is not a quality result ({type(exc).__name__}: {exc})",
                     "Pass the fix workspace whose <variant>-r<N>.json files hold the 'quality' output.")
     return Ok(run)
+
+
+LOG_FILE = "logs/judge-jev.log.jsonl"
+
+
+def _log_path(fix_dir: pathlib.Path, log_root: str) -> Optional[pathlib.Path]:
+    """The judge-jev log a run wrote: ``log_root`` from the repository root (the working directory), else the
+    ``.sc/judge-jev`` folder that holds ``fix/<ID>``."""
+    root = pathlib.Path(log_root)
+    for base in ([root] if root.is_absolute() else [pathlib.Path.cwd() / root, fix_dir.parent.parent]):
+        if (base / LOG_FILE).is_file():
+            return base / LOG_FILE
+    return None
+
+
+def _usage(path: pathlib.Path, names: set) -> dict:
+    """Per run name: Jev requests and input and output tokens (each answer's raw_response usage), from the log events
+    of that run. The log has no request start time (events are written after each answer), so it gives no latency. Each invocation ends with its ``verdict`` event; a run name logged by more than one
+    invocation counts only its last."""
+    segments: dict = {}
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                e = json.loads(line)
+                f = e["fields"]
+            except (ValueError, KeyError, TypeError):
+                continue
+            if not isinstance(f, dict) or f.get("run") not in names:
+                continue
+            runs = segments.setdefault(f["run"], [[]])
+            if not runs[-1] or runs[-1][-1].get("action") != "verdict" or e.get("action") == "verdict":
+                runs[-1].append(e)
+            else:
+                runs.append([e])
+    out = {}
+    for name, runs in segments.items():
+        last = runs[-1]
+        answers = [e for e in last if e.get("action") == "answer"]
+        usage = [((e["fields"].get("raw_response") or {}).get("usage") or {}) for e in answers]
+        out[name] = {"requests": len(answers),
+                     "input_tokens": sum(int(u.get("input_tokens") or 0) for u in usage),
+                     "output_tokens": sum(int(u.get("output_tokens") or 0) for u in usage)}
+    return out
+
+
+def attach_usage(fix_dir: pathlib.Path, runs: list) -> Optional[str]:
+    """Sets each run's ``usage`` from the judge-jev log; returns the log read, or None when no run's log is found."""
+    logs: dict = {}
+    for r in runs:
+        if r["log"]:
+            path = _log_path(fix_dir, r["log"]["log_root"])
+            if path:
+                logs.setdefault(path, set()).add(r["log"]["run"])
+    found: dict = {}
+    for path, names in logs.items():
+        try:
+            found.update(_usage(path, names))
+        except (OSError, UnicodeError):
+            continue
+    for r in runs:
+        if r["log"] and r["log"]["run"] in found:
+            r["usage"] = found[r["log"]["run"]]
+    return ", ".join(str(p) for p in logs) or None
+
+
+def _tokens(n: int) -> str:
+    return f"{n / 1000:.1f}k" if n >= 1000 else str(n)
+
+
+def _cost(runs: list) -> Optional[dict]:
+    """Requests and tokens summed over runs that have usage; None when none has."""
+    us = [r["usage"] for r in runs if r["usage"]]
+    if not us:
+        return None
+    total = {k: sum(u[k] for u in us) for k in ("requests", "input_tokens", "output_tokens")}
+    return dict(total, runs=len(us), text=f"{_tokens(total['input_tokens'])} in / {_tokens(total['output_tokens'])} out")
 
 
 RUN_FILE_RE = re.compile(r"^(?P<variant>[A-Za-z0-9_.]+)-r(?P<n>\d+)\.json$")
@@ -375,7 +455,8 @@ def read_fix_dir(fix_dir: pathlib.Path) -> Result[dict, JudgeError]:
         return fail("REPORT.NO_RUNS", f"{fix_dir} holds no base-r<N>.json: the loop has not judged the author's text",
                     "Run the loop's base step first (references/fix-strategy.md step 2).")
     variants = sorted({r["variant"] for r in runs}, key=_variant_order)
-    return Ok({"env": env, "record_id": record_id, "texts": texts, "runs": runs, "variants": variants})
+    log = attach_usage(fix_dir, runs)
+    return Ok({"env": env, "record_id": record_id, "texts": texts, "runs": runs, "variants": variants, "log": log})
 
 
 # ---------------------------------------------------------------- the quality model
@@ -507,6 +588,7 @@ def quality_model(ws: dict, review: Optional[dict]) -> dict:
         fixes = [o["key"] for o in outcomes if _fired(base, o["key"]) and not _fired(rs, o["key"])] if v != "base" else []
         steps.append({"step": v, "runs": len(rs), "tally": _tally(rs), "status": _status(rs),
                       "unsure": sum(1 for r in rs for a in r["answers"] if a["confidence"] < UNSURE),
+                      "cost": _cost(rs),
                       "fired": ", ".join(short_key(k) for k in fired) or "-",
                       "clears": ", ".join(short_key(k) for k in fixes) or "-",
                       "errors": [f"{r['name']}: {r['error']}" for r in rs if r["verdict"] == "error"]})
@@ -555,8 +637,11 @@ def quality_model(ws: dict, review: Optional[dict]) -> dict:
         "regressed": sum(1 for o in outcomes if o["state"] == "regressed"),
         "unsure_before": unsure_before, "unsure_after": unsure_after, "unsure": unsure,
         "outcomes": outcomes, "steps": steps, "chart": chart, "doc": doc, "candidates": candidates,
+        "cost": _cost(runs), "per_run": _cost([next(r for r in after if r["usage"])]) if any(r["usage"] for r in after) else None,
+        "log": ws["log"],
         "review": review, "runs": [{"run": r["name"], "step": r["variant"], "verdict": r["verdict"], "error": r["error"],
-                                    "unsure": sum(1 for a in r["answers"] if a["confidence"] < UNSURE)} for r in runs],
+                                    "unsure": sum(1 for a in r["answers"] if a["confidence"] < UNSURE),
+                                    "cost": _cost([r])} for r in runs],
     }
 
 
@@ -564,6 +649,8 @@ def quality_context(m: dict) -> str:
     """Copy Context: the plain-text account of the run an agent pastes into its next step."""
     lines = [f"{m['id']} ({m['kind']}) fix run, runs passing: {m['before_step']} {m['before_tally']} -> "
              f"{m['after_step']} {m['after_tally']}"]
+    if m["cost"]:
+        lines.append(f"Jev cost: {m['cost']['requests']} requests, {m['cost']['text']} tokens")
     for o in m["outcomes"]:
         lines.append(f"{o['state'].upper()} {o['key']}: fired {o['before']} -> {o['after']}"
                      + (f" (cleared by {o['fixed_by']})" if o["fixed_by"] else ""))
@@ -655,7 +742,12 @@ def build_quality(args, run: Runner = run_command) -> Result[dict, JudgeError]:
                   {"k": "Fixed", "v": str(m["fixed"]), "n": f"failed in {m['before_step']}, pass in every {m['after_step']} run"},
                   {"k": "Regressed", "v": str(m["regressed"]), "n": f"passed in {m['before_step']}, fail in {m['after_step']}"},
                   {"k": "Unsure answers", "v": f"{m['unsure_before']} → {m['unsure_after']}",
-                   "n": f"answers below {UNSURE} confidence, which Jev may answer differently next time"}],
+                   "n": f"answers below {UNSURE} confidence, which Jev may answer differently next time"},
+                  {"k": "Jev input tokens", "v": _tokens(m["cost"]["input_tokens"]) if m["cost"] else "-",
+                   "n": (f"{_tokens(m['cost']['output_tokens'])} out, {m['cost']['requests']} requests over "
+                         f"{m['cost']['runs']} runs" + (f"; one {m['after_step']} run: {m['per_run']['requests']} requests, "
+                                                        f"{m['per_run']['text']}" if m["per_run"] else ""))
+                   if m["cost"] else "the judge-jev log of these runs was not found"}],
         "tables": [],
         "toc_rows": [{"id": f"{m['dom']}-{part}", "title": title} for part, title in
                      (("improved", "What improved and why"), ("unsure", "Unsure answers"), ("chart", "Confidence"),
@@ -665,7 +757,8 @@ def build_quality(args, run: Runner = run_command) -> Result[dict, JudgeError]:
                           {"label": "Record file", "value": m["file"] or "-"},
                           {"label": "Steps", "value": ", ".join(s["step"] for s in m["steps"])},
                           {"label": "Drift review", "value": args.review or "-"},
-                          {"label": "Unsure below", "value": f"{UNSURE} confidence"}],
+                          {"label": "Unsure below", "value": f"{UNSURE} confidence"},
+                          {"label": "Tokens from", "value": m["log"] or "- (log not found)"}],
         "summary_copy_json": "", "summary_copy_context": "",
     }
     model = {"schema": REPORT_SCHEMA, "mode": "quality", "generated_at": _now(), "status": status,

@@ -140,6 +140,46 @@ class QualityReport(ReportCase):
         self.assertEqual((out["data"]["status"], out["data"]["regressed"]), ("FAIL", 1))
         self.assertEqual(self.sidecar(out)["outcomes"][0]["state"], "regressed")
 
+    def test_each_step_reports_its_jev_requests_from_the_run_log(self):
+        self.fix_loop()
+        code, out = self.quality_report()
+        self.assertEqual(code, 0, out)
+        rec = self.sidecar(out)
+        self.assertIn("judge-jev.log.jsonl", rec["log"])
+        per_run = {r["run"]: r["cost"]["requests"] for r in rec["runs"]}
+        self.assertEqual(set(per_run.values()), {2}, per_run)  # two judged statements: one request each
+        self.assertEqual([(s["step"], s["cost"]["requests"], s["cost"]["runs"]) for s in rec["steps"]],
+                         [("base", 4, 2), ("c1", 2, 1), ("final", 2, 1)])
+        self.assertEqual((rec["cost"]["requests"], rec["per_run"]["requests"]), (8, 2))
+
+    def test_usage_sums_answer_tokens_of_the_last_invocation_of_a_run_name(self):
+        def event(run, run_id, ts, action, usage=None):
+            raw = {"model": "jev", "answers": {}, **({"usage": usage} if usage else {})}
+            return json.dumps({"timestamp": ts, "action": action,
+                               "fields": {"run": run, "run_id": run_id, **({"raw_response": raw} if action == "answer" else {})}})
+        log = self.d / "judge-jev.log.jsonl"
+        log.write_text("\n".join([
+            event("R-base-r1", "a", "2026-11-10T01:00:00Z", "answer", {"input_tokens": 9, "output_tokens": 9}),
+            event("R-base-r1", None, "2026-11-10T01:00:01Z", "verdict"),
+            event("R-base-r1", "new", "2026-11-10T02:00:00Z", "request"),
+            event("R-base-r1", "new", "2026-11-10T02:00:01Z", "answer", {"input_tokens": 2000, "output_tokens": 230}),
+            event("R-base-r1", "b", "2026-11-10T02:00:01.500000Z", "answer", {"input_tokens": 2400, "output_tokens": 226}),
+            event("R-base-r1", None, "2026-11-10T02:00:02Z", "verdict"),
+            event("other-run", "x", "2026-11-10T02:00:02Z", "answer", {"input_tokens": 1, "output_tokens": 1}),
+            "not json"]) + "\n", encoding="utf-8")
+        self.assertEqual(jev_report._usage(log, {"R-base-r1"}),
+                         {"R-base-r1": {"requests": 2, "input_tokens": 4400, "output_tokens": 456}})
+
+    def test_a_missing_run_log_leaves_the_cost_unknown(self):
+        self.fix_loop()
+        for p in (self.d / "runs").rglob("*.jsonl"):
+            p.unlink()
+        code, out = self.quality_report()
+        self.assertEqual(code, 0, out)
+        rec = self.sidecar(out)
+        self.assertEqual((rec["cost"], rec["per_run"], rec["log"]), (None, None, None))
+        self.assertTrue(all(s["cost"] is None for s in rec["steps"]))
+
     def test_a_pass_with_answers_below_0_6_is_unsure_not_pass(self):
         self.judge("base", 1, INDEX, FAILING)
         self.judge("final", 1, edited_index(), {"*": tree_answers("quality-req.json", p=0.55)})
