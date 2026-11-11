@@ -93,6 +93,23 @@ Checks every pair the profile lists and aggregates the results
 
 Diagram: [diagrams/check-profile.md](diagrams/check-profile.md)
 
+## `judge-jev report`
+
+```
+jev_report.py quality [--run-dir <dir>] [--run <name>]... [--record <id>]... [--review <file>] --out <dir>
+jev_report.py check --results <file> --out <dir>
+```
+
+Writes an HTML report from what judge-jev recorded; never calls Jev.
+
+- `quality`: each record's runs from the log, grouped into steps (`<step>-r<N>`
+  is repeat N), with the verdict per step, every answer's confidence per run,
+  and a diff of the record's first and last judged text. `--review` adds the
+  author's drift review (kept and discarded changes).
+- `check`: the results of `check` / `check --profile`, aggregated per record
+  and per location, one panel per location.
+- Output: the page, a JSON sidecar and one XHTML panel per record or location.
+
 ## `judge-jev validate`
 
 ```

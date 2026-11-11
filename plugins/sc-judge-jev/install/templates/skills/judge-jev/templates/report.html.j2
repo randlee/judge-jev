@@ -1,0 +1,293 @@
+---
+metadata:
+  name: report
+  description: Page shell of a judge-jev report (quality or check); receives top-level arrays and pre-rendered panels only.
+required_variables:
+  - title
+  - status
+  - generated_at
+  - kind
+  - version
+  - tiles
+  - tables
+  - toc_rows
+  - sections
+  - metadata_rows
+defaults:
+  subtitle: ""
+  summary_copy_json: ""
+  summary_copy_context: ""
+---
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title | e }}</title>
+<style>
+.viz-root{
+  color-scheme:light;
+  --surface-0:#f4f3f0; --surface-1:#fcfcfb; --surface-2:#f0efec; --line:#e2e1dc; --grid:#ebeae6;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#7a7974;
+  --series-1:#2a78d6; --series-2:#eb6834;
+  --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
+  --seq-250:#86b6ef;
+  --del-bg:#fde2e1; --del-fg:#8a1c14; --ins-bg:#d9f5df; --ins-fg:#0b5d1e; --ch-bg:#fff7d6;
+}
+:root[data-theme="dark"] .viz-root{
+  color-scheme:dark;
+  --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#242422; --line:#33332f; --grid:#2a2a27;
+  --text-primary:#f0efec; --text-secondary:#c3c2b7; --text-muted:#8f8e86;
+  --series-1:#3987e5; --series-2:#d95926; --seq-250:#184f95;
+  --del-bg:#4c1d1d; --del-fg:#fecaca; --ins-bg:#14361f; --ins-fg:#bbf7d0; --ch-bg:#3b3414;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])) .viz-root{
+    color-scheme:dark;
+    --surface-0:#121211; --surface-1:#1a1a19; --surface-2:#242422; --line:#33332f; --grid:#2a2a27;
+    --text-primary:#f0efec; --text-secondary:#c3c2b7; --text-muted:#8f8e86;
+    --series-1:#3987e5; --series-2:#d95926; --seq-250:#184f95;
+    --del-bg:#4c1d1d; --del-fg:#fecaca; --ins-bg:#14361f; --ins-fg:#bbf7d0; --ch-bg:#3b3414;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+.viz-root{background:var(--surface-0);color:var(--text-primary);min-height:100vh;padding:20px 16px 60px}
+.wrap{max-width:1080px;margin:0 auto}
+header{position:relative;padding-right:90px}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+h2{font-size:17px;margin:0 0 4px}
+h3{font-size:14px;margin:18px 0 6px;color:var(--text-secondary);font-weight:600}
+p{margin:6px 0}
+a{color:var(--series-1)}
+.sub{color:var(--text-secondary)}
+.muted,.small{color:var(--text-muted)} .small{font-size:12.5px}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 18px}
+nav a{font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--text-secondary);text-decoration:none;background:var(--surface-1)}
+nav a:hover{color:var(--text-primary)}
+.card{background:var(--surface-1);border:1px solid var(--line);border-radius:12px;padding:16px 16px 18px;margin:0 0 16px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.tile{background:var(--surface-1);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile .k{font-size:12px;color:var(--text-secondary)}
+.tile .v{font-size:24px;font-weight:650;letter-spacing:-.02em;margin-top:2px}
+.tile .n{font-size:12px;color:var(--text-muted)}
+.callout{border-left:3px solid var(--series-1);background:var(--surface-2);padding:10px 12px;border-radius:0 8px 8px 0;margin:10px 0}
+.callout.warn{border-left-color:var(--warning)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill i{font-style:normal;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;color:#fff;font-size:11px}
+.pill-pass i{background:var(--good)} .pill-flaky i{background:var(--warning);color:#111} .pill-fail i{background:var(--critical)}
+.pill-pass i::before{content:"\2713"} .pill-flaky i::before{content:"~"} .pill-fail i::before{content:"!"}
+.badge{font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;border:1px solid var(--line)}
+.badge-PASS{color:var(--good);border-color:var(--good)} .badge-FAIL{color:var(--critical);border-color:var(--critical)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--text-secondary);font-size:12px;border-bottom:1px solid var(--line);padding:6px 8px}
+td{border-bottom:1px solid var(--grid);padding:6px 8px;vertical-align:top}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.two{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:760px){.two{grid-template-columns:1fr 1fr}}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--text-secondary);margin:4px 0 8px}
+.legend .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend .ln{display:inline-block;width:14px;height:0;border-top:2px dashed var(--text-muted);margin-right:5px;vertical-align:3px}
+svg text{fill:var(--text-secondary);font-size:11px}
+svg .lbl{fill:var(--text-primary);font-size:11.5px}
+.rowhit{cursor:pointer}
+.rowhit:hover rect.bg{fill:var(--surface-2)}
+.tools{position:absolute;top:0;right:0;display:flex;gap:6px}
+.icon-button{width:30px;height:30px;border-radius:999px;border:1px solid var(--line);background:var(--surface-1);color:var(--text-primary);font-size:14px;cursor:pointer}
+.tabs{display:flex;gap:4px}
+.tabs button{font:inherit;font-size:12.5px;padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface-1);color:var(--text-secondary);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--text-primary);color:var(--surface-1);border-color:var(--text-primary)}
+details{border-top:1px solid var(--grid);padding:6px 0}
+details summary{cursor:pointer;font-size:13px}
+del{background:var(--del-bg);color:var(--del-fg);text-decoration:line-through}
+ins{background:var(--ins-bg);color:var(--ins-fg);text-decoration:none}
+.diff-inline{font:12.5px/1.55 ui-monospace,Menlo,monospace;background:var(--surface-2);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;margin:6px 0}
+.diff-inline .rm{background:var(--del-bg)} .diff-inline .ad{background:var(--ins-bg)} .diff-inline .ch{background:var(--ch-bg)} .diff-inline .eq{color:var(--text-muted)}
+.diff-side{display:none;grid-template-columns:1fr;gap:4px;margin:6px 0 4px}
+.diff-side div{font-size:12.5px;padding:6px 8px;border-radius:6px;white-space:pre-wrap;word-break:break-word}
+.diff-side .old{background:color-mix(in oklab,var(--critical) 10%,transparent)}
+.diff-side .new{background:color-mix(in oklab,var(--good) 12%,transparent)}
+@media(min-width:760px){.diff-side{grid-template-columns:1fr 1fr}}
+.viz-root.side .diff-inline{display:none} .viz-root.side .diff-side{display:grid}
+.crit{font-size:12.5px} .crit .fix{color:var(--critical)}
+pre.text{font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--surface-2);border-radius:8px;padding:8px 10px;white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto}
+#tip{position:fixed;pointer-events:none;z-index:9;max-width:340px;background:var(--surface-1);color:var(--text-primary);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 6px 24px rgba(0,0,0,.18);display:none}
+#tip .t{font-weight:600;margin-bottom:3px}
+.foot{font-size:12px;color:var(--text-muted);margin-top:20px}
+</style>
+</head>
+<body>
+<div class="viz-root" id="root"><div class="wrap">
+
+<header>
+  <h1>{{ title | e }}</h1>
+{% if subtitle %}
+  <div class="sub">{{ subtitle | e }}</div>
+{% endif %}
+  <div class="muted small">Generated {{ generated_at | e }} by judge-jev {{ version | e }} · <span class="badge badge-{{ status | e }}">{{ status | e }}</span></div>
+  <div class="tools">
+    <button type="button" class="icon-button" title="Toggle dark mode" data-theme-toggle="1">&#x25D0;</button>
+  </div>
+</header>
+
+<nav>
+{% for table in tables %}
+  <a href="#{{ table.id | e }}">{{ table.title | e }}</a>
+{% endfor %}
+{% for row in toc_rows %}
+  <a href="#{{ row.id | e }}">{{ row.title | e }}</a>
+{% endfor %}
+</nav>
+
+<div class="tiles">
+{% for t in tiles %}
+  <div class="tile"><div class="k">{{ t.k | e }}</div><div class="v">{{ t.v | e }}</div><div class="n">{{ t.n | e }}</div></div>
+{% endfor %}
+</div>
+
+{% for table in tables %}
+<section class="card" id="{{ table.id | e }}">
+  <div class="card-head">
+    <h2>{{ table.title | e }}</h2>
+{% if loop.first and (summary_copy_json or summary_copy_context) %}
+    <div class="tabs" role="group" aria-label="Copy summary">
+{% if summary_copy_json %}
+      <button type="button" class="icon-button" title="Copy JSON" data-copy-text="{{ summary_copy_json | e }}">{}</button>
+{% endif %}
+{% if summary_copy_context %}
+      <button type="button" class="icon-button" title="Copy Context" data-copy-text="{{ summary_copy_context | e }}">&#x2398;</button>
+{% endif %}
+    </div>
+{% endif %}
+  </div>
+  <p class="sub small">{{ table.note | e }}</p>
+  <div class="scroll"><table>
+    <thead><tr>{% for c in table.columns %}<th scope="col">{{ c | e }}</th>{% endfor %}</tr></thead>
+    <tbody>
+{% for row in table.rows %}
+      <tr>{% for cell in row.cells %}<td{% if cell.small %} class="small"{% endif %}>{% if cell.pill %}<span class="pill pill-{{ cell.pill | e }}"><i></i>{{ cell.text | e }}</span>{% elif cell.href %}<a class="{% if cell.mono %}mono{% endif %}" href="{{ cell.href | e }}">{{ cell.text | e }}</a>{% elif cell.mono %}<span class="mono">{{ cell.text | e }}</span>{% else %}{{ cell.text | e }}{% endif %}</td>{% endfor %}</tr>
+{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endfor %}
+
+{% if kind == "quality" %}
+<div class="card-head" style="margin:0 0 10px">
+  <span class="sub small">Text diffs:</span>
+  <div class="tabs" id="diffTabs"><button type="button" aria-pressed="true" data-diff="inline">inline</button><button type="button" aria-pressed="false" data-diff="side">side by side</button></div>
+</div>
+{% endif %}
+
+{% for section in sections %}
+{{ section | safe }}
+{% endfor %}
+
+<section class="card" id="metadata">
+  <h2>Metadata</h2>
+  <table><tbody>
+{% for row in metadata_rows %}
+    <tr><th scope="row">{{ row.label | e }}</th><td>{{ row.value | e }}</td></tr>
+{% endfor %}
+  </tbody></table>
+</section>
+
+<div class="foot">Generated by judge-jev jev_report.py {{ kind | e }}. The JSON sidecar beside this page holds the same data; each panel is also written as its own XHTML file.</div>
+</div></div>
+<div id="tip"></div>
+
+<script>
+(function () {
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var NS = "http://www.w3.org/2000/svg";
+  var sv = function (t, a) { var e = document.createElementNS(NS, t); for (var k in a) e.setAttribute(k, a[k]); return e; };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]; }); };
+  var f2 = function (v) { return v == null ? "-" : (+v).toFixed(2); };
+  var tip = $("#tip");
+  function moveTip(ev) { var w = tip.offsetWidth, h = tip.offsetHeight, x = ev.clientX || 0, y = ev.clientY || 0; tip.style.left = Math.min(window.innerWidth - w - 8, x + 12) + "px"; tip.style.top = (y + h + 20 > window.innerHeight ? y - h - 12 : y + 14) + "px"; }
+  function bindTip(node, html) {
+    node.addEventListener("mouseenter", function (e) { tip.innerHTML = html(); tip.style.display = "block"; moveTip(e); });
+    node.addEventListener("mousemove", moveTip);
+    node.addEventListener("mouseleave", function () { tip.style.display = "none"; });
+    node.addEventListener("click", function (e) { tip.innerHTML = html(); tip.style.display = "block"; moveTip(e); e.stopPropagation(); });
+  }
+  var STYLE = {first: ["var(--series-2)", false], last: ["var(--series-1)", false], mid: ["var(--text-muted)", true]};
+
+  // One row per answer (question, per statement); one dot per run. Dashed lines: the threshold and the noise boundary.
+  function drawChart(box) {
+    var C = JSON.parse(box.getAttribute("data-chart"));
+    var legend = $(".legend", box.parentNode);
+    if (legend && !legend.childNodes.length) {
+      C.series.forEach(function (s) { var st = STYLE[s.style] || STYLE.mid; legend.insertAdjacentHTML("beforeend", "<span><span class=\"sw\" style=\"" + (st[1] ? "border:1.5px solid " + st[0] : "background:" + st[0]) + "\"></span>" + esc(s.label) + "</span>"); });
+      legend.insertAdjacentHTML("beforeend", "<span><span class=\"sw\" style=\"border:2px solid var(--critical)\"></span>Fix answer</span><span><span class=\"ln\"></span>" + C.threshold + " threshold</span><span><span class=\"ln\" style=\"border-color:var(--seq-250)\"></span>" + C.noise + " noise</span>");
+    }
+    var order = C.series.map(function (s) { return s.key; });
+    var W = Math.max(320, Math.min(1040, box.clientWidth || 700)), labW = W < 560 ? 120 : 240, rowH = 22, top = 22;
+    var H = top + C.rows.length * rowH + 8, x0 = labW + 8, x1 = W - 14;
+    var sx = function (v) { return x0 + Math.max(0, Math.min(1, v)) * (x1 - x0); };
+    var s = sv("svg", {width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img", "aria-label": "Confidence of each Jev answer per run"});
+    [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(function (v) {
+      s.appendChild(sv("line", {x1: sx(v), x2: sx(v), y1: top - 4, y2: H - 6, stroke: "var(--grid)"}));
+      var t = sv("text", {x: sx(v), y: 12, "text-anchor": "middle"}); t.textContent = v.toFixed(1); s.appendChild(t);
+    });
+    s.appendChild(sv("line", {x1: sx(C.threshold), x2: sx(C.threshold), y1: top - 4, y2: H - 6, stroke: "var(--text-muted)", "stroke-dasharray": "4 3", "stroke-width": 1.5}));
+    s.appendChild(sv("line", {x1: sx(C.noise), x2: sx(C.noise), y1: top - 4, y2: H - 6, stroke: "var(--seq-250)", "stroke-dasharray": "4 3", "stroke-width": 1.5}));
+    var lastKey = order[order.length - 1];
+    C.rows.forEach(function (r, i) {
+      var y = top + i * rowH + rowH / 2, g = sv("g", {"class": "rowhit"});
+      g.appendChild(sv("rect", {"class": "bg", x: 0, y: y - rowH / 2, width: W, height: rowH, fill: "transparent", rx: 4}));
+      var bad = r.dots.some(function (d) { return d.series === lastKey && d.failing; });
+      var lab = sv("text", {x: labW, y: y + 4, "text-anchor": "end", "class": "lbl"});
+      var name = r.label.length > (W < 560 ? 18 : 36) ? r.label.slice(0, W < 560 ? 17 : 35) + "…" : r.label;
+      lab.textContent = (bad ? "⚠ " : "") + name; g.appendChild(lab);
+      var cs = r.dots.map(function (d) { return d.confidence; });
+      if (cs.length) g.appendChild(sv("line", {x1: sx(Math.min.apply(null, cs)), x2: sx(Math.max.apply(null, cs)), y1: y, y2: y, stroke: "var(--line)", "stroke-width": 2}));
+      r.dots.forEach(function (d) {
+        var k = order.indexOf(d.series), st = STYLE[(C.series[k] || {}).style] || STYLE.mid;
+        var off = order.length > 1 ? (k / (order.length - 1) - 0.5) * 6 : 0;
+        g.appendChild(sv("circle", {cx: sx(d.confidence), cy: y + off, r: 4.5, fill: st[1] ? "none" : st[0], stroke: st[1] ? st[0] : "var(--surface-1)", "stroke-width": st[1] ? 1.5 : 2}));
+        if (d.failing) g.appendChild(sv("circle", {cx: sx(d.confidence), cy: y + off, r: 7.5, fill: "none", stroke: "var(--critical)", "stroke-width": 1.5}));
+      });
+      bindTip(g, function () {
+        var lines = order.map(function (key) {
+          var ds = r.dots.filter(function (d) { return d.series === key; });
+          return ds.length ? "<b>" + esc(key) + "</b>: " + ds.map(function (d) { return esc(d.choice) + " " + f2(d.confidence) + (d.failing ? " ✗" : ""); }).join(", ") : "";
+        }).filter(Boolean).join("<br>");
+        var last = r.dots.filter(function (d) { return d.series === lastKey; }).pop();
+        return "<div class=\"t\">" + esc(r.label) + "</div>" + (r.statement ? "<div class=\"muted\">" + esc(r.statement).slice(0, 220) + "</div>" : "") + "<div class=\"muted\">" + esc(r.question).slice(0, 220) + "</div><br>" + lines + (last ? "<br><br><span class=\"muted\">Last: " + esc(last.criterion) + "</span>" : "");
+      });
+      s.appendChild(g);
+    });
+    var holder = $(".chart-svg", box) || box;
+    holder.replaceChildren(s);
+  }
+  function drawAll() { document.querySelectorAll(".conf-chart").forEach(drawChart); }
+  drawAll();
+  var rz; window.addEventListener("resize", function () { clearTimeout(rz); rz = setTimeout(drawAll, 150); });
+
+  document.addEventListener("click", async function (event) {
+    tip.style.display = "none";
+    var toggle = event.target.closest("[data-theme-toggle]");
+    if (toggle) {
+      var root = document.documentElement;
+      var dark = root.getAttribute("data-theme") === "dark" || (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      root.setAttribute("data-theme", dark ? "light" : "dark");
+      return;
+    }
+    var diff = event.target.closest("[data-diff]");
+    if (diff) {
+      $("#root").classList.toggle("side", diff.getAttribute("data-diff") === "side");
+      document.querySelectorAll("[data-diff]").forEach(function (b) { b.setAttribute("aria-pressed", b === diff ? "true" : "false"); });
+      return;
+    }
+    var button = event.target.closest("[data-copy-text]");
+    if (!button) return;
+    try { await navigator.clipboard.writeText(button.getAttribute("data-copy-text") || ""); button.setAttribute("title", "Copied"); }
+    catch (err) { button.setAttribute("title", "Copy failed"); }
+  });
+})();
+</script>
+</body>
+</html>

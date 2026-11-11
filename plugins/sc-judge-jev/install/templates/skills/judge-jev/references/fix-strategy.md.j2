@@ -186,4 +186,6 @@ Only measured results:
 - each passing record: runs passed before and after (for example 0/3 to 6/6), the token guard's output, the proposer models used, `diff -u "$W/original.md" "$F"`, and one line per change naming the answer it fixed;
 - each unresolved statement: its text, Jev's answers per run verbatim (`question=choice @confidence`), what was tried and its measured result, your diagnosis, and the decision you need from the user (for example a number the repository does not state).
 
+Then write the HTML report of the loop and give the user its path: `references/report.md` (pass your drift review as `--review`).
+
 Leave `$W` and `.sc/judge-jev/logs/` in place.

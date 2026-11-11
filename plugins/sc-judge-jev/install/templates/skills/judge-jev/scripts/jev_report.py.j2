@@ -1,0 +1,780 @@
+---
+name: sc-judge-jev-script-jev_report
+version: 0.1.0
+format: python
+description: sc-judge-jev install-time script, rendered by install.py.
+required_variables:
+  - version
+---
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "pydantic>=2.7,<3",
+#   "sc-observability==1.5.0",
+# ]
+# ///
+"""jev_report.py: an HTML report of judge-jev runs (references/report.md). It reads local files and the run log only;
+it never calls Jev.
+
+quality  Each record's progress across its quality runs: the verdict per step, every Jev answer's confidence per
+         run (one dot per answer), the failing answers first and last, and a diff of the record's text from its
+         first judged version to its last. Runs come from the sc-observability log under --run-dir. A run named
+         ``<step>-r<N>`` is repeat N of ``<step>``; any other name is a step of one run. Steps are ordered by time.
+         --review FILE adds the author's drift review: per record, the changes kept and discarded, and why.
+check    Each location's verdict against the records that govern it, aggregated per record and per location, from a
+         check results file (the contract is ``CheckResults`` below). judge-jev has no ``check`` command yet: this mode
+         renders that contract so the report exists when the command does.
+
+Rendering: each panel is one strict sc-compose render of templates/<kind>-panel.xhtml.j2 and the page one render of
+templates/report.html.j2, which receives top-level arrays and the rendered panels. Only the diff fragments are built
+here (escaped text inside <del>/<ins>).
+
+Output: --out DIR receives <name>.html, the sidecar <name>.json and one XHTML panel per unit in <name>/. One JSON
+envelope ``{success, data, error}`` on stdout; exit 0 when the report was written, 2 with a typed error
+(VALIDATION.INPUT, LOG.READ, REPORT.NO_RUNS, SCRIPT.IO, DEPENDENCY.SC_COMPOSE, RENDER.FAILED, SCRIPT.INTERNAL),
+130 on interrupt.
+"""
+
+from __future__ import annotations
+
+import argparse
+import datetime
+import difflib
+import html
+import json
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from typing import Any, Callable, Literal, Optional
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from result import Err, Ok, Result, run_main  # noqa: E402
+from jev_errors import JudgeError  # noqa: E402
+import jev_runs  # noqa: E402
+
+VERSION = "{{ version }}"
+SKILL_DIR = pathlib.Path(__file__).resolve().parent.parent
+TEMPLATES = SKILL_DIR / "templates"
+REPORT_SCHEMA = "judge-jev/report/1"
+NOISE = 0.5          # below it an answer is a coin flip (references/fix-strategy.md)
+DEFAULT_THRESHOLD = 0.6
+ERROR_EXIT = 2
+TIMEOUT = 120
+REPEAT_RE = re.compile(r"^(?P<step>.+)-r(?P<n>\d+)$")
+METADATA_FIELDS = {"id", "status", "version", "created", "last_updated", "owner", "supersedes", "superseded_by",
+                   "decision_date"}
+
+Runner = Callable[[list, pathlib.Path], tuple]
+
+
+def run_command(argv: list, cwd: pathlib.Path) -> tuple:
+    """Run ``argv`` in ``cwd``; (exit code, stdout, stderr). A missing program is exit 127."""
+    try:
+        proc = subprocess.run(argv, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", stdin=subprocess.DEVNULL, timeout=TIMEOUT, check=False)
+    except FileNotFoundError as exc:
+        return 127, "", str(exc)
+    except subprocess.TimeoutExpired:
+        return 124, "", f"{argv[0]} timed out after {TIMEOUT}s"
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def fail(code: str, message: str, action: str, data: Any = None) -> Err:
+    error = JudgeError(code, message, action=action)
+    error.data = data
+    return Err(error)
+
+
+# ---------------------------------------------------------------- inputs (pydantic, ADR-JEV-0005)
+
+
+def _models():
+    """The report's JSON inputs. Built on first use so ``--help`` and the log reader need no pydantic."""
+    from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+    class Strict(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+
+    class ReviewChange(Strict):
+        change: str = Field(min_length=1, description="what changed, in a few words")
+        why: str = Field(min_length=1, description="why it was kept or discarded")
+        authority: str = Field("", description="the REQ, ADR, file and line it aligns with or drifts from")
+
+    class RecordReview(Strict):
+        kept: list[ReviewChange] = []
+        discarded: list[ReviewChange] = []
+
+    class Review(Strict):
+        """The author's drift review of each record's first-to-last change (references/report.md)."""
+        reviewed_at: str = Field(min_length=1)
+        records: dict[str, RecordReview]
+
+    class Answer(Strict):
+        id: str
+        text: str
+        choice: str
+        confidence: float = Field(ge=0.0, le=1.0)
+        criterion: str
+
+    class CheckRequest(Strict):
+        variant: Optional[Literal["raw", "rendered"]] = None   # task mode: the raw template, then the rendered assignment
+        request_id: str
+        text: str = ""                                          # the location text this request sent
+        verdict: Literal["yes", "no"]
+        reason: list[Answer] = Field(min_length=1)
+
+    class CheckPair(Strict):
+        record_id: str
+        record_kind: Literal["req", "adr", "nfr"]
+        record_title: str = ""
+        location: str = Field(min_length=1)                     # path, path#Heading, or path::Symbol
+        mode: Literal["prompt", "skill", "task", "agent", "code"]
+        requests: list[CheckRequest] = Field(min_length=1)
+
+        @model_validator(mode="after")
+        def _variants(self):
+            variants = [r.variant for r in self.requests]
+            if self.mode == "task" and variants != ["raw", "rendered"]:
+                raise ValueError("task mode sends two requests, variant raw then rendered")
+            if self.mode != "task" and variants != [None]:
+                raise ValueError(f"{self.mode} mode sends one request, with no variant")
+            return self
+
+    class CheckResults(Strict):
+        """What ``judge-jev check`` (one pair) or ``check --profile`` (every pair) will print as ``data``."""
+        run: str = ""
+        questions: str = ""                                     # the question set or its --questions override
+        pairs: list[CheckPair] = Field(min_length=1)
+
+    return Review, CheckResults
+
+
+def _load(path: str, model, what: str) -> Result[Any, JudgeError]:
+    try:
+        raw = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return fail("SCRIPT.IO", f"{what} {path} does not exist", "Pass an existing file.")
+    except (OSError, UnicodeError) as exc:
+        return fail("SCRIPT.IO", f"{what} {path} could not be read: {type(exc).__name__}", "Make it a readable UTF-8 file.")
+    except json.JSONDecodeError as exc:
+        return fail("VALIDATION.INPUT", f"{what} {path} is not valid JSON: {exc.msg} (line {exc.lineno})", "Fix the file.")
+    from pydantic import ValidationError
+    try:
+        return Ok(model.model_validate(raw))
+    except ValidationError as exc:
+        problems = "; ".join(f"{'.'.join(str(p) for p in e['loc']) or '(top)'}: {e['msg']}" for e in exc.errors()[:10])
+        return fail("VALIDATION.INPUT", f"{what} {path} does not match its contract: {problems}",
+                    "Fix the fields named; references/report.md gives the format.")
+
+
+# ---------------------------------------------------------------- diffs
+
+
+E = html.escape
+
+
+def word_diff(a: str, b: str) -> str:
+    """Escaped ``b`` with removed words in <del> and added words in <ins>."""
+    x, y = re.findall(r"\S+|\s+", a or ""), re.findall(r"\S+|\s+", b or "")
+    out = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, x, y, autojunk=False).get_opcodes():
+        if op == "equal":
+            out.append(E("".join(x[i1:i2])))
+            continue
+        if i2 > i1:
+            out.append("<del>" + E("".join(x[i1:i2])) + "</del>")
+        if j2 > j1:
+            out.append("<ins>" + E("".join(y[j1:j2])) + "</ins>")
+    return "".join(out)
+
+
+def line_diff(a: str, b: str) -> str:
+    """Line diff: unchanged lines, word diffs of replaced lines, removed and added lines; escaped."""
+    x, y = (a or "").splitlines(), (b or "").splitlines()
+    rows = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, x, y, autojunk=False).get_opcodes():
+        if op == "equal":
+            rows += [f'<div class="eq">{E(line)}</div>' for line in x[i1:i2]]
+        elif op == "replace" and i2 - i1 == j2 - j1:
+            rows += [f'<div class="ch">{word_diff(p, q)}</div>' for p, q in zip(x[i1:i2], y[j1:j2])]
+        else:
+            rows += [f'<div class="rm">- {E(line)}</div>' for line in x[i1:i2]]
+            rows += [f'<div class="ad">+ {E(line)}</div>' for line in y[j1:j2]]
+    return "".join(rows)
+
+
+def flatten(record: dict, prefix: str = "") -> dict:
+    """A record's text fields, ``{dotted path: text}``; metadata (id, status, dates, owner) left out. A list of
+    statements becomes one field, a ``Modal: text`` line each."""
+    out: dict = {}
+    for key, value in record.items():
+        if not prefix and key in METADATA_FIELDS:
+            continue
+        path = prefix + key
+        if isinstance(value, dict):
+            out.update(flatten(value, path + "."))
+        elif isinstance(value, list):
+            lines = []
+            for item in value:
+                if isinstance(item, dict) and "text" in item:
+                    lines.append(f"{item['modal']}: {item['text']}" if item.get("modal") else str(item["text"]))
+                elif isinstance(item, str):
+                    lines.append(item)
+                else:
+                    lines.append(json.dumps(item, sort_keys=True, ensure_ascii=False))
+            if lines:
+                out[path] = "\n".join(lines)
+        elif value not in (None, ""):
+            out[path] = str(value)
+    return out
+
+
+def text_changes(before: dict, after: dict) -> list:
+    a, b = flatten(before), flatten(after)
+    changes = []
+    for field in list(a) + [k for k in b if k not in a]:
+        old, new = a.get(field, ""), b.get(field, "")
+        if old != new:
+            changes.append({"field": field, "before": old, "after": new, "html": line_diff(old, new)})
+    return changes
+
+
+# ---------------------------------------------------------------- the quality log
+
+
+def dom_id(prefix: str, value: str) -> str:
+    return prefix + "-" + re.sub(r"[^A-Za-z0-9._-]", "_", value)
+
+
+def natural(text: str) -> list:
+    return [int(p) if p.isdigit() else p for p in re.split(r"(\d+)", text)]
+
+
+def step_of(run_name: str) -> str:
+    m = REPEAT_RE.match(run_name)
+    return m.group("step") if m else run_name
+
+
+def when(text: str) -> datetime.datetime:
+    """An sc-observability timestamp (``Z``, 1 to 9 fraction digits) as an aware datetime, so times compare exactly."""
+    s = re.sub(r"(\.\d{6})\d+", r"\1", text.strip().replace("Z", "+00:00"))
+    s = re.sub(r"\.(\d{1,5})(?=[+-])", lambda m: "." + m.group(1).ljust(6, "0"), s)
+    value = datetime.datetime.fromisoformat(s)
+    return value if value.tzinfo else value.replace(tzinfo=datetime.timezone.utc)
+
+
+def list_verdicts(run_dir: pathlib.Path, runs: list, records: list) -> Result[list, JudgeError]:
+    """Every ``verdict`` event under the run dir, narrowed to ``runs`` and ``records``: [(time, fields)], oldest first.
+    Each is one invocation: a run name used twice gives two. One query per named run (or record, or one for all); a
+    query that reaches LOG_LIMIT is refused."""
+    import sc_observability as sco
+    created = sco.create_logger(sco.LoggerConfig(service=jev_runs.LOG_SERVICE, log_root=str(run_dir)))
+    if isinstance(created, sco.Err):
+        return fail("LOG.READ", f"could not open the log under {run_dir}: {created.error}",
+                    "Pass the --run-dir of a finished quality run.")
+    logger = created.value
+    matches = ([("run", r) for r in runs] or [("record_id", r) for r in records] or [None])
+    found: dict = {}
+    try:
+        for match in matches:
+            query = sco.LogQuery(service=jev_runs.LOG_SERVICE, action="verdict", limit=jev_runs.LOG_LIMIT,
+                                 field_matches=() if match is None else (sco.FieldMatch(field=match[0], value=match[1]),))
+            got = logger.query(query)
+            if isinstance(got, sco.Err):
+                return fail("LOG.READ", f"log query failed: {got.error}", "Pass the --run-dir of a finished quality run.")
+            if len(got.value.events) >= jev_runs.LOG_LIMIT:
+                return fail("LOG.READ", f"{jev_runs.LOG_LIMIT} or more verdicts match {match or 'the whole log'}; "
+                            f"one query returns at most {jev_runs.LOG_LIMIT}", "Narrow the report with --run or --record.")
+            for e in got.value.events:
+                fields = jev_runs._plain(e.fields)
+                at = when(str(e.timestamp))
+                found[(at, fields.get("run"), fields.get("record_id"))] = (at, fields)
+    finally:
+        logger.shutdown()
+    out = [v for v in found.values()
+           if (not runs or v[1].get("run") in runs) and (not records or v[1].get("record_id") in records)]
+    return Ok(sorted(out, key=lambda v: v[0]))
+
+
+def _record_of(request_fields: dict) -> Optional[dict]:
+    """The Raptor record a request sent: its ``item.text`` JSON, or that JSON's ``record`` in a per-statement request."""
+    try:
+        sent = json.loads(request_fields["request"]["state"]["item"]["text"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if isinstance(sent, dict) and "statement" in sent and isinstance(sent.get("record"), dict):
+        return sent["record"]
+    return sent if isinstance(sent, dict) else None
+
+
+def _answers(events: dict, record_id: str) -> list:
+    """Every answer of the record's run: one per question per request, from ``statement`` and per-record ``wave``
+    events (each reason entry carries the question, Jev's choice, its confidence and the chosen criterion)."""
+    rows = []
+    for fields in events.get("statement", []):
+        if fields.get("record_id") != record_id:
+            continue
+        st = fields.get("statement") or {}
+        for r in fields.get("reason") or []:
+            rows.append({"node": fields.get("node"), "statement": st.get("index"), "statement_text": st.get("text", ""),
+                         **_answer(r)})
+    for fields in events.get("wave", []):
+        if fields.get("record_id") != record_id or fields.get("per") == "statement":
+            continue
+        for r in fields.get("reason") or []:
+            rows.append({"node": fields.get("node"), "statement": None, "statement_text": "", **_answer(r)})
+    for row in rows:
+        row["item"] = " · ".join(str(p) for p in (row["node"], None if row["statement"] is None else f"s{row['statement']}",
+                                                   row["question"]) if p is not None)
+    return rows
+
+
+def _answer(reason: dict) -> dict:
+    criterion = reason.get("criterion") or ""
+    return {"question": reason.get("id"), "question_text": reason.get("text", ""), "choice": reason.get("choice"),
+            "confidence": float(reason.get("confidence") or 0.0), "criterion": criterion, "failing": "Fix:" in criterion}
+
+
+def read_quality(run_dir: pathlib.Path, runs: list, records: list) -> Result[list, JudgeError]:
+    """One entry per invocation (verdict event) the log holds, oldest first: run, step, at, record id/kind/iri,
+    verdict, threshold, the record as sent, and its answers. An invocation owns the record's events after the previous
+    verdict for the same run name and record and up to its own, so a run name reused is two runs, never one merged."""
+    verdicts = list_verdicts(run_dir, runs, records)
+    if isinstance(verdicts, Err):
+        return verdicts
+    by_run: dict = {}
+    seen: dict = {}
+    out = []
+    for at, v in verdicts.value:
+        run, rid = v.get("run"), v.get("record_id")
+        if run not in by_run:
+            events = jev_runs.read_run_events(run_dir, run, actions=("request", "result", "statement", "wave"), timestamps=True)
+            if isinstance(events, Err):
+                return events
+            by_run[run] = events.value
+        since = seen.get((run, rid))
+        seen[(run, rid)] = at
+        mine = {action: [f for f in fields if f.get("record_id") == rid and (since is None or when(f["_timestamp"]) > since)
+                         and when(f["_timestamp"]) <= at]
+                for action, fields in by_run[run].items()}
+        repeats = sum(1 for e in out if e["run_name"] == run and e["record_id"] == rid)
+        thresholds = [f["threshold"] for f in mine["result"] if f.get("threshold") is not None]
+        out.append({"run": run if not repeats else f"{run} ({repeats + 1})", "run_name": run, "step": step_of(run),
+                    "at": at.isoformat().replace("+00:00", "Z"), "record_id": rid, "record_kind": v.get("record_kind"),
+                    "record_iri": v.get("record_iri"), "verdict": v.get("verdict"),
+                    "threshold": float(thresholds[0]) if thresholds else DEFAULT_THRESHOLD,
+                    "record": _record_of(mine["request"][0]) if mine["request"] else None, "answers": _answers(mine, rid)})
+    return Ok(out)
+
+
+# ---------------------------------------------------------------- the quality model
+
+
+def _weakest(answers: list) -> Optional[float]:
+    return min((a["confidence"] for a in answers), default=None)
+
+
+def _f2(value: Optional[float]) -> str:
+    return "-" if value is None else f"{value:.2f}"
+
+
+def _tally(runs: list) -> str:
+    yes = sum(1 for r in runs if r["verdict"] == "yes")
+    return f"yes {yes}/{len(runs)}" if yes * 2 >= len(runs) else f"no {len(runs) - yes}/{len(runs)}"
+
+
+def _step_status(runs: list) -> str:
+    verdicts = {r["verdict"] for r in runs}
+    return "pass" if verdicts == {"yes"} else "fail" if verdicts == {"no"} else "flaky"
+
+
+def quality_unit(record_id: str, entries: list, review: Optional[dict]) -> dict:
+    """One record's panel model from its (run, record) entries, oldest first."""
+    steps: dict = {}
+    for e in entries:
+        steps.setdefault(e["step"], []).append(e)
+    order = list(steps)
+    first_run, last_run = steps[order[0]][0], steps[order[-1]][-1]
+    last_step = steps[order[-1]]
+    record = last_run["record"] or first_run["record"] or {}
+    choices: dict = {}
+    for e in last_step:
+        for a in e["answers"]:
+            choices.setdefault(a["item"], set()).add(a["choice"])
+    flaky = sorted((item for item, c in choices.items() if len(c) > 1), key=natural)
+    changes = text_changes(first_run["record"] or {}, last_run["record"] or {})
+    if first_run["record"] is None or last_run["record"] is None:
+        text_note = "The log holds no request for the first or last run, so the record text could not be compared."
+    else:
+        text_note = ""
+    series = []
+    for i, step in enumerate(order):
+        key = "first" if i == 0 else "last" if i == len(order) - 1 else "mid"
+        series.append({"key": step, "label": f"{step} ({len(steps[step])} run{'s' if len(steps[step]) > 1 else ''})",
+                       "style": key})
+    items: dict = {}
+    for step in order:
+        for e in steps[step]:
+            for a in e["answers"]:
+                row = items.setdefault(a["item"], {"label": a["item"], "question": a["question_text"],
+                                                   "statement": a["statement_text"], "dots": []})
+                row["dots"].append({"series": step, "run": e["run"], "choice": a["choice"],
+                                    "confidence": a["confidence"], "failing": a["failing"],
+                                    "criterion": a["criterion"]})
+    chart = {"threshold": last_run["threshold"], "noise": NOISE, "series": series,
+             "rows": [items[k] for k in sorted(items, key=natural)]}
+    rev = (review or {}).get(record_id)
+    trail = [{"run": e["run"], "step": e["step"], "at": e["at"], "verdict": e["verdict"],
+              "failing": sum(1 for a in e["answers"] if a["failing"]), "weakest": _f2(_weakest(e["answers"]))}
+             for e in entries]
+    status = _step_status(last_step)
+    return {
+        "id": record_id, "dom": dom_id("record", record_id), "kind": (first_run["record_kind"] or "").upper(),
+        "iri": first_run["record_iri"] or "", "title": str(record.get("title") or ""), "status": status,
+        "steps": [{"step": s, "runs": len(steps[s]), "tally": _tally(steps[s]), "status": _step_status(steps[s]),
+                   "failing": sum(1 for e in steps[s] for a in e["answers"] if a["failing"]),
+                   "weakest": _f2(_weakest([a for e in steps[s] for a in e["answers"]]))} for s in order],
+        "first_step": order[0], "last_step": order[-1],
+        "first_failing": [a for a in first_run["answers"] if a["failing"]],
+        "last_failing": [a for a in last_run["answers"] if a["failing"]],
+        "first_run": first_run["run"], "last_run": last_run["run"],
+        "flaky": flaky, "trail": trail, "changes": changes, "text_note": text_note, "chart": chart,
+        "review": rev, "answers": sum(len(e["answers"]) for e in entries),
+    }
+
+
+def quality_context(u: dict) -> str:
+    """A panel's Copy Context: the plain-text summary an agent pastes into its next step."""
+    lines = [f"{u['id']} ({u['kind']}) {u['title']}: {u['status'].upper()}",
+             "Steps: " + "; ".join(f"{s['step']} {s['tally']}" for s in u["steps"])]
+    lines += [f"Fix answer left ({u['last_run']}): {a['item']} = {a['choice']} ({a['confidence']:.2f}) - {a['criterion']}"
+              for a in u["last_failing"]]
+    if u["flaky"]:
+        lines.append("Answers that changed between repeats of the last step: " + ", ".join(u["flaky"]))
+    lines += [f"Changed {c['field']}:\n  - {c['before']}\n  + {c['after']}" for c in u["changes"]]
+    return "\n".join(lines)
+
+
+def _strip(u: dict) -> dict:
+    """A unit without its HTML fragments (the sidecar and Copy JSON carry text, not markup)."""
+    return dict(u, changes=[{k: v for k, v in c.items() if k != "html"} for c in u["changes"]])
+
+
+# ---------------------------------------------------------------- rendering
+
+
+def find_sc_compose() -> Result[str, JudgeError]:
+    binary = shutil.which("sc-compose")
+    if binary is None:
+        return fail("DEPENDENCY.SC_COMPOSE", "sc-compose is not on PATH; the report is rendered with it",
+                    "Install sc-compose 1.7.0 or newer and put it on PATH (references/installation-and-troubleshooting.md).")
+    return Ok(binary)
+
+
+def render(binary: str, template: str, variables: dict, out: pathlib.Path, scratch: pathlib.Path,
+           run: Runner) -> Result[str, JudgeError]:
+    """One strict, render-checked sc-compose render of templates/<template> into ``out``; its text."""
+    var_file = scratch / (out.name + ".vars.json")
+    var_file.write_text(json.dumps(variables, ensure_ascii=False), encoding="utf-8")
+    code, _, errout = run([binary, "render", "--root", str(TEMPLATES), "--file", str(TEMPLATES / template),
+                           "--var-file", str(var_file), "--strict", "--check-render", "--output", str(out)],
+                          scratch)  # sc-compose keeps its log in the working folder: the scratch folder, never the skill
+    if code != 0:
+        return fail("RENDER.FAILED", f"sc-compose could not render {template} (exit {code}): {errout.strip()[-1500:]}",
+                    "Fix the template or the variables named above; rerun.")
+    try:
+        return Ok(out.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError) as exc:
+        return fail("SCRIPT.IO", f"{out} could not be read back: {type(exc).__name__}", "Check the --out folder.")
+
+
+def _dump(value: Any) -> str:
+    return json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False)
+
+
+def write_report(args, kind: str, units: list, panel_template: str, panel_vars: Callable, shell: dict, model: dict,
+                 run: Runner) -> Result[dict, JudgeError]:
+    """Render every panel, then the page around them; write the sidecar. ``shell`` holds the page's own variables."""
+    binary = find_sc_compose()
+    if isinstance(binary, Err):
+        return binary
+    out = pathlib.Path(args.out).resolve()  # sc-compose runs in a scratch folder
+    panels_dir = out / args.name
+    try:
+        panels_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        return fail("SCRIPT.IO", f"could not create {panels_dir}: {exc}", "Pass a writable --out folder.")
+    sections, panel_paths = [], []
+    with tempfile.TemporaryDirectory(prefix="jev-report-") as tmp:
+        scratch = pathlib.Path(tmp)
+        for u in units:
+            path = panels_dir / f"{u['dom']}.xhtml"
+            got = render(binary.value, panel_template, panel_vars(u), path, scratch, run)
+            if isinstance(got, Err):
+                return got
+            sections.append(got.value)
+            panel_paths.append(path.as_posix())
+        page = out / f"{args.name}.html"
+        generated = model["generated_at"]
+        got = render(binary.value, "report.html.j2", dict(shell, sections=sections, generated_at=generated,
+                                                          kind=kind, version=VERSION), page, scratch, run)
+        if isinstance(got, Err):
+            return got
+    sidecar = out / f"{args.name}.json"
+    try:
+        sidecar.write_text(_dump(model) + "\n", encoding="utf-8")
+    except OSError as exc:
+        return fail("SCRIPT.IO", f"could not write {sidecar}: {exc}", "Pass a writable --out folder.")
+    return Ok({"html": page.as_posix(), "sidecar": sidecar.as_posix(), "panels": panel_paths, "status": shell["status"],
+               "units": len(units)})
+
+
+def _now() -> str:
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def quality_panel_vars(u: dict) -> dict:
+    return {
+        "id": u["id"], "dom": u["dom"], "kind": u["kind"], "title": u["title"], "status": u["status"], "iri": u["iri"],
+        "steps": u["steps"], "first_step": u["first_step"], "last_step": u["last_step"],
+        "first_run": u["first_run"], "last_run": u["last_run"],
+        "first_failing": [dict(a, confidence=_f2(a["confidence"])) for a in u["first_failing"]],
+        "last_failing": [dict(a, confidence=_f2(a["confidence"])) for a in u["last_failing"]],
+        "flaky": ", ".join(u["flaky"]), "trail": u["trail"], "changes": u["changes"], "text_note": u["text_note"],
+        "chart_json": json.dumps(u["chart"], ensure_ascii=False, sort_keys=True),
+        "review_kept": (u["review"] or {}).get("kept", []), "review_discarded": (u["review"] or {}).get("discarded", []),
+        "reviewed": u["review"] is not None,
+        "copy_json": _dump(_strip(dict(u, chart=None))), "context_text": quality_context(u),
+    }
+
+
+def build_quality(args, run: Runner = run_command) -> Result[dict, JudgeError]:
+    review = None
+    if args.review:
+        Review, _ = _models()
+        got = _load(args.review, Review, "review file")
+        if isinstance(got, Err):
+            return got
+        review = got.value.model_dump()
+    run_dir = pathlib.Path(args.run_dir)
+    entries = read_quality(run_dir, args.run, args.record)
+    if isinstance(entries, Err):
+        return entries
+    if not entries.value:
+        return fail("REPORT.NO_RUNS", f"no quality verdict under {run_dir} matches the runs and records named",
+                    "Run 'jev_judge.py quality' first, or check --run-dir, --run and --record.")
+    per_record: dict = {}
+    for e in entries.value:
+        per_record.setdefault(e["record_id"], []).append(e)
+    units = [quality_unit(rid, per_record[rid], (review or {}).get("records")) for rid in sorted(per_record, key=natural)]
+    warnings = [f"review names {rid}, which no run in this report judged" for rid in sorted((review or {}).get("records", {}))
+                if rid not in per_record]
+    passing_first = sum(1 for u in units if u["steps"][0]["status"] == "pass")
+    passing_last = sum(1 for u in units if u["status"] == "pass")
+    flaky = sum(len(u["flaky"]) for u in units)
+    status = "PASS" if passing_last == len(units) else "FAIL"
+    rows = [{"dom": u["dom"], "cells": [
+        {"text": u["id"], "href": "#" + u["dom"], "mono": True}, {"text": u["kind"]}, {"text": u["title"]},
+        {"text": u["steps"][0]["tally"], "pill": u["steps"][0]["status"]},
+        {"text": u["steps"][-1]["tally"], "pill": u["status"]},
+        {"text": f"{len(u['first_failing'])} → {len(u['last_failing'])}", "mono": True},
+        {"text": u["steps"][-1]["weakest"], "mono": True},
+        {"text": str(len(u["flaky"])), "mono": True},
+        {"text": ", ".join(c["field"] for c in u["changes"]) or "-", "small": True}]} for u in units]
+    shell = {
+        "title": args.title or "judge-jev quality report",
+        "subtitle": "Each record from its first judged step to its last. Struck red = removed text, green = added.",
+        "status": status,
+        "tiles": [{"k": "Records", "v": str(len(units)), "n": f"{len(entries.value)} judged runs"},
+                  {"k": "Passing at the start", "v": f"{passing_first}/{len(units)}", "n": "every run of the first step yes"},
+                  {"k": "Passing now", "v": f"{passing_last}/{len(units)}", "n": "every run of the last step yes"},
+                  {"k": "Jev answers", "v": str(sum(u["answers"] for u in units)), "n": "one dot each below"},
+                  {"k": "Unstable answers", "v": str(flaky), "n": "choice changed between repeats of the last step"}],
+        "tables": [{"title": "Records: first step to last", "id": "summary",
+                    "note": "A step is the runs named <step>-r1, -r2, ...; its tally is the majority verdict over its runs. "
+                            "Fix answers = answers whose chosen criterion carries a Fix (first run → last run); the verdict comes from the tree's rules.",
+                    "columns": ["Record", "Kind", "Title", "First step", "Last step", "Fix answers", "Weakest now",
+                                "Unstable", "Text changed"], "rows": rows}],
+        "toc_rows": [{"id": u["dom"], "title": f"{u['id']} {u['title']}", "status": u["status"]} for u in units],
+        "metadata_rows": [{"label": "Run dir", "value": str(run_dir)},
+                          {"label": "Runs", "value": ", ".join(args.run) or "every run in the log"},
+                          {"label": "Records", "value": ", ".join(args.record) or "every record judged"},
+                          {"label": "Drift review", "value": args.review or "-"},
+                          {"label": "Noise boundary", "value": f"{NOISE} (answers below it flip between repeats)"}],
+        "summary_copy_json": _dump([{c: r["cells"][i]["text"] for i, c in enumerate(["record", "kind", "title", "first",
+                                     "last", "failing", "weakest", "unstable", "changed"])} for r in rows]),
+        "summary_copy_context": "\n".join(f"{u['id']}: {u['steps'][0]['tally']} -> {u['steps'][-1]['tally']}" for u in units),
+    }
+    model = {"schema": REPORT_SCHEMA, "mode": "quality", "generated_at": _now(), "status": status,
+             "run_dir": str(run_dir), "records": [_strip(u) for u in units], "review": review, "warnings": warnings}
+    written = write_report(args, "quality", units, "quality-record-panel.xhtml.j2", quality_panel_vars, shell, model, run)
+    if isinstance(written, Err):
+        return written
+    return Ok(dict(written.value, records=len(units), passing_first=passing_first, passing_last=passing_last,
+                   warnings=warnings))
+
+
+# ---------------------------------------------------------------- check (the contract; no check command yet)
+
+
+def check_unit(location: str, pairs: list) -> dict:
+    """One location's panel model: every record judged at it, each request's answers, and the dot chart."""
+    mode = pairs[0]["mode"]
+    records, series, rows = [], {}, []
+    for p in pairs:
+        verdict = "yes" if all(r["verdict"] == "yes" for r in p["requests"]) else "no"
+        requests = []
+        for r in p["requests"]:
+            name = r["variant"] or "request"
+            series.setdefault(name, {"key": name, "label": name, "style": "first" if name == "raw" else "last"})
+            requests.append({"variant": name, "request_id": r["request_id"], "verdict": r["verdict"], "text": r["text"],
+                             "answers": [dict(_answer(a), confidence=_f2(a["confidence"])) for a in r["reason"]]})
+        for a in p["requests"][0]["reason"]:
+            dots = []
+            for r in p["requests"]:
+                hit = next((x for x in r["reason"] if x["id"] == a["id"]), None)
+                if hit is not None:
+                    dots.append({"series": r["variant"] or "request", "run": r["request_id"], "choice": hit["choice"],
+                                 "confidence": hit["confidence"], "failing": "Fix:" in hit["criterion"],
+                                 "criterion": hit["criterion"]})
+            rows.append({"label": f"{p['record_id']} · {a['id']}", "question": a["text"], "statement": "", "dots": dots})
+        records.append({"id": p["record_id"], "kind": p["record_kind"].upper(), "title": p["record_title"],
+                        "verdict": verdict, "status": "pass" if verdict == "yes" else "fail", "requests": requests})
+    status = "pass" if all(r["verdict"] == "yes" for r in records) else "fail"
+    return {"id": location, "dom": dom_id("location", location), "mode": mode,
+            "target_class": "code" if mode == "code" else "agent text", "status": status, "records": records,
+            "chart": {"threshold": DEFAULT_THRESHOLD, "noise": NOISE, "series": list(series.values()), "rows": rows}}
+
+
+def check_panel_vars(u: dict) -> dict:
+    context = [f"{u['id']} ({u['mode']}): {u['status'].upper()}"]
+    for r in u["records"]:
+        context.append(f"  {r['id']}: {r['verdict']}")
+        context += [f"    {q['variant']} {a['question']} = {a['choice']} ({a['confidence']}) - {a['criterion']}"
+                    for q in r["requests"] for a in q["answers"] if a["failing"]]
+    return {"id": u["id"], "dom": u["dom"], "mode": u["mode"], "target_class": u["target_class"], "status": u["status"],
+            "records": u["records"], "chart_json": json.dumps(u["chart"], ensure_ascii=False, sort_keys=True),
+            "copy_json": _dump(dict(u, chart=None)), "context_text": "\n".join(context)}
+
+
+def build_check(args, run: Runner = run_command) -> Result[dict, JudgeError]:
+    _, CheckResults = _models()
+    got = _load(args.results, CheckResults, "check results")
+    if isinstance(got, Err):
+        return got
+    results = got.value.model_dump()
+    by_location: dict = {}
+    for p in results["pairs"]:
+        by_location.setdefault(p["location"], []).append(p)
+    units = [check_unit(loc, by_location[loc]) for loc in sorted(by_location, key=natural)]
+    per_record: dict = {}
+    for u in units:
+        for r in u["records"]:
+            per_record.setdefault(r["id"], {"kind": r["kind"], "title": r["title"], "met": [], "failed": []})
+            per_record[r["id"]]["met" if r["verdict"] == "yes" else "failed"].append(u)
+    record_rows = [{"dom": dom_id("rec", rid), "cells": [
+        {"text": rid, "mono": True}, {"text": v["kind"]}, {"text": v["title"]},
+        {"text": "met everywhere" if not v["failed"] else f"fails {len(v['failed'])}/{len(v['met']) + len(v['failed'])}",
+         "pill": "pass" if not v["failed"] else "fail"},
+        {"text": ", ".join(u["id"] for u in v["failed"]) or "-", "small": True}]}
+        for rid, v in sorted(per_record.items(), key=lambda kv: natural(kv[0]))]
+    location_rows = [{"dom": u["dom"], "cells": [
+        {"text": u["id"], "href": "#" + u["dom"], "mono": True}, {"text": u["mode"]}, {"text": u["target_class"]},
+        {"text": "pass" if u["status"] == "pass" else "fail", "pill": u["status"]},
+        {"text": ", ".join(r["id"] for r in u["records"] if r["verdict"] == "yes") or "-", "small": True},
+        {"text": ", ".join(r["id"] for r in u["records"] if r["verdict"] != "yes") or "-", "small": True}]} for u in units]
+    pairs = len(results["pairs"])
+    met = sum(1 for u in units for r in u["records"] if r["verdict"] == "yes")
+    status = "PASS" if met == pairs else "FAIL"
+    classes = sorted({u["target_class"] for u in units})
+    shell = {
+        "title": args.title or "judge-jev check report",
+        "subtitle": f"Does each location meet the records that govern it? Target class: {', '.join(classes)}.",
+        "status": status,
+        "tiles": [{"k": "Pairs", "v": str(pairs), "n": "(record, location) judged"},
+                  {"k": "Met", "v": f"{met}/{pairs}", "n": "every request of the pair yes"},
+                  {"k": "Locations", "v": str(len(units)), "n": f"{sum(1 for u in units if u['status'] == 'pass')} meet all"},
+                  {"k": "Records", "v": str(len(per_record)),
+                   "n": f"{sum(1 for v in per_record.values() if not v['failed'])} met everywhere"}],
+        "tables": [{"title": "Per record", "id": "per-record",
+                    "note": "Met at every listed location, or the locations that fail it.",
+                    "columns": ["Record", "Kind", "Title", "Result", "Failing locations"], "rows": record_rows},
+                   {"title": "Per location", "id": "per-location", "note": "The records each location meets and fails.",
+                    "columns": ["Location", "Mode", "Class", "Result", "Meets", "Fails"], "rows": location_rows}],
+        "toc_rows": [{"id": u["dom"], "title": u["id"], "status": u["status"]} for u in units],
+        "metadata_rows": [{"label": "Results file", "value": args.results},
+                          {"label": "Run", "value": results["run"] or "-"},
+                          {"label": "Question set", "value": results["questions"] or "shipped"}],
+        "summary_copy_json": _dump({rid: {"met": [u["id"] for u in v["met"]], "failed": [u["id"] for u in v["failed"]]}
+                                    for rid, v in per_record.items()}),
+        "summary_copy_context": "\n".join(f"{u['id']}: {u['status'].upper()}" for u in units),
+    }
+    model = {"schema": REPORT_SCHEMA, "mode": "check", "generated_at": _now(), "status": status,
+             "results": results, "locations": [dict(u, chart=None) for u in units]}
+    written = write_report(args, "check", units, "check-location-panel.xhtml.j2", check_panel_vars, shell, model, run)
+    if isinstance(written, Err):
+        return written
+    return Ok(dict(written.value, pairs=pairs, met=met))
+
+
+# ---------------------------------------------------------------- CLI
+
+
+class _UsageError(Exception):
+    pass
+
+
+class _JsonArgumentParser(argparse.ArgumentParser):
+    def error(self, message):  # argparse hook; never returns
+        raise _UsageError(f"{self.prog}: {message}")
+
+
+def _parser() -> argparse.ArgumentParser:
+    p = _JsonArgumentParser(prog="jev_report.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = p.add_subparsers(dest="command", required=True, parser_class=_JsonArgumentParser)
+    q = sub.add_parser("quality", help="each record's progress across its quality runs")
+    q.add_argument("--run-dir", default=".sc/judge-jev", help="the quality runs' --run-dir (default .sc/judge-jev)")
+    q.add_argument("--run", action="append", default=[], help="a run name; repeatable (default: every run)")
+    q.add_argument("--record", action="append", default=[], help="a record id; repeatable (default: every record)")
+    q.add_argument("--review", default="", help="the author's drift review JSON (references/report.md)")
+    q.set_defaults(func=build_quality)
+    c = sub.add_parser("check", help="each location against the records that govern it")
+    c.add_argument("--results", required=True, help="check results JSON (CheckResults, references/report.md)")
+    c.set_defaults(func=build_check)
+    for s in (q, c):
+        s.add_argument("--out", required=True, help="output folder")
+        s.add_argument("--name", default="", help="file stem of the page, sidecar and panel folder (default: the mode)")
+        s.add_argument("--title", default="")
+    return p
+
+
+def _print(envelope: dict) -> None:
+    print(json.dumps(envelope, indent=2, sort_keys=True, ensure_ascii=False))
+
+
+def main(argv: Optional[list] = None, run: Runner = run_command) -> int:
+    try:
+        args = _parser().parse_args(argv)
+    except _UsageError as exc:
+        _print(JudgeError("VALIDATION.INPUT", str(exc), action="Run 'jev_report.py --help' for the accepted arguments.").to_json())
+        return ERROR_EXIT
+    args.name = args.name or f"{args.command}-report"
+    try:
+        outcome = args.func(args, run)
+    except Exception as exc:  # noqa: BLE001 - a bug, not an expected failure: a JSON error beats a traceback
+        _print(JudgeError("SCRIPT.INTERNAL", f"{type(exc).__name__}: {exc}",
+                          action="Report this with the command line that produced it.").to_json())
+        return ERROR_EXIT
+    if isinstance(outcome, Err):
+        _print(outcome.error.to_json())
+        return ERROR_EXIT
+    _print({"success": True, "data": outcome.value, "error": None})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(run_main(main))

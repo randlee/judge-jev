@@ -1,0 +1,111 @@
+---
+name: sc-judge-jev-report
+version: 0.1.0
+format: markdown
+description: sc-judge-jev install-time text, rendered by install.py.
+required_variables:
+  - version
+---
+---
+name: report
+version: {{ version }}
+description: Generate the HTML report of quality runs (each record's progress, the confidence of every Jev answer per run, and a diff of the record's first and last text) with jev_report.py, and the check report from the check results contract.
+---
+
+# Report
+
+`jev_report.py` writes an HTML page from what judge-jev already recorded. It reads local files and the run log only and never calls Jev, so it needs no key and no consent. It renders with the `sc-compose` CLI, which must be on PATH.
+
+```bash
+R="<this skill's directory>/scripts/jev_report.py"
+```
+
+## Quality report
+
+Run it after a fix loop (`references/fix-strategy.md`), from the repository root:
+
+```bash
+uv run -q --script "$R" quality --record "$ID" --review "$W/review.json" --out .sc/judge-jev/reports
+```
+
+- Runs come from the sc-observability log under `--run-dir` (default `.sc/judge-jev`). `--run <name>` and `--record <id>` repeat and narrow the report; with neither, every run in the log is read.
+- A run named `<step>-r<N>` is repeat N of `<step>`, so the fix loop's `$ID-base-r1`, `$ID-base-r2` and `$ID-base-r3` form the step `$ID-base`. Any other name is a step of one run. Steps are ordered by their first run's time.
+- The first step is the record as the author wrote it and the last step is the record now. The text diff compares the record each step sent to Jev, so it is the text Jev judged, field by field.
+
+Per record the page shows:
+
+- each step's verdict tally (`no 3/3`, `yes 6/6`), its Fix answers and its weakest answer;
+- the confidence chart: one row per question (per statement in a per-statement wave), one dot per run, the first step orange, the last step blue, the steps between them hollow. A ringed dot is a Fix answer: its chosen criterion carries a `Fix:` line. The dashed lines are the threshold (0.6) and the noise boundary (0.5);
+- the Fix answers of the first and the last run, with their criteria;
+- answers whose choice changed between repeats of the last step: these are noise, not defects;
+- the text diff, inline (removed words struck in red, added words in green) or side by side;
+- your drift review, if you passed one.
+
+A record passes when every run of its last step is `yes`; the page is PASS when every record passes.
+
+### Drift review file
+
+`--review` takes the author's drift review (`references/fix-strategy.md` step 8) as JSON. One entry per change you kept or reverted:
+
+```json
+{
+  "reviewed_at": "2026-11-10",
+  "records": {
+    "REQ-ABC-0001": {
+      "kept": [{"change": "defined 'profile'", "why": "covers every use in the record", "authority": "docs/cli.md:79"}],
+      "discarded": [{"change": "dropped 'for the same file'", "why": "narrowed the scope", "authority": "REQ-ABC-0001 original"}]
+    }
+  }
+}
+```
+
+`change` and `why` are required; `authority` names the record, file and line the change aligns with or drifts from. A file off this shape is `VALIDATION.INPUT`, naming each bad field. A record the report did not judge is listed in `data.warnings`.
+
+## Check report
+
+judge-jev has no `check` command yet (SKILL.md: compliance mode is not in this release). `jev_report.py check` renders the results contract that command will print, so the report exists when the command does:
+
+```bash
+uv run -q --script "$R" check --results check-results.json --out .sc/judge-jev/reports
+```
+
+```json
+{
+  "run": "c1",
+  "questions": "",
+  "pairs": [
+    {"record_id": "REQ-ABC-0001", "record_kind": "req", "record_title": "Exit codes",
+     "location": "templates/dev.md.j2", "mode": "task",
+     "requests": [
+       {"variant": "raw", "request_id": "c1/1", "verdict": "yes", "text": "<template>", "reason": []},
+       {"variant": "rendered", "request_id": "c1/2", "verdict": "no", "text": "<assignment>", "reason": []}
+     ]}
+  ]
+}
+```
+
+- `mode` is `prompt`, `skill`, `task` or `agent` (target class agent text) or `code` (target class code). `location` is `path`, `path#Heading` or `path::Symbol`.
+- A `task` pair has two requests, `raw` then `rendered`; every other pair has one request with no `variant`.
+- Each `reason` entry is one answer: `id`, `text`, `choice`, `confidence` and `criterion`, as `quality` reports them.
+- A pair meets its record when every request's verdict is `yes`.
+
+The page aggregates per record (met at every location, or the failing locations) and per location (the records it meets and fails), with one panel per location: the confidence chart (one row per record and question, one dot per request), each request's answers, and the text it sent.
+
+## Output
+
+`--out DIR` receives `<name>.html`, the sidecar `<name>.json` (the same data, for agents) and one XHTML panel per record or location in `<name>/`. `--name` defaults to `quality-report` or `check-report`. Each panel has Copy JSON and Copy Context buttons; Copy Context is a plain-text summary to paste into the next step.
+
+Open the page and look at it before you report it. Report the path to the user with the pass counts it shows. Do not commit the report unless the user asks.
+
+## Errors
+
+One JSON envelope on stdout; exit 0 when the report was written, 2 with a typed error:
+
+| Code | Cause | Fix |
+| --- | --- | --- |
+| `REPORT.NO_RUNS` | No verdict in the log matches `--run` and `--record`. | Run `quality` first, or check `--run-dir`, `--run` and `--record`. |
+| `LOG.READ` | The log cannot be opened, or 1000 or more verdicts match. | Pass the right `--run-dir`; narrow with `--run` or `--record`. |
+| `VALIDATION.INPUT` | A bad argument, review file or check results file. | Fix the fields named in the message. |
+| `DEPENDENCY.SC_COMPOSE` | `sc-compose` is not on PATH. | `references/installation-and-troubleshooting.md`. |
+| `RENDER.FAILED` | sc-compose rejected a template or its variables. | Report it with the command line. |
+| `SCRIPT.IO` | A file cannot be read or written. | Pass a readable input and a writable `--out`. |

@@ -1,0 +1,51 @@
+---
+metadata:
+  name: check-location-panel
+  description: One location's copyable XHTML panel in the judge-jev check report (agent text or code).
+required_variables:
+  - id
+  - dom
+  - mode
+  - target_class
+  - status
+  - records
+  - chart_json
+  - copy_json
+  - context_text
+---
+<section xmlns="http://www.w3.org/1999/xhtml" class="card unit unit-location" id="{{ dom | e }}">
+  <div class="card-head">
+    <h2><span class="mono">{{ id | e }}</span> <span class="pill pill-{{ status | e }}"><i></i>{{ status | e }}</span></h2>
+    <div class="tabs" role="group" aria-label="Copy location data">
+      <button type="button" class="icon-button" title="Copy JSON" data-copy-text="{{ copy_json | e }}">{}</button>
+      <button type="button" class="icon-button" title="Copy Context" data-copy-text="{{ context_text | e }}">&#x2398;</button>
+    </div>
+  </div>
+  <div class="muted small">mode <span class="mono">{{ mode | e }}</span> · {{ target_class | e }}{% if mode == "task" %} · two requests per record: the raw template, then the rendered assignment{% endif %}</div>
+
+  <h3>Confidence per answer</h3>
+  <p class="sub small">One row per record and question; one dot per request. A ringed dot chose a criterion that carries a Fix.</p>
+  <div class="legend"></div>
+  <div class="conf-chart" data-unit="{{ dom | e }}" data-chart="{{ chart_json | e }}"><div class="chart-svg"></div></div>
+
+{% for r in records %}
+  <h3><span class="mono">{{ r.id | e }}</span> {{ r.title | e }} <span class="pill pill-{{ r.status | e }}"><i></i>{{ r.verdict | e }}</span></h3>
+{% for q in r.requests %}
+  <div class="small muted">{{ q.variant | e }} · <span class="mono">{{ q.request_id | e }}</span> · {{ q.verdict | e }}</div>
+  <div class="scroll"><table>
+    <thead><tr><th scope="col">Question</th><th scope="col">Choice</th><th scope="col">Confidence</th><th scope="col">Criterion</th></tr></thead>
+    <tbody>
+{% for a in q.answers %}
+      <tr><td class="mono">{{ a.question | e }}</td><td><b>{{ a.choice | e }}</b></td><td class="mono">{{ a.confidence | e }}</td><td class="crit{% if a.failing %} fix{% endif %}">{{ a.criterion | e }}</td></tr>
+{% endfor %}
+    </tbody>
+  </table></div>
+{% if q.text %}
+  <details>
+    <summary>{% if target_class == "code" %}Code sent{% else %}Text sent{% endif %} ({{ q.variant | e }})</summary>
+    <pre class="text">{{ q.text | e }}</pre>
+  </details>
+{% endif %}
+{% endfor %}
+{% endfor %}
+</section>

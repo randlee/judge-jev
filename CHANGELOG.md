@@ -2,6 +2,18 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. 0.1.0 is the first release. Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, every integer version (question sets, trees, `schema_version`) stays `1`, and no PR bumps any of them; changes after 0.1.0 go under a `## Unreleased` section. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
+## Unreleased
+
+- New `jev_report.py` and `references/report.md` (loaded only for the report): an HTML report of judge-jev runs, in the
+  evidence-report look, rendered with the sc-compose CLI. `quality` reads the run log and shows each record's steps
+  (runs named `<step>-r<N>` grouped), a dot chart of every Jev answer's confidence per run with the 0.6 threshold and
+  0.5 noise lines, the Fix answers of the first and last run, answers that changed between repeats, a diff of the
+  record's first and last text (inline or side by side), and the author's drift review (`--review`). `check` renders
+  the results contract of the coming `check` command (agent text and code modes), aggregated per record and per
+  location; there is no `check` command yet. Writes the page, a JSON sidecar and one XHTML panel per record or location.
+  `fix-strategy.md` ends the loop with the report; `SKILL.md` routes to it.
+- `jev_runs.read_run_events` takes the actions to read.
+
 ## 0.1.0 — 2026-11-10
 
 First release. The `sc-judge-jev` plugin (Claude Code, Codex, Cursor) exposes one skill, `judge-jev-installer`, which installs the `judge-jev` skill and the `jev-fix-proposer` agent into a repository with `install.py`, the way plan-anchor installs. The skill's quality mode judges whether REQ, NFR and ADR records read from a Raptor import index are well written (`quality`), and fixes failing records; compliance mode (does a prompt, skill, template or code meet its record) is not in this release. Also: `validate`, `doctor`, `compare-definition` and `batch`, and the `evals/` real-use test. The entries below record how 0.1.0 was built.

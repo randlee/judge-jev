@@ -28,6 +28,7 @@ def _render(dest: Path) -> Path:
         raise RuntimeError("the script tests need the sc-compose CLI on PATH to render scripts/*.py.j2")
     skill = dest / ".claude" / "skills" / "judge-jev"
     shutil.copytree(SKILL_SRC / "assets", skill / "assets")
+    shutil.copytree(SKILL_SRC / "templates", skill / "templates")
     scripts = skill / "scripts"
     scripts.mkdir(parents=True)
     (skill / "references").mkdir()

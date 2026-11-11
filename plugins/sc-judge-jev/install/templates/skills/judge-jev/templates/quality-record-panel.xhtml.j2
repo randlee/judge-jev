@@ -1,0 +1,144 @@
+---
+metadata:
+  name: quality-record-panel
+  description: One record's copyable XHTML panel in the judge-jev quality report.
+required_variables:
+  - id
+  - dom
+  - kind
+  - title
+  - status
+  - steps
+  - first_step
+  - last_step
+  - first_run
+  - last_run
+  - first_failing
+  - last_failing
+  - trail
+  - changes
+  - chart_json
+  - reviewed
+  - copy_json
+  - context_text
+defaults:
+  iri: ""
+  flaky: ""
+  text_note: ""
+  review_kept: []
+  review_discarded: []
+---
+<section xmlns="http://www.w3.org/1999/xhtml" class="card unit unit-record" id="{{ dom | e }}">
+  <div class="card-head">
+    <h2><span class="mono">{{ id | e }}</span> {{ title | e }} <span class="pill pill-{{ status | e }}"><i></i>{{ status | e }}</span></h2>
+    <div class="tabs" role="group" aria-label="Copy record data">
+      <button type="button" class="icon-button" title="Copy JSON" data-copy-text="{{ copy_json | e }}">{}</button>
+      <button type="button" class="icon-button" title="Copy Context" data-copy-text="{{ context_text | e }}">&#x2398;</button>
+    </div>
+  </div>
+  <div class="muted small">{{ kind | e }}{% if iri %} · <span class="mono">{{ iri | e }}</span>{% endif %}</div>
+
+  <h3>Steps</h3>
+  <div class="scroll"><table class="steps">
+    <thead><tr><th scope="col">Step</th><th scope="col">Runs</th><th scope="col">Verdict</th><th scope="col">Fix answers</th><th scope="col">Weakest answer</th></tr></thead>
+    <tbody>
+{% for s in steps %}
+      <tr><td class="mono">{{ s.step | e }}</td><td class="mono">{{ s.runs | e }}</td><td><span class="pill pill-{{ s.status | e }}"><i></i>{{ s.tally | e }}</span></td><td class="mono">{{ s.failing | e }}</td><td class="mono">{{ s.weakest | e }}</td></tr>
+{% endfor %}
+    </tbody>
+  </table></div>
+
+  <h3>Confidence per answer, every run</h3>
+  <p class="sub small">One row per question (per statement for a per-statement wave); one dot per run. A ringed dot is a Fix answer: its chosen criterion carries a Fix. The verdict comes from the tree's rules, so a run can pass with Fix answers left. Hover or tap a row for its question and every answer.</p>
+  <div class="legend"></div>
+  <div class="conf-chart" data-unit="{{ dom | e }}" data-chart="{{ chart_json | e }}"><div class="chart-svg"></div></div>
+{% if flaky %}
+  <div class="callout warn">Answers whose choice changed between repeats of <span class="mono">{{ last_step | e }}</span>: <span class="mono">{{ flaky | e }}</span>. A choice that flips between identical requests is noise, not a defect to fix.</div>
+{% endif %}
+
+  <div class="two">
+    <div>
+      <h3>Fix answers, first run <span class="mono">{{ first_run | e }}</span></h3>
+{% if first_failing %}
+      <table class="failing"><tbody>
+{% for a in first_failing %}
+        <tr><td class="mono">{{ a.item | e }}</td><td><b>{{ a.choice | e }}</b> <span class="mono muted">{{ a.confidence | e }}</span><div class="crit fix">{{ a.criterion | e }}</div></td></tr>
+{% endfor %}
+      </tbody></table>
+{% else %}
+      <p class="small">None.</p>
+{% endif %}
+    </div>
+    <div>
+      <h3>Fix answers, last run <span class="mono">{{ last_run | e }}</span></h3>
+{% if last_failing %}
+      <table class="failing"><tbody>
+{% for a in last_failing %}
+        <tr><td class="mono">{{ a.item | e }}</td><td><b>{{ a.choice | e }}</b> <span class="mono muted">{{ a.confidence | e }}</span><div class="crit fix">{{ a.criterion | e }}</div></td></tr>
+{% endfor %}
+      </tbody></table>
+{% else %}
+      <p class="small">None.</p>
+{% endif %}
+    </div>
+  </div>
+
+  <h3>Text: <span class="mono">{{ first_step | e }}</span> to <span class="mono">{{ last_step | e }}</span></h3>
+{% if text_note %}
+  <div class="callout warn">{{ text_note | e }}</div>
+{% endif %}
+{% for c in changes %}
+  <details open="open">
+    <summary class="mono">{{ c.field | e }}</summary>
+    <div class="diff-inline">{{ c.html | safe }}</div>
+    <div class="diff-side"><div class="old">{{ c.before | e }}</div><div class="new">{{ c.after | e }}</div></div>
+  </details>
+{% endfor %}
+{% if not changes and not text_note %}
+  <p class="small">Unchanged.</p>
+{% endif %}
+
+  <h3>Drift review</h3>
+{% if reviewed %}
+  <div class="two">
+    <div>
+      <p class="small">Kept: tighter, more specific, testable or accurate.</p>
+{% if review_kept %}
+      <table><tbody>
+{% for k in review_kept %}
+        <tr><td><b>{{ k.change | e }}</b><div class="small">{{ k.why | e }}</div>{% if k.authority %}<div class="mono muted">{{ k.authority | e }}</div>{% endif %}</td></tr>
+{% endfor %}
+      </tbody></table>
+{% else %}
+      <p class="small">None.</p>
+{% endif %}
+    </div>
+    <div>
+      <p class="small">Discarded: drift from what the record's authority says.</p>
+{% if review_discarded %}
+      <table><tbody>
+{% for k in review_discarded %}
+        <tr><td><b>{{ k.change | e }}</b><div class="small">{{ k.why | e }}</div>{% if k.authority %}<div class="mono muted">{{ k.authority | e }}</div>{% endif %}</td></tr>
+{% endfor %}
+      </tbody></table>
+{% else %}
+      <p class="small">None.</p>
+{% endif %}
+    </div>
+  </div>
+{% else %}
+  <p class="small">No drift review was passed for this record (--review).</p>
+{% endif %}
+
+  <details>
+    <summary>All {{ trail | length }} runs</summary>
+    <div class="scroll"><table>
+      <thead><tr><th scope="col">Run</th><th scope="col">Step</th><th scope="col">At</th><th scope="col">Verdict</th><th scope="col">Fix answers</th><th scope="col">Weakest</th></tr></thead>
+      <tbody>
+{% for r in trail %}
+        <tr><td class="mono">{{ r.run | e }}</td><td class="mono">{{ r.step | e }}</td><td class="mono small">{{ r.at | e }}</td><td>{{ r.verdict | e }}</td><td class="mono">{{ r.failing | e }}</td><td class="mono">{{ r.weakest | e }}</td></tr>
+{% endfor %}
+      </tbody>
+    </table></div>
+  </details>
+</section>

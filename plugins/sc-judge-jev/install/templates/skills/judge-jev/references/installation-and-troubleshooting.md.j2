@@ -72,6 +72,10 @@ allow_remote_judge: true
 
 - `uv run --script jev_judge.py ...` installs it from the script's inline metadata, or `python3 -m pip install 'sc-observability==1.5.0'`. Without it `jev_judge.py` returns `DEPENDENCY.SC_OBSERVABILITY` and exits 2.
 
+**sc-compose CLI** (1.7.0 or newer, below 2; renders `jev_report.py`'s page)
+
+- `cargo install sc-compose`, or a release archive from github.com/randlee/sc-compose put on PATH. Check with `sc-compose --version`. Without it `jev_report.py` returns `DEPENDENCY.SC_COMPOSE` and exits 2. Judging does not need it.
+
 **TypeSafe API key**
 
 The live judge looks for the key in this order: `TYPESAFE_API_KEY` in the process environment, then the platform credential store. An invalid environment value fails closed; it does not silently select another credential. The platform entry is local-interactive convenience only—cloud, CI, and remote agents should use their platform secret injection.
@@ -112,6 +116,7 @@ Use the full path, or `export PATH="/opt/homebrew/bin:$PATH"` for the session.
 | python3 | 3.11 | tested floor; standard library only, except `judge_jev_settings.py` |
 | pydantic | 2.7 (below 3) | the strict model of every JSON input of `jev_judge.py` (ADR-JEV-0005) |
 | sc-observability | 1.5.0 | the run log of `jev_judge.py` (REQ-JEV-0008) |
+| sc-compose CLI | 1.7.0 (below 2) | renders the report (`jev_report.py`) |
 | PyYAML | 5.1 | `SafeLoader`-based strict reading of `.sc/judge-jev/settings.yaml`; CI tests 5.1 and the latest release |
 | Jev | `jev-latest` | pin a version once thresholds are tuned |
 
