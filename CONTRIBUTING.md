@@ -11,14 +11,14 @@
 
 `VERSION` at the repo root is the single source of truth. Every version declared in shipped metadata equals it exactly: the plugin manifests, the marketplace manifests that carry a version, `SKILL.md`, each `references/*.md`, each harness agent, and each `registry.yaml` entry. Nothing has its own patch line.
 
-Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, and every integer version (question sets, trees, `schema_version`) stays `1`. No PR bumps any of them. Describe each change under `## Unreleased` in `CHANGELOG.md` (add the section above `## 0.1.0` if it is not there).
+Every PR to `main` raises `VERSION` by at least a patch (`0.2.0` to `0.2.1`); a PR that adds a command, flag, field or strategy raises the minor. The PR sets `VERSION`, every declaration and every template's own `version:` to the new number together, and adds its entry to `CHANGELOG.md` under `## <VERSION> — <date>`. Every integer version (question sets, trees, `schema_version`) stays `1`. (Before the first release the version was locked at `0.1.0`; that rule is retired.)
 
 `scripts/check_version_sync.py` enforces this: by default it checks that every declaration it finds by glob equals `VERSION` and that the changelog has a `## Unreleased` section or a `## <VERSION>` entry. `tests/sc-judge-jev/test_version_ssot.py` runs the same discovery in the suite. Template `metadata.version` and `schema_version` values are wire-contract versions pinned by the JSON schemas, not release versions.
 
 ## Proposing a change as an agent
 
 1. Read `SKILL.md`, then only the reference you intend to change.
-2. Make the change, and add a bullet under `## Unreleased` in the changelog. Do not change `VERSION`.
+2. Make the change, raise `VERSION` and every declaration by at least a patch, and add a `## <VERSION> — <date>` entry to the changelog.
 3. Run the tests and the version check.
 4. Open the PR with: what changed, which aspect, the evidence (test names).
 
