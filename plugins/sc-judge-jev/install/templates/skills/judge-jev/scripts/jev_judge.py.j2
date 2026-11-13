@@ -87,6 +87,7 @@ import asyncio
 import collections
 import concurrent.futures
 import datetime as _dt
+import difflib
 import hashlib
 import http.client
 import json
@@ -2503,6 +2504,357 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
 
 
 # --------------------------------------------------------------------------- #
+# drift: does a rewritten record still require exactly what the original required?
+# --------------------------------------------------------------------------- #
+DRIFT_PREFIX = "drift"
+DRIFT_CANDIDATE = "drift"
+DRIFT_MAX_REQUEST_BYTES = MAX_REQUEST_BYTES_CEILING
+DRIFT_FORMS = ("diff", "full")
+DRIFT_INTRO_FULL = ("`item.text` is JSON with `original` and `candidate`: two versions of the normative text of one requirements "
+                    "record. A reason or explanation is not a requirement; rewording, splitting a statement and moving a reason "
+                    "to the rationale do not change what is required. ")
+DRIFT_INTRO = ("`item.text` is JSON with `original`, the normative text of one requirements record, and `diff`, a unified diff "
+               "from `original` to `candidate`, the rewritten version (lines starting - are removed, + added; an empty diff "
+               "means `candidate` is identical). A reason or explanation is not a requirement; rewording, splitting a "
+               "statement and moving a reason to the rationale do not change what is required. ")
+DRIFT_KEEP = ("Obligation {n} of `original` is: «{text}». Does `candidate` still require it, with the same strength "
+              "(MUST, MUST NOT, SHOULD, MAY), scope, conditions and values?")
+DRIFT_KEEP_CRITERIA = {
+    "same": "Still required with the same strength, scope, conditions and values, possibly reworded, split or moved.",
+    "narrowed": "Still required, but narrower: a weaker modal, a smaller scope, or an added condition or exception.",
+    "changed": "Required differently: broader, stronger, a different value, or a different meaning.",
+    "dropped": "No longer required anywhere in `candidate`.",
+}
+YES_NO = {"no": "No.", "yes": "Yes."}
+# Fixed questions per set: id -> (question, criteria, role). Roles: drift (yes is drift), list (yes is new content to list,
+# not drift), reword (yes claims the diff is only rewording; it contradicts any drift yes), adr=False skips it for an ADR.
+DRIFT_SETS = {
+    "brief": {
+        "material": ("Does this diff materially change the requirement?",
+                     {"no": "No: it only rewords, splits, reorders or moves reasons; the requirement is the same.",
+                      "yes": "Yes: the requirement is stronger, weaker, broader, narrower or has different values."}, "drift", True, None),
+        "adds": ("Does this diff add additional requirements?",
+                 {"no": "No additional requirement.", "yes": "At least one requirement the original did not have."}, "drift", True, None),
+        "verification": ("Do `candidate`'s success criteria or verification steps check something different from `original`'s: "
+                         "a check removed, weakened, strengthened or added? Answer no when neither version has any.",
+                         {"no": "The same checks, possibly reworded.", "yes": "A check was removed, weakened, strengthened or added."}, "drift", False, None),
+    },
+    "sixteen": {
+        "material": ("Does this diff materially change the requirement?", YES_NO, "drift", True, None),
+        "adds": ("Does this diff add additional requirements?", YES_NO, "drift", True, None),
+        "removes": ("Does this diff remove a requirement?", YES_NO, "drift", True, None),
+        "weakens_modal": ("Does this diff weaken a MUST or MUST NOT (to SHOULD or MAY, or by dropping a NOT)?", YES_NO, "drift", True, None),
+        "strengthens_modal": ("Does this diff strengthen a SHOULD or MAY to a MUST?", YES_NO, "drift", True, None),
+        "narrows_scope": ("Does this diff narrow who or what a requirement applies to?", YES_NO, "drift", True, None),
+        "broadens_scope": ("Does this diff broaden who or what a requirement applies to?", YES_NO, "drift", True, None),
+        "adds_condition": ("Does this diff add a condition, exception or 'unless' to a requirement?", YES_NO, "drift", True, None),
+        "removes_condition": ("Does this diff remove a condition or exception from a requirement?", YES_NO, "drift", True, None),
+        "changes_value": ("Does this diff change a number, limit, version, name or path a requirement depends on?", YES_NO, "drift", True, None),
+        "moves_requirement": ("Does this diff move a requirement (not a reason) out of the normative text?", YES_NO, "drift", True, None),
+        "removes_check": ("Does this diff remove or weaken a success criterion?", YES_NO, "drift", False, None),
+        "adds_check": ("Does this diff add a success criterion?", YES_NO, "drift", False, None),
+        "new_measure": ("Does this diff introduce a new number, threshold or measure?", YES_NO, "list", True, None),
+        "new_definition": ("Does this diff add a definition of a term?", YES_NO, "list", True, None),
+        "only_reword": ("Is every change in this diff only rewording, splitting, reordering, or moving a reason to the rationale?", YES_NO, "reword", True, None),
+    },
+    "orthogonal": {
+        "adds": ("Does this diff add additional requirements?", YES_NO, "drift", True, "obligations"),
+        "removes": ("Does this diff remove a requirement?", YES_NO, "drift", True, "obligations"),
+        "weakens_modal": ("Does this diff weaken a MUST or MUST NOT (to SHOULD or MAY, or by dropping a NOT)?", YES_NO, "drift", True, "strength"),
+        "strengthens_modal": ("Does this diff strengthen a SHOULD or MAY to a MUST?", YES_NO, "drift", True, "strength"),
+        "narrows_scope": ("Does this diff make a requirement apply to fewer crates, components, files, commands or situations than before?", YES_NO, "drift", True, "scope"),
+        "broadens_scope": ("Does this diff make a requirement apply to more crates, components, files, commands or situations than before?", YES_NO, "drift", True, "scope"),
+        "adds_condition": ("Does this diff add a condition, exception or 'unless' to a requirement?", YES_NO, "drift", True, "conditions"),
+        "removes_condition": ("Does this diff remove a condition or exception from a requirement?", YES_NO, "drift", True, "conditions"),
+        "changes_value": ("Does this diff change a number, limit, version, name or path a requirement depends on?", YES_NO, "drift", True, "values"),
+        "removes_check": ("Does this diff remove or weaken a success criterion?", YES_NO, "drift", False, "verification"),
+        "adds_check": ("Does this diff add a success criterion?", YES_NO, "drift", False, "verification"),
+        "new_measure": ("Does this diff introduce a new number, threshold or measure?", YES_NO, "list", True, "listed"),
+        "new_definition": ("Does this diff add a definition of a term?", YES_NO, "list", True, "listed"),
+    },
+}
+
+DRIFT_SET_DEFAULT = "orthogonal"
+DRIFT_VERDICTS = ("no-drift", "drift", "uncertain")
+
+
+def _squash(text) -> str:
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+def drift_payload(record: dict, table: str) -> dict:
+    """The normative text of a record, as sent to Jev: REQ/NFR statement and success criteria, ADR decision."""
+    if table == "decisions":
+        return {"decision": (record.get("decision") or {}).get("text") or ""}
+    stmt = record.get("requirement_statement") or {}
+    crit = record.get("success_criteria") or {}
+    criteria = crit.get("text") or ""
+    items = [c.get("text", "") if isinstance(c, dict) else str(c) for c in crit.get("acceptance_criteria") or []]
+    if items:
+        criteria = "\n".join([criteria, *items]).strip()
+    statements = [_squash(x.get("text") if isinstance(x, dict) else x) for x in stmt.get("statements") or []]
+    return {"statement": stmt.get("text") or "", "statements": [x for x in statements if x], "success_criteria": criteria}
+
+
+def drift_obligations(record: dict, table: str) -> list:
+    """The original's obligations, one per keep question: REQ/NFR normative statements (every modal); ADR decision items
+    (the numbered items of the decision text, else its paragraphs)."""
+    if table == "decisions":
+        text = (record.get("decision") or {}).get("text") or ""
+        parts = [p for p in re.split(r"\n\s*\n", text) if p.strip()]
+        return [re.sub(r"^\s*\d+[.)]\s*", "", _squash(p)) for p in parts]
+    return drift_payload(record, table)["statements"]
+
+
+def drift_verbatim(obligations: list, candidate: dict) -> list:
+    """The 1-based numbers of the obligations whose text appears verbatim (whitespace-normalised) in ``candidate``: kept by
+    the script, never asked. Jev answers only for obligations whose text changed."""
+    text = _squash(" ".join(drift_render(candidate)))
+    return [n for n, ob in enumerate(obligations, 1) if ob and ob in text]
+
+
+def drift_questions(obligations: list, table: str, form: str = "diff", skip=(), qset: str = DRIFT_SET_DEFAULT) -> dict:
+    intro = DRIFT_INTRO if form == "diff" else DRIFT_INTRO_FULL
+    q = {f"keep_{n}": {"type": "choice", "instructions": intro + DRIFT_KEEP.format(n=n, text=text), "criteria": dict(DRIFT_KEEP_CRITERIA)}
+         for n, text in enumerate(obligations, 1) if n not in skip}
+    for qid, (text, criteria, _role, for_adr, _group) in DRIFT_SETS[qset].items():
+        if table == "decisions" and not for_adr:
+            continue
+        q[qid] = {"type": "choice", "instructions": intro + text, "criteria": dict(criteria)}
+    return q
+
+
+def drift_render(payload: dict) -> list:
+    """A payload as the lines Jev reads and the diff compares: one section heading per field, one line per statement."""
+    out = []
+    for key, value in payload.items():
+        out.append(f"## {key}")
+        if isinstance(value, list):
+            out.extend(f"- {v}" for v in value)
+        else:
+            out.extend(line.rstrip() for line in str(value).splitlines() if line.strip())
+    return out
+
+
+def drift_line(item_id: str, title: str, original: dict, candidate: dict, questions: dict, form: str = "diff") -> dict:
+    """One request line: ``diff`` sends the original and a unified diff to the candidate; ``full`` sends both texts whole."""
+    old_lines, new_lines = drift_render(original), drift_render(candidate)
+    if form == "full":
+        text = json.dumps({"original": "\n".join(old_lines), "candidate": "\n".join(new_lines)}, indent=2, ensure_ascii=False)
+        return {"item": {"id": item_id, "title": title, "text": text},
+                "questions": [{"candidate_id": DRIFT_CANDIDATE, "questions": questions}]}
+    diff = "\n".join(difflib.unified_diff(old_lines, new_lines, "original", "candidate", n=1, lineterm=""))
+    text = json.dumps({"original": "\n".join(old_lines), "diff": diff}, indent=2, ensure_ascii=False)
+    return {"item": {"id": item_id, "title": title, "text": text},
+            "questions": [{"candidate_id": DRIFT_CANDIDATE, "questions": questions}]}
+
+
+def drift_drop_control(original: dict, obligations: list, table: str):
+    """``(candidate, n)``: the original with obligation ``n`` removed (the first obligation found verbatim in the text), or None."""
+    if table != "decisions":  # REQ/NFR: the obligations are the statements list; drop the first one
+        if not original.get("statements"):
+            return None
+        return {**original, "statements": original["statements"][1:]}, 1
+    field = "decision"
+    squashed = _squash(original.get(field))
+    for n, text in enumerate(obligations, 1):
+        if text and text in squashed:
+            rest = squashed.replace(text, " ", 1)
+            return {**original, field: _squash(rest)}, n
+    return None
+
+
+DRIFT_LOW_SHARE = 0.2  # more than this share of a record's answers below threshold makes it uncertain
+
+
+def drift_assess(answers: dict, obligations: list, threshold: float, qset: str = DRIFT_SET_DEFAULT) -> dict:
+    """A record's verdict from its confident answers. Each question belongs to a feature group (a keep question, and a question
+    with no group, is its own). Drift when any confident answer is a drift choice: a keep answer other than ``same``, a
+    drift-role ``yes``. Otherwise uncertain when a feature group has no confident answer, when more than DRIFT_LOW_SHARE of
+    the answers are below ``threshold``, or when a confident ``only_reword`` contradicts the others; else no-drift. List-role
+    answers never decide; a confident yes goes to ``listed``."""
+    spec = DRIFT_SETS[qset]
+    findings, listed, low, judged, groups, drift, reword = [], [], 0, 0, {}, False, None
+    worst = 1.0
+    for qid, ans in answers.items():
+        choice, conf = answer_choice(ans)
+        keep = qid.startswith("keep_")
+        role = "keep" if keep else spec[qid][2] if qid in spec else "drift"
+        group = qid if keep or qid not in spec or spec[qid][4] is None else spec[qid][4]
+        entry = {"question": qid, "choice": choice, "confidence": conf}
+        if keep:
+            entry["obligation"] = obligations[int(qid.split("_")[1]) - 1]
+        if role == "list":
+            if choice == "yes" and conf >= threshold:
+                listed.append(entry)
+            continue
+        if role == "reword":
+            reword = (choice, conf)
+            continue
+        judged += 1
+        worst = min(worst, conf)
+        confident = conf >= threshold
+        groups.setdefault(group, False)
+        groups[group] = groups[group] or confident
+        low += 0 if confident else 1
+        passed = choice == ("same" if role == "keep" else "no")
+        if not passed and confident:
+            drift = True
+            findings.append(entry)
+        elif not confident:
+            findings.append({**entry, "low_confidence": True})
+    undecided = sorted(g for g, ok in groups.items() if not ok)
+    contradiction = False
+    if reword is not None and reword[1] >= threshold:
+        contradiction = (reword[0] == "yes" and drift) or (reword[0] == "no" and not drift)
+        if contradiction:
+            findings.append({"question": "only_reword", "choice": reword[0], "confidence": reword[1], "contradicts": True})
+    too_low = judged > 0 and low / judged > DRIFT_LOW_SHARE
+    verdict = "drift" if drift and not contradiction else "uncertain" if (contradiction or undecided or too_low) else "no-drift"
+    return {"verdict": verdict, "min_confidence": round(worst, 6), "findings": findings, "listed": listed,
+            "undecided_groups": undecided, "low_share": round(low / judged, 3) if judged else 0.0}
+
+
+def _index_tables(path: str) -> Result[dict, JudgeError]:
+    loaded = load_json(path, "Raptor import index")
+    if isinstance(loaded, Err):
+        return loaded
+    parsed = parse_index(loaded.value, path)
+    if isinstance(parsed, Err):
+        return parsed
+    index, out = parsed.value, {}
+    blocked = {i.get("id") for i in index.diagnostics.issues if i.get("id")}
+    for table in ("requirements", "decisions"):
+        for r in getattr(index, table) or []:
+            if isinstance(r, dict) and r.get("id"):
+                out[r["id"]] = (table, r, r["id"] in blocked)
+    return Ok(out)
+
+
+def cmd_drift(args) -> Result[Any, JudgeError]:
+    """Compare each named record (or, with ``--changed``, every record whose normative text differs) between two Raptor
+    indexes: one Jev request per record asks, for each obligation of the original, whether the candidate still requires it
+    unchanged, and whether the candidate adds a requirement or changes verification. Controls (the original against itself
+    must be no-drift; the original with one obligation removed must be drift) check that Jev reads the comparison correctly;
+    a failed control makes the run invalid. Record ids only in the old index are reported deleted, only in the new added."""
+    threshold = check_threshold(args.threshold)
+    if isinstance(threshold, Err):
+        return threshold
+    threshold = threshold.value
+    old, new = _index_tables(args.old_index), _index_tables(args.new_index)
+    for got in (old, new):
+        if isinstance(got, Err):
+            return got
+    old, new = old.value, new.value
+    named = [rid for kind in ("req", "adr", "nfr") for rid in (getattr(args, kind) or [])]
+    if bool(named) == bool(args.changed):
+        return fail("VALIDATION.INPUT", "pass record ids (--req/--adr/--nfr) or --changed, not both and not neither")
+    deleted = sorted(r for r in old if r not in new) if args.changed else [r for r in named if r in old and r not in new]
+    added = sorted(r for r in new if r not in old) if args.changed else [r for r in named if r in new and r not in old]
+    missing = [r for r in named if r not in old and r not in new]
+    if missing:
+        return fail("RECORD.NOT_FOUND", f"not in either index: {', '.join(missing)}", action="Check the ids and the indexes.")
+    ids = sorted(r for r in (old if args.changed else named) if r in old and r in new)
+    lines, meta, unchanged, blocked = [], {}, [], []
+    for rid in ids:
+        (table, o, ob), (_t, n, nb) = old[rid], new[rid]
+        if ob or nb:
+            blocked.append(rid)
+            continue
+        po, pn = drift_payload(o, table), drift_payload(n, table)
+        if args.changed and [_squash(x) for x in drift_render(po)] == [_squash(x) for x in drift_render(pn)]:
+            unchanged.append(rid)
+            continue
+        obligations = drift_obligations(o, table)
+        verbatim = drift_verbatim(obligations, pn)
+        questions = drift_questions(obligations, table, args.form, verbatim, args.question_set)
+        lines.append(drift_line(rid, n.get("title") or "", po, pn, questions, args.form))
+        meta[rid] = {"obligations": obligations, "table": table, "original": po, "verbatim": verbatim}
+    if blocked:
+        return fail("RECORD.DIAGNOSTICS", f"records with Raptor import diagnostics are not compared: {', '.join(blocked)}",
+                    action="Fix the diagnostics, rebuild the index, then rerun.")
+    controls = []
+    for rid in sorted(meta)[:max(args.controls, 0)]:
+        m = meta[rid]
+        questions = drift_questions(m["obligations"], m["table"], args.form, drift_verbatim(m["obligations"], m["original"]), args.question_set)
+        lines.append(drift_line(f"{rid}.ctl-same", "", m["original"], m["original"], questions, args.form))
+        controls.append({"item": f"{rid}.ctl-same", "record": rid, "expect": "no-drift", "obligations": m["obligations"]})
+        dropped = drift_drop_control(m["original"], m["obligations"], m["table"])
+        if dropped is not None:
+            cand, k = dropped
+            questions = drift_questions(m["obligations"], m["table"], args.form, drift_verbatim(m["obligations"], cand), args.question_set)
+            lines.append(drift_line(f"{rid}.ctl-drop-{k}", "", m["original"], cand, questions, args.form))
+            controls.append({"item": f"{rid}.ctl-drop-{k}", "record": rid, "expect": "drift", "drops": k, "obligations": m["obligations"]})
+    settings = BatchSettings("plan", DEFAULT_MODEL, 1, DRIFT_PREFIX, threshold, 60.0, BATCH_MAX_WORKERS, DRIFT_MAX_REQUEST_BYTES, args.dry_run)
+    total, keys = 0, set()
+    for number, line in enumerate(lines, 1):
+        jobs = batch_jobs(line, number, settings, {}, {"old_index": args.old_index, "new_index": args.new_index})
+        if isinstance(jobs, Err):
+            return jobs
+        total += len(jobs.value)
+    head = {"form": args.form, "question_set": args.question_set, "threshold": threshold, "compared": len(meta), "unchanged": unchanged, "deleted": deleted, "added": added,
+            "controls_requested": len(controls)}
+    if args.dry_run:
+        return Ok({"success": True, "error": None, "data": {"dry_run": True, **head, "requests": lines}})
+    loaded = load_answers_fixture(args.answers_file, "'<record>/drift', '<record>.ctl-same/drift', '*'")
+    if isinstance(loaded, Err):
+        return loaded
+    fixture = loaded.value
+    if fixture is not None:
+        covered = check_fixture_coverage(lines, settings, fixture)
+        if isinstance(covered, Err):
+            return covered
+    run_name = args.run_name or stamp()
+    checked = _safe_id(run_name, "--run-name")
+    if isinstance(checked, Err):
+        return checked
+    api_key = ""
+    if fixture is None and lines:
+        cleared = remote_preflight(args, "The normative text of each compared record, old and new")
+        if isinstance(cleared, Err):
+            return cleared
+        api_key = cleared.value
+    log = open_run_log(args.run_dir, run_name)
+    if isinstance(log, Err):
+        return log
+    pumped = pump_batch(lines, settings, api_key, fixture, log.value, echo=False,
+                        fields={"old_index": args.old_index, "new_index": args.new_index}) if lines else Ok([])
+    if isinstance(pumped, Err):
+        log.value.close()
+        return pumped
+    by_item = {x["item_id"]: x for x in pumped.value}
+    failed = [{"item": i, "error": x["error"]} for i, x in by_item.items() if not x["ok"]]
+    records = []
+    for rid in sorted(meta):
+        x = by_item.get(rid)
+        if x is None or not x["ok"]:
+            records.append({"id": rid, "verdict": None, "error": x and x["error"]})
+            continue
+        records.append({"id": rid, **drift_assess(x["answers"], meta[rid]["obligations"], threshold, args.question_set), "run_id": x["run_id"],
+                        "obligations": len(meta[rid]["obligations"]), "kept_verbatim": meta[rid]["verbatim"]})
+    control_results = []
+    for c in controls:
+        x = by_item.get(c["item"])
+        got = drift_assess(x["answers"], c["obligations"], threshold, args.question_set) if x is not None and x["ok"] else None
+        ok = got is not None and got["verdict"] == c["expect"]
+        if ok and c["expect"] == "drift":  # the removed obligation itself must be the one found dropped
+            ok = any(f["question"] == f"keep_{c['drops']}" and f["choice"] != "same" for f in got["findings"])
+        control_results.append({"item": c["item"], "expect": c["expect"], "got": got and got["verdict"], "ok": ok,
+                                "findings": got and got["findings"]})
+    valid = all(c["ok"] for c in control_results) and not failed
+    counts = {v: sum(1 for r in records if r["verdict"] == v) for v in DRIFT_VERDICTS}
+    summary = {**head, "valid": valid, "counts": counts, "controls_passed": sum(1 for c in control_results if c["ok"])}
+    logged = log.value.event("drift", {**summary, "records": [{k: r.get(k) for k in ("id", "verdict", "min_confidence")} for r in records]})
+    closed = log.value.close()
+    for problem in (logged, closed):
+        if isinstance(problem, Err):
+            return problem
+    return Ok({"success": True, "error": None, "data": {"dry_run": False, **summary, "records": records,
+                                                         "controls": control_results, "failed_requests": failed,
+                                                         "log": {"run": run_name, "log_root": args.run_dir}}})
+
+
+# --------------------------------------------------------------------------- #
 # doctor (REQ-JEV-0214, REQ-JEV-0215): check everything judge-jev loads in a repository, call nothing
 # --------------------------------------------------------------------------- #
 def _issue(severity: str, code: str, file, message: str, **extra) -> dict:
@@ -2798,6 +3150,22 @@ def build_parser() -> argparse.ArgumentParser:
     cd.add_argument("--run-name", default="", help="run name of the compare event; the arms log as <run name>.without and <run name>.with; default a UTC timestamp")
     cd.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
     cd.set_defaults(func=cmd_compare_definition)
+    df = sub.add_parser("drift", help="compare records between two Raptor indexes: does each rewritten record still require exactly what the original required? one Jev request per record, plus controls")
+    df.add_argument("--old-index", required=True, help="the Raptor import index of the original records")
+    df.add_argument("--new-index", required=True, help="the Raptor import index of the rewritten records")
+    for kind in ("req", "adr", "nfr"):
+        df.add_argument(f"--{kind}", metavar="ID", action="append", default=[], help=f"a {kind.upper()} record id to compare; repeatable")
+    df.add_argument("--changed", action="store_true", help="compare every record whose normative text differs between the indexes")
+    df.add_argument("--controls", type=int, default=3, help="records that also get controls: the original against itself (must be no-drift) and with one obligation removed (must be drift); a failed control makes the run invalid (default 3)")
+    df.add_argument("--question-set", choices=sorted(DRIFT_SETS), default=DRIFT_SET_DEFAULT, help="orthogonal (default): 13 yes/no questions in independent feature groups (obligations, strength, scope, conditions, values, verification) plus list questions for new measures and definitions; brief: material, adds, verification; sixteen: one narrow yes/no question per kind of change, list questions for new measures and definitions, and an only-rewording consistency check")
+    df.add_argument("--form", choices=DRIFT_FORMS, default="diff", help="diff (default): send the original and a unified diff to the rewrite; full: send both texts whole")
+    df.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="an answer below this confidence makes its record uncertain (default %s)" % DEFAULT_THRESHOLD)
+    df.add_argument("--dry-run", action="store_true", help="report the composed requests; call nothing")
+    df.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/drift', '<record>.ctl-same/drift', '<record>.ctl-drop-<n>/drift' or '*'; no network")
+    df.add_argument("--run-dir", default=QUALITY_LOG_DIR, help=f"log root of the sc-observability run log; default {QUALITY_LOG_DIR}")
+    df.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
+    df.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
+    df.set_defaults(func=cmd_drift)
     dr = sub.add_parser("doctor", help="check every tree, question set and definitions file of the repository scope; calls nothing, needs no key, writes no log")
     dr.add_argument("paths", nargs="*", metavar="PATH", help="more trees, question sets or definitions files, or folders of them, to check besides the shipped ones and those under .sc/judge-jev/")
     dr.add_argument("--index", default="", help="a Raptor import index: attachments to records it does not hold are warnings; without it that check is skipped and doctor says so")
