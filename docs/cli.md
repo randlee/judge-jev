@@ -47,7 +47,11 @@ judges every named record under one run name.
   request and a `statement` event (statement, answers, reason), then a
   `wave` event with the request ids, matched statements and verdict. Logging goes through the sc-observability
   logger, the one sc-agent uses (REQ-JEV-0008), to
-  `.sc/judge-jev/logs/judge-jev.log.jsonl`.
+  `~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`.
+  That folder is per user, outside the repository and shared by every worktree of it; `--run-dir <folder>` logs
+  elsewhere, and with no home directory the log root is `.sc/judge-jev`. In the result, each answer carries
+  `probabilities` (every option) and `runner_up` (the option Jev nearly chose: its name, probability and criterion),
+  and each wave carries `models`, the Jev versions that answered.
 
 - `--definitions <file>` (repeatable) adds the definitions attached to each
   record to its requests (see Definitions); with no flag the repository's

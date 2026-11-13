@@ -22,7 +22,7 @@ description: Judge whether REQ, NFR and ADR records are well written - the quali
 uv run -q --script "$J" quality --req REQ-ABC-0001 --nfr NFR-ABC-0001 --adr ADR-ABC-0001 --index index.json --run-name <name> > <name>.json
 ```
 
-`--req`, `--nfr` and `--adr` repeat and mix. Every request and answer is also logged to `.sc/judge-jev/logs/judge-jev.log.jsonl`.
+`--req`, `--nfr` and `--adr` repeat and mix. Every request and answer is also logged to `~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`: one folder per repository and day, outside the repository and shared by all its worktrees (`--run-dir <folder>` logs elsewhere). Each answer in the result carries `probabilities`, the probability of every option, and `runner_up`, the option Jev nearly chose with its probability and criterion; each wave carries `models`, the Jev versions that answered.
 
 ## 2. Read the result
 

@@ -22,7 +22,7 @@ One fenced JSON object:
 - `record_text`: the record as it is now. `old` is copied from it.
 - `original_text`: the record as its author wrote it: the meaning your candidate must keep.
 - `statement`: `index` and `text` of the weak statement (`null` for an ADR).
-- `answers`: Jev's answers for it as `question=choice @confidence`. The `d_*` answers are Jev's stated cause: fix what they name.
+- `answers`: Jev's answers for it as `question=choice @confidence`, with `nearly <option> (<probability>)` for the option Jev almost chose. `nearly` and the `d_*` answers are Jev's stated cause: fix what they name.
 - `blocked`: edits rejected earlier, with reasons. Do not propose them again.
 - `sources`: repository paths you may read for facts.
 
