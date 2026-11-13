@@ -58,6 +58,7 @@ Exit 0 with `"issues": 0` means every record imported. Otherwise fix each diagno
 | Mode | Question | Read |
 | --- | --- | --- |
 | quality | Is a REQ, NFR or ADR well written? Judge it, and fix it if it fails. | `references/quality-workflow.md`; to fix, also `references/fix-strategy.md` |
+| drift | Does a rewritten REQ, NFR or ADR still require exactly what the original did? | `jev_judge.py drift --old-index <a> --new-index <b> --changed`; `docs/cli.md` (drift). Trust verdicts only when `valid` is true. |
 | compliance | Does a prompt, skill, agent, task template or code meet its REQ, NFR or ADR? | Not in this release: judge-jev has no `check` command yet. Tell the user so and stop. Do not judge it another way. |
 
 ## Agent

@@ -2,6 +2,15 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. 0.1.0 is the first release. Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, every integer version (question sets, trees, `schema_version`) stays `1`, and no PR bumps any of them; changes after 0.1.0 go under a `## Unreleased` section. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
+## Unreleased
+
+- New command `drift`: compares records between two Raptor indexes and reports, per
+  record, whether the rewrite still requires exactly what the original required
+  (`keep_<n>` per obligation, `added`, `verification`), with identity and
+  removed-obligation controls that invalidate the run when Jev misreads them.
+  `--form diff` (default) sends the original plus a unified diff; `--form full`
+  sends both texts. Tests: `tests/sc-judge-jev/test_drift.py`.
+
 ## 0.1.0 — 2026-11-10
 
 First release. The `sc-judge-jev` plugin (Claude Code, Codex, Cursor) exposes one skill, `judge-jev-installer`, which installs the `judge-jev` skill and the `jev-fix-proposer` agent into a repository with `install.py`, the way plan-anchor installs. The skill's quality mode judges whether REQ, NFR and ADR records read from a Raptor import index are well written (`quality`), and fixes failing records; compliance mode (does a prompt, skill, template or code meet its record) is not in this release. Also: `validate`, `doctor`, `compare-definition` and `batch`, and the `evals/` real-use test. The entries below record how 0.1.0 was built.

@@ -215,6 +215,42 @@ IRI `DEFINITIONS.NOT_FOUND`. The record's other definitions are in both arms.
 
 Diagram: [diagrams/compare.md](diagrams/compare.md)
 
+## `judge-jev drift`
+
+```
+judge-jev drift --old-index <file> --new-index <file> (--req|--adr|--nfr <id>... | --changed)
+    [--form diff|full] [--controls <n>] [--threshold <p>]
+    [--dry-run | --answers-file <file>] [--run-dir <dir>] [--run-name <name>]
+```
+
+Does a rewritten record still require exactly what the original required?
+Reads both versions from two Raptor import indexes and sends one Jev request
+per record: the original's normative text (REQ/NFR statement, statements and
+success criteria; ADR decision) and, with `--form diff` (the default), a
+unified diff to the rewrite; `--form full` sends both texts whole.
+
+- Questions: one `keep_<n>` per obligation of the original (REQ/NFR
+  statements; ADR numbered decision items or paragraphs), answered `same`,
+  `narrowed`, `changed` or `dropped`; `added` (does the rewrite require
+  anything new: obligation, condition, threshold, measure, limit or
+  definition); and, for REQ/NFR, `verification` (were checks removed,
+  weakened, strengthened or added).
+- Verdict per record: `drift` when any answer is a drift choice at or above
+  `--threshold` (default 0.6); `uncertain` when none is but an answer is
+  below it; else `no-drift`. `findings` lists each such answer, with the
+  obligation text for a keep question.
+- `--changed` compares every record whose normative text differs; ids only
+  in the old index are listed `deleted`, only in the new `added`, equal ones
+  `unchanged`. A record with Raptor diagnostics is refused.
+- Controls: for the first `--controls` records (default 3), the original
+  against itself must be `no-drift` and the original with its first
+  obligation removed must be `drift` on that obligation. A failed control or
+  a failed request makes `valid` false: the verdicts are then not evidence.
+- Answers-file keys: `<record>/drift`, `<record>.ctl-same/drift`,
+  `<record>.ctl-drop-<n>/drift`, or `*`. A live run needs the key and
+  `allow_remote_judge`, checked before the first call. Every request and
+  answer is logged like `batch`; a `drift` event holds the summary.
+
 ## `judge-jev doctor`
 
 ```
