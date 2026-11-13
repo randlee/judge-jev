@@ -78,6 +78,6 @@ You apply and measure every candidate; a proposer never edits a file or calls Je
 - Never answer for Jev. A failed call is rerun once, then reported with its code and verbatim message; it is never a verdict.
 - A record passes only on the gate: three runs of identical text, every gate answer's median at or above the threshold (`scripts/jev_gate.py`). One passing run is not a pass.
 - An accepted record is frozen: do not judge it again unless its text changes.
-- Keep the run files, `.sc/judge-jev/accepted.jsonl` and `.sc/judge-jev/logs/`.
+- Keep the run files and `.sc/judge-jev/accepted.jsonl`. Every request and answer is logged under `~/.judge-jev/<repository name>/<UTC date>/logs/`; never delete or move it.
 
 Jev request format, limits and every error code: `references/jev-api.md`.

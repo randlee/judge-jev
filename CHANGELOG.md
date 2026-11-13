@@ -4,6 +4,18 @@
 
 ## Unreleased
 
+- `quality` and `compare-definition` now log to one per-user folder,
+  `~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`, in
+  place of `.sc/judge-jev/logs/` inside the working directory. Every worktree
+  and scratch copy of a repository logs under the name of its main checkout,
+  so logs no longer vanish with a worktree or a temp folder. `--run-dir` still
+  chooses another root; with no home directory the root is `.sc/judge-jev`.
+- A `quality` result now reveals what Jev's answer held and the result
+  dropped: every answer carries `probabilities` (each option) and `runner_up`
+  (the option Jev nearly chose, its probability and its criterion), and every
+  wave carries `models` (the Jev versions that answered). `jev_gate.py` lists
+  the median runner-up of each answer below the gate, and the fix strategy's
+  `verify` step prints it as `nearly:`. Logged events are unchanged.
 - `references/fix-strategy.md` is rewritten around asking Jev why. It replaces
   the nine-step loop (mandatory proposers, 3 and 6 repeated runs, noise
   routing) with: diagnose once with `assets/questions/diag-<kind>.json` (the

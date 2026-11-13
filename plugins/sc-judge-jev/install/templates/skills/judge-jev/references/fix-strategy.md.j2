@@ -42,10 +42,10 @@ Two commands do all the measuring. Each is one step: paste it whole.
 cp "$F" "$W/<v>.md"
 "$RAPTOR/.venv/bin/python" "$RAPTOR/scripts/extract.py" --project-root . --output "$W/index-<v>.json" | jq '.issues'   # must print 0
 for r in 1 2 3; do uv run -q --script "$J" quality --$KIND "$ID" --index "$W/index-<v>.json" --run-name "$ID-<v>-r$r" > "$W/<v>-r$r.json" & done; wait
-python3 "$G" --threshold "$T" "$W"/<v>-r1.json "$W"/<v>-r2.json "$W"/<v>-r3.json | jq -r 'if .success | not then "ERROR \(.error.code): \(.error.message)" else .data.records[] | "\(.id) pass=\(.pass) verdicts=\(.verdicts | join(",")) lowest=\(.lowest.median // "n/a")", (.low[] | "  s\(.statement // "-") \(.question)=\(.choice) median \(.median) \(.confidences)") end'
+python3 "$G" --threshold "$T" "$W"/<v>-r1.json "$W"/<v>-r2.json "$W"/<v>-r3.json | jq -r 'if .success | not then "ERROR \(.error.code): \(.error.message)" else .data.records[] | "\(.id) pass=\(.pass) verdicts=\(.verdicts | join(",")) lowest=\(.lowest.median // "n/a")", (.low[] | "  s\(.statement // "-") \(.question)=\(.choice) median \(.median) \(.confidences)" + (if .runner_up then "\n      nearly: \(.runner_up.choice) (\(.runner_up.probability)) \(.runner_up.criterion)" else "" end)) end'
 ```
 
-It prints one line for the record and one line per gate answer whose median is below `T`. `pass=true` is the only pass. `ERROR` is a tool error, not a verdict: rerun once, then report the code and message verbatim.
+It prints one line for the record and, for each gate answer whose median is below `T`, the answer and the option Jev nearly chose instead (`nearly:`), with that option's probability and its criterion. Read `nearly:` first: a low confidence is Jev torn between its choice and that option, so it says what the statement is being read as, and its criterion often names the fix (`obligations=1` nearly `2`: the statement reads as two obligations; `check=inspection or grep` nearly `CLI run`: it does not say whether a file or a run decides it). `pass=true` is the only pass. `ERROR` is a tool error, not a verdict: rerun once, then report the code and message verbatim.
 
 `diagnose <v>`: ask Jev why, once, for the variant `verify` just snapshotted.
 
@@ -54,11 +54,11 @@ uv run -q --script "$J" quality --$KIND "$ID" --index "$W/index-<v>.json" --ques
 jq -r 'if .success | not then "ERROR \(.error.code): \(.error.message)" else .data.results[] | .waves[] | .reason[] | if has("statement") then "s\(.statement.index): \(.statement.text)", (.answers[] | "    \(.id)=\(.choice) @\(.confidence)") else "  \(.id)=\(.choice) @\(.confidence)" end end' "$W/<v>-diag.json"
 ```
 
-`diag-<kind>.json` is the shipped gate tree with `d_*` diagnostic questions appended. Its gate questions and verdict rules are the shipped ones. Read the `d_*` answers of the statements `verify` listed; they are Jev's stated cause. The gate itself is always `verify`, never this run.
+`diag-<kind>.json` is the shipped gate tree with `d_*` diagnostic questions appended. Its gate questions and verdict rules are the shipped ones. Run it when `nearly:` does not settle the cause, and read the `d_*` answers of the statements `verify` listed. Every answer in a `quality` result also carries `probabilities` (every option) and `runner_up`. The gate itself is always `verify`, never this run.
 
 ## 1. Verify, then diagnose
 
-`verify base`. If it prints `pass=true`, go to step 5. Otherwise `diagnose base` and append `{"round": n, "step": "diagnose", "low": [...]}` to `$W/state.jsonl`.
+`verify base`. If it prints `pass=true`, go to step 5. Otherwise read each `nearly:` line, `diagnose base` where the cause is still open, and append `{"round": n, "step": "diagnose", "low": [...]}` to `$W/state.jsonl`.
 
 If a cause is still unclear, copy `$D`, add up to 10 choice questions of your own under `.nodes["wave-1"].questions` (same shape as the `d_*` ones), and run the `diagnose` command with `--questions <copy>`. Ask them all in one call. A question costs a fraction of a cent; a minute of your reasoning costs more than a thousand of them. Never edit a gate question, a criterion or a verdict rule.
 
@@ -100,7 +100,7 @@ Launch one `jev-fix-proposer` per statement and strategy, all in one message, wi
   "record_text": "<the record as it is now>",
   "original_text": "<the record as its author wrote it>",
   "statement": {"index": 3, "text": "<statement text>"},
-  "answers": "term=none @0.41; check=CLI run @0.94; d_term_where=reference @0.83; d_term_fix=replace reference @0.80",
+  "answers": "term=none median 0.41, nearly project term defined nowhere (0.38); check=CLI run @0.94; d_term_where=reference @0.83; d_term_fix=replace reference @0.80",
   "blocked": ["<an edit rejected in an earlier round, with the reason>"],
   "sources": ["docs/", "src/"]
 }
@@ -167,4 +167,4 @@ Result: lowest <before> to <after>
 
 One table, only measured results: record, accepted or unresolved, lowest gate answer before and after, strategies that worked, statements added or removed. Then, for each unresolved statement: its text, Jev's gate and `d_*` answers verbatim, what was tried with its measured result, and the one fact needed from the owner. Then every change that rule 1 sent to the owner, with both texts.
 
-Leave `$W`, `.sc/judge-jev/accepted.jsonl` and `.sc/judge-jev/logs/` in place.
+Leave `$W` and `.sc/judge-jev/accepted.jsonl` in place. Every Jev request and answer is logged under `~/.judge-jev/<repository name>/<UTC date>/logs/`, outside the repository; never delete it.

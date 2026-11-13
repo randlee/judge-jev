@@ -15,6 +15,11 @@ runs. A record passes when its verdict is ``yes`` in more than half of the runs 
 every gate answer's median is at or above the threshold. Answers whose id starts
 with ``d_`` are diagnostic and never gate.
 
+Each answer below the gate is listed with its ``runner_up``: the option Jev most
+nearly chose instead, with the median of its probability and its criterion. A low
+confidence is Jev torn between its choice and that option, so the runner-up says
+what the statement is being read as.
+
 Runs are comparable only on identical text: a record whose statements differ
 between runs, or that is missing from a run, is reported with ``comparable: false``
 and does not pass. Exit 0 whenever the gate was computed (failing records
@@ -54,7 +59,8 @@ def failure(code: str, message: str, action: str) -> int:
 
 
 def gate_answers(result: dict) -> dict:
-    """``{(statement index or 0, question id): (choice, confidence, statement text)}`` for one record's gate answers."""
+    """``{(statement index or 0, question id): (choice, confidence, statement text, answer)}`` for one record's gate
+    answers; ``answer`` is the reason entry, which holds ``probabilities`` and ``runner_up`` when the run reported them."""
     found = {}
     for wave in result.get("waves") or []:
         for reason in wave.get("reason") or []:
@@ -63,10 +69,28 @@ def gate_answers(result: dict) -> dict:
                 for answer in reason["answers"]:
                     if not str(answer["id"]).startswith("d_"):
                         found[(statement.get("index"), answer["id"])] = (
-                            answer["choice"], float(answer["confidence"]), statement.get("text"))
+                            answer["choice"], float(answer["confidence"]), statement.get("text"), answer)
             elif "id" in reason and not str(reason["id"]).startswith("d_"):
-                found[(0, reason["id"])] = (reason["choice"], float(reason["confidence"]), None)
+                found[(0, reason["id"])] = (reason["choice"], float(reason["confidence"]), None, reason)
     return found
+
+
+def runner_up(entries: list, choice: str):
+    """The option Jev most nearly chose instead of ``choice``, across the runs' reason entries: its name, the median of
+    its probability and its criterion. None when a run reported no probabilities or no other option has any."""
+    tables = [entry.get("probabilities") for entry in entries]
+    if not tables or not all(isinstance(table, dict) and table for table in tables):
+        return None
+    options = sorted(set().union(*(set(table) for table in tables)) - {choice})
+    medians = {option: round(statistics.median(float(table.get(option, 0.0)) for table in tables), 4) for option in options}
+    if not medians:
+        return None
+    best = min(medians, key=lambda option: (-medians[option], option))
+    if medians[best] <= 0:
+        return None
+    criterion = next((entry["runner_up"].get("criterion", "") for entry in entries
+                      if isinstance(entry.get("runner_up"), dict) and entry["runner_up"].get("choice") == best), "")
+    return {"choice": best, "probability": medians[best], "criterion": criterion}
 
 
 def gate(runs: list, threshold: float) -> dict:
@@ -86,7 +110,8 @@ def gate(runs: list, threshold: float) -> dict:
             median = round(statistics.median(confidences), 4)
             choice = Counter(found[key][0] for found in answers).most_common(1)[0][0]
             entry = {"statement": key[0] or None, "question": key[1], "choice": choice,
-                     "median": median, "confidences": confidences}
+                     "median": median, "confidences": confidences,
+                     "runner_up": runner_up([found[key][3] for found in answers], choice)}
             if lowest is None or median < lowest["median"]:
                 lowest = entry
             if median < threshold:

@@ -56,8 +56,22 @@ def tree_answers(node_file, node="wave-1", p=0.9, **choices):
 
 
 def reason_entry(question_id, question, choice, confidence):
+    """A result reason entry for an ``answer(choice, p=confidence)`` fixture answer: the logged entry plus what the result
+    reveals, every option's probability and the strongest option not chosen."""
+    probabilities = answer(choice, p=confidence, options=list(question["criteria"]))["probabilities"]
+    p, name = min((-p, o) for o, p in probabilities.items() if o != choice)
+    runner_up = {"choice": name, "probability": -p, "criterion": question["criteria"].get(name, "")} if p < 0 else None
+    return {**logged(question_id, question, choice, confidence), "probabilities": probabilities, "runner_up": runner_up}
+
+
+def logged(question_id, question, choice, confidence):
     return {"id": question_id, "text": question["instructions"], "choice": choice,
             "criterion": question["criteria"].get(choice, ""), "confidence": confidence}
+
+
+def plain(reason):
+    """A result reason as the log holds it: without the revealed probabilities and runner-up."""
+    return [{k: v for k, v in entry.items() if k not in ("probabilities", "runner_up")} for entry in reason]
 
 
 JUDGED = [{"index": 1, "modal": "Must", "text": "The CLI MUST exit 2 on a missing file."},
@@ -160,6 +174,11 @@ class WaveReasons(QualityCase):
         expected = {"context": ("problem and forces", 0.8), "alternatives": ("named only", 0.6), "consequences": ("positive and negative", 0.8)}
         self.assertEqual(wave["reason"], [reason_entry(qid, q, *expected[qid]) for qid, q in questions.items()])
         self.assertIn("Fix: add why rejected", wave["reason"][1]["criterion"])  # the chosen option's fix hint is in the reason
+        # what the answer held and the reason used to drop: each option's probability, and the option Jev nearly chose
+        self.assertEqual(wave["reason"][1]["probabilities"], answers["ADR-T-0001/wave-1"]["alternatives"]["probabilities"])
+        self.assertEqual(wave["reason"][1]["runner_up"],
+                         {"choice": "named with reasons rejected", "probability": 0.2,
+                          "criterion": questions["alternatives"]["criteria"]["named with reasons rejected"]})
         self.assertEqual((wave["node"], wave["next"], wave["verdict"]), ("wave-1", None, "no"))
         self.assertEqual((result["verdict"], result["path"]), ("no", ["wave-1"]))
 
@@ -196,7 +215,7 @@ class WaveReasons(QualityCase):
         wave = events[3]["fields"]
         self.assertEqual((wave["node"], wave["next"], wave["verdict"]), ("wave-1", None, "no"))
         self.assertEqual(wave["answers"], answers["ADR-T-0001/wave-1"])
-        self.assertEqual(wave["reason"], out["data"]["results"][0]["waves"][0]["reason"])
+        self.assertEqual(wave["reason"], plain(out["data"]["results"][0]["waves"][0]["reason"]))  # the log's reason is unchanged
         self.assertEqual(wave["request"]["questions"], tree_node("quality-adr.json")["questions"])
         self.assertEqual((events[-1]["fields"]["verdict"], events[-1]["fields"]["path"]), ("no", ["wave-1"]))
 
@@ -215,16 +234,47 @@ class WaveReasons(QualityCase):
 
 
 class LogPath(QualityCase):
-    def test_the_default_log_is_sc_judge_jev_logs_judge_jev_log_jsonl(self):
-        cwd = os.getcwd()
-        self.addCleanup(os.chdir, cwd)
-        os.chdir(self.d)
+    def run_default(self, cwd, home):
         answers = write(self.d, "answers.json", {"*": tree_answers("quality-req.json")})
-        with env(), mock.patch.object(jj, "call_jev", never_called):
-            code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", answers])
+        before = os.getcwd()
+        self.addCleanup(os.chdir, before)
+        os.chdir(cwd)
+        with env(), mock.patch.object(jj, "call_jev", never_called), \
+                mock.patch.object(jj.judge_jev_paths, "home_dir", lambda: home):
+            return run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", answers])
+
+    def test_the_default_log_is_the_central_folder_of_the_repository_and_utc_date(self):
+        home, repo = (self.d / "home").resolve(), (self.d / "my repo").resolve()
+        (repo / ".git").mkdir(parents=True)
+        home.mkdir()
+        code, out = self.run_default(repo, home)
+        today = jj._dt.datetime.now(jj._dt.timezone.utc).date().isoformat()
+        root = home / ".judge-jev" / "my_repo" / today
+        self.assertEqual((code, out["data"]["log"]["log_root"]), (0, str(root)), out)
+        self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.jsonl")), ["logs/judge-jev.log.jsonl"])
+        self.assertEqual(list(repo.rglob("*.jsonl")), [])  # nothing is logged inside the repository
+
+    def test_a_linked_worktree_logs_under_its_main_checkout(self):
+        home, main, tree = (self.d / "home").resolve(), (self.d / "main-repo").resolve(), (self.d / "scratch" / "wt-1").resolve()
+        (main / ".git" / "worktrees" / "wt-1").mkdir(parents=True)
+        tree.mkdir(parents=True)
+        home.mkdir()
+        (tree / ".git").write_text(f"gitdir: {main / '.git' / 'worktrees' / 'wt-1'}\n", encoding="utf-8")
+        code, out = self.run_default(tree, home)
+        self.assertEqual((code, Path(out["data"]["log"]["log_root"]).parent), (0, home / ".judge-jev" / "main-repo"), out)
+
+    def test_run_dir_still_chooses_the_log_root(self):
+        home = (self.d / "home").resolve()
+        home.mkdir()
+        with mock.patch.object(jj.judge_jev_paths, "home_dir", lambda: home):
+            code, out = self.quality("--req", "REQ-T-0001", answers={"*": tree_answers("quality-req.json")})
+        self.assertEqual((code, out["data"]["log"]["log_root"]), (0, str(self.d / "logs")), out)
+        self.assertFalse((home / ".judge-jev").exists())
+
+    def test_with_no_home_directory_the_log_falls_back_to_the_repository(self):
+        code, out = self.run_default(self.d, None)
         self.assertEqual((code, out["data"]["log"]["log_root"]), (0, ".sc/judge-jev"), out)
-        files = sorted(str(p.relative_to(self.d)) for p in (self.d / ".sc").rglob("*.jsonl"))
-        self.assertEqual(files, [str(Path(".sc", "judge-jev", "logs", "judge-jev.log.jsonl"))])
+        self.assertTrue((self.d / ".sc" / "judge-jev" / "logs" / "judge-jev.log.jsonl").is_file())
 
 
 class SeveralRecords(QualityCase):
@@ -279,8 +329,9 @@ class TreeOverride(QualityCase):
         (data,) = out["data"]["results"]
         self.assertEqual((data["verdict"], data["path"]), ("no", ["w1", "w2"]))
         self.assertEqual([(w["node"], w["next"], w["verdict"], w["reason"]) for w in data["waves"]], [
-            ("w1", "w2", None, [{"id": "q1", "text": "Is `item.text` short?", "choice": "yes", "criterion": "short", "confidence": 0.9}]),
-            ("w2", None, "no", [{"id": "q2", "text": "Is `item.text` plain?", "choice": "no", "criterion": "dense", "confidence": 0.7}])])
+            ("w1", "w2", None, [reason_entry("q1", self.TREE["nodes"]["w1"]["questions"]["q1"], "yes", 0.9)]),
+            ("w2", None, "no", [reason_entry("q2", self.TREE["nodes"]["w2"]["questions"]["q2"], "no", 0.7)])])
+        self.assertEqual(data["waves"][1]["reason"][0]["runner_up"], {"choice": "unclear", "probability": 0.15, "criterion": "cannot tell"})
 
     def test_malformed_trees_are_typed_errors(self):
         w1, w2 = self.TREE["nodes"]["w1"], self.TREE["nodes"]["w2"]
@@ -447,7 +498,8 @@ class PerStatement(QualityCase):
         self.assertEqual([s["answers"] for s in statements], [answers["REQ-T-0001.s1/wave-1"], answers["REQ-T-0001.s3/wave-1"]])
         self.assertEqual([s["request_id"] for s in statements], result_wave["request_ids"])
         self.assertEqual([e["fields"]["request_id"] for e in events if e["action"] == "request"], result_wave["request_ids"])
-        self.assertEqual([{"statement": s["statement"], "answers": s["reason"]} for s in statements], result_wave["reason"])
+        self.assertEqual([{"statement": s["statement"], "answers": s["reason"]} for s in statements],
+                         [{"statement": r["statement"], "answers": plain(r["answers"])} for r in result_wave["reason"]])
         wave = events[8]["fields"]
         self.assertEqual((wave["request_ids"], wave["matched_statements"], wave["verdict"]), (result_wave["request_ids"], [3], "no"))
 

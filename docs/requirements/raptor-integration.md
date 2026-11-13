@@ -68,7 +68,7 @@ one. The request size limit is the `--max-request-bytes` value, at most
 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
 `--gate dev`. The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
-`.sc/judge-jev/logs/judge-jev.log.jsonl`.
+`~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`.
 
 **MUST statements:**
 
@@ -254,7 +254,7 @@ first.
 
 Definitions: The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
-`.sc/judge-jev/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
+`~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
 Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). A
 quality-tree branch is the next wave a quality decision tree's rules select
 from Jev's answers.

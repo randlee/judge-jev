@@ -66,8 +66,8 @@ class MedianGateTests(GateCase):
         data = self.gate(*self.three("REQ-A-0001", (0.61, 0.52, 0.48)))
         record = data["records"][0]
         self.assertFalse(record["pass"])
-        self.assertEqual(record["low"], [{"statement": 1, "question": "term", "choice": "none",
-                                          "median": 0.52, "confidences": [0.61, 0.52, 0.48]}])
+        self.assertEqual(record["low"], [{"statement": 1, "question": "term", "choice": "none", "median": 0.52,
+                                          "confidences": [0.61, 0.52, 0.48], "runner_up": None}])
 
     def test_the_threshold_is_inclusive_and_can_be_set(self):
         runs = self.three("REQ-A-0001", (0.6, 0.6, 0.7))
@@ -101,6 +101,33 @@ class MedianGateTests(GateCase):
     def test_one_run_gates_on_that_run(self):
         data = self.gate(self.three("REQ-A-0001", (0.59,), verdicts=("yes",))[0])
         self.assertEqual((data["runs"], data["records"][0]["pass"]), (1, False))
+
+
+class RunnerUpTests(GateCase):
+    def entry(self, conf, probabilities, runner):
+        return {"id": "obligations", "choice": "1", "confidence": conf, "probabilities": probabilities, "runner_up": runner}
+
+    def run_file(self, name, conf, probabilities, runner):
+        result = {"record": {"id": "REQ-A-0001", "kind": "req"}, "verdict": "yes", "waves": [{"node": "wave-1", "reason": [
+            {"statement": {"index": 2, "text": "X MUST do A and B."}, "answers": [self.entry(conf, probabilities, runner)]}]}]}
+        return self.write(name, [result])
+
+    def test_a_low_answer_names_the_option_jev_nearly_chose_with_its_median_probability_and_criterion(self):
+        two = {"choice": "2", "probability": 0.3, "criterion": "Two independent obligations."}
+        runs = [self.run_file("a.json", 0.48, {"1": 0.61, "2": 0.30, "3": 0.09}, two),
+                self.run_file("b.json", 0.41, {"1": 0.55, "2": 0.38, "3": 0.07}, {**two, "probability": 0.38}),
+                self.run_file("c.json", 0.52, {"1": 0.64, "2": 0.26, "3": 0.10}, {**two, "probability": 0.26})]
+        (low,) = self.gate(*runs)["records"][0]["low"]
+        self.assertEqual((low["median"], low["runner_up"]),
+                         (0.48, {"choice": "2", "probability": 0.3, "criterion": "Two independent obligations."}))
+
+    def test_runs_without_probabilities_report_no_runner_up(self):
+        (low,) = self.gate(*self.three("REQ-A-0001", (0.5, 0.5, 0.5)))["records"][0]["low"]
+        self.assertIsNone(low["runner_up"])
+
+    def test_no_runner_up_when_no_other_option_has_any_probability(self):
+        runs = [self.run_file(f"{i}.json", 0.5, {"1": 1.0, "2": 0.0}, None) for i in range(3)]
+        self.assertIsNone(self.gate(*runs)["records"][0]["low"][0]["runner_up"])
 
 
 class ComparabilityTests(GateCase):
