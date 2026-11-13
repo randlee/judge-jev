@@ -2,6 +2,20 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. 0.1.0 is the first release. Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, every integer version (question sets, trees, `schema_version`) stays `1`, and no PR bumps any of them; changes after 0.1.0 go under a `## Unreleased` section. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
 
+## Unreleased
+
+- `references/fix-strategy.md` is rewritten around asking Jev why. It replaces
+  the nine-step loop (mandatory proposers, 3 and 6 repeated runs, noise
+  routing) with: diagnose once with `assets/questions/diag-<kind>.json` (the
+  shipped tree plus appended `d_*` questions, same verdict rules), pick
+  strategies from a trigger table, launch one `jev-fix-proposer` per statement
+  and strategy in parallel, measure each candidate once, accept with a margin
+  and freeze accepted records in `.sc/judge-jev/accepted.jsonl`. It states the
+  confidence gate, the one-record unit of work, a state file in place of
+  memory, five rules, and the commit and report format. `jev-fix-proposer`
+  now takes one `strategy` and returns one candidate. SKILL.md hard stops and
+  `quality-workflow.md` follow. Closes #40 and #41.
+
 ## 0.1.0 — 2026-11-10
 
 First release. The `sc-judge-jev` plugin (Claude Code, Codex, Cursor) exposes one skill, `judge-jev-installer`, which installs the `judge-jev` skill and the `jev-fix-proposer` agent into a repository with `install.py`, the way plan-anchor installs. The skill's quality mode judges whether REQ, NFR and ADR records read from a Raptor import index are well written (`quality`), and fixes failing records; compliance mode (does a prompt, skill, template or code meet its record) is not in this release. Also: `validate`, `doctor`, `compare-definition` and `batch`, and the `evals/` real-use test. The entries below record how 0.1.0 was built.

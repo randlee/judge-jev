@@ -42,6 +42,8 @@ What fails an ADR: `context` is `background only` or `missing`; `alternatives` i
 
 `success: false` is a tool error, not a verdict: rerun once; if it fails again, report the code and message verbatim.
 
+A verdict of `yes` can still hold an unclear statement: an answer whose top choice is below the confidence gate (0.6 unless the repository states another value) means Jev found the wording unclear. `references/fix-strategy.md` lists those answers and asks Jev why, with `--questions <this skill's directory>/assets/questions/diag-<kind>.json`: the shipped tree with diagnostic `d_*` questions appended and the same verdict rules.
+
 ## 3. Fix a failing record
 
 Read `references/fix-strategy.md` and follow it.
