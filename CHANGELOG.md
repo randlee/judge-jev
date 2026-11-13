@@ -1,8 +1,10 @@
 # Changelog
 
-`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. 0.1.0 is the first release. Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, every integer version (question sets, trees, `schema_version`) stays `1`, and no PR bumps any of them; changes after 0.1.0 go under a `## Unreleased` section. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
+`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
-## Unreleased
+## 0.2.0 — 2026-11-13
+
+The fix procedure is replaced. Fixing a record now starts by asking Jev why: the result shows the option Jev nearly chose for every weak answer, the gate is the median of three runs, and every run logs to one folder per repository outside the repository. Reinstall with the `judge-jev-installer` skill; an install made by 0.1.0 is upgraded in place.
 
 - The fix strategy says which model does what: the fast model (Claude Code
   `haiku`, Codex `luna`) for mechanical steps that rewrite nothing, the
