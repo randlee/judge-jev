@@ -1,7 +1,7 @@
 ---
 name: jev-fix-proposer
 version: 0.1.0
-description: Proposes candidate edits for one failing REQ, NFR or ADR record from Jev's failing answers, each naming the answer it targets and keeping the record's obligations. Read-only; never calls Jev. Run several in parallel with no shared context.
+description: Writes one candidate edit for one weak statement of a REQ, NFR or ADR record, using the one strategy it is given and keeping the record's obligations. Read-only; never calls Jev. Launch one per statement and strategy, in parallel, with no shared context.
 model: opus
 color: green
 tools: Read, Grep, Glob
