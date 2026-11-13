@@ -1,0 +1,101 @@
+[
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "define",
+  "target": "s2",
+  "old": "do not match the request.\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take one input-kind flag with that file:\n  `--tree` (quality tree), `--questions` (question set), `--answers`\n  (answers file), `--index` (Raptor import index) or `--requests` (batch\n  request stream).",
+  "new": "do not match the request. The input-kind flags are `--tree` (quality\ntree), `--questions` (question set), `--answers` (answers file), `--index`\n(Raptor import index) and `--requests` (batch request stream).\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take exactly one of the input-kind flags with\n  that file.",
+  "why": "state the choice as one obligation over a named set defined in Definitions; flags move to Definitions intact",
+  "evidence": "tests/sc-judge-jev/test_validate.py:58"
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "move-rationale",
+  "target": "s2",
+  "old": "do not match the request.\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take one input-kind flag with that file:\n  `--tree` (quality tree), `--questions` (question set), `--answers`\n  (answers file), `--index` (Raptor import index) or `--requests` (batch\n  request stream).",
+  "new": "do not match the request. An input-kind flag names what the input file\nholds: `--tree` a quality tree, `--questions` a question set, `--answers`\nan answers file, `--index` a Raptor import index, `--requests` a batch\nrequest stream.\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take one input-kind flag with that file, from\n  the set {`--tree`, `--questions`, `--answers`, `--index`, `--requests`}.",
+  "why": "move per-flag glosses to Definitions; statement keeps all flags as one named set, no 'or' list",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s2",
+  "old": "MUST take one input-kind flag with that file:\n  `--tree` (quality tree), `--questions` (question set), `--answers`\n  (answers file), `--index` (Raptor import index) or `--requests` (batch\n  request stream).",
+  "new": "MUST take exactly one input-kind flag with that file, from the set\n  {`--tree` (quality tree), `--questions` (question set), `--answers`\n  (answers file), `--index` (Raptor import index), `--requests` (batch\n  request stream)}.",
+  "why": "present the flags as members of one set rather than an 'or' list of alternatives",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "split",
+  "target": "s2",
+  "old": "do not match the request.\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take one input-kind flag with that file:\n  `--tree` (quality tree), `--questions` (question set), `--answers`\n  (answers file), `--index` (Raptor import index) or `--requests` (batch\n  request stream).",
+  "new": "do not match the request. The input-kind flags are `--tree` (quality\ntree), `--questions` (question set), `--answers` (answers file), `--index`\n(Raptor import index) and `--requests` (batch request stream).\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take an input-kind flag with that file.\n- `judge-jev validate` MUST refuse more than one input-kind flag.",
+  "why": "split 'exactly one of' into at-least-one and at-most-one bullets over a set defined in Definitions",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s2",
+  "old": "- `judge-jev validate` MUST take one input-kind flag with that file:\n  `--tree` (quality tree), `--questions` (question set), `--answers`\n  (answers file), `--index` (Raptor import index) or `--requests` (batch\n  request stream).",
+  "new": "- `judge-jev validate` MUST take the one flag that names the input file's\n  kind; the input-kind flags are `--tree` (quality tree), `--questions`\n  (question set), `--answers` (answers file), `--index` (Raptor import\n  index) and `--requests` (batch request stream).",
+  "why": "one obligation (take the flag naming the kind); the list becomes a definition clause joined by 'and', not alternatives",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "define",
+  "target": "s2",
+  "old": "do not match the request.\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take one input-kind flag with that file:\n  `--tree` (quality tree), `--questions` (question set), `--answers`\n  (answers file), `--index` (Raptor import index) or `--requests` (batch\n  request stream).",
+  "new": "do not match the request. An input-kind flag is one of `--tree` (quality\ntree), `--questions` (question set), `--answers` (answers file), `--index`\n(Raptor import index) and `--requests` (batch request stream).\n\n**MUST statements:**\n- `judge-jev validate` MUST take one input file.\n- `judge-jev validate` MUST take one input-kind flag with that file.",
+  "why": "minimal form: define the term with its flags in Definitions, statement keeps its original wording without the list",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "split",
+  "target": "s3",
+  "old": "- A dry run MUST compose every request without calling Jev.",
+  "new": "- A dry run MUST compose every request.\n- A dry run MUST NOT call Jev.",
+  "why": "separate the two obligations (compose; no Jev call) into their own bullets",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request offline, with no call to Jev.",
+  "why": "make 'without calling Jev' read as a manner of composing (offline) rather than a second listed obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "remove",
+  "target": "s3",
+  "old": ": it composes every request and sends none",
+  "new": "",
+  "why": "the definition restates s3 as two clauses, priming Jev to count two obligations; s3 already carries both",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request locally, making zero calls to Jev.",
+  "why": "'making zero calls' reads as a checkable property of the compose step rather than a second obligation joined by 'and'",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s3",
+  "old": "A dry run is a run with `--dry-run`: it composes every\nrequest and sends none. The digest of a text is its SHA-256. A mode (target\nmode) names what a location holds: `prompt` (prompt text), `skill` (a skill\nfile), `task` (a task template) or `code` (source code). A question set is\nthe data file of questions sent to Jev; its shipped id is the `id` of a set\nshipped with the tool, its override path the file given with `--questions`.\nA vars file holds the values of a task template's variables. The request\nlimit is 24000 bytes by default. A quality decision tree is the data file of\nquestions that judges whether a record is well written: waves of questions\n(REQ-JEV-0101). The wave-1 request is the request for its first wave.\n\n**MUST statements:**\n- `judge-jev quality` MUST accept `--dry-run`.\n- `judge-jev check` MUST accept `--dry-run`.\n- A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run is a run with `--dry-run`: it composes every\nrequest and sends none. The digest of a text is its SHA-256. A mode (target\nmode) names what a location holds: `prompt` (prompt text), `skill` (a skill\nfile), `task` (a task template) or `code` (source code). A question set is\nthe data file of questions sent to Jev; its shipped id is the `id` of a set\nshipped with the tool, its override path the file given with `--questions`.\nA vars file holds the values of a task template's variables. The request\nlimit is 24000 bytes by default. A quality decision tree is the data file of\nquestions that judges whether a record is well written: waves of questions\n(REQ-JEV-0101). The wave-1 request is the request for its first wave.\n\n**MUST statements:**\n- `judge-jev quality` MUST accept `--dry-run`.\n- `judge-jev check` MUST accept `--dry-run`.\n- A dry run MUST compose every request offline.",
+  "why": "define 'compose offline' (= without calling Jev) in Definitions so s3 is one obligation; drops the definition's restatement of s3",
+  "evidence": ""
+ }
+]

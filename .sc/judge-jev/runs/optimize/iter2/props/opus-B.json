@@ -1,0 +1,344 @@
+[
+ {
+  "rid": "REQ-JEV-0201",
+  "type": "remove",
+  "target": "defs",
+  "old": ": a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`)",
+  "new": "",
+  "why": "location forms are defined in cited REQ-JEV-0207; no statement here uses them",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0201",
+  "type": "remove",
+  "target": "defs",
+  "old": " and target class",
+  "new": "",
+  "why": "target class is undefined here and no statement uses it",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0201",
+  "type": "reword",
+  "target": "defs",
+  "old": "questions judge-jev sends to Jev about a location for one record kind",
+  "new": "questions for one record kind",
+  "why": "shortening: Jev is undefined here and the send detail carries no obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0201",
+  "type": "reword",
+  "target": "defs",
+  "old": "`--profile` names a profile: a TOML file listing locations to check (REQ-JEV-0204).",
+  "new": "`--profile` names a profile (REQ-JEV-0204).",
+  "why": "shortening: profile contents are defined in REQ-JEV-0204 and unused by statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0201",
+  "type": "reword",
+  "target": "defs",
+  "old": "one requirement (REQ), non-functional requirement (NFR) or architecture decision record (ADR) REQ, NFR and ADR are its record kinds.",
+  "new": "one requirement, non-functional requirement or architecture decision record; these are its record kinds.",
+  "why": "shortening: s2 already gives the flag/expansion pairs; acronyms unused",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0202",
+  "type": "remove",
+  "target": "defs",
+  "old": " REQ, NFR and ADR are its record kinds.",
+  "new": "",
+  "why": "no statement uses record kinds",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0202",
+  "type": "reword",
+  "target": "defs",
+  "old": "requirement (REQ), non-functional requirement (NFR) or architecture decision record (ADR) REQ, NFR and ADR are its record kinds.",
+  "new": "requirement, non-functional requirement or architecture decision record.",
+  "why": "shortening: acronyms and record kinds unused by statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0202",
+  "type": "reword",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model.",
+  "new": "Jev is the judge model.",
+  "why": "shortening: vendor/hosting detail carries no obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0202",
+  "type": "remove",
+  "target": "defs",
+  "old": " (REQ-JEV-0207)",
+  "new": "",
+  "why": "citation in a definition that no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0203",
+  "type": "remove",
+  "target": "defs",
+  "old": ": `prompt` `skill`, `task` or `code`",
+  "new": "",
+  "why": "list repeats s1-s4 verbatim",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0203",
+  "type": "remove",
+  "target": "defs",
+  "old": " that defines the tree-sitter grammars (ADR-JEV-0004)",
+  "new": "",
+  "why": "s7 already says sc-agent defines the grammars; ADR cited in Implementation Notes",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0203",
+  "type": "reword",
+  "target": "defs",
+  "old": "defines the tree-sitter grammars (ADR-JEV-0004)",
+  "new": "defines the tree-sitter grammars",
+  "why": "shortening: ADR citation duplicated in Implementation Notes",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0203",
+  "type": "remove",
+  "target": "defs",
+  "old": " (REQ-JEV-0207)",
+  "new": "",
+  "why": "citation in a definition that no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0204",
+  "type": "remove",
+  "target": "defs",
+  "old": ", each with its mode and the ids of the records that govern it",
+  "new": "",
+  "why": "repeats s1, which states the profile's contents",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0204",
+  "type": "remove",
+  "target": "defs",
+  "old": " and the ids of the records that govern it",
+  "new": "",
+  "why": "repeats s1",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0204",
+  "type": "remove",
+  "target": "defs",
+  "old": "TOML is Tom's Obvious Minimal Language. A profile is a TOML file listing locations, each with its mode and the ids of the records that govern it.",
+  "new": "",
+  "why": "two sentences that only define what s1 already states (TOML profile listing locations, modes, record ids)",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0205",
+  "type": "reword",
+  "target": "defs",
+  "old": "one requirement (REQ), non-functional requirement (NFR) or architecture decision record (ADR); REQ, NFR and ADR are its record kinds.",
+  "new": "one requirement, non-functional requirement or architecture decision record; these are its record kinds.",
+  "why": "shortening: acronyms unused by statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0205",
+  "type": "reword",
+  "target": "defs",
+  "old": "questions judge-jev sends to Jev about a location for one record kind",
+  "new": "questions for one record kind",
+  "why": "shortening: send detail carries no obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0205",
+  "type": "remove",
+  "target": "defs",
+  "old": "; see REQ-JEV-0101",
+  "new": "",
+  "why": "cross-reference no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0205",
+  "type": "remove",
+  "target": "defs",
+  "old": "given with `--questions` ",
+  "new": "",
+  "why": "s6 already names `--questions <file>`",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0205",
+  "type": "remove",
+  "target": "defs",
+  "old": " for that run",
+  "new": "",
+  "why": "clause carries no obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0205",
+  "type": "remove",
+  "target": "defs",
+  "old": " (REQ-JEV-0008)",
+  "new": "",
+  "why": "citation in a definition no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0205",
+  "type": "remove",
+  "target": "defs",
+  "old": " (modes `prompt`, `skill` and `task`) or code (mode `code`)",
+  "new": " or code",
+  "why": "parentheticals name modes no statement uses (original text had just 'agent text or code')",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0206",
+  "type": "reword",
+  "target": "defs",
+  "old": "A location is defined in REQ-JEV-0207; a pair is one (record, location) pair. A record",
+  "new": "A location is defined in REQ-JEV-0207. A record",
+  "why": "shortening: pair is defined again later in the paragraph",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0206",
+  "type": "reword",
+  "target": "defs",
+  "old": "(`path::Symbol`) (REQ-JEV-0207). A pair is one (record, location) pair.",
+  "new": "(`path::Symbol`) (REQ-JEV-0207).",
+  "why": "shortening: duplicate pair definition (already defined earlier)",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0206",
+  "type": "reword",
+  "target": "defs",
+  "old": "A location is defined in REQ-JEV-0207; a pair",
+  "new": "A pair",
+  "why": "shortening: location defined again later in the paragraph",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0206",
+  "type": "remove",
+  "target": "defs",
+  "old": ": a whole file (`path`), a Markdown section (`path#Heading`) or a code symbol (`path::Symbol`)",
+  "new": "",
+  "why": "location forms are in cited REQ-JEV-0207; no statement uses them",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0206",
+  "type": "remove",
+  "target": "defs",
+  "old": " as Raptor imports it",
+  "new": "",
+  "why": "Raptor undefined here; no statement uses it",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "remove",
+  "target": "defs",
+  "old": " that imports Markdown records",
+  "new": "",
+  "why": "s5 only needs Raptor named as a tool",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "remove",
+  "target": "defs",
+  "old": "sc-agent is the agent tool. Tree-sitter grammars are the parsers.",
+  "new": "",
+  "why": "two empty definitions of terms Jev reads as named tools/common usage",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "reword",
+  "target": "defs",
+  "old": "Raptor is the requirements tool that imports Markdown records. sc-agent is the agent tool.",
+  "new": "Raptor is the requirements tool.",
+  "why": "shortening: drops Raptor detail and sc-agent restatement together",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "remove",
+  "target": "defs",
+  "old": ": it answers each multiple-choice question about a text with one choice and a confidence from 0 to 1",
+  "new": "",
+  "why": "no statement uses Jev's answer format",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model",
+  "new": "Jev is the judge model",
+  "why": "shortening: vendor/hosting detail carries no obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "remove",
+  "target": "defs",
+  "old": " (ADR-JEV-0002)",
+  "new": "",
+  "why": "citation no statement relies on",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "remove",
+  "target": "defs",
+  "old": ": it composes every request and sends none",
+  "new": "",
+  "why": "repeats s3",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "defs",
+  "old": "`prompt` (prompt text), `skill` (a skill file), `task` (a task template) or `code` (source code)",
+  "new": "`prompt`, `skill`, `task` or `code`",
+  "why": "shortening: parentheticals restate the mode names",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "remove",
+  "target": "defs",
+  "old": " (target mode)",
+  "new": "",
+  "why": "no statement uses 'target mode'",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "remove",
+  "target": "defs",
+  "old": " (REQ-JEV-0101)",
+  "new": "",
+  "why": "citation no statement relies on",
+  "evidence": ""
+ }
+]

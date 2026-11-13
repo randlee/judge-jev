@@ -1,0 +1,434 @@
+[
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "remove",
+  "target": "defs",
+  "old": "A Jev request is one call to it. ",
+  "new": "",
+  "why": "'Jev request' appears in no statement",
+  "evidence": ""
+ },
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "remove",
+  "target": "defs",
+  "old": "Jev is TypeSafe's hosted judge model: it answers each multiple-choice question about a text with one choice and a confidence from 0 to 1.",
+  "new": "Jev is TypeSafe's hosted judge model.",
+  "why": "answer format is not used by any statement; shortens defs",
+  "evidence": ""
+ },
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "reword",
+  "target": "s2",
+  "old": "judge-jev tests MUST NOT depend on timing.",
+  "new": "judge-jev tests MUST NOT depend on how long an operation takes.",
+  "why": "term=none only 0.46; names what 'timing' means so a grep/inspection target is clearer",
+  "evidence": ""
+ },
+ {
+  "rid": "NFR-JEV-0001",
+  "type": "reword",
+  "target": "s4",
+  "old": "judge-jev tests MUST NOT depend on ordering.",
+  "new": "judge-jev tests MUST NOT depend on the order in which tests run.",
+  "why": "term=none 0.44 and check 0.40; 'ordering' alone is vague",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0001",
+  "type": "define",
+  "target": "defs",
+  "old": "Its\nquery interface is the way Raptor hands records to another tool.",
+  "new": "Its\nquery interface is the Raptor import index: the JSON Raptor's `scripts/extract.py --output` writes.",
+  "why": "s1 term 0.55/check 0.42-0.46: the interface is named by the code, making s1 greppable",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0001",
+  "type": "remove",
+  "target": "defs",
+  "old": "and serves them to other tools (ADR-JEV-0002)",
+  "new": "(ADR-JEV-0002)",
+  "why": "'serves them to other tools' restates the query-interface sentence",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0001",
+  "type": "cite",
+  "target": "s1",
+  "old": "judge-jev MUST obtain records through Raptor's query interface.",
+  "new": "judge-jev MUST obtain records through Raptor's query interface (ADR-JEV-0002).",
+  "why": "s1 term 0.55: cite the ADR deciding the access path",
+  "evidence": "docs/adr/adr-jev-product.md:63"
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": "it answers each\nmultiple-choice question about a text with one choice and a confidence from\n0 to 1. ",
+  "new": "",
+  "why": "answer format not used by any statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": ", such as `JEV.NETWORK` or\n`JEV.RATE_LIMITED`",
+  "new": "",
+  "why": "examples repeated verbatim in the retry-policy sentence",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "remove",
+  "target": "defs",
+  "old": " (version 1.5.0)",
+  "new": "",
+  "why": "version pin is not an obligation of any statement here; REQ-JEV-0008 is cited",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "define",
+  "target": "defs",
+  "old": "it reads request lines (one JSON request per line), sends each to",
+  "new": "it reads request lines (one JSON request per line) from stdin or `--input <file>`, sends each to",
+  "why": "s2 check=CLI run only 0.26-0.34: names the input the CLI run feeds",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:111"
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "define",
+  "target": "defs",
+  "old": "A result envelope is the JSON result line for\none request,",
+  "new": "A result envelope is the JSON result line, written to stdout, for\none request,",
+  "why": "s3 check 0.59-0.62: names where to observe the envelope",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:101"
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "cite",
+  "target": "s4",
+  "old": "The batch command MUST use typed error codes.",
+  "new": "The batch command MUST use typed error codes (`jev_errors.py`).",
+  "why": "s4 check=inspection 0.30: points the grep at the module holding the codes",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_errors.py.j2"
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "define",
+  "target": "defs",
+  "old": "after the\nresponse's Retry-After delay capped at 30 seconds, or after 1 second without\none.",
+  "new": "after the\nresponse's Retry-After delay capped at 30 seconds, or after 1 second without\none (`BATCH_RETRIES = 1`, `MAX_RETRY_AFTER = 30.0`).",
+  "why": "s5 check=unit test 0.42-0.51: names the constants a unit test asserts",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:1132,137,1331"
+ },
+ {
+  "rid": "REQ-JEV-0002",
+  "type": "define",
+  "target": "defs",
+  "old": "The request size limit is the `--max-request-bytes` value,",
+  "new": "The request size limit is the `--max-request-bytes` value (`MAX_REQUEST_BYTES_CEILING`),",
+  "why": "s6 check 0.36-0.45: names the enforced constant",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:132-134"
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "split",
+  "target": "s1",
+  "old": "- judge-jev MUST read the TypeSafe API key from `TYPESAFE_API_KEY` first,\n  then from the platform credential store, service `plan-anchor`, account\n  `typesafe-api-key`.",
+  "new": "- When `TYPESAFE_API_KEY` is set, judge-jev MUST read the TypeSafe API key\n  from it.\n- When `TYPESAFE_API_KEY` is unset, judge-jev MUST read the TypeSafe API key\n  from the platform credential store, service `plan-anchor`, account\n  `typesafe-api-key`.",
+  "why": "obligations=1 only 0.41-0.49 with and-list 0.32-0.41: one rule-1 flip from FAIL; code reads env if set, else store",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:1018-1023"
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "reword",
+  "target": "s1",
+  "old": "from `TYPESAFE_API_KEY` first,\n  then from the platform credential store,",
+  "new": "from `TYPESAFE_API_KEY` before\n  the platform credential store,",
+  "why": "expresses the lookup order as one obligation, lowering the and-list reading",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "remove",
+  "target": "defs",
+  "old": "(application programming\ninterface) ",
+  "new": "",
+  "why": "API is a common acronym; shortens defs",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0003",
+  "type": "remove",
+  "target": "defs",
+  "old": ", the judge model",
+  "new": "",
+  "why": "restates what Jev is; not used by the statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "reword",
+  "target": "s2",
+  "old": "judge-jev MUST NOT write that setting without the user's answer.",
+  "new": "judge-jev MUST NOT write `allow_remote_judge` without the user's answer.",
+  "why": "s2 term 0.45-0.54: 'that setting' is a back-reference",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "define",
+  "target": "defs",
+  "old": "`POLICY.REMOTE_JUDGE_DISABLED` is the typed error code for a refused live\ncall.",
+  "new": "`POLICY.REMOTE_JUDGE_DISABLED` is the typed error code for a refused live\ncall. The user's answer is the installer's `--allow-remote-judge` or\n`--no-remote-judge` flag, or `judge_jev_settings.py set allow_remote_judge\ntrue|false`.",
+  "why": "s2 term 0.45 and check 0.42-0.47: names the only inputs that may write the setting",
+  "evidence": "plugins/sc-judge-jev/install.py:82-86,970-971"
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "remove",
+  "target": "defs",
+  "old": "it answers each\nmultiple-choice question about a text with one choice and a confidence from\n0 to 1. ",
+  "new": "",
+  "why": "answer format not used by any statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0004",
+  "type": "remove",
+  "target": "defs",
+  "old": "A Jev request is one call to it. ",
+  "new": "",
+  "why": "'Jev request' appears in no statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "split",
+  "target": "s4",
+  "old": "- An upgrade MUST update every harness that is locked, installed or present.",
+  "new": "- An upgrade MUST update every locked harness.\n- An upgrade MUST update every installed harness.\n- An upgrade MUST update every present harness.",
+  "why": "obligations=1 only 0.35-0.36 on a three-way list; same three obligations, one each",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "define",
+  "target": "defs",
+  "old": "A harness is locked when the install\nlock records it,",
+  "new": "A harness is locked when the install\nlock (`.sc/judge-jev/install-lock.json`) records it,",
+  "why": "'install lock' is otherwise undefined; s4 check 0.32-0.39",
+  "evidence": "plugins/sc-judge-jev/install.py:53-59,69"
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "define",
+  "target": "defs",
+  "old": "An upgrade is an install of a newer judge-jev version.",
+  "new": "An upgrade is a rerun of `install.py` with a newer judge-jev version.",
+  "why": "s4 check=CLI run 0.32-0.39: names the command run",
+  "evidence": "plugins/sc-judge-jev/install.py:88-89"
+ },
+ {
+  "rid": "REQ-JEV-0005",
+  "type": "remove",
+  "target": "defs",
+  "old": " A marketplace plugin is a plugin a harness\ninstalls from a plugin marketplace.",
+  "new": "",
+  "why": "common usage; s1-s3 pass with term=none 0.61-0.76",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "reword",
+  "target": "s1",
+  "old": "judge-jev MUST obtain its record database by asking Raptor to build a\n  local SQLite database from the repository's Raptor-parseable Markdown on\n  each run.",
+  "new": "On each run, judge-jev MUST ask Raptor to build its local SQLite record\n  database from the repository's Raptor-parseable Markdown.",
+  "why": "obligations=1 only 0.37-0.47: 'obtain ... by asking' reads as two acts",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "remove",
+  "target": "defs",
+  "old": " SQLite is a single-file SQL (Structured Query Language) database.",
+  "new": "",
+  "why": "SQLite is common usage",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "remove",
+  "target": "defs",
+  "old": "(Structured Query Language) ",
+  "new": "",
+  "why": "SQL is a common acronym; shortens the SQLite definition",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "remove",
+  "target": "defs",
+  "old": "into its record store and serves them to other tools ",
+  "new": "",
+  "why": "'record store' appears in no statement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0006",
+  "type": "cite",
+  "target": "s2",
+  "old": "query it through the same Raptor interface.",
+  "new": "query it through the same Raptor interface (ADR-JEV-0002).",
+  "why": "s2 check=unit test 0.34-0.40: cite the decision fixing the interface",
+  "evidence": "docs/adr/adr-jev-product.md:63-80"
+ },
+ {
+  "rid": "REQ-JEV-0007",
+  "type": "split",
+  "target": "s1",
+  "old": "- judge-jev's requirements, non-functional requirements and decisions MUST\n  import through Raptor with no issues.",
+  "new": "- judge-jev's requirements MUST import through Raptor with no issues.\n- judge-jev's non-functional requirements MUST import through Raptor with no\n  issues.\n- judge-jev's decisions MUST import through Raptor with no issues.",
+  "why": "obligations=1 only 0.33-0.43 with an and-list subject; one obligation per record kind",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0007",
+  "type": "reword",
+  "target": "s1",
+  "old": "judge-jev's requirements, non-functional requirements and decisions MUST\n  import through Raptor with no issues.",
+  "new": "Every judge-jev record (REQ, NFR or ADR) MUST import through Raptor with no\n  issues.",
+  "why": "single 'every record' subject avoids the and-list reading",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0007",
+  "type": "remove",
+  "target": "defs",
+  "old": ", such as\n`UNKNOWN_SECTION`",
+  "new": "",
+  "why": "example code not needed; s1 check is already CLI run 0.95+",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "move-rationale",
+  "target": "s1",
+  "old": ", the logger\n  sc-agent uses.",
+  "new": ".",
+  "why": "appositive is the reason (Rand quote in Rationale already says sc-agent uses it); joined_by none only 0.66-0.69",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "remove",
+  "target": "defs",
+  "old": "sc-agent is the agent tool whose\nRust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). ",
+  "new": "",
+  "why": "after the appositive moves, sc-agent appears only in the Rationale quote",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "s2",
+  "old": "judge-jev MUST NOT keep its own log format alongside it.",
+  "new": "judge-jev MUST NOT write run logs in a format of its own.",
+  "why": "s2 term 0.55: 'alongside it' is a back-reference; acceptance names the forbidden file",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "defs",
+  "old": "A\nquality-tree branch is the next wave a quality decision tree's rules select\nfrom Jev's answers.",
+  "new": "A\nquality-tree branch is the next wave a quality decision tree's rules select\nfrom Jev's answers. A verdict is the `yes`, `no` or `unclear` a quality\ndecision tree's rules give a record.",
+  "why": "s1 term 0.50-0.52; 'verdicts' undefined here",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "split",
+  "target": "s5",
+  "old": "- A wave the tree marks per statement MUST send one request for each MUST\n  and MUST NOT statement of the record, carrying that statement with the\n  whole record as context.",
+  "new": "- A wave the tree marks per statement MUST send one request for each MUST\n  and MUST NOT statement of the record.\n- Each per-statement request MUST carry its statement with the whole record\n  as context.",
+  "why": "s5 FAILed R1 (obligations=3, and-list); same two obligations, one each",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "split",
+  "target": "s3",
+  "old": "- The mode MUST run as a decision tree of prompts: each wave sends several\n  questions, and the answers to one wave select the next wave's questions.",
+  "new": "- The mode MUST run as a decision tree of prompts.\n- Each wave MUST send several questions.\n- The answers to one wave MUST select the next wave's questions.",
+  "why": "obligations=3 answered every run (low conf); rule 1 fires if joined_by flips to and-list",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "split",
+  "target": "s13",
+  "old": "- The tree MUST ship with the tool as a data file a consumer can override\n  (REQ-JEV-0205); answers select the branch and the verdict, never a model\n  choosing the next questions.",
+  "new": "- The tree MUST ship with the tool as a data file a consumer can override\n  (REQ-JEV-0205).\n- Answers MUST select the branch and the verdict.\n- A model MUST NOT choose the next questions.",
+  "why": "obligations=3 every run with joined_by none only 0.31-0.49; one obligation each",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "split",
+  "target": "s12",
+  "old": "- A wave with no next wave MUST end the walk, with its verdict given by a\n  rule in the tree file over that wave's answers.",
+  "new": "- A wave with no next wave MUST end the walk.\n- The verdict of a wave with no next wave MUST come from a rule in the tree\n  file over that wave's answers.",
+  "why": "obligations=2 every run (0.49-0.53); joined_by none only 0.40",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "define",
+  "target": "defs",
+  "old": "A consumer is a repository that uses\njudge-jev.",
+  "new": "A consumer is a repository that uses\njudge-jev. A wave refines the wave before it when its questions narrow in\non that wave's answers.",
+  "why": "s10 term 0.40-0.42: 'refine' undefined; 'narrow in' is Rand's word in the Rationale",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "define",
+  "target": "defs",
+  "old": "its decision-tree\npath is the list of those waves' ids.",
+  "new": "its decision-tree\npath is the list of those waves' ids, reported as the result's `path`.",
+  "why": "s14 check 0.16-0.20: names the output field a CLI run reads",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "s11",
+  "old": "A wave after the first MUST be designed from the observed live results\n  of the wave before it.",
+  "new": "A wave after the first MUST be designed from the logged live answers of\n  the wave before it.",
+  "why": "s11 check 0.14-0.18 (near 'needs a measure'): ties 'observed results' to the run log an inspection can read",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "s9",
+  "old": "MUST fail with an error that\n  names its statement.",
+  "new": "MUST fail with an error naming its statement.",
+  "why": "obligations=2 every run; participle reads as one obligation",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:2246-2252"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "remove",
+  "target": "defs",
+  "old": "into its record store and serves them to other\ntools ",
+  "new": "",
+  "why": "'record store' appears in no statement",
+  "evidence": ""
+ }
+]

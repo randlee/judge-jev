@@ -1,0 +1,353 @@
+[
+ {
+  "rid": "REQ-JEV-0209",
+  "type": "define",
+  "target": "defs",
+  "old": "A run name is the name every log event of one invocation\ncarries (`--run-name`).",
+  "new": "A run name is the name every log event of one invocation\ncarries (`--run-name`). A record-kind flag is `--req`, `--adr` or `--nfr`.",
+  "why": "s3 term 'record-kind flag' flagged defined nowhere",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0209",
+  "type": "reword",
+  "target": "s3",
+  "old": "Every record-kind flag of `judge-jev quality` MUST be repeatable.",
+  "new": "`judge-jev quality` MUST accept each of `--req`, `--adr` and `--nfr` more than once.",
+  "why": "drops undefined term in s3",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0209",
+  "type": "reword",
+  "target": "s3",
+  "old": "Every record-kind flag of `judge-jev quality` MUST be repeatable.",
+  "new": "`judge-jev quality` MUST accept a repeated `--req`, `--adr` or `--nfr` flag in one invocation.",
+  "why": "concrete CLI-checkable form",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0209",
+  "type": "cite",
+  "target": "s3",
+  "old": "Every record-kind flag of",
+  "new": "Every record-kind flag (as in the statement above) of",
+  "why": "ties s3 to s2 where flags are listed",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0209",
+  "type": "reword",
+  "target": "s2",
+  "old": "`judge-jev quality` MUST take each record id with one record-kind flag:\n  `--req` (requirement), `--adr` (architecture decision record) or `--nfr`\n  (non-functional requirement).",
+  "new": "`judge-jev quality` MUST take each record id with one record-kind flag\n  (`--req`, `--adr` or `--nfr`).",
+  "why": "shorter, drops expansions that invite alternatives",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0209",
+  "type": "remove",
+  "target": "s2",
+  "old": "(requirement), `--adr` (architecture decision record) or `--nfr`\n  (non-functional requirement)",
+  "new": "or `--nfr`",
+  "why": "remove acronym expansions inside statement; keep kind names in flag",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0209",
+  "type": "remove",
+  "target": "defs",
+  "old": " (`--run-name`)",
+  "new": "",
+  "why": "flag name restated; not needed for obligation",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2:117"
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "split",
+  "target": "s9",
+  "old": "- The answers-file envelope MUST require an object with `__error__` to hold\n  only a string code of at most 64 characters.",
+  "new": "- The answers-file envelope MUST require an object with `__error__` to hold\n  only a string code.\n- The answers-file envelope MUST require an `__error__` code to be at most 64\n  characters.",
+  "why": "obligations=3@0.3 low confidence; two checkable obligations",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "remove",
+  "target": "defs",
+  "old": " A Jev request is one call to it.",
+  "new": "",
+  "why": "partial definition; request is common usage",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "remove",
+  "target": "defs",
+  "old": " Its envelope is\nits outer structure: its keys and the type of each value.",
+  "new": "",
+  "why": "envelope term used in statements; but defined by statements s7-s9 themselves",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "remove",
+  "target": "defs",
+  "old": "(a typed schema class) ",
+  "new": "",
+  "why": "Pydantic gloss is common usage",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s8",
+  "old": "MUST require each key's value to be an object\n  or a non-empty list of objects.",
+  "new": "MUST require each key's value to be an object or a list of objects with at least one element.",
+  "why": "clarify non-empty for unit test",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s3",
+  "old": "before its first Jev request (ADR-JEV-0005).",
+  "new": "before sending the first request (ADR-JEV-0005).",
+  "why": "reduce condition+obligation wording",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0211",
+  "type": "split",
+  "target": "s3",
+  "old": "- `judge-jev` MUST refuse an invalid tree, question set, index, request\n  stream or run directory before its first Jev request.",
+  "new": "- `judge-jev` MUST refuse an invalid input before its first Jev request.\n- An input is a tree, a question set, an index, a request stream or a run directory.",
+  "why": "s3 failed R1 obligations 4+; a single obligation over the input class",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0211",
+  "type": "reword",
+  "target": "s3",
+  "old": "an invalid tree, question set, index, request\n  stream or run directory",
+  "new": "an invalid input (any of the five input kinds in the Definitions)",
+  "why": "removes alternatives list",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0211",
+  "type": "define",
+  "target": "defs",
+  "old": "A log event is one event",
+  "new": "An input is a tree, question set, index, request stream or run directory. A log event is one event",
+  "why": "single term 'input' covers the list in s3",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0211",
+  "type": "remove",
+  "target": "defs",
+  "old": "A `judge-jev` command's result is\nthe JSON object it prints on success. ",
+  "new": "",
+  "why": "result is common usage; s2 uses 'its result'",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0211",
+  "type": "remove",
+  "target": "defs",
+  "old": " (sc-observability 1.5.0)",
+  "new": "",
+  "why": "version cite carries no obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0211",
+  "type": "remove",
+  "target": "defs",
+  "old": " A Jev request is one call to it.",
+  "new": "",
+  "why": "partial removal of common-usage definition",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0212",
+  "type": "remove",
+  "target": "defs",
+  "old": " A definition's digest is the SHA-256 of its term, text and source.",
+  "new": "",
+  "why": "digest only appears in s5; keep? partial - check",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0212",
+  "type": "split",
+  "target": "s1",
+  "old": "A definition MUST be attachable to a record alone, or to a record and\n  one location under evaluation.",
+  "new": "A definition MUST be attachable to a record alone.\n- A definition MUST be attachable to a record and one location under evaluation.",
+  "why": "removes alternatives; same obligations",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0212",
+  "type": "remove",
+  "target": "defs",
+  "old": " (the file, Markdown section or code\nsymbol being judged)",
+  "new": "",
+  "why": "location parenthetical restated elsewhere",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0212",
+  "type": "remove",
+  "target": "defs",
+  "old": ", which holds the record",
+  "new": "",
+  "why": "redundant restatement",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0212",
+  "type": "reword",
+  "target": "s2",
+  "old": "in its state next to the record, ",
+  "new": "",
+  "why": "drop state phrase; state defined but clutter",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0212",
+  "type": "reword",
+  "target": "s4",
+  "old": "whose definitions take\n  it over the size limit",
+  "new": "whose definitions take\n  it over 24000 bytes",
+  "why": "uses the measure from the code",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:132"
+ },
+ {
+  "rid": "REQ-JEV-0213",
+  "type": "split",
+  "target": "s6",
+  "old": "- The comparison MUST report the candidates as material when an answer's\n  choice flips or its confidence crosses the decision threshold, and as not\n  material when every change stays on the same side of the threshold.",
+  "new": "- The comparison MUST report the candidates as material when an answer's\n  choice flips or its confidence crosses the decision threshold.\n- The comparison MUST report the candidates as not material when every change\n  stays on the same side of the threshold.",
+  "why": "obligations=2 compound",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0213",
+  "type": "remove",
+  "target": "defs",
+  "old": " The comparison\nis `judge-jev compare-definition`.",
+  "new": "",
+  "why": "'the comparison' is used plainly; command name not needed",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0213",
+  "type": "remove",
+  "target": "defs",
+  "old": "; a candidate definition is one being tested",
+  "new": "",
+  "why": "candidate is common usage",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0213",
+  "type": "remove",
+  "target": "defs",
+  "old": " The requests a candidate would reach are\nthe requests about the records it is attached to.",
+  "new": "",
+  "why": "restates s2 wording",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0213",
+  "type": "reword",
+  "target": "s4",
+  "old": "The comparison MUST report each answer's choice with and without the\n  candidates.",
+  "new": "The comparison MUST report each answer's choice both with and without the candidates.",
+  "why": "clarity",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0214",
+  "type": "remove",
+  "target": "defs",
+  "old": " (Internationalized Resource Identifier)",
+  "new": "",
+  "why": "acronym expansion unneeded for IRI",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0214",
+  "type": "remove",
+  "target": "defs",
+  "old": ", such as `urn:judge-jev:question:req.term`",
+  "new": "",
+  "why": "example not an obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0214",
+  "type": "reword",
+  "target": "s1",
+  "old": "(by default the repository) ",
+  "new": "",
+  "why": "parenthetical not an obligation; scope default belongs in definitions",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0214",
+  "type": "define",
+  "target": "defs",
+  "old": "A consumer extension",
+  "new": "A scope is a set of tree files, by default the repository. A consumer extension",
+  "why": "define scope instead of parenthetical in s1",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0215",
+  "type": "split",
+  "target": "s4",
+  "old": "- `judge-jev doctor` MUST validate every tree, question set and definitions\n  file in the scope against the ontology's shapes, including edges and\n  cycles.",
+  "new": "- `judge-jev doctor` MUST validate every tree, question set and definitions\n  file in the scope against the ontology's shapes.\n- `judge-jev doctor` MUST report a cycle in a tree as a validation failure.",
+  "why": "s4 FAIL R1 obligations=3; separate cycle obligation",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0215",
+  "type": "reword",
+  "target": "s4",
+  "old": "against the ontology's shapes, including edges and\n  cycles.",
+  "new": "against the ontology's shapes (which check edges and cycles).",
+  "why": "moves edges/cycles to a note",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0215",
+  "type": "remove",
+  "target": "defs",
+  "old": " Jev is TypeSafe's hosted judge model: it answers each\nmultiple-choice question about a text with one choice and a confidence from\n0 to 1. A Jev request is one call to it.",
+  "new": "",
+  "why": "doctor never calls Jev; only s10 mentions Jev",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0215",
+  "type": "remove",
+  "target": "defs",
+  "old": " an edge is a link from one\nnode of a tree to another, and a cycle is a chain of edges that leads back\nto its start.",
+  "new": "",
+  "why": "edge/cycle common graph terms",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0215",
+  "type": "remove",
+  "target": "defs",
+  "old": " (Shapes\nConstraint Language)",
+  "new": "",
+  "why": "acronym gloss unneeded",
+  "evidence": ""
+ }
+]

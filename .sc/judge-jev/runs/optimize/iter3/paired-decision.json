@@ -1,0 +1,22 @@
+{
+ "kept_from_iter3": [
+  "REQ-JEV-0003",
+  "REQ-JEV-0006",
+  "REQ-JEV-0204",
+  "REQ-JEV-0206"
+ ],
+ "rule": "paired runs pair23 (6 pairs): keep a record's iteration-3 change only if no added failing run and paired mean margin drop < 0.02 (same-text pair noise max 0.011)",
+ "rejected": {
+  "NFR-JEV-0001": "margin -0.023",
+  "REQ-JEV-0201": "margin -0.031",
+  "REQ-JEV-0207": "margin -0.024",
+  "REQ-JEV-0211": "margin -0.036",
+  "REQ-JEV-0202": "1/6 fail vs 0/6",
+  "REQ-JEV-0203": "6/6 fail vs 0/6",
+  "REQ-JEV-0205": "1/6 vs 0/6",
+  "REQ-JEV-0208": "4/6 vs 2/6",
+  "REQ-JEV-0213": "1/6 vs 0/6",
+  "REQ-JEV-0214": "3/6 vs 0/6",
+  "REQ-JEV-0215": "1/6 vs 0/6"
+ }
+}

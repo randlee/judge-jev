@@ -1,0 +1,128 @@
+[
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s2",
+  "old": "`judge-jev validate` MUST take one input-kind flag with that file: `--tree` (quality tree), `--questions` (question set), `--answers` (answers file), `--index` (Raptor import index) or `--requests` (batch request stream).",
+  "new": "`judge-jev validate` MUST take exactly one input-kind flag with that file; the input-kind flags are `--tree` (quality tree), `--questions` (question set), `--answers` (answers file), `--index` (Raptor import index) or `--requests` (batch request stream).",
+  "why": "one obligation over a named set, set named in a trailing clause",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s2",
+  "old": "MUST take one input-kind flag with that file: `--tree`",
+  "new": "MUST take one input-kind flag with that file, chosen from the five kinds `--tree`",
+  "why": "name the set as a single choice",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "move-rationale",
+  "target": "s2",
+  "old": " (quality tree), `--questions` (question set), `--answers` (answers file), `--index` (Raptor import index) or `--requests` (batch request stream).",
+  "new": " , `--questions`, `--answers`, `--index` or `--requests`.",
+  "why": "drop per-flag glosses from the statement (glosses lost; contained terms remain defined elsewhere)",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "define",
+  "target": "defs",
+  "old": "`JEV.RESPONSE_INVALID` is the typed error code",
+  "new": "An input-kind flag is one of `--tree` (quality tree), `--questions` (question set), `--answers` (answers file), `--index` (Raptor import index) or `--requests` (batch request stream). `JEV.RESPONSE_INVALID` is the typed error code",
+  "why": "define the flag set in Definitions; pair with the s2 tweak that cites it (applies alone, harmless)",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "split",
+  "target": "s2",
+  "old": "`judge-jev validate` MUST take one input-kind flag with that file: `--tree` (quality tree),",
+  "new": "`judge-jev validate` MUST take an input-kind flag with that file.\n- `judge-jev validate` MUST take no second input-kind flag with that file.\n- An input-kind flag is `--tree` (quality tree),",
+  "why": "split into 'take a flag' and 'no second flag'; set listed as plain description",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s2",
+  "old": "MUST take one input-kind flag with that file:",
+  "new": "MUST take exactly one flag from this set of input-kind flags with that file:",
+  "why": "state choice as one obligation over a named set",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0210",
+  "type": "reword",
+  "target": "s2",
+  "old": "MUST take one input-kind flag with that file:",
+  "new": "MUST take one flag of the input kind of that file, namely",
+  "why": "reword choice as selecting the kind rather than an alternatives list",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "split",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request.\n- A dry run MUST NOT call Jev.",
+  "why": "two single-obligation statements",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request with no Jev call.",
+  "why": "one obligation, noun phrase instead of verb clause",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request offline.",
+  "why": "single verb, offline implies no Jev call",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST send no request to Jev and MUST compose every request.",
+  "why": "explicit but equal; likely still compound",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST make zero Jev calls while composing every request.",
+  "why": "count form",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request; the composing makes no Jev call.",
+  "why": "move no-call into a descriptive clause",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "move-rationale",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request.",
+  "why": "'sends none' already in definition of dry run; no-call stated there (weakens explicit no-call; risk)",
+  "evidence": ""
+ }
+]

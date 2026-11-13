@@ -1,0 +1,23 @@
+@prefix jj: <urn:judge-jev:ontology#> .
+@prefix d:  <urn:judge-jev:definition:> .
+@prefix a:  <urn:judge-jev:attachment:> .
+
+d:jev a jj:Definition ; jj:term "Jev" ;
+    jj:text "Jev is TypeSafe's decision model: it answers typed questions about a piece of state with probabilities and confidence, in parallel, and generates no text." ;
+    jj:source "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/jev-api.md.j2" ;
+    jj:attachedTo a:jev-req-0202 , a:jev-nfr-0001 .
+a:jev-req-0202 a jj:Attachment ; jj:record <urn:raptor:repo:judge-jev#REQ-JEV-0202> .
+a:jev-nfr-0001 a jj:Attachment ; jj:record <urn:raptor:repo:judge-jev#NFR-JEV-0001> .
+
+d:raptor a jj:Definition ; jj:term "Raptor" ;
+    jj:text "Raptor-parseable Markdown and Raptor's SQL store are what judge-jev works with: it reads records only through Raptor and sends every Jev request through one batch command." ;
+    jj:source "docs/requirements/raptor-integration.md" ;
+    jj:attachedTo a:raptor-req-0202 , a:raptor-req-0203 .
+a:raptor-req-0202 a jj:Attachment ; jj:record <urn:raptor:repo:judge-jev#REQ-JEV-0202> .
+a:raptor-req-0203 a jj:Attachment ; jj:record <urn:raptor:repo:judge-jev#REQ-JEV-0203> .
+
+d:target-mode a jj:Definition ; jj:term "target mode" ;
+    jj:text "A target mode (`--mode prompt|skill|task|code`) names what the judged location is; its target class is agent text (`prompt`, `skill`, `task`) or code." ;
+    jj:source "docs/cli.md" ;
+    jj:attachedTo a:mode-req-0203 .
+a:mode-req-0203 a jj:Attachment ; jj:record <urn:raptor:repo:judge-jev#REQ-JEV-0203> .

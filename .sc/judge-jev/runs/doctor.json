@@ -1,0 +1,57 @@
+{
+  "success": true,
+  "error": null,
+  "data": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "notes": [],
+    "checked": [
+      {
+        "kind": "Raptor import index",
+        "path": ".sc/judge-jev/runs/index.json"
+      },
+      {
+        "kind": "question set",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/dev.json"
+      },
+      {
+        "kind": "question set",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/plan.json"
+      },
+      {
+        "kind": "quality tree",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-adr.json"
+      },
+      {
+        "kind": "quality tree",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-adr.ttl"
+      },
+      {
+        "kind": "quality tree",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-nfr.json"
+      },
+      {
+        "kind": "quality tree",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-nfr.ttl"
+      },
+      {
+        "kind": "quality tree",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-req.json"
+      },
+      {
+        "kind": "quality tree",
+        "path": "/private/tmp/claude-501/-Users-randlee-github-atm-core/2165a35b-650f-4075-81e0-940d0574bbfc/scratchpad/top-skill/assets/questions/quality-req.ttl"
+      },
+      {
+        "kind": "definitions",
+        "path": "/Users/randlee/github/judge-jev-worktrees/evidence/jev-0.3.0-runs/.sc/judge-jev/definitions.ttl"
+      }
+    ],
+    "counts": {
+      "files": 10,
+      "errors": 0,
+      "warnings": 0
+    }
+  }
+}

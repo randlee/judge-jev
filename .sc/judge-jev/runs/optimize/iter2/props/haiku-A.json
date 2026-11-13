@@ -1,0 +1,22 @@
+[
+{"rid": "NFR-JEV-0001", "type": "remove", "target": "defs", "old": " (`--answers-file`)", "new": "", "why": "parenthetical flag name in a definition; no statement relies on it", "evidence": ""},
+{"rid": "NFR-JEV-0001", "type": "remove", "target": "defs", "old": ": JSON answers given to judge-jev", "new": "", "why": "content description repeats what the answers-file definition already says; no statement uses it", "evidence": ""},
+{"rid": "NFR-JEV-0001", "type": "remove", "target": "defs", "old": "TypeSafe's ", "new": "", "why": "vendor name in the Jev definition; no statement relies on it", "evidence": ""},
+{"rid": "REQ-JEV-0001", "type": "reword", "target": "defs", "old": "requirements tool", "new": "tool", "why": "shortening: drops the descriptor requirements, which no statement relies on", "evidence": ""},
+{"rid": "REQ-JEV-0001", "type": "remove", "target": "defs", "old": "Markdown records into", "new": "records into", "why": "input format named in the Raptor definition; statement s2 names Markdown itself", "evidence": ""},
+{"rid": "REQ-JEV-0002", "type": "reword", "target": "defs", "old": "is `jev_judge.py batch`: it reads", "new": "reads", "why": "shortening: drops the script path and colon clause; the batch command is already named by every statement", "evidence": ""},
+{"rid": "REQ-JEV-0002", "type": "remove", "target": "defs", "old": ", sends each to Jev and writes a result line", "new": "", "why": "restates what the statements and the result-envelope definition already say; no statement relies on this clause", "evidence": ""},
+{"rid": "REQ-JEV-0002", "type": "remove", "target": "defs", "old": ", which writes `.sc/judge-jev/logs/judge-jev.log.jsonl`", "new": "", "why": "log file path is used by no statement", "evidence": ""},
+{"rid": "REQ-JEV-0002", "type": "remove", "target": "defs", "old": "TypeSafe's ", "new": "", "why": "vendor name in the Jev definition; no statement relies on it", "evidence": ""},
+{"rid": "REQ-JEV-0003", "type": "remove", "target": "defs", "old": " whose API serves Jev", "new": "", "why": "Jev appears in no statement of this record; TypeSafe stays defined as the company", "evidence": ""},
+{"rid": "REQ-JEV-0004", "type": "remove", "target": "defs", "old": "TypeSafe's ", "new": "", "why": "vendor name in the Jev definition; no statement relies on it", "evidence": ""},
+{"rid": "REQ-JEV-0005", "type": "remove", "target": "defs", "old": ": Claude, Codex or Cursor", "new": "", "why": "the three harness names are restated by the three marketplace statements", "evidence": ""},
+{"rid": "REQ-JEV-0006", "type": "remove", "target": "defs", "old": "single-file ", "new": "", "why": "the single-file property is used by no statement", "evidence": ""},
+{"rid": "REQ-JEV-0006", "type": "remove", "target": "defs", "old": " that imports Markdown records", "new": "", "why": "Raptor's import role is defined in REQ-JEV-0001; no statement here relies on this clause", "evidence": ""},
+{"rid": "REQ-JEV-0007", "type": "remove", "target": "defs", "old": " for a record", "new": "", "why": "scope clause not used by the statement, which already speaks of records", "evidence": ""},
+{"rid": "REQ-JEV-0008", "type": "remove", "target": "defs", "old": " (version 1.5.0)", "new": "", "why": "version number in the definition; no statement relies on it", "evidence": ""},
+{"rid": "REQ-JEV-0101", "type": "remove", "target": "defs", "old": "TypeSafe's ", "new": "", "why": "vendor name in the Jev definition; no statement relies on it", "evidence": ""},
+{"rid": "REQ-JEV-0101", "type": "remove", "target": "defs", "old": " from 0 to 1", "new": "", "why": "confidence range is used by no statement; confidence is common usage", "evidence": ""},
+{"rid": "REQ-JEV-0101", "type": "remove", "target": "defs", "old": " (questions to Jev)", "new": "", "why": "parenthetical gloss; prompts is common usage and the statements use the word bare", "evidence": ""},
+{"rid": "REQ-JEV-0101", "type": "remove", "target": "defs", "old": " (`yes` or `no`)", "new": "", "why": "no MUST statement names the verdict values", "evidence": ""}
+]

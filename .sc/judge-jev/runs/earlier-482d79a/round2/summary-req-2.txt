@@ -1,0 +1,12 @@
+REQ-JEV-0215 no matched [1, 2, 3, 4, 6, 7, 8, 9, 10]
+  s1 [rule2] {'obligations': '1 0.96', 'joined_by': 'none 0.86', 'term': 'project term defined nowhere 0.84', 'check': 'CLI run 0.84'} | `judge-jev doctor` MUST validate every tree in the scope against its schema.
+  s2 [rule2] {'obligations': '1 0.99', 'joined_by': 'none 0.87', 'term': 'project term defined nowhere 0.61', 'check': 'CLI run 0.79'} | `judge-jev doctor` MUST validate every question set in the scope against its schema.
+  s3 [rule2] {'obligations': '1 0.97', 'joined_by': 'none 0.96', 'term': 'project term defined nowhere 0.57', 'check': 'CLI run 0.80'} | `judge-jev doctor` MUST validate every definitions file in the scope against its schema.
+  s4 [rule2] {'obligations': '1 0.19', 'joined_by': 'and-list 0.94', 'term': 'project term defined nowhere 0.75', 'check': 'CLI run 0.91'} | `judge-jev doctor` MUST validate every tree, question set and definitions file in the scope against the ontology's shapes, including edges and cycles.
+  s5 [yes] {'obligations': '1 1.00', 'joined_by': 'none 0.62', 'term': 'none 0.65', 'check': 'CLI run 0.92'} | `judge-jev doctor` MUST report each validation failure as an error.
+  s6 [rule2] {'obligations': '1 0.93', 'joined_by': 'condition+obligation 0.54', 'term': 'project term defined nowhere 0.60', 'check': 'CLI run 0.96'} | `judge-jev doctor` MUST report a definition with no attachment as a warning.
+  s7 [rule2] {'obligations': '1 0.95', 'joined_by': 'condition+obligation 0.41', 'term': 'project term defined nowhere 0.59', 'check': 'CLI run 0.94'} | `judge-jev doctor` MUST report an attachment to a record the Raptor index does not hold as a warning.
+  s8 [rule2] {'obligations': '1 0.92', 'joined_by': 'none 0.49', 'term': 'project term defined nowhere 0.49', 'check': 'CLI run 0.95'} | `judge-jev doctor` MUST report an attachment to a location that does not exist as a warning.
+  s9 [rule2] {'obligations': '1 0.92', 'joined_by': 'none 0.39', 'term': 'project term defined nowhere 0.49', 'check': 'CLI run 0.95'} | `judge-jev doctor` MUST report a definition whose source does not exist as a warning.
+  s10 [rule2] {'obligations': '1 1.00', 'joined_by': 'none 0.99', 'term': 'project term defined nowhere 0.65', 'check': 'inspection or grep 0.26'} | `judge-jev doctor` MUST NOT call Jev.
+  s11 [yes] {'obligations': '1 0.99', 'joined_by': 'none 0.90', 'term': 'none 0.60', 'check': 'CLI run 0.98'} | A `judge-jev doctor` warning MUST NOT fail the command.

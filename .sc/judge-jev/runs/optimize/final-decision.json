@@ -1,0 +1,177 @@
+{
+ "REQ-JEV-0001": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.869,
+  "margin_pruned": 0.8917
+ },
+ "REQ-JEV-0002": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7801,
+  "margin_pruned": 0.7591
+ },
+ "REQ-JEV-0003": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.6441,
+  "margin_pruned": 0.5544
+ },
+ "REQ-JEV-0004": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7392,
+  "margin_pruned": 0.6558
+ },
+ "REQ-JEV-0005": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7428,
+  "margin_pruned": 0.6495
+ },
+ "REQ-JEV-0006": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.6827,
+  "margin_pruned": 0.6366
+ },
+ "REQ-JEV-0007": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.6422,
+  "margin_pruned": 0.6306
+ },
+ "REQ-JEV-0008": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7336,
+  "margin_pruned": 0.6948
+ },
+ "NFR-JEV-0001": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7583,
+  "margin_pruned": 0.7423
+ },
+ "REQ-JEV-0101": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.6022,
+  "margin_pruned": 0.565
+ },
+ "REQ-JEV-0201": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.6958,
+  "margin_pruned": 0.6847
+ },
+ "REQ-JEV-0202": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7416,
+  "margin_pruned": 0.7507
+ },
+ "REQ-JEV-0203": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7982,
+  "margin_pruned": 0.7702
+ },
+ "REQ-JEV-0204": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 1,
+  "fail_runs_pruned": 1,
+  "margin_fixes": 0.7736,
+  "margin_pruned": 0.7407
+ },
+ "REQ-JEV-0205": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.8255,
+  "margin_pruned": 0.8161
+ },
+ "REQ-JEV-0206": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7627,
+  "margin_pruned": 0.7811
+ },
+ "REQ-JEV-0207": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7828,
+  "margin_pruned": 0.7736
+ },
+ "REQ-JEV-0208": {
+  "choice": "pruned",
+  "fail_runs_fixes": 2,
+  "fail_runs_pruned": 1,
+  "margin_fixes": 0.8031,
+  "margin_pruned": 0.7905
+ },
+ "REQ-JEV-0209": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7556,
+  "margin_pruned": 0.7381
+ },
+ "REQ-JEV-0210": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 1,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.6774,
+  "margin_pruned": 0.6396
+ },
+ "REQ-JEV-0211": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.712,
+  "margin_pruned": 0.6815
+ },
+ "REQ-JEV-0212": {
+  "choice": "pruned",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.6958,
+  "margin_pruned": 0.6889
+ },
+ "REQ-JEV-0213": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.7174,
+  "margin_pruned": 0.6421
+ },
+ "REQ-JEV-0214": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 1,
+  "margin_fixes": 0.5381,
+  "margin_pruned": 0.6436
+ },
+ "REQ-JEV-0215": {
+  "choice": "fixes-only",
+  "fail_runs_fixes": 0,
+  "fail_runs_pruned": 0,
+  "margin_fixes": 0.8281,
+  "margin_pruned": 0.8043
+ }
+}

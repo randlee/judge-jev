@@ -1,0 +1,236 @@
+[
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "s1",
+  "old": "The sc-observability logger is the sc-observability logger package.",
+  "new": "The sc-observability logger is the Synaptic Canvas (sc) logging package `sc-observability`.",
+  "why": "Spell out the `sc` prefix Jev reads as an acronym.",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/installation-and-troubleshooting.md.j2:43; plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:26"
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "s1",
+  "old": "The sc-observability logger is the sc-observability logger package.",
+  "new": "The sc-observability logger is the PyPI package `sc-observability` (`sc-observability==1.5.0`) that judge-jev logs through.",
+  "why": "Replace the circular definition with the pinned package the code uses.",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:1452"
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "s1",
+  "old": "package. A quality-tree branch",
+  "new": "package. sc-agent is the Synaptic Canvas agent tool. A quality-tree branch",
+  "why": "Define sc-agent, which s1 names and the record never defines.",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/installation-and-troubleshooting.md.j2:43; docs/adr/adr-jev-product.md:359"
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "s1",
+  "old": "package. A quality-tree branch",
+  "new": "package; `sc` stands for Synaptic Canvas. A quality-tree branch",
+  "why": "Define the `sc` token shared by sc-observability and sc-agent.",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/references/installation-and-troubleshooting.md.j2:43"
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "s1",
+  "old": "Definitions: The sc-observability",
+  "new": "Definitions: judge-jev is the tool that judges text with Jev, TypeSafe's hosted judge model. The sc-observability",
+  "why": "Define judge-jev/Jev, which Jev may read as an acronym.",
+  "evidence": "docs/requirements/raptor-integration.md:57"
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "s1",
+  "old": "through the sc-observability logger, the logger sc-agent uses.",
+  "new": "through the sc-observability logger.",
+  "why": "Drop the identifying clause that brings the undefined sc-agent into s1; the logger is already named and defined.",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "move-rationale",
+  "target": "s1",
+  "old": ", the logger sc-agent uses.",
+  "new": ".",
+  "why": "The sc-agent link is rationale and already stated in Rand's Rationale quote.",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "define",
+  "target": "s17",
+  "old": "The walk is the sequence of waves;",
+  "new": "Raptor is the requirements tool that imports Markdown records (ADR-JEV-0002). The walk is the sequence of waves;",
+  "why": "Define Raptor, a name Jev may read as an acronym in s17.",
+  "evidence": "docs/adr/adr-jev-product.md:63"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "define",
+  "target": "s17",
+  "old": "The walk is the sequence of waves;",
+  "new": "Raptor (a tool name, not an acronym) imports Markdown records and reports import diagnostics (REQ-RAP-0012). The walk is the sequence of waves;",
+  "why": "Mark Raptor as a name and define its import checks.",
+  "evidence": "docs/requirements/record-validation.md:80"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "cite",
+  "target": "s17",
+  "old": "structure that Raptor's import checks.",
+  "new": "structure that Raptor's import checks (REQ-RAP-0012).",
+  "why": "Cite the record defining Raptor's import checks.",
+  "evidence": "docs/requirements/record-validation.md:80"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "cite",
+  "target": "s17",
+  "old": "structure that Raptor's import checks.",
+  "new": "structure that Raptor's import checks (ADR-JEV-0002).",
+  "why": "Cite the ADR defining Raptor.",
+  "evidence": "docs/adr/adr-jev-product.md:63"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "s17",
+  "old": "The mode MUST NOT check structure that Raptor's import checks.",
+  "new": "The mode MUST NOT check record structure that Raptor's import diagnostics check.",
+  "why": "Use the record's own term 'import diagnostics' (s2, Rationale) and say whose structure.",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "define",
+  "target": "s17",
+  "old": "A verdict rule is a rule",
+  "new": "Raptor's import diagnostics are the structure errors Raptor reports when it imports a record (REQ-RAP-0012). A verdict rule is a rule",
+  "why": "Define the import checks s17 refers to.",
+  "evidence": "docs/requirements/record-validation.md:80; plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:1980"
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "define",
+  "target": "s4",
+  "old": "sc-agent is the agent tool.",
+  "new": "sc-agent is the Synaptic Canvas agent tool; it defines the tree-sitter grammars (ADR-JEV-0004).",
+  "why": "Tie sc-agent to the grammars s4 names and spell out `sc`.",
+  "evidence": "docs/adr/adr-jev-product.md:170-173"
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "define",
+  "target": "s4",
+  "old": "Tree-sitter grammars are the parsers.",
+  "new": "Tree-sitter grammars are the parsers that find a named symbol in source code.",
+  "why": "Say what the grammars parse, matching REQ-JEV-0203's definition.",
+  "evidence": "docs/requirements/prose-evaluation.md:111"
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "define",
+  "target": "s4",
+  "old": "Tree-sitter grammars are the parsers.",
+  "new": "Tree-sitter grammars are the parsers that find a named symbol in source code. A code symbol is a named definition in source code, such as a function or a type.",
+  "why": "Define 'code symbol' used by s4.",
+  "evidence": "docs/requirements/prose-evaluation.md:104-111"
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "cite",
+  "target": "s4",
+  "old": "sc-agent's tree-sitter grammars.",
+  "new": "sc-agent's tree-sitter grammars (ADR-JEV-0004).",
+  "why": "Cite the ADR defining who owns the grammars.",
+  "evidence": "docs/adr/adr-jev-product.md:158"
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "cite",
+  "target": "s4",
+  "old": "sc-agent's tree-sitter grammars.",
+  "new": "sc-agent's tree-sitter grammars (REQ-JEV-0203).",
+  "why": "Cite the record that defines tree-sitter grammars.",
+  "evidence": "docs/requirements/prose-evaluation.md:111"
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "reword",
+  "target": "s4",
+  "old": "select a code symbol resolved by",
+  "new": "select the code symbol named `Symbol` in `path`, resolved by",
+  "why": "Name the symbol concretely instead of the loose term 'code symbol'.",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s16",
+  "old": "The wave-1 request is the request for its first wave.",
+  "new": "The wave-1 request is the request for its first wave. A typed error is a failure reported with a stable dotted code, such as `RECORD.NOT_FOUND` (REQ-JEV-0002).",
+  "why": "Define 'typed error' used by s16.",
+  "evidence": "docs/requirements/raptor-integration.md:63; plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:1986"
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s16",
+  "old": "The wave-1 request is the request for its first wave.",
+  "new": "The wave-1 request is the request for its first wave. A render failure is sc-compose's strict render failing on a template variable the vars file does not set (REQ-JEV-0203).",
+  "why": "Define 'render failure' used by s16.",
+  "evidence": "docs/requirements/prose-evaluation.md:107-108"
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s16",
+  "old": "The request limit is 24000 bytes by default.",
+  "new": "The request limit is 24000 bytes by default; an oversize request is larger than the request limit.",
+  "why": "Define 'oversize request' used by s16.",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:132"
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s16",
+  "old": "it composes every request and sends none.",
+  "new": "it composes every request and sends none; a live run sends each request (a live request) to Jev.",
+  "why": "Define 'live request' used by s16.",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s16",
+  "old": "The wave-1 request is the request for its first wave.",
+  "new": "The wave-1 request is the request for its first wave. A record is unresolved when its id is not in the Raptor index; a location is unresolved when its file, heading or symbol does not resolve (REQ-JEV-0207).",
+  "why": "Define 'unresolved record or location'.",
+  "evidence": "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2:1986; docs/requirements/prose-evaluation.md:289"
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "cite",
+  "target": "s16",
+  "old": "fail with a typed error on anything",
+  "new": "fail with a typed error (REQ-JEV-0002) on anything",
+  "why": "Cite the record defining typed error codes.",
+  "evidence": "docs/requirements/raptor-integration.md:63"
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s16",
+  "old": "on anything that would make the live request wrong:",
+  "new": "on any of these input faults:",
+  "why": "Drop the undefined 'live request'; the colon list already names every case.",
+  "evidence": ""
+ }
+]

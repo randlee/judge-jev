@@ -1,0 +1,200 @@
+[
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "s1",
+  "old": "through the sc-observability logger, the logger sc-agent uses.",
+  "new": "through the sc-observability logger.",
+  "why": "drop the sc-agent token from the statement; Jev reads the hyphenated names as acronyms",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "s1",
+  "old": "from Jev's answers.",
+  "new": "from Jev's answers. sc-agent is the agent tool that uses the sc-observability logger.",
+  "why": "define sc-agent in the record",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "define",
+  "target": "s1",
+  "old": "The sc-observability logger is the sc-observability logger package.",
+  "new": "The sc-observability logger is the sc-observability logging package, the logger sc-agent uses.",
+  "why": "explain the name as a package, not an acronym",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "cite",
+  "target": "s1",
+  "old": "from Jev's answers.",
+  "new": "from Jev's answers (REQ-JEV-0101).",
+  "why": "cite the record that defines quality-tree waves",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0008",
+  "type": "reword",
+  "target": "s1",
+  "old": "the logger sc-agent uses.",
+  "new": "the logging package that sc-agent uses.",
+  "why": "spell out what the name denotes",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "define",
+  "target": "s17",
+  "old": "its decision-tree path is the list of those waves' ids.",
+  "new": "its decision-tree path is the list of those waves' ids. Raptor is the requirements tool that imports Markdown records (ADR-JEV-0002).",
+  "why": "define Raptor in the record",
+  "evidence": "REQ-JEV-0208 definitions"
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "cite",
+  "target": "s17",
+  "old": "structure that Raptor's import checks.",
+  "new": "structure that Raptor's import diagnostics (REQ-RAP-0012) check.",
+  "why": "name the record that defines Raptor's import checks",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "s17",
+  "old": "structure that Raptor's import checks.",
+  "new": "structure that the import of Raptor checks.",
+  "why": "avoid possessive that reads as an acronym",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "reword",
+  "target": "s17",
+  "old": "structure that Raptor's import checks.",
+  "new": "structure that Raptor's import diagnostics check.",
+  "why": "use the term the rationale already uses",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0101",
+  "type": "define",
+  "target": "s17",
+  "old": "its decision-tree path is the list of those waves' ids.",
+  "new": "its decision-tree path is the list of those waves' ids. Raptor is the requirements tool (REQ-RAP-0012).",
+  "why": "short define of Raptor with a cite",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "define",
+  "target": "s4",
+  "old": "Tree-sitter grammars are the parsers.",
+  "new": "Tree-sitter grammars are the parsers sc-agent uses to resolve a code symbol. A code symbol is a named item in source code, such as a function or type.",
+  "why": "define code symbol and link grammars to it",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "define",
+  "target": "s4",
+  "old": "sc-agent is the agent tool.",
+  "new": "sc-agent is the agent tool that resolves code symbols.",
+  "why": "tie sc-agent to the resolving role",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "reword",
+  "target": "s4",
+  "old": "MUST select a code symbol resolved by sc-agent's tree-sitter grammars.",
+  "new": "MUST select the code symbol that sc-agent's tree-sitter grammars resolve for `Symbol`.",
+  "why": "state what is resolved and from what",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "define",
+  "target": "s4",
+  "old": "Tree-sitter grammars are the parsers.",
+  "new": "Tree-sitter grammars are the parsers for source code.",
+  "why": "clarify which parsers (vs Markdown rules Raptor uses)",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "define",
+  "target": "s4",
+  "old": "Tree-sitter grammars are the parsers.",
+  "new": "Tree-sitter grammars are the parsers. A code symbol is a named item in source code, such as a function or type.",
+  "why": "define code symbol only",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0207",
+  "type": "reword",
+  "target": "s4",
+  "old": "resolved by sc-agent's tree-sitter grammars.",
+  "new": "resolved by tree-sitter grammars through sc-agent.",
+  "why": "reorder so the term 'tree-sitter grammars' is read as defined",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s16",
+  "old": "or an oversize request.",
+  "new": "or a request over the request limit.",
+  "why": "use the defined term instead of the undefined 'oversize'",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s16",
+  "old": "The wave-1 request is the request for its first wave.",
+  "new": "The wave-1 request is the request for its first wave. A typed error is an error with a code and a message that names the field or location at fault.",
+  "why": "define typed error",
+  "evidence": "jev-api.md.j2:131"
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "define",
+  "target": "s16",
+  "old": "The wave-1 request is the request for its first wave.",
+  "new": "The wave-1 request is the request for its first wave. A render failure is a task template that cannot render with its vars file.",
+  "why": "define render failure",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "reword",
+  "target": "s16",
+  "old": "on anything that would make the live request wrong:",
+  "new": "when a live request would be wrong because of:",
+  "why": "drop vague 'anything ... wrong'",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "split",
+  "target": "s16",
+  "old": "A dry run MUST fail with a typed error on anything that would make the live request wrong: an unresolved record or location, a render failure, or an oversize request.",
+  "new": "A dry run MUST fail with a typed error on an unresolved record or location.\n- A dry run MUST fail with a typed error on a render failure.\n- A dry run MUST fail with a typed error on a request over the request limit.",
+  "why": "one cause per statement, same obligations",
+  "evidence": ""
+ },
+ {
+  "rid": "REQ-JEV-0208",
+  "type": "split",
+  "target": "s3",
+  "old": "A dry run MUST compose every request without calling Jev.",
+  "new": "A dry run MUST compose every request.\n- A dry run MUST NOT call Jev.",
+  "why": "separate the do and do-not obligations",
+  "evidence": ""
+ }
+]
