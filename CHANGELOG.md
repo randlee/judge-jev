@@ -9,12 +9,18 @@
   routing) with: diagnose once with `assets/questions/diag-<kind>.json` (the
   shipped tree plus appended `d_*` questions, same verdict rules), pick
   strategies from a trigger table, launch one `jev-fix-proposer` per statement
-  and strategy in parallel, measure each candidate once, accept with a margin
+  and strategy in parallel, verify each candidate on the median of three runs
   and freeze accepted records in `.sc/judge-jev/accepted.jsonl`. It states the
   confidence gate, the one-record unit of work, a state file in place of
   memory, five rules, and the commit and report format. `jev-fix-proposer`
   now takes one `strategy` and returns one candidate. SKILL.md hard stops and
   `quality-workflow.md` follow. Closes #40 and #41.
+- New `scripts/jev_gate.py`: the confidence gate over repeated `quality` runs
+  of identical text. It takes the median confidence of every gate answer
+  across the run files and passes a record when the verdict is `yes` in most
+  runs and every median is at or above `--threshold` (default 0.6). `d_*`
+  answers never gate; runs of different text are not comparable. Offline,
+  standard library only. The fix strategy's `verify` step uses it.
 
 ## 0.1.0 — 2026-11-10
 

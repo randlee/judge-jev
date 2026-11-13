@@ -76,6 +76,7 @@ You apply and measure every candidate; a proposer never edits a file or calls Je
 - Never edit a gate question, criterion, verdict rule or threshold. Diagnostic questions are appended only.
 - Never delete a record or a statement to make a record pass.
 - Never answer for Jev. A failed call is rerun once, then reported with its code and verbatim message; it is never a verdict.
+- A record passes only on the gate: three runs of identical text, every gate answer's median at or above the threshold (`scripts/jev_gate.py`). One passing run is not a pass.
 - An accepted record is frozen: do not judge it again unless its text changes.
 - Keep the run files, `.sc/judge-jev/accepted.jsonl` and `.sc/judge-jev/logs/`.
 
