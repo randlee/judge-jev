@@ -151,6 +151,18 @@ Do not ask the owner how to word something; ask Jev. Ask the owner only for a fa
 
 One agent per record, each in its own git worktree, each running this page for that record only. Give each the record id, the worktree path and this page; nothing else. An agent commits in its worktree and returns the commit id; it does not push. The lead cherry-picks the returned commits and pushes once. Give one lead 10 to 15 records at a time, then start a fresh lead.
 
+## Which model does what
+
+Split the work by whether it rewrites text.
+
+| Work | Model |
+| --- | --- |
+| Mechanical, no rewriting: running `verify` and `diagnose`, building proposer inputs, applying a candidate, measuring, the guard, committing, the report table | The fast model (Claude Code: `haiku`; Codex: `luna`). |
+| Writing a candidate edit (`jev-fix-proposer`) | The model the agent definition names. |
+| The lead, and any review of meaning against a PRD | The frontier model. |
+
+An agent on the fast model runs the loop for a record and launches proposers for every edit; it does not write candidates itself. Keep each agent's context small: give it the record, Jev's answers and this page, and nothing else. A long-running lead re-reads its whole history on every turn; start a fresh one for each batch.
+
 ## Commit message
 
 ```text

@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+- The fix strategy says which model does what: the fast model (Claude Code
+  `haiku`, Codex `luna`) for mechanical steps that rewrite nothing, the
+  proposer's own model for writing a candidate, the frontier model for the
+  lead and for meaning review. The proposer's model is unchanged.
 - `quality` and `compare-definition` now log to one per-user folder,
   `~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`, in
   place of `.sc/judge-jev/logs/` inside the working directory. Every worktree
