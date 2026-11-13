@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-fix-strategy
-version: 0.2.0
+version: 0.3.0
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -58,7 +58,7 @@ jq -r 'if .success | not then "ERROR \(.error.code): \(.error.message)" else .da
 
 ## 1. Verify, then diagnose
 
-`verify base`. If it prints `pass=true`, go to step 5. Otherwise read each `nearly:` line, `diagnose base` where the cause is still open, and append `{"round": n, "step": "diagnose", "low": [...]}` to `$W/state.jsonl`.
+`verify base`. If it prints `pass=true`, go to step 5. If a statement answers `obligations` `2` or more with `joined_by` `and-list`, `alternatives` or `obligation+rationale`, or three or more statements are weak, do not edit: have the record written from its tenets (`references/write-records.md`). Otherwise read each `nearly:` line, `diagnose base` where the cause is still open, and append `{"round": n, "step": "diagnose", "low": [...]}` to `$W/state.jsonl`.
 
 If a cause is still unclear, copy `$D`, add up to 10 choice questions of your own under `.nodes["wave-1"].questions` (same shape as the `d_*` ones), and run the `diagnose` command with `--questions <copy>`. Ask them all in one call. A question costs a fraction of a cent; a minute of your reasoning costs more than a thousand of them. Never edit a gate question, a criterion or a verdict rule.
 
@@ -135,7 +135,7 @@ A record is accepted when `verify` prints `pass=true`. Otherwise start the next 
 
 When a record is accepted, run the guard on `$W/original.md` against `$F` and read `diff -u "$W/original.md" "$F"` against rule 1. Then append `{"id", "sha256": "<of the record text>", "runs": [...], "lowest": x}` to `.sc/judge-jev/accepted.jsonl`. An accepted record is frozen: do not judge it again unless its text changes. Re-judging unchanged text only finds chance failures.
 
-Three rounds at most. A statement still below `T` after round 3 is unresolved: keep the best text reached and list it.
+Three rounds at most. A statement still below `T` after round 3 is unresolved: keep the best text reached and list it. An unresolved record goes to `references/write-records.md` once.
 
 ## Rules
 

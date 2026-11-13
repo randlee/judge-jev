@@ -2,6 +2,34 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.3.0 — 2026-11-13
+
+A second way to make a failing record pass: have it written from a list of what it requires, in place of editing its text. Reinstall with the `judge-jev-installer` skill.
+
+- `references/write-records.md` (new) says when to use it and how. Use it when
+  a statement holds two or more joined obligations, when three or more
+  statements of a record are weak, when three fix rounds left a record
+  unresolved, or when the record is new. One or two weak answers on one
+  statement still go to `references/fix-strategy.md`, which now points here
+  for the other cases.
+- `assets/templates/record-tenets.md.j2` (new) asks one writer who knows the
+  PRD to list what a record requires, one tenet per obligation, with the PRD
+  clauses each serves, the terms it uses, what the PRD forbids the record to
+  say, and any conflict with the PRD. This step is the split of a statement
+  that holds several obligations.
+- `assets/templates/record-write.md.j2` (new) asks each record writer for N
+  complete candidate texts (default 3) that require exactly those tenets. It
+  lists the questions Jev asks and the passing and failing choices of each,
+  copied from the shipped tree and checked against it by a test, the PRD
+  clauses, and the record format. The writer never sees the old text.
+- Both are runtime sc-compose templates: the installer copies them unchanged,
+  and the coordinator renders them with `sc-compose render --root <dir>
+  --file <template> --var-file <json> --strict`.
+- The page gives the coordinator three commands that need no judgement: a
+  check that every tenet is covered by its own statement, a script that
+  replaces only the sections a candidate wrote, and the existing `verify`.
+  The candidate with the highest lowest median among those that pass is kept.
+
 ## 0.2.0 — 2026-11-13
 
 The fix procedure is replaced. Fixing a record now starts by asking Jev why: the result shows the option Jev nearly chose for every weak answer, the gate is the median of three runs, and every run logs to one folder per repository outside the repository. Reinstall with the `judge-jev-installer` skill; an install made by 0.1.0 is upgraded in place.

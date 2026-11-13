@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "sc-judge-jev",
   "displayName": "Judge Jev",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Install judge-jev into a repository or a parent folder.",
   "author": {
     "name": "randlee",
