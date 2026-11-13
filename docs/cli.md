@@ -219,25 +219,43 @@ Diagram: [diagrams/compare.md](diagrams/compare.md)
 
 ```
 judge-jev drift --old-index <file> --new-index <file> (--req|--adr|--nfr <id>... | --changed)
-    [--form diff|full] [--controls <n>] [--threshold <p>]
+    [--form diff|full] [--question-set orthogonal|brief|sixteen] [--controls <n>] [--threshold <p>]
     [--dry-run | --answers-file <file>] [--run-dir <dir>] [--run-name <name>]
 ```
 
 Does a rewritten record still require exactly what the original required?
+`drift` is a review aid, not a ruling: it ranks records for a human drift
+review and quotes the answers behind each lead. It never accepts or rejects
+a rewrite.
 Reads both versions from two Raptor import indexes and sends one Jev request
 per record: the original's normative text (REQ/NFR statement, statements and
 success criteria; ADR decision) and, with `--form diff` (the default), a
 unified diff to the rewrite; `--form full` sends both texts whole.
 
+- Question sets (`--question-set`): `orthogonal` (default) asks narrow
+  yes/no questions grouped by feature: obligations (removes, adds), strength
+  (weakens or strengthens a modal), scope (fewer or more crates, components,
+  files, commands or situations), conditions, values, verification (removes
+  or adds a check), plus list questions `new_measure` and `new_definition`
+  that never decide a verdict and feed the reviewer's list of new thresholds
+  and definitions. `brief` asks `material`, `adds` and `verification`;
+  `sixteen` asks every narrow question plus an `only_reword` consistency
+  check. The finding's question names the direction, so a reviewer can tell
+  a tightening (strengthens, adds a check, fewer situations exempted) from a
+  loosening.
 - Questions: one `keep_<n>` per obligation of the original (REQ/NFR
   statements; ADR numbered decision items or paragraphs), answered `same`,
-  `narrowed`, `changed` or `dropped`; `added` (does the rewrite require
-  anything new: obligation, condition, threshold, measure, limit or
-  definition); and, for REQ/NFR, `verification` (were checks removed,
+  `narrowed`, `changed` or `dropped`, asked only for obligations whose text
+  is not found verbatim in the rewrite (those are kept by the script);
+  `material` ("Does this diff materially change the requirement?");
+  `adds` ("Does this diff add additional requirements?"); and, for REQ/NFR, `verification` (were checks removed,
   weakened, strengthened or added).
-- Verdict per record: `drift` when any answer is a drift choice at or above
-  `--threshold` (default 0.6); `uncertain` when none is but an answer is
-  below it; else `no-drift`. `findings` lists each such answer, with the
+- Verdict per record: `drift` when any confident answer (at or above
+  `--threshold`, default 0.6) is a drift choice; otherwise `uncertain` when a
+  feature group has no confident answer (`undecided_groups`), when more than
+  20% of answers are below the threshold (`low_share`), or when `only_reword`
+  contradicts the rest; else `no-drift`. Obligations found verbatim in the
+  rewrite are kept by the script and not asked. `findings` lists each such answer, with the
   obligation text for a keep question.
 - `--changed` compares every record whose normative text differs; ids only
   in the old index are listed `deleted`, only in the new `added`, equal ones

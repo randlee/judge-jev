@@ -6,10 +6,13 @@
 
 - New command `drift`: compares records between two Raptor indexes and reports, per
   record, whether the rewrite still requires exactly what the original required
-  (`keep_<n>` per obligation, `added`, `verification`), with identity and
+  (`keep_<n>` per obligation not kept verbatim, `material`, `adds`, `verification`), with identity and
   removed-obligation controls that invalidate the run when Jev misreads them.
   `--form diff` (default) sends the original plus a unified diff; `--form full`
-  sends both texts. Tests: `tests/sc-judge-jev/test_drift.py`.
+  sends both texts. `--question-set orthogonal` (default) groups narrow yes/no
+  questions by feature and decides per group; `brief` and `sixteen` are kept
+  for comparison. A review aid: it flags records for a human drift review and
+  never accepts or rejects one. Tests: `tests/sc-judge-jev/test_drift.py`.
 
 ## 0.1.0 — 2026-11-10
 
