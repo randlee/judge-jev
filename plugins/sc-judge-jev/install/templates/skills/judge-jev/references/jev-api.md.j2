@@ -92,6 +92,8 @@ The released `sc-decidr` wheel owns the endpoint, authentication header, request
 | `FIXTURE.MISSING`, `FIXTURE.NONE` | `--answers-file` | No fixture answer for an anchor; no anchor has fixtures |
 | `SCRIPT.INTERNAL` | anywhere | Unexpected exception, reported as JSON with exit 2 |
 
+Native `CANCELED` results have `recoverable: true`, matching CLI interrupts: a caller may submit a new request after cancellation. Other wheel-mapped `JEV.*` errors have `recoverable: false` because the wheel has spent the applicable retry budget or returned a failure it does not retry. judge-jev performs no additional attempt, including for cancellation.
+
 ## Exit codes
 
 A tool failure is the only nonzero exit. Exit 0 means the command ran (`success: true`); read the outcome from `data`, never from the exit code. Exit 2 means it could not do its job (`success: false` with a typed `error`). The only other exit code is 130, an interrupt.

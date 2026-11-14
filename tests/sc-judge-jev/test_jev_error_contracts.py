@@ -53,6 +53,8 @@ class ScDecidrErrorContracts(unittest.TestCase):
                 self.assertEqual(line["error"]["detail"], detail)
                 self.assertEqual(len(line["attempts"]), 1)
                 self.assertEqual(line["attempts"][0]["error"]["code"], expected)
+                self.assertEqual(line["error"]["recoverable"], expected == "CANCELED")
+                self.assertEqual(line["attempts"][0]["error"]["recoverable"], expected == "CANCELED")
 
     def test_causal_detail_is_retained_on_result_line(self):
         base = jj.load_question_set("plan").value
@@ -105,7 +107,20 @@ class OfflineFinalResults(unittest.TestCase):
             with self.subTest(code=code):
                 line = jj.run_batch_job(self.job, self.settings, {"*": {"__error__": code}}, jj._AbortFlag())
                 self.assertEqual((line["error"]["code"], line["retry_count"], len(line["attempts"])), (code, 0, 1))
-                self.assertFalse(line["error"]["recoverable"])
+                self.assertEqual(line["error"]["recoverable"], code == "CANCELED")
+                self.assertEqual(line["attempts"][0]["error"]["recoverable"], code == "CANCELED")
+
+    def test_direct_and_wrapped_native_cancellation_are_recoverable_without_retry(self):
+        cancellation = {"id": "decision.cancelled", "message": "cancelled", "recovery": "Submit a new request."}
+        for detail in (cancellation, {"id": "decidr.decision", "message": "wrapped", "cause": cancellation}):
+            with self.subTest(detail=detail):
+                error = jj.sc_agent_error(detail)
+                self.assertEqual((error.code, error.recoverable), ("CANCELED", True))
+                line = jj._sc_agent_result(self.job, self.settings, {"position": 0, "error": detail})
+                self.assertEqual(line["error"]["detail"], detail)
+                self.assertTrue(line["error"]["recoverable"])
+                self.assertEqual((line["retry_count"], len(line["attempts"])), (0, 1))
+                self.assertTrue(line["attempts"][0]["error"]["recoverable"])
 
     def test_credential_abort_and_dry_run_do_not_consume_a_later_fixture(self):
         abort = jj._AbortFlag()
