@@ -200,22 +200,29 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
         line = self.batch_line(10)
         settings = jj.BatchSettings("plan", jj.DEFAULT_MODEL, 1, "batch", jj.DEFAULT_THRESHOLD, 30.0, 1, jj.MAX_REQUEST_BYTES_CEILING, True)
         job = jj.batch_jobs(line, 1, settings, {}).value[0]
-        worst = jj.worst_line(job, settings)
+        worst = jj.worst_failure_line(job, settings)
         message = worst["attempts"][0]["error"]["message"]
         self.assertEqual((message, len(message)), (ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT, jj.ATTEMPT_MESSAGE_LIMIT))
         sco = jj.logger_module().value
         plain = copy.deepcopy(worst)
         plain["attempts"][0]["error"]["message"] = "x" * jj.ATTEMPT_MESSAGE_LIMIT
+        plain["error"]["message"] = "x" * jj.ATTEMPT_MESSAGE_LIMIT
         size = lambda l: max(jj.log_event_size(sco, a, f, l["run_id"]).value for a, f in jj.result_line_events(l, {}))
         self.assertGreaterEqual(size(worst) - size(plain), jj.ATTEMPT_MESSAGE_LIMIT * 11)
 
-    def test_a_batch_the_check_admits_logs_an_astral_failure_then_an_answer(self):
+    def test_a_batch_the_check_admits_logs_one_astral_failure(self):
         edge = self.boundary(self.refused_before_send)
         code, out, sent = self.batch(edge - 1, self.bad_then_worst(edge - 1))
-        self.assertEqual((code, sent), (0, 1), out if isinstance(out, dict) else out[:300])
+        self.assertEqual((code, sent), (2, 1), out if isinstance(out, dict) else out[:300])
         results = [out] if isinstance(out, dict) else [json.loads(x) for x in out.splitlines() if x.strip()]  # run_cli parses one line whole
-        self.assertEqual([(r["ok"], r["retry_count"]) for r in results], [(True, 1)])
+        self.assertEqual([(r["ok"], r["retry_count"]) for r in results], [(False, 0)])
         self.assertEqual(results[0]["attempts"][0]["error"]["code"], "JEV.RESPONSE_INVALID")
+
+    def test_a_batch_the_check_admits_logs_the_worst_answer(self):
+        edge = self.boundary(self.refused_before_send)
+        code, out, sent = self.batch(edge - 1, {"it/c": jj.worst_answers(self.questions(edge - 1))})
+        self.assertEqual((code, sent), (0, 1), out)
+        self.assertEqual((out["ok"], out["retry_count"], len(out["attempts"])), (True, 0, 1))
 
     def test_a_batch_over_the_boundary_is_refused_with_nothing_sent(self):
         edge = self.boundary(self.refused_before_send)
@@ -236,16 +243,23 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
             code, out = run_cli(argv)
         return code, out, len(sent)
 
-    def test_a_quality_wave_the_check_admits_logs_an_astral_failure_then_an_answer(self):
+    def test_a_quality_wave_the_check_admits_logs_one_astral_failure(self):
         edge = self.boundary(lambda per: (self.quality(per, "--dry-run")[1].get("error") or {}).get("code") == "JEV.CONTEXT_EXCEEDED")
         worst = jj.worst_answers(self.questions(edge - 1))
         bad = copy.deepcopy(worst)
         bad["q0"]["choice"] = ASTRAL * 400
         code, out, sent = self.quality(edge - 1, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": [bad, worst]}))
-        self.assertEqual((code, sent), (0, 1), out)
-        self.assertEqual(out["data"]["results"][0]["verdict"], "yes")
+        self.assertEqual((code, sent, out["error"]["code"]), (2, 1, "JEV.RESPONSE_INVALID"), out)
+        self.assertEqual(out["data"]["results"], [])
         over, refused, sent_over = self.quality(edge, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": [bad, worst]}))
         self.assertEqual((over, refused["error"]["code"], sent_over), (2, "JEV.CONTEXT_EXCEEDED", 0), refused)
+
+    def test_a_quality_wave_the_check_admits_logs_the_worst_answer(self):
+        edge = self.boundary(lambda per: (self.quality(per, "--dry-run")[1].get("error") or {}).get("code") == "JEV.CONTEXT_EXCEEDED")
+        worst = jj.worst_answers(self.questions(edge - 1))
+        code, out, sent = self.quality(edge - 1, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": worst}))
+        self.assertEqual((code, sent), (0, 1), out)
+        self.assertEqual(out["data"]["results"][0]["verdict"], "yes")
 
 
 class AnswersEnvelope(unittest.TestCase):

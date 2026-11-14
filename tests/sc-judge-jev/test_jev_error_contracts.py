@@ -1,5 +1,6 @@
 """Consumer mappings for the released sc-decidr typed error chain."""
 import unittest
+from unittest import mock
 
 from jev_support import SCRIPTS  # noqa: F401
 import jev_judge as jj
@@ -33,3 +34,53 @@ class ScDecidrErrorContracts(unittest.TestCase):
         self.assertEqual(line["error"]["detail"], detail)
         self.assertEqual(line["error"]["code"], "JEV.NETWORK")
         self.assertEqual(line["retry_count"], 0)
+
+
+class OfflineFinalResults(unittest.TestCase):
+    def setUp(self):
+        base = jj.load_question_set("plan").value
+        self.settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 30.0, 1, 24000, False)
+        request = {"item": {"id": "item", "title": "", "text": "record"},
+                   "questions": [{"candidate_id": "cur", "questions": base.questions}]}
+        self.job = jj.batch_jobs(request, 1, self.settings, base.roles).value[0]
+        self.answers = jj.worst_answers(base.questions)
+
+    def test_an_error_then_answer_stops_after_the_first_fixture_entry(self):
+        fixture = {"*": [{"__error__": "JEV.NETWORK"}, self.answers]}
+        with mock.patch.object(jj, "_fixture_result", wraps=jj._fixture_result) as read, \
+                mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("offline fixture contacted wheel")):
+            line = jj.run_batch_job(self.job, self.settings, fixture, jj._AbortFlag())
+        read.assert_called_once_with(self.job, fixture)
+        self.assertEqual((line["ok"], line["retry_count"], line["error"]["code"]), (False, 0, "JEV.NETWORK"))
+        self.assertEqual(len(line["attempts"]), 1)
+        self.assertFalse(line["error"]["recoverable"])
+        self.assertIsNone(line["answers"])
+
+    def test_native_fixture_errors_use_the_same_final_wheel_mapping(self):
+        for native, legacy in (("http.network", "JEV.NETWORK"), ("http.provider_busy", "JEV.OVERLOADED"),
+                               ("decision.response_parse", "JEV.RESPONSE_INVALID"),
+                               ("secrets.credential_missing", "AUTH.CREDENTIALS")):
+            with self.subTest(native=native):
+                with mock.patch.object(jj, "sc_agent_error", wraps=jj.sc_agent_error) as mapped:
+                    line = jj.run_batch_job(self.job, self.settings, {"*": {"__error__": native}}, jj._AbortFlag())
+                mapped.assert_called_once_with({"id": native, "message": f"fixture failure {native}"})
+                self.assertEqual((line["error"]["code"], line["retry_count"], len(line["attempts"])), (legacy, 0, 1))
+                self.assertFalse(line["error"]["recoverable"])
+
+    def test_legacy_codes_keep_their_outward_names_without_retrying(self):
+        for code in ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID",
+                     "JEV.VALIDATION", "AUTH.CREDENTIALS", "CANCELED", "CUSTOM.FIXTURE"):
+            with self.subTest(code=code):
+                line = jj.run_batch_job(self.job, self.settings, {"*": {"__error__": code}}, jj._AbortFlag())
+                self.assertEqual((line["error"]["code"], line["retry_count"], len(line["attempts"])), (code, 0, 1))
+                self.assertFalse(line["error"]["recoverable"])
+
+    def test_credential_abort_and_dry_run_do_not_consume_a_later_fixture(self):
+        abort = jj._AbortFlag()
+        first = jj.run_batch_job(self.job, self.settings, {"*": {"__error__": "AUTH.CREDENTIALS"}}, abort)
+        self.assertEqual(first["error"]["code"], "AUTH.CREDENTIALS")
+        with mock.patch.object(jj, "_fixture_result", side_effect=AssertionError("fixture consumed after abort")):
+            later = jj.run_batch_job(self.job, self.settings, {"*": self.answers}, abort)
+            dry = jj.run_batch_job(self.job, self.settings._replace(dry_run=True), {"*": self.answers}, jj._AbortFlag())
+        self.assertEqual((later["ok"], later["retry_count"], later["error"]["code"]), (False, 0, "AUTH.CREDENTIALS"))
+        self.assertEqual((dry["dry_run"], dry["attempts"], dry["retry_count"]), (True, [], 0))
