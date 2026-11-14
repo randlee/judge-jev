@@ -1607,7 +1607,7 @@ def _sc_agent_result(job: BatchJob, settings: BatchSettings, result: dict) -> di
             return _line(job, settings, checked.value, [{"attempt": 1, "ok": True}], None, False)
         error = checked.error
         line = _line(job, settings, None, [{"attempt": 1, "ok": False, "error": {
-            "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": False,
+            "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": error.recoverable,
         }}], error, False)
         return line
     detail = result.get("error")

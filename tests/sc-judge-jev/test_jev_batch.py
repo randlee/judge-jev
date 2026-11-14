@@ -280,6 +280,8 @@ class BatchRetryPolicyTests(BatchCase):
         with consented(), mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(wheel)), contextlib.redirect_stderr(io.StringIO()):
             code, out = run_cli(["batch", "--input", self.put("bad-response.jsonl", jsonl([self.LINE])), "--run-dir", str(self.d / "invalid")])
         self.assertEqual((code, wheel.calls, out["retry_count"], out["error"]["code"]), (2, 1, 0, "JEV.RESPONSE_INVALID"))
+        self.assertTrue(out["error"]["recoverable"])
+        self.assertEqual(out["error"]["recoverable"], out["attempts"][0]["error"]["recoverable"])
 
 
 if __name__ == "__main__":
