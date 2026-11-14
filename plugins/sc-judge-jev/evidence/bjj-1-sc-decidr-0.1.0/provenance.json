@@ -39,5 +39,29 @@
   "deferred_owner": "agt-r17",
   "prerelease_bead": "agt-2t0",
   "distribution_version": "0.1.0",
-  "raptor_source": "8ce2be8363318be2f7c2e2b79d1f646399cab2fd"
+  "raptor_source": "8ce2be8363318be2f7c2e2b79d1f646399cab2fd",
+  "reviewed_consumer_source": "460489393d6de65d0a0d02e13256a109fdb033b8",
+  "render_version": "0.3.0",
+  "runtime_artifact_hashes": {
+    "scripts/jev_judge.py": {
+      "installed_evidence_sha256": "496a065a3d9689136642e40b2a0e7b59c2418a2a40c0e180e491893cb6112a54",
+      "evidence_source_sha256": "496a065a3d9689136642e40b2a0e7b59c2418a2a40c0e180e491893cb6112a54",
+      "reviewed_source_sha256": "496a065a3d9689136642e40b2a0e7b59c2418a2a40c0e180e491893cb6112a54"
+    },
+    "scripts/jev_errors.py": {
+      "installed_evidence_sha256": "148c0269f29c102e772089846f1523965dde01f1b13f0ff74241938be2221198",
+      "evidence_source_sha256": "148c0269f29c102e772089846f1523965dde01f1b13f0ff74241938be2221198",
+      "reviewed_source_sha256": "148c0269f29c102e772089846f1523965dde01f1b13f0ff74241938be2221198"
+    },
+    "assets/schemas/jev-batch-request.schema.json": {
+      "installed_evidence_sha256": "a9c92bfb8f243595814006851373db3ad58631f7d2de877a7e3210729fbd93ca",
+      "evidence_source_sha256": "a9c92bfb8f243595814006851373db3ad58631f7d2de877a7e3210729fbd93ca",
+      "reviewed_source_sha256": "a9c92bfb8f243595814006851373db3ad58631f7d2de877a7e3210729fbd93ca"
+    },
+    "assets/schemas/jev-batch-result.schema.json": {
+      "installed_evidence_sha256": "37ed7e28a15bfcca6b9bcbddecfec341ca0e7e1a7e937bf26dcca769438ad1bf",
+      "evidence_source_sha256": "37ed7e28a15bfcca6b9bcbddecfec341ca0e7e1a7e937bf26dcca769438ad1bf",
+      "reviewed_source_sha256": "37ed7e28a15bfcca6b9bcbddecfec341ca0e7e1a7e937bf26dcca769438ad1bf"
+    }
+  }
 }
