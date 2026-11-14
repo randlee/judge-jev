@@ -170,12 +170,10 @@ class LiveCallConsentTests(unittest.TestCase):
                 b = Batched(self, Repo(self, text))
                 self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "SETTINGS.UNKNOWN_KEY", []))
 
-    def test_missing_pyyaml_with_a_settings_file_fails_closed_as_consent_refusal(self):
+    def test_missing_pyyaml_with_a_settings_file_is_dependency_error(self):
         with mock.patch.dict(sys.modules, {"yaml": None}):
             b = Batched(self, Repo(self, "schema_version: 1\nallow_remote_judge: true\n"))
-        self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies),
-                         (2, "POLICY.REMOTE_JUDGE_DISABLED", []))
-        self.assertIn("PyYAML is unavailable", b.out["error"]["message"])
+        self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "DEPENDENCY.PYYAML", []))
         self.assertIn("python3 -m pip install pyyaml", b.out["error"]["suggested_action"])
 
     def test_outside_a_repository_is_a_typed_error(self):
