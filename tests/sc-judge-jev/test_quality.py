@@ -17,6 +17,7 @@ from jev_support import ROOT, SKILL, read_log
 import jev_judge as jj  # noqa: E402
 
 from test_jev_judge import answer, env, run_cli, write  # noqa: E402
+from test_jev_remote_judge_setting import yaml_test
 
 QUESTIONS = SKILL / "assets" / "questions"
 
@@ -227,6 +228,7 @@ class WaveReasons(QualityCase):
         self.assertEqual((out["data"]["path"], out["data"]["results"]), (["wave-1"], []))
         self.assertEqual(out["data"]["tree"]["id"], "quality-adr")
 
+    @yaml_test
     def test_a_live_run_needs_committed_consent_before_anything_is_logged(self):
         (self.d / ".git").mkdir()  # isolated repository; never reads the checkout consent
         write(self.d, ".sc/judge-jev/settings.yaml", "schema_version: 1\nallow_remote_judge: false\n")

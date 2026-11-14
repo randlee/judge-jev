@@ -22,6 +22,7 @@ from result import Err, Ok  # noqa: E402
 from test_graph_tree import ADR_TTL, BRANCH_TTL  # noqa: E402
 from test_graph_runs import tree_fixture  # noqa: E402
 from test_jev_judge import answer, env, run_cli, write  # noqa: E402
+from test_jev_remote_judge_setting import yaml_test
 from test_quality import INDEX, QualityCase, never_called, tree_answers  # noqa: E402
 
 PREFIXES = """\
@@ -462,6 +463,7 @@ class Compare(DefinitionCase):
         got, out = self.adr("--definition", iri("fast"), "--dry-run")
         self.assertEqual((got, out["error"]["code"]), (2, "DEFINITIONS.NOT_FOUND"), out)
 
+    @yaml_test
     def test_a_live_comparison_without_an_answers_file_needs_consent_before_any_call(self):
         (self.d / ".git").mkdir()  # isolated repository; never reads the checkout consent
         write(self.d, ".sc/judge-jev/settings.yaml", "schema_version: 1\nallow_remote_judge: false\n")
