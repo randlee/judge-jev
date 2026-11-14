@@ -130,7 +130,7 @@ class ScDecidrStub:
             returned = self.transport(body, "", 0)
             if isinstance(returned, jj.Err):
                 err = returned.error
-                detail = {"id": {"AUTH.CREDENTIALS": "secrets.credential_rejected", "JEV.NETWORK": "http.network",
+                detail = {"id": {"AUTH.CREDENTIALS": "secrets.key_malformed", "JEV.NETWORK": "http.network",
                                  "JEV.RATE_LIMITED": "http.provider_busy", "JEV.OVERLOADED": "http.provider_busy",
                                  "JEV.VALIDATION": "decision.api_validation"}.get(err.code, "sc_agent.error"),
                           "message": str(err), "recovery": err.action}
@@ -297,7 +297,7 @@ class ScDecidrErrorTests(unittest.TestCase):
             ({"id": "http.provider_busy", "status": 429, "message": "busy"}, "JEV.RATE_LIMITED"),
             ({"id": "http.network", "message": "offline"}, "JEV.NETWORK"),
             ({"id": "decision.api_validation", "message": "bad request"}, "JEV.VALIDATION"),
-            ({"id": "secrets.credential_missing", "message": "missing"}, "AUTH.CREDENTIALS"),
+            ({"id": "secrets.key_missing", "message": "missing"}, "AUTH.CREDENTIALS"),
         ]
         for detail, expected in cases:
             with self.subTest(id=detail["id"]):

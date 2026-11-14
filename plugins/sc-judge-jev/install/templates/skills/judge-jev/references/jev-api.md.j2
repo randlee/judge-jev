@@ -83,6 +83,7 @@ The released `sc-decidr` wheel owns the endpoint, authentication header, request
 | `DEPENDENCY.PYYAML`, `SETTINGS.*`, `REPO.NOT_FOUND` | pre-flight | The settings file could not be read; fix what the error names. Never a silent default |
 | `JEV.RATE_LIMITED`, `JEV.OVERLOADED`, `JEV.HTTP`, `JEV.NETWORK` | transport | The released `sc-decidr` wheel applies the shared `REQ-SAG-0601` retry policy. The final typed error and its Rust cause chain are recorded; judge-jev does not retry it. |
 | `JEV.RESPONSE_INVALID` | wheel or question-aware validation | Malformed or oversized response; the wheel applies shared retry policy to transport responses, then the command exits 2 if no valid answer is returned |
+| `JEV.UNMAPPED` | native error detail | Unknown IDs or missing structured status are preserved without guessing from messages. The published 0.1.0 wheel omits numeric HTTP status (B-1 finding `agt-zii`); final published-wheel rechecks belong to `agt-r17`. |
 | `JEV.CONTEXT_EXCEEDED` | 422 token limit (development gate) | Evidence could not be shortened enough; shorten it |
 | `JEV.VALIDATION` | 422 other | Request rejected; usually a malformed override |
 | `VALIDATION.ANCHORS`, `VALIDATION.INPUT` | record / arguments | Fix `anchors.json` (`validate`) or the flags |

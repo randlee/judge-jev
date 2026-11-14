@@ -192,7 +192,7 @@ class BatchTests(BatchCase):
             token = None
             def send_batch(inner, requests, *, cancel=None, on_result=None, **kwargs):
                 inner.token = cancel
-                result = {"position": 0, "error": {"id": "secrets.credential_rejected", "message": "credential rejected"}}
+                result = {"position": 0, "error": {"id": "secrets.key_malformed", "message": "credential rejected"}}
                 on_result(result)
                 return [result]
         wheel = CredentialFailure()
