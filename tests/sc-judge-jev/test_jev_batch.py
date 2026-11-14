@@ -8,7 +8,6 @@ import hashlib
 import io
 import json
 import os
-import subprocess
 import sys
 import threading
 import unittest
@@ -16,6 +15,7 @@ from unittest import mock
 import tempfile
 from pathlib import Path
 
+from child_support import run_child
 from jev_support import SCRIPTS, SKILL, log_lines, read_log
 import jev_judge as jj  # noqa: E402
 
@@ -72,7 +72,7 @@ class BatchTests(BatchCase):
         """The rendered script as a separate process: stdout bytes exactly as a caller sees them."""
         argv = [sys.executable, str(SCRIPTS / "jev_judge.py"), "batch", "--run-dir", str(self.d / run_dir), "--run-name", "r1",
                 "--answers-file", self.put("answers.json", self.FIXTURE), "--repeat", "2", "--request-prefix", "run-7", *extra]
-        proc = subprocess.run(argv, input=stdin, capture_output=True, cwd=str(self.d))
+        proc = run_child(argv, input=stdin, capture_output=True, cwd=str(self.d))
         return proc
 
     def log(self, run_dir):
@@ -149,7 +149,7 @@ class BatchTests(BatchCase):
         argv = [sys.executable, "-c", wrapper, str(SCRIPTS / "jev_judge.py"), "batch", "--run-dir", str(self.d / "crlf"),
                 "--run-name", "r1", "--answers-file", self.put("answers.json", self.FIXTURE), "--input",
                 self.put("in.jsonl", jsonl(self.LINES))]
-        proc = subprocess.run(argv, capture_output=True, cwd=str(self.d))
+        proc = run_child(argv, capture_output=True, cwd=str(self.d))
         self.assertEqual((proc.returncode, proc.stderr), (0, b""))
         self.assertEqual(len(proc.stdout.splitlines()), 3)
         self.assertNotIn(b"\r", proc.stdout)
