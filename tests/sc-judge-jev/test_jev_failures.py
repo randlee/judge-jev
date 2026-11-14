@@ -10,11 +10,11 @@ import json
 import os
 from pathlib import Path
 import signal
-import subprocess
 import sys
 import tempfile
 import unittest
 
+from child_support import run_child
 from jev_support import SCRIPTS, log_lines
 from test_jev_judge import jsonl, request_line
 
@@ -80,17 +80,17 @@ class LiveBatchWithoutAnswers(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name).resolve()
-        subprocess.run(["git", "init", "-q", str(self.d)], check=True)
-        proc = subprocess.run([sys.executable, str(SCRIPTS / "judge_jev_settings.py"), "set", "allow_remote_judge", "true"],
+        run_child(["git", "init", "-q", str(self.d)], check=True)
+        proc = run_child([sys.executable, str(SCRIPTS / "judge_jev_settings.py"), "set", "allow_remote_judge", "true"],
                               cwd=str(self.d), env=child_env(), capture_output=True, text=True, encoding="utf-8")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
     def test_refused_connection_is_exit_2_with_every_line_and_the_envelope_on_stderr(self):
         (self.d / "in.jsonl").write_text(jsonl([request_line("s1"), request_line("s2")]), encoding="utf-8")
-        proc = subprocess.run([sys.executable, "-c", REFUSED_RUNNER, str(SCRIPTS), "batch", "--input", "in.jsonl",
+        proc = run_child([sys.executable, "-c", REFUSED_RUNNER, str(SCRIPTS), "batch", "--input", "in.jsonl",
                                "--run-dir", "runs", "--run-name", "r1"],
                               cwd=str(self.d), env=child_env(TYPESAFE_API_KEY=DUMMY_KEY), capture_output=True, text=True,
-                              encoding="utf-8", timeout=300)
+                              encoding="utf-8")
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         lines = [json.loads(x) for x in proc.stdout.splitlines()]
         self.assertEqual([x["item_id"] for x in lines], ["s1", "s2"])
@@ -121,15 +121,15 @@ class Interrupts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             d = Path(td).resolve()
             if git:
-                subprocess.run(["git", "init", "-q", str(d)], check=True)
+                run_child(["git", "init", "-q", str(d)], check=True)
             target = d / input_rel
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text("{}\n", encoding="utf-8")
             script, *rest = argv
             rest = [str(a).replace("{INPUT}", str(target)) for a in rest]
-            proc = subprocess.run([sys.executable, "-c", INTERRUPT_RUNNER, str(script), str(target), *rest], cwd=str(d),
+            proc = run_child([sys.executable, "-c", INTERRUPT_RUNNER, str(script), str(target), *rest], cwd=str(d),
                                   env=child_env(**(env or {})), preexec_fn=_default_sigint, capture_output=True,
-                                  text=True, encoding="utf-8", timeout=120)  # a hang guard only
+                                  text=True, encoding="utf-8")  # a hang guard only
         out, err = proc.stdout, proc.stderr
         self.assertEqual(proc.returncode, 130, out + err)
         envelope = json.loads(out)

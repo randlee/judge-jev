@@ -10,12 +10,12 @@ import io
 import json
 import os
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import unittest
 from unittest import mock
 
+from child_support import run_child
 from jev_support import SCRIPTS
 from test_jev_judge import Transport, env, jj, jsonl, plan_answers, request_line, run_cli, write, sc_decidr  # noqa: F401
 import judge_jev_settings as settings_mod  # noqa: E402
@@ -270,8 +270,8 @@ class SetCommandTests(unittest.TestCase):
 
     def test_the_script_runs_end_to_end(self):
         repo = Repo(self)
-        subprocess.run(["git", "init", "-q", str(repo.root)], check=True, capture_output=True)
-        proc = subprocess.run([sys.executable, str(SETTINGS_SCRIPT), "set", "allow_remote_judge", "true",
+        run_child(["git", "init", "-q", str(repo.root)], check=True, capture_output=True)
+        proc = run_child([sys.executable, str(SETTINGS_SCRIPT), "set", "allow_remote_judge", "true",
                                "--repository-root", str(repo.root)], capture_output=True, text=True, encoding="utf-8",
                               env={k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"})
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
