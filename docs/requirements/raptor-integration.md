@@ -111,14 +111,20 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 - judge-jev MUST use the default TypeSafe keyring entry: service
   `TYPESAFE_API_KEY`, current OS account; it MUST pass no keyring selection
   options.
-- The released wheel MUST redact every occurrence of its resolved API key
-  from native error detail messages and causes, including keys obtained
-  from `.env` or the platform keyring. judge-jev MUST preserve that redacted
-  detail without re-reading the credential store.
+- For a native HTTP request carrying the resolved API key as an attached
+  sealed header secret, the HTTP layer MUST replace occurrences of that key
+  with `[redacted]` in HTTP error messages and causes, including keys resolved
+  from `.env` or the platform keyring. judge-jev MUST preserve that
+  already-redacted detail without re-reading the credential store.
 
 ### Rationale
 
 Tools that call Jev share one stored key, saved once.
+
+The HTTP-layer capture establishes this scope only. Redaction on config,
+decision, credential-resolution and Python-boundary native error paths is
+tracked by B-1 finding `agt-b-1.10`; no wheel-wide guarantee is established
+by the consumer replay test.
 
 ### Success Criteria
 

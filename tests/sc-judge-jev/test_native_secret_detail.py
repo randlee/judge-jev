@@ -1,8 +1,11 @@
-"""Consumer output/log coverage using actual offline native-library redaction output.
+"""Guard judge-jev preserving already-redacted native detail in stdout and its log.
 
-The fixture producer uses released Rust crates 0.1.0 (sc-decidr 0.1.0's source
-7afe38348fd736bcb6a0cfb632c25c7c20e60327), injected KeyringSource and automatic
-HttpClient error redaction. This is not a live wheel or OS-keyring test.
+The frozen capture came from an offline HTTP-layer probe using published Rust
+crates 0.1.0 (source 7afe38348fd736bcb6a0cfb632c25c7c20e60327). CI replays the
+capture; it does not regenerate it. Fixture/sentinel checks below validate the
+input's shape and isolation only, not native redaction. This test does not
+prove the wheel guarantee or cover config, decision, credential-resolution or
+Python-boundary native errors; those paths are tracked by B-1 agt-b-1.10.
 """
 import json
 import os
@@ -16,16 +19,17 @@ from test_jev_batch import BatchCase, PLAN_QS, WheelCancelToken, request_line
 
 
 class NativeSecretDetail(BatchCase):
-    def test_keyring_resolved_native_detail_stays_redacted_in_stdout_and_log(self):
+    def test_consumer_preserves_already_redacted_detail_in_stdout_and_log(self):
         captured = json.loads((Path(__file__).parent / "fixtures" / "native-keyring-redaction" / "detail.json").read_text())
         self.assertEqual(captured["credential_source"], "keyring")
         detail = captured["detail"]
         sentinel = "sk-controlled-keyring-redaction-sentinel-77"
+        # Frozen-input checks only: the consumer behavior is asserted below.
         native_text = json.dumps(detail)
         self.assertNotIn(sentinel, native_text)
         self.assertEqual(native_text.count("[redacted]"), 3)
-        # No Bearer prefix: this regression cannot pass through the Python
-        # Bearer-token heuristic, and no environment key registers the sentinel.
+        # No Bearer prefix or environment credential can change this fixture
+        # through Python scrubbing; the assertions below compare detail exactly.
         self.assertNotIn("bearer", native_text.lower())
         stdout = []
 
