@@ -55,6 +55,26 @@ class WheelLogging(BatchCase):
                 self.assertEqual(actions, (["decidr.test_send"] if inject else []) + ["request", "answer", "result"])
                 self.assertEqual(output["ok"], True)
 
+    def test_public_log_options_own_injection_and_keep_the_logger_alive(self):
+        for inject in (False, True):
+            with self.subTest(inject=inject):
+                root = self.d / ("accessor-" + str(inject))
+                log = jj.open_run_log(root, "accessor", inject).value
+                try:
+                    options = log.sc_agent_log_options()
+                    if inject:
+                        self.assertIsInstance(options["general_log"], sco.Logger)
+                        self.assertIs(options["general_log"], log.sc_agent_log_options()["general_log"])
+                        options.clear()  # the caller owns the returned options, not the logger
+                        self.assertIn("general_log", log.sc_agent_log_options())
+                    else:
+                        self.assertEqual(options, {})
+                    self.assertIsInstance(log.event("accessor-used", {}), jj.Ok)
+                    self.assertIsInstance(log.flush(), jj.Ok)
+                finally:
+                    self.assertIsInstance(log.close(), jj.Ok)
+                self.assertEqual(len(read_log(root, action="accessor-used")), 1)
+
     def test_consumer_retains_logger_after_wheel_boundary(self):
         log = jj.open_run_log(self.d / "lifetime", "lifetime", True).value
         wheel = ScDecidrStub(Transport())

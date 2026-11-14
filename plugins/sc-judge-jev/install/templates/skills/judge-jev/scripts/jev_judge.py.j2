@@ -928,14 +928,6 @@ def _from_tool_error(error) -> JudgeError:
     return out
 
 
-def remote_preflight(args, what: str) -> Result[None, JudgeError]:
-    """Check consent before the wheel resolves credentials or sends any request."""
-    consent = remote_judge_consent(args, what)
-    if isinstance(consent, Err):
-        return consent
-    return Ok(None)
-
-
 def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, JudgeError]:
     """A fixture of Jev answers keyed by id (or '*'); Ok(None) when no path is given."""
     if not path:
@@ -1327,6 +1319,10 @@ class RunLog:
     @property
     def path(self) -> pathlib.Path:
         return self.log_root / "logs" / f"{LOG_SERVICE}.log.jsonl"
+
+    def sc_agent_log_options(self) -> dict:
+        """Optional direct general-log injection; this RunLog retains lifetime ownership."""
+        return {"general_log": self._logger} if self.inject_general_log else {}
 
     def event(self, action: str, fields: dict, correlation_id=None) -> Result[None, JudgeError]:
         """One log event, redacted like every emitted value; anything but an accepted admission is LOG.WRITE."""
@@ -1795,7 +1791,7 @@ def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo:
 
     selector = "jev" if settings.model == "jev-latest" else settings.model
     # Pass the same caller-owned Logger directly; the wheel must not close it.
-    log_options = {"general_log": log._logger} if log.inject_general_log else {}
+    log_options = log.sc_agent_log_options()
     try:
         result_lines = module.value.send_batch(
             [encode_body(job.body).decode("utf-8") for job in jobs],
@@ -1867,7 +1863,7 @@ def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
     if isinstance(checked, Err):
         return checked
     if not settings.dry_run and fixture is None:
-        cleared = remote_preflight(args, "The anchor statements, scopes and item texts in the request stream")
+        cleared = remote_judge_consent(args, "The anchor statements, scopes and item texts in the request stream")
         if isinstance(cleared, Err):
             return cleared
     log = open_run_log(run_dir, run_name, getattr(args, "sc_agent_log", False))
@@ -2374,7 +2370,7 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
     if isinstance(checked, Err):
         return _with_refs(checked, run_refs)
     if fixture is None:
-        cleared = remote_preflight(args, "The record text")
+        cleared = remote_judge_consent(args, "The record text")
         if isinstance(cleared, Err):
             return _with_refs(cleared, run_refs)
     log = open_run_log(quality_log_root(args), run_name, getattr(args, "sc_agent_log", False))
@@ -2691,7 +2687,7 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
     if isinstance(sized, Err):
         return _with_refs(sized, head)
     if fixture is None:
-        cleared = remote_preflight(args, "The record text and the definitions")
+        cleared = remote_judge_consent(args, "The record text and the definitions")
         if isinstance(cleared, Err):
             return _with_refs(cleared, head)
     walks = {}
