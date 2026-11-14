@@ -1,0 +1,24 @@
+{
+  "distribution": "sc-decidr",
+  "distribution_version": "0.1.0",
+  "case": "malformed batch request rejected before context/logger/credential setup",
+  "exception_type": "SagError",
+  "error_ids": [
+    "decidr.request_invalid",
+    "decision.request_parse"
+  ],
+  "credential_source": "explicit dummy ENV; request validation occurs before lookup",
+  "live_call": false,
+  "call": {
+    "function": "sc_agent.send_batch",
+    "requests": [
+      "{invalid JSON"
+    ],
+    "kwargs": {
+      "model": "jev",
+      "project": "judge-jev",
+      "agent_role": "judge-jev"
+    }
+  },
+  "validation_order_source": "sc-agent v0.1.0 crates/sc-agent-py/src/lib.rs send_batch: build_batch precedes send_options"
+}

@@ -63,5 +63,16 @@
       "evidence_source_sha256": "37ed7e28a15bfcca6b9bcbddecfec341ca0e7e1a7e937bf26dcca769438ad1bf",
       "reviewed_source_sha256": "37ed7e28a15bfcca6b9bcbddecfec341ca0e7e1a7e937bf26dcca769438ad1bf"
     }
+  },
+  "native_default_session_readback": {
+    "artifact": "native-session-readback.json",
+    "rows": 6,
+    "batch_rows": 3,
+    "quality_rows": 3,
+    "source": "retained original Python3.11 runs, not a new live call"
+  },
+  "real_wheel_offline_case": {
+    "artifact": "real-wheel-offline-refusal.json",
+    "case": "malformed batch JSON rejected before context/credential setup"
   }
 }
