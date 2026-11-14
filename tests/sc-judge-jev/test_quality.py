@@ -228,7 +228,7 @@ class WaveReasons(QualityCase):
 
     def test_a_live_run_needs_committed_consent_before_anything_is_logged(self):
         with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")):
-            code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs")])
+            code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs"), "--repository-root", str(self.d)])
         self.assertEqual((code, out["error"]["code"]), (2, "POLICY.REMOTE_JUDGE_DISABLED"))
         self.assertFalse((self.d / "logs").exists())
 

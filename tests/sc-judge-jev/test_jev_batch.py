@@ -179,8 +179,10 @@ class BatchTests(BatchCase):
                 raise KeyboardInterrupt
         wheel = Interrupted()
         settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 30.0, 1, 24000, False)
+        log = jj.open_run_log(self.d / "interrupt", "interrupt")
+        self.addCleanup(log.value.close)
         with self.assertRaises(KeyboardInterrupt), mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(wheel)):
-            jj.pump_batch([self.LINES[0]], settings, None, object(), echo=False)
+            jj.pump_batch([self.LINES[0]], settings, None, log.value, echo=False)
         self.assertIsInstance(wheel.token, WheelCancelToken)
         self.assertTrue(wheel.token.cancelled)
 
@@ -196,9 +198,11 @@ class BatchTests(BatchCase):
         wheel = CredentialFailure()
         settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 30.0, 1, 24000, False)
         one = request_line("s1", "text", ("c1", PLAN_QS["questions"]))
+        log = jj.open_run_log(self.d / "credential", "credential")
+        self.addCleanup(log.value.close)
         with mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(wheel)), \
                 mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)):
-            result = jj.pump_batch([one], settings, None, object(), echo=False)
+            result = jj.pump_batch([one], settings, None, log.value, echo=False)
         self.assertTrue(wheel.token.cancelled)
         self.assertEqual((result.value[0]["error"]["code"], result.value[0]["retry_count"]), ("AUTH.CREDENTIALS", 0))
 

@@ -1304,13 +1304,14 @@ class RunLog:
     """The run log (REQ-JEV-0008): one owned sc-observability logger per command, writing under
     ``<log_root>/logs/judge-jev.log.jsonl``. Every event carries the run name plus the caller's ``fields``."""
 
-    def __init__(self, sco, logger, run: str, log_root: pathlib.Path, size_at_open: int = 0):
+    def __init__(self, sco, logger, run: str, log_root: pathlib.Path, size_at_open: int = 0, inject_general_log: bool = False):
         self._sco = sco
         self._logger = logger
         self.run = run
         self.log_root = log_root
         self._size_at_open = size_at_open
         self._events = 0
+        self.inject_general_log = inject_general_log
 
     @property
     def path(self) -> pathlib.Path:
@@ -1359,7 +1360,7 @@ def logger_module():
     return Ok(sco)
 
 
-def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
+def open_run_log(log_root, run_name: str, inject_general_log: bool = False) -> Result[RunLog, JudgeError]:
     """Start the run's logger; the run name defaults to a UTC timestamp and must be a safe id."""
     name = run_name or stamp()
     checked = _safe_id(name, "--run-name")
@@ -1383,7 +1384,7 @@ def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
     if isinstance(created, sco.Err):
         return fail("LOG.WRITE", f"the sc-observability logger could not start under {root}: {getattr(created.error, 'message', created.error)}",
                     action="Check the run directory is writable.")
-    return Ok(RunLog(sco, created.value, name, root, size_at_open))
+    return Ok(RunLog(sco, created.value, name, root, size_at_open, inject_general_log))
 
 
 def result_line_events(line: dict, fields: dict) -> list:
@@ -1629,6 +1630,8 @@ def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo:
             next_position += 1
 
     selector = "jev" if settings.model == "jev-latest" else settings.model
+    # Pass the same caller-owned Logger directly; the wheel must not close it.
+    log_options = {"general_log": log._logger} if log.inject_general_log else {}
     try:
         result_lines = module.value.send_batch(
             [encode_body(job.body).decode("utf-8") for job in jobs],
@@ -1637,6 +1640,7 @@ def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo:
             agent_role="judge-jev",
             cancel=cancel,
             on_result=accept,
+            **log_options,
         )
         for raw in result_lines:
             accept(raw)
@@ -1708,7 +1712,7 @@ def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
         cleared = remote_preflight(args, "The anchor statements, scopes and item texts in the request stream")
         if isinstance(cleared, Err):
             return cleared
-    log = open_run_log(run_dir, run_name)
+    log = open_run_log(run_dir, run_name, getattr(args, "sc_agent_log", False))
     if isinstance(log, Err):
         return log
     try:
@@ -1738,6 +1742,7 @@ def cmd_batch(args) -> Result[Any, JudgeError]:
 
 def add_stream_options(parser) -> None:
     """Options shared by `batch` and `bead-batch`: both run the same low layer."""
+    parser.add_argument("--sc-agent-log", action="store_true", help="include decision diagnostic events in the consumer run log; the default keeps separate sc-agent file logs")
     parser.add_argument("--run-dir", default="", help="log root of the sc-observability run log (<run-dir>/logs/judge-jev.log.jsonl, appended to); default <anchors dir>/anchor-runs")
     parser.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     parser.add_argument("--repeat", type=int, default=1, help="identical requests per (item, candidate); default 1")
@@ -2213,7 +2218,7 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
         cleared = remote_preflight(args, "The record text")
         if isinstance(cleared, Err):
             return _with_refs(cleared, run_refs)
-    log = open_run_log(quality_log_root(args), run_name)
+    log = open_run_log(quality_log_root(args), run_name, getattr(args, "sc_agent_log", False))
     if isinstance(log, Err):
         return _with_refs(log, run_refs)
     results, failed = [], None
@@ -2529,7 +2534,7 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
     walks = {}
     for arm in COMPARE_ARMS:
         tree, record, _refs, _jobs, arm_carried = prepared[arm]
-        log = open_run_log(quality_log_root(args), runs[arm])
+        log = open_run_log(quality_log_root(args), runs[arm], getattr(args, "sc_agent_log", False))
         if isinstance(log, Err):
             return _with_refs(log, head)
         walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
@@ -2541,7 +2546,7 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
             return _with_refs(closed, {**head, "arm": arm})
         walks[arm] = walked.value
     answers = compare_answers(answer_table(walks["without"][2]), answer_table(walks["with"][2]), threshold)
-    log = open_run_log(quality_log_root(args), run_name)
+    log = open_run_log(quality_log_root(args), run_name, getattr(args, "sc_agent_log", False))
     if isinstance(log, Err):
         return _with_refs(log, head)
     logged = log.value.event("compare", {"tree_id": prepared["with"][0].id,
@@ -2824,6 +2829,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--questions", default="", help="a decision-tree file (.json or .ttl) overriding the shipped assets/questions/quality-<kind>.json")
     q.add_argument("--dry-run", action="store_true", help="report each record's tree and composed wave-1 request (one per statement for a per-statement wave); call nothing")
     q.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/<node>/r1', '<record>/<node>', '<node>' or '*'; no network")
+    q.add_argument("--sc-agent-log", action="store_true", help="include decision diagnostic events in the consumer run log; the default keeps separate sc-agent file logs")
     q.add_argument("--run-dir", default="", help=RUN_DIR_HELP)
     q.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     q.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
@@ -2850,6 +2856,7 @@ def build_parser() -> argparse.ArgumentParser:
     cd.add_argument("--questions", default="", help="a decision-tree file overriding the shipped assets/questions/quality-<kind>.json")
     cd.add_argument("--dry-run", action="store_true", help="report the start-wave request of each arm, without and with the definitions; call nothing")
     cd.add_argument("--answers-file", default="", help="fixture answers keyed " + COMPARE_FIXTURE_KEYS + "; no network")
+    cd.add_argument("--sc-agent-log", action="store_true", help="include decision diagnostic events in the consumer run log; the default keeps separate sc-agent file logs")
     cd.add_argument("--run-dir", default="", help=RUN_DIR_HELP)
     cd.add_argument("--run-name", default="", help="run name of the compare event; the arms log as <run name>.without and <run name>.with; default a UTC timestamp")
     cd.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
