@@ -135,8 +135,10 @@ injection and flushing checks belong to `agt-r17`.
 The initial migration pins published `sc-decidr==0.1.0`. Its native Logger
 injection and per-call timeout support are pending the B-1 prerelease
 (`agt-2t0`, fixes `agt-b-1.5` and `agt-b-1.8`). The parsed `--timeout` option
-is retained, but this wheel uses its own request timeout; it is not yet
-forwarded. `agt-r17` owns the final wheel pin and installed live rechecks,
+is retained. A non-default value on a live call fails with
+`DEPENDENCY.SC_DECIDR_TIMEOUT` before the wheel loads; fixtures and dry runs
+still accept it. Live calls using the default option use the wheel's own
+request timeout; the parsed value is not yet forwarded. `agt-r17` owns the final wheel pin and installed live rechecks,
 including credential precedence, injection/flushing and timeout delivery.
 
 ## Definitions, `compare-definition` and `doctor`

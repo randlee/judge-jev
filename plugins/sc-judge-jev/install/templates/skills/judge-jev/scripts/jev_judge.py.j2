@@ -120,6 +120,7 @@ except ImportError as _exc:  # before any model exists: print the typed error by
 
 
 DEFAULT_MODEL = "jev-latest"
+DEFAULT_TIMEOUT = 30.0
 DEFAULT_THRESHOLD = 0.6
 DEFAULT_MAX_REQUEST_BYTES = 24000  # plan gate: what Jev reads reliably (a planted contradiction 28k deep scored 0.46 vs 0.79 near the top)
 DEFAULT_MAX_REQUEST_BYTES_DEV = 64000  # dev gate: evidence is long; bounded by the queryable log event limit
@@ -1723,6 +1724,9 @@ def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo:
         except BatchInputError as exc:
             return Err(exc.error)
 
+    if settings.timeout != DEFAULT_TIMEOUT:
+        return fail("DEPENDENCY.SC_DECIDR_TIMEOUT", "the pinned sc-decidr wheel cannot honor a custom live --timeout",
+                    action="Use the default timeout option for live calls, or use offline fixtures/dry-run. The wheel applies its own timeout until forwarding is supported.")
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base
@@ -1905,7 +1909,8 @@ def add_stream_options(parser) -> None:
     parser.add_argument("--max-workers", type=int, default=BATCH_MAX_WORKERS, help=f"parallel Jev calls, 1 to {BATCH_MAX_WORKERS}")
     parser.add_argument("--max-request-bytes", type=int, default=None, help=f"refuse any request over this before sending; at most {MAX_REQUEST_BYTES_CEILING} (requests are logged whole); default the gate's cap")
     parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--timeout", type=float, default=30.0)
+    parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT,
+                        help="custom values are offline-only with the pinned wheel; live calls use the wheel timeout")
     parser.add_argument("--dry-run", action="store_true", help="emit the result lines with the requests only; call nothing")
     parser.add_argument("--answers-file", default="", help="fixture answers keyed '<item>/<candidate>/r<n>', '<item>/<candidate>', '<candidate>' or '*'; no network")
     parser.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
