@@ -126,6 +126,14 @@ Records: `docs/requirements/` (raptor-integration, record-validation,
 prose-evaluation) and `docs/adr/adr-jev-product.md`. Raptor configuration is
 in `.raptor/`.
 
+The wheel migration retains the [product ADR boundaries](docs/adr/adr-jev-product.md):
+ADR-JEV-0008 governs definition targeting, `doctor` and request/log size checks.
+ADR-JEV-0002 keeps record access with Raptor; ADR-JEV-0003 keeps Raptor's schema
+strict and separate from quality judgments; ADR-JEV-0004 retains the existing
+code-reference scope limit. Transport replacement adds no record parser,
+schema relaxation or code-reference support. These references do not change
+any record's approval status.
+
 ## Open questions
 
 See the Open list in [docs/cli.md](docs/cli.md).
