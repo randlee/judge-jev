@@ -1743,12 +1743,13 @@ def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo:
     next_position = 0
     output = []
     callback_error = []
+    accept_lock = threading.Lock()
     cancel = module.value.CancelToken()
 
     class _CallbackFailure(Exception):
         pass
 
-    def accept(raw):
+    def accept_locked(raw):
         nonlocal next_position
         if isinstance(raw, str):
             try:
@@ -1779,6 +1780,14 @@ def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo:
             output.append(line)
             emitted.add(next_position)
             next_position += 1
+
+    def accept(raw):
+        # sc-decidr 0.1.0 invokes callbacks on the Python calling thread and
+        # joins its worker before returning its finish-order list. Serialize
+        # regardless of callback thread: conversion, deduplication, ordered
+        # log/stdout writes and state updates form one critical section.
+        with accept_lock:
+            accept_locked(raw)
 
     selector = "jev" if settings.model == "jev-latest" else settings.model
     # Pass the same caller-owned Logger directly; the wheel must not close it.
