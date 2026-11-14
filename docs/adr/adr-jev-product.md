@@ -389,8 +389,17 @@ judge-jev has two ports:
   judge-jev implements it now with `pyoxigraph` and a SHACL validator; a
   Jev tool with Oxigraph may implement it later.
 
-Only JSON crosses the transport. The result lines in the sc-observability
-log are the record of a run; a run's triples are a projection of those
+Decision request and result payloads crossing the transport are JSON.
+Logger handles are optional caller-owned runtime configuration, not graph
+or decision-domain data. General and session logger parameters are
+independent: omission uses sc-agent's corresponding default file logger.
+The consumer's `--sc-agent-log` option passes its exact run Logger directly
+as `general_log` and leaves `session_log` omitted. The consumer owns flush
+and shutdown, flushes each result's run events, and closes the Logger only
+after decision work ends, including cancellation. Consumer run events stay
+queryable whether or not wheel diagnostics use that Logger.
+
+The result lines in the sc-observability log are the record of a run; a run's triples are a projection of those
 lines and the tree, so they can be rebuilt from the log at any time. The
 tree walk (which wave next, which verdict) uses only the compiled waves and
 the answers, so it runs on either side of the seam.
