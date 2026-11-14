@@ -21,7 +21,7 @@ required_variables:
 """jev_judge.py
 
 Run it with ``uv run --script jev_judge.py ...``: the inline metadata above
-supplies its five dependencies. pydantic (v2) defines the model of every JSON
+supplies its six dependencies. pydantic (v2) defines the model of every JSON
 input (ADR-JEV-0005) and is imported at the top (DEPENDENCY.PYDANTIC when it
 does not import); the others are imported lazily where they are needed (pyoxigraph and pyshacl only when a definitions file is read). The
 run log goes through the sc-observability logger (``sc-observability==1.5.0``,
@@ -2223,9 +2223,13 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
         return _with_refs(log, run_refs)
     results, failed = [], None
     for tree, record, refs, _job, carried in prepared:
-        walked = walk_tree(tree, record, settings, fixture, log.value,
-                           quality_fields(tree, record["id"], refs["record"]["kind"], carried,
-                                         index_record_iri(args.index, record["id"])), carried)
+        try:
+            walked = walk_tree(tree, record, settings, fixture, log.value,
+                               quality_fields(tree, record["id"], refs["record"]["kind"], carried,
+                                             index_record_iri(args.index, record["id"])), carried)
+        except KeyboardInterrupt:
+            log.value.close()
+            raise
         if isinstance(walked, Err):
             failed = _with_refs(walked, {**refs, "results": results})
             break
@@ -2537,8 +2541,12 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
         log = open_run_log(quality_log_root(args), runs[arm], getattr(args, "sc_agent_log", False))
         if isinstance(log, Err):
             return _with_refs(log, head)
-        walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
-                           {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
+        try:
+            walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
+                               {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
+        except KeyboardInterrupt:
+            log.value.close()
+            raise
         closed = log.value.close()
         if isinstance(walked, Err):
             return _with_refs(walked, {**head, "arm": arm})

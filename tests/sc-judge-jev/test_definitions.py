@@ -463,6 +463,8 @@ class Compare(DefinitionCase):
         self.assertEqual((got, out["error"]["code"]), (2, "DEFINITIONS.NOT_FOUND"), out)
 
     def test_a_live_comparison_without_an_answers_file_needs_consent_before_any_call(self):
+        (self.d / ".git").mkdir()  # isolated repository; never reads the checkout consent
+        write(self.d, ".sc/judge-jev/settings.yaml", "schema_version: 1\nallow_remote_judge: false\n")
         got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"), "--repository-root", str(self.d))
         self.assertEqual((got, out["success"], out["error"]["code"]), (2, False, "POLICY.REMOTE_JUDGE_DISABLED"), out)  # no key: stopped before any call
 

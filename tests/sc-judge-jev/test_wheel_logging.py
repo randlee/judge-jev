@@ -69,3 +69,31 @@ class WheelLogging(BatchCase):
         finally:
             self.assertIsInstance(log.close(), jj.Ok)
         self.assertIn("after-send", [event["action"] for event in read_log(self.d / "lifetime")])
+
+
+class QualityLoggerLifetime(unittest.TestCase):
+    def test_interrupt_closes_the_owned_run_logger(self):
+        import tempfile
+        from pathlib import Path
+        from test_quality import INDEX
+        from test_jev_judge import write
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            index = write(root, "index.json", INDEX)
+            owned = []
+            original_open = jj.open_run_log
+
+            def opened(*args, **kwargs):
+                result = original_open(*args, **kwargs)
+                close = mock.Mock(wraps=result.value.close)
+                result.value.close = close
+                owned.append(close)
+                return result
+
+            with consented(), mock.patch.object(jj, "open_run_log", side_effect=opened), \
+                    mock.patch.object(jj, "walk_tree", side_effect=KeyboardInterrupt):
+                code, output = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index,
+                                        "--run-dir", str(root / "logs"), "--sc-agent-log"])
+            self.assertEqual((code, output["error"]["code"]), (130, "CANCELED"))
+            self.assertEqual(len(owned), 1)
+            owned[0].assert_called_once_with()

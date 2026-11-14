@@ -125,6 +125,13 @@ session logger still uses its default file. This optional native Logger form
 requires the B-1 published wheel that fixes `agt-b-1.5`; final published-wheel
 injection and flushing checks belong to `agt-r17`.
 
+The initial migration pins published `sc-decidr==0.1.0`. Its native Logger
+injection and per-call timeout support are pending the B-1 prerelease
+(`agt-2t0`, fixes `agt-b-1.5` and `agt-b-1.8`). The parsed `--timeout` option
+is retained, but this wheel uses its own request timeout; it is not yet
+forwarded. `agt-r17` owns the final wheel pin and installed live rechecks,
+including credential precedence, injection/flushing and timeout delivery.
+
 ## Definitions, `compare-definition` and `doctor`
 
 A definition (ADR-JEV-0008) is data in the request state, never in a question: `state.definitions` is `[{term, text}]` sorted by term, and `state.location` names the location of a request made at one. `quality` and `compare-definition` take `--definitions <file>` (repeatable; default every `definitions.ttl` and `*.definitions.ttl` in `<--repository-root>/.sc/judge-jev/`). A definition attached to a record alone is in every request about it; one attached to a record and a location is only in a request at that location. A request no definition reaches is byte-identical to one without the feature. Definitions are never truncated and count toward `--max-request-bytes` and the log-event size check, before any call. Each file is Turtle checked by `assets/shapes/definitions.shacl.ttl` and loaded as its own named graph, so a tree's digest does not change. A bad file is `INPUT.MISSING`, `INPUT.MALFORMED` or `DEFINITIONS.INVALID` (over 128 KiB, a blank-node definition, a literal record, an attachment with two records, an over-long or multi-line term, an absolute or `..` path, a definition IRI in two files), never a crash. Every request, answer, result, wave and verdict event carries `definitions: [{iri, term, digest}]`; the digest is the SHA-256 of term, text and source.
