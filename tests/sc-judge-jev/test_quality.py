@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from clock_support import FIXED_UTC, utc_clock
 from jev_support import ROOT, SKILL, read_log
 import jev_judge as jj  # noqa: E402
 
@@ -241,7 +242,9 @@ class LogPath(QualityCase):
         before = os.getcwd()
         self.addCleanup(os.chdir, before)
         os.chdir(cwd)
+        clock = utc_clock()
         with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), \
+                mock.patch.object(jj, "_dt", clock), mock.patch.object(jj.judge_jev_paths, "_dt", clock), \
                 mock.patch.object(jj.judge_jev_paths, "home_dir", lambda: home):
             return run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", answers])
 
@@ -250,7 +253,7 @@ class LogPath(QualityCase):
         (repo / ".git").mkdir(parents=True)
         home.mkdir()
         code, out = self.run_default(repo, home)
-        today = jj._dt.datetime.now(jj._dt.timezone.utc).date().isoformat()
+        today = FIXED_UTC.date().isoformat()
         root = home / ".judge-jev" / "my_repo" / today
         self.assertEqual((code, out["data"]["log"]["log_root"]), (0, str(root)), out)
         self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.jsonl")), ["logs/judge-jev.log.jsonl"])
