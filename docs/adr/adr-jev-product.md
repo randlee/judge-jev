@@ -32,9 +32,12 @@ or its callers break when the replacement lands.
 
 ### Decision
 
-The Jev core keeps its architecture and contracts unchanged. It changes
-only to fix a defect, or to replace its run log with the sc-observability
-logger (REQ-JEV-0008).
+The public Jev batch and result contracts stay unchanged. The Python layer
+composes and validates consumer requests, applies question-aware domain
+checks, and records the run log. The released `sc-decidr` Python wheel owns
+the TypeSafe transport, credentials, Rust error chain, cancellation and
+provider retry behavior. This is the authorized wheel integration; it does
+not change the batch JSON port.
 
 ### Rationale
 
@@ -235,6 +238,8 @@ change (ADR-JEV-0001); only how they are checked does.
 
 One model per input replaces scattered checks that each had to anticipate
 every wrong type, and pydantic reports the field path of every refusal.
+The `sc-decidr` wheel validates the TypeSafe wire request and response; it
+does not replace consumer input models or question-aware answer validation.
 
 ### Consequences
 
@@ -376,8 +381,9 @@ judge-jev has two ports:
 - **Transport:** sends the request lines of one wave and returns their
   result lines. Its contract is the existing batch request and result
   schemas (`assets/schemas/jev-batch-request.schema.json`,
-  `jev-batch-result.schema.json`), unchanged. The Python core implements it
-  now; sc-agent's Jev tool implements it later.
+  `jev-batch-result.schema.json`), unchanged. The Python consumer calls the
+  released `sc-decidr` wheel to implement it; sc-agent's released wheel owns
+  transport, credentials, typed Rust errors, cancellation and retries.
 - **Graph store:** loads a tree, validates it with SHACL, compiles a wave
   to its JSON questions, records a run's triples and answers queries.
   judge-jev implements it now with `pyoxigraph` and a SHACL validator; a

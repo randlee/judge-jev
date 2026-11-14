@@ -19,7 +19,7 @@ from pathlib import Path
 from jev_support import SCRIPTS, SKILL, log_lines, read_log
 import jev_judge as jj  # noqa: E402
 
-from test_jev_judge import STATEMENT, Transport, answer, consented, env, http, plan_answers, run_cli, write  # noqa: E402
+from test_jev_judge import STATEMENT, answer, consented, env, plan_answers, run_cli, write, sc_decidr  # noqa: E402
 
 PLAN_QS = json.loads((SKILL / "assets" / "questions" / "plan.json").read_text(encoding="utf-8"))
 ROLES = ("addressed", "contradicted", "relevant")
@@ -42,6 +42,13 @@ def alt_set(n):
 
 def jsonl(lines):
     return "".join(json.dumps(x) + "\n" for x in lines)
+
+
+class WheelCancelToken:
+    def __init__(self):
+        self.cancelled = False
+    def cancel(self):
+        self.cancelled = True
 
 
 class BatchCase(unittest.TestCase):
@@ -148,40 +155,52 @@ class BatchTests(BatchCase):
         self.assertNotIn(b"\r", proc.stdout)
         self.assertEqual(self.log("crlf"), self.parsed(proc.stdout))
 
-    def test_results_stream_in_request_order_as_each_answer_arrives(self):
-        """Completion order is forced to c3, c1, c2 with events (no sleeps); lines still come out c1, c2, c3, and c1
-        is yielded while c2 is still unanswered, so nothing is held back for the end of the batch."""
+    def test_live_callback_completion_order_is_buffered_to_request_order(self):
         line = request_line("s1", "text", ("c1", PLAN_QS["questions"]), ("c2", PLAN_QS["questions"]), ("c3", PLAN_QS["questions"]))
-        c3_done, release_c2 = threading.Event(), threading.Event()
-        completed, waits = [], []
-        real = jj.run_batch_job
+        class Reordered:
+            CancelToken = WheelCancelToken
+            def send_batch(self, requests, *, on_result=None, **kwargs):
+                results = [{"position": i, "response": {"model": "jev-test", "answers": plan_answers()}}
+                           for i in (2, 0, 1)]
+                for result in results:
+                    on_result(result)
+                return results
+        with consented(), mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(Reordered())):
+            code, output = run_cli(["batch", "--input", self.put("live.jsonl", jsonl([line])), "--run-dir", str(self.d / "live")])
+        self.assertEqual(code, 0, output)
+        self.assertEqual([item["candidate_id"] for item in (json.loads(line) for line in output.splitlines())], ["c1", "c2", "c3"])
 
-        def controlled(job, settings, api_key, fixture, abort):
-            if job.candidate_id == "c1":
-                waits.append(c3_done.wait(timeout=30))  # a guard against a deadlocked implementation, not a timing input
-            if job.candidate_id == "c2":
-                waits.append(release_c2.wait(timeout=30))
-            result = real(job, settings, api_key, fixture, abort)
-            completed.append(job.candidate_id)
-            if job.candidate_id == "c3":
-                c3_done.set()
-            return result
+    def test_keyboard_interrupt_cancels_the_wheel_token(self):
+        class Interrupted:
+            CancelToken = WheelCancelToken
+            token = None
+            def send_batch(inner, requests, *, cancel=None, **kwargs):
+                inner.token = cancel
+                raise KeyboardInterrupt
+        wheel = Interrupted()
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 30.0, 1, 24000, False)
+        with self.assertRaises(KeyboardInterrupt), mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(wheel)):
+            jj.pump_batch([self.LINES[0]], settings, None, object(), echo=False)
+        self.assertIsInstance(wheel.token, WheelCancelToken)
+        self.assertTrue(wheel.token.cancelled)
 
-        settings = jj.BatchSettings("plan", "fixture-model", 1, "p", 0.6, 30.0, 3, 24000, False)
-
-        async def consume():
-            got = []
-            async for result in jj.stream_batch([line], settings, "", {"*": plan_answers()}):
-                got.append((result["candidate_id"], list(completed)))
-                release_c2.set()
-            return got
-
-        with mock.patch.object(jj, "run_batch_job", controlled):
-            got = jj.asyncio.run(consume())
-        self.assertEqual(waits, [True, True])
-        self.assertEqual([cid for cid, _ in got], ["c1", "c2", "c3"])
-        self.assertEqual(got[0][1], ["c3", "c1"])  # c1 was yielded before c2 had an answer
-        self.assertEqual(completed, ["c3", "c1", "c2"])
+    def test_credential_failure_cancels_the_wheel_batch(self):
+        class CredentialFailure:
+            CancelToken = WheelCancelToken
+            token = None
+            def send_batch(inner, requests, *, cancel=None, on_result=None, **kwargs):
+                inner.token = cancel
+                result = {"position": 0, "error": {"id": "secrets.credential_rejected", "message": "credential rejected"}}
+                on_result(result)
+                return [result]
+        wheel = CredentialFailure()
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 30.0, 1, 24000, False)
+        one = request_line("s1", "text", ("c1", PLAN_QS["questions"]))
+        with mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(wheel)), \
+                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)):
+            result = jj.pump_batch([one], settings, None, object(), echo=False)
+        self.assertTrue(wheel.token.cancelled)
+        self.assertEqual((result.value[0]["error"]["code"], result.value[0]["retry_count"]), ("AUTH.CREDENTIALS", 0))
 
     def test_failed_call_is_a_line_and_exit_2_with_the_error_on_stderr(self):
         self.FIXTURE = {"s1/cur": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}], "*": plan_answers()}
@@ -216,68 +235,47 @@ class BatchTests(BatchCase):
         self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
         self.assertFalse((self.d / "runs").exists())
 
-    def test_live_run_fails_closed_before_any_line(self):
-        with mock.patch.dict(os.environ, {"TYPESAFE_API_KEY": ""}), mock.patch.object(jj, "credential_store_api_key", return_value=""):
+    def test_live_run_fails_closed_without_committed_consent(self):
+        with mock.patch.object(jj, "remote_judge_consent", return_value=jj.Err(jj.JudgeError(
+                "POLICY.REMOTE_JUDGE_DISABLED", "consent missing", action="ask the repository owner"))):
             code, out = run_cli(["batch", "--input", self.put("in.jsonl", jsonl(self.LINES)), "--run-dir", str(self.d / "runs")])
-        self.assertEqual((code, out["error"]["code"]), (2, "AUTH.CREDENTIALS"))
+        self.assertEqual((code, out["error"]["code"]), (2, "POLICY.REMOTE_JUDGE_DISABLED"))
         self.assertFalse((self.d / "runs").exists())
 
 
 class BatchRetryPolicyTests(BatchCase):
-    """One retry per failed call (Retry-After first), AUTH.CREDENTIALS stops the remaining calls; the transport is stubbed."""
+    """The consumer delegates live retry policy; fake wheel results are deterministic and never sleep or call a provider."""
 
     LINE = request_line("s1", "We copy the legacy crates.", ("cur", PLAN_QS["questions"]))
 
-    def live_batch(self, transport, *extra):
-        """Runs batch in-process; stderr (the error envelope when a line has no answer) is checked, never dropped."""
-        sleeps, err = [], io.StringIO()
-        with env(TYPESAFE_API_KEY="sk-test-0001"), consented(), mock.patch.object(jj, "call_jev", transport), \
-                mock.patch.object(jj, "_sleep", sleeps.append), contextlib.redirect_stderr(err):
-            code, out = run_cli(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])), "--run-dir", str(self.d / "runs"),
-                                 "--run-name", "r1", "--max-workers", "1", *extra])
-        if code == 0:
-            self.assertEqual(err.getvalue(), "")
-        else:
-            envelope = json.loads(err.getvalue())
-            self.assertEqual((envelope["success"], envelope["data"]), (False, None))
-            self.assertEqual(envelope["error"]["suggested_action"],
-                             "Read each failed line's error field; rerun only those requests once the cause is fixed.")
-            self.stderr_code = envelope["error"]["code"]
-        return code, out, sleeps
+    def test_live_error_is_recorded_once_without_consumer_retry(self):
+        class Failed:
+            CancelToken = WheelCancelToken
+            calls = 0
+            def send_batch(inner, requests, *, on_result=None, **kwargs):
+                inner.calls += 1
+                result = {"position": 0, "error": {"id": "http.network", "message": "connection refused", "cause": {"id": "io.error", "message": "refused"}}}
+                on_result(result)
+                return [result]
+        wheel = Failed()
+        with consented(), mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(wheel)), contextlib.redirect_stderr(io.StringIO()):
+            code, out = run_cli(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])), "--run-dir", str(self.d / "runs"), "--run-name", "r1"])
+        self.assertEqual((code, wheel.calls, out["retry_count"], out["error"]["code"]), (2, 1, 0, "JEV.NETWORK"))
+        self.assertEqual(out["error"]["detail"]["cause"]["id"], "io.error")
 
-    def test_transient_failure_then_success_is_one_retry(self):
-        t = Transport(http(429, retry_after=7.0))
-        code, out, sleeps = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["verdict"], len(t.bodies), sleeps), (0, True, 1, "satisfied", 2, [7.0]))
-        self.assertEqual([a["ok"] for a in out["attempts"]], [False, True])
-        self.assertEqual(out["attempts"][0]["error"]["code"], "JEV.RATE_LIMITED")
-
-    def test_two_transient_failures_leave_the_line_without_an_answer(self):
-        t = Transport(http(503), http(503))
-        code, out, sleeps = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["error"]["code"], len(t.bodies), sleeps), (2, False, 1, "JEV.HTTP", 2, [1.0]))
-        self.assertEqual(self.stderr_code, "JEV.HTTP")
-
-    def test_non_transient_failure_is_not_retried(self):
-        t = Transport(http(422, "questions.addressed is invalid"))
-        code, out, sleeps = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["error"]["code"], len(t.bodies), sleeps), (2, False, 0, "JEV.VALIDATION", 1, []))
-        self.assertEqual(self.stderr_code, "JEV.VALIDATION")
-
-    def test_invalid_response_is_retried_as_transient(self):
-        t = Transport({"model": "x", "answers": {}})
-        code, out, _ = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["verdict"]), (0, True, 1, "satisfied"))
-        self.assertEqual(out["attempts"][0]["error"]["code"], "JEV.RESPONSE_INVALID")
-
-    def test_credentials_rejected_by_jev_stop_the_remaining_calls(self):
-        t = Transport(http(401, "Bearer sk-test-0001 is wrong"))
-        code, out, sleeps = self.live_batch(t, "--repeat", "3")
-        lines = log_lines(self.d / "runs")
-        self.assertEqual((code, len(t.bodies), sleeps, self.stderr_code), (2, 1, [], "AUTH.CREDENTIALS"))
-        self.assertEqual([x["error"]["code"] for x in lines], ["AUTH.CREDENTIALS"] * 3)
-        self.assertEqual([x["attempts"][0]["error"]["message"] for x in lines[1:]], ["not sent: the batch aborted"] * 2)
-        self.assertNotIn("sk-test-0001", json.dumps(read_log(self.d / "runs")))
+    def test_invalid_response_is_not_retried_by_the_consumer(self):
+        class Invalid:
+            CancelToken = WheelCancelToken
+            calls = 0
+            def send_batch(inner, requests, *, on_result=None, **kwargs):
+                inner.calls += 1
+                result = {"position": 0, "response": {"model": "jev-test", "answers": {}}}
+                on_result(result)
+                return [result]
+        wheel = Invalid()
+        with consented(), mock.patch.object(jj, "sc_agent_module", return_value=jj.Ok(wheel)), contextlib.redirect_stderr(io.StringIO()):
+            code, out = run_cli(["batch", "--input", self.put("bad-response.jsonl", jsonl([self.LINE])), "--run-dir", str(self.d / "invalid")])
+        self.assertEqual((code, wheel.calls, out["retry_count"], out["error"]["code"]), (2, 1, 0, "JEV.RESPONSE_INVALID"))
 
 
 if __name__ == "__main__":

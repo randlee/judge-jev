@@ -17,7 +17,7 @@ import unittest
 from unittest import mock
 
 from jev_support import SCRIPTS
-from test_jev_judge import Transport, env, jj, jsonl, plan_answers, request_line, run_cli, write  # noqa: F401
+from test_jev_judge import Transport, env, jj, jsonl, plan_answers, request_line, run_cli, write, sc_decidr  # noqa: F401
 import judge_jev_settings as settings_mod  # noqa: E402
 
 SETTINGS_SCRIPT = SCRIPTS / "judge_jev_settings.py"
@@ -69,7 +69,7 @@ class Batched:
         err = io.StringIO()
         argv = ["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", str(repo.root), *extra]
         with env(**(dict(KEY) if env_values is None else env_values)), \
-                mock.patch.object(jj, "call_jev", self.transport), contextlib.redirect_stderr(err):
+                mock.patch.object(jj, "sc_agent_module", side_effect=lambda: sc_decidr(self.transport)), contextlib.redirect_stderr(err):
             self.code, self.out = run_cli(argv)
         test.assertEqual(err.getvalue(), "")  # every case here either answers or fails before the first line
 
@@ -121,9 +121,9 @@ class LiveCallConsentTests(unittest.TestCase):
         b = Batched(self, Repo(self, "schema_version: 1\n"))
         self.assertEqual((b.code, b.out["error"]["suggested_action"], b.transport.bodies), (2, ABSENT_ACTION, []))
 
-    def test_missing_key_is_refused_before_consent_is_read(self):
+    def test_malformed_consent_settings_are_refused_before_wheel_resolution(self):
         b = Batched(self, Repo(self, "schema_version: [1\n"), env_values={})
-        self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "AUTH.CREDENTIALS", []))
+        self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "SETTINGS.MALFORMED", []))
 
     def test_old_flag_is_a_usage_error(self):
         b = Batched(self, Repo(self), extra=["--allow-remote"])
@@ -183,7 +183,7 @@ class LiveCallConsentTests(unittest.TestCase):
                 self.skipTest("the temporary directory is inside a repository here")
             t = Transport()
             src = write(d, "in.jsonl", jsonl([request_line()]))
-            with env(**KEY), mock.patch.object(jj, "call_jev", t), \
+            with env(**KEY), mock.patch.object(jj, "sc_agent_module", side_effect=lambda: sc_decidr(t)), \
                     mock.patch.object(settings_mod, "_git_toplevel", lambda start: None):
                 code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", d])
             self.assertEqual((code, out["error"]["code"], t.bodies), (2, "REPO.NOT_FOUND", []))
@@ -196,7 +196,7 @@ class LiveCallConsentTests(unittest.TestCase):
             for extra in (["--dry-run"], ["--answers-file", fixture]):
                 with self.subTest(extra=extra):
                     t = Transport()
-                    with env(), mock.patch.object(jj, "call_jev", t), mock.patch.dict(sys.modules, {"yaml": None}):
+                    with env(), mock.patch.object(jj, "sc_agent_module", side_effect=lambda: sc_decidr(t)), mock.patch.dict(sys.modules, {"yaml": None}):
                         code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), *extra,
                                              "--repository-root", missing])
                     self.assertEqual((code, t.bodies), (0, []), out)

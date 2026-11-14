@@ -101,7 +101,7 @@ class DeepInputIsATypedError(unittest.TestCase):
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
                 self.assertIn("maximum container depth is 32" if expected == "VALIDATION.INPUT" else str(jj.JSON_MAX_DEPTH),
                               out["error"]["message"])
-            with self.subTest(command="batch", depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
+            with self.subTest(command="batch", depth=depth), env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")):
                 code, out = run_cli(["batch", "--input", src, "--dry-run", "--run-dir", str(self.d / "logs")])
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
 
@@ -110,7 +110,7 @@ class DeepInputIsATypedError(unittest.TestCase):
         for depth, expected in ((300, "RECORD.DIAGNOSTICS"), (450, "RECORD.DIAGNOSTICS"), (600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
             index = copy.deepcopy(tq.INDEX)
             index["diagnostics"]["issues"].append({"id": "ADR-T-0001", "rule": "X", "extra": nested(depth)})
-            with self.subTest(depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
+            with self.subTest(depth=depth), env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
@@ -119,7 +119,7 @@ class DeepInputIsATypedError(unittest.TestCase):
         for depth in (300, 900):
             index = copy.deepcopy(tq.INDEX)
             index["decisions"][0]["x"] = nested(depth)
-            with self.subTest(depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
+            with self.subTest(depth=depth), env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
                 self.assertEqual(code, 2)
@@ -174,7 +174,7 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
     def batch(self, per, answers):
         sent = []
         src = write(self.d, f"r{per}.jsonl", json.dumps(self.batch_line(per)))
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
             code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, f"a{per}.json", answers),
                                  "--run-dir", str(self.d / f"l{per}"), "--run-name", "p"])
         return code, out, len(sent)
@@ -232,7 +232,7 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
         sent = []
         argv = ["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "index.json", tq.INDEX),
                 "--questions", write(self.d, f"t{per}.json", self.quality_tree(per)), "--run-dir", str(self.d / f"q{per}"), "--run-name", "p", *mode]
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
             code, out = run_cli(argv)
         return code, out, len(sent)
 
@@ -269,14 +269,14 @@ class AnswersEnvelope(unittest.TestCase):
         argv = ["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "index.json", tq.INDEX),
                 "--questions", write(self.d, "tree.json", self.tree), "--run-dir", str(self.d / "logs"), "--run-name", "p",
                 "--answers-file", write(self.d, "a.json", fixture)]
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
             code, out = run_cli(argv)
         return code, out, len(sent)
 
     def batch(self, fixture):
         sent = []
         src = write(self.d, "r.jsonl", jsonl([request_line()]))
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
             code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, "b.json", fixture), "--run-dir", str(self.d / "blogs")])
         return code, out, len(sent)
 
@@ -367,7 +367,7 @@ class AnswersEnvelope(unittest.TestCase):
         lines = [request_line("covered"), request_line("uncovered")]
         src = write(self.d, "r2.jsonl", jsonl(lines))
         fixture = write(self.d, "b2.json", {"covered/cur": plan_answers()})
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
             code, out = run_cli(["batch", "--input", src, "--answers-file", fixture, "--run-dir", str(self.d / "blogs2")])
         self.assertEqual((code, out["error"]["code"], len(sent)), (2, "FIXTURE.MISSING", 0), out)
         self.assertFalse((self.d / "blogs2").exists())
