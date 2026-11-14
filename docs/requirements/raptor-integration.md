@@ -111,6 +111,10 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 - judge-jev MUST use the default TypeSafe keyring entry: service
   `TYPESAFE_API_KEY`, current OS account; it MUST pass no keyring selection
   options.
+- The released wheel MUST redact every occurrence of its resolved API key
+  from native error detail messages and causes, including keys obtained
+  from `.env` or the platform keyring. judge-jev MUST preserve that redacted
+  detail without re-reading the credential store.
 
 ### Rationale
 
