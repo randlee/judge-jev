@@ -257,13 +257,26 @@ sc-observability package (version 1.5.0), which writes
 `~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
 Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). A
 quality-tree branch is the next wave a quality decision tree's rules select
-from Jev's answers.
+from Jev's answers. The consumer run log is judge-jev's owned Logger.
+sc-agent's general log contains decision diagnostics; its session log contains
+per-decision records. The two native logger parameters are independent.
 
 **MUST statements:**
 
 - judge-jev MUST write its run logs (requests, answers, quality-tree
   branches, verdicts) through the sc-observability logger, the logger
   sc-agent uses.
+- By default, judge-jev MUST omit both native logger parameters so sc-agent
+  uses its corresponding default general and session file loggers.
+- With `--sc-agent-log`, judge-jev MUST pass the same consumer-owned
+  `sc_observability.Logger` directly as `general_log`, without an adapter.
+- General-log injection MUST leave `session_log` omitted and its default
+  session file logger in control.
+- judge-jev MUST retain ownership of flush and shutdown for the injected
+  Logger: flush each result's run events and close it after decision work
+  ends, including cancellation.
+- The consumer's request, answer, result, quality-tree branch and verdict
+  events MUST remain queryable through sc-observability in either mode.
 
 **MUST NOT statements:**
 
@@ -282,12 +295,21 @@ we can upgrade plan-anchor which is currently working solidly."
 - [ ] A live `check` run's requests, answers and verdicts appear in the
   sc-observability log.
 - [ ] No judge-jev command writes `anchor-runs/tournament-*.jsonl`.
+- [ ] An installed batch or quality run with no injection leaves both
+  wheel logger arguments omitted, writes the native default general and
+  session files, and preserves queryable consumer run events.
+- [ ] With general-log injection, the wheel uses that exact Logger, leaves
+  the native session logger at its default, and does not flush or shut down
+  the caller's Logger. The consumer can still log after the wheel returns,
+  then flush and shut it down; its run events remain queryable.
+- [ ] Cancellation closes the consumer-owned run Logger after decision
+  work stops, preserving already recorded events.
 
 ### Implementation Notes
 
-Today the copied core writes its own `anchor-runs/tournament-<run>.jsonl`
-(`jev_judge.py` `pump_batch`). plan-anchor moves to the same logger after
-judge-jev.
+The consumer always writes its run events through sc-observability.
+Optional general-log injection adds wheel diagnostics to that same owned
+Logger; it does not alter the batch JSON port or graph-run projection.
 
 ## NFR-JEV-0001: Deterministic offline tests
 
