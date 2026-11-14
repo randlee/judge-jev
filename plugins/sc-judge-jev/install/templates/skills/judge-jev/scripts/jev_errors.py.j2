@@ -33,7 +33,8 @@ def _redact_text(value):
 
 def redact_sensitive(value):
     """Remove the environment TypeSafe credential and bearer tokens from emitted values.
-    Native .env/keyring secrets are redacted by the wheel before this presentation layer. Iterative (an explicit stack, no
+    Attached keys are redacted in native HTTP errors; other native paths are tracked by agt-b-1.10.
+    This presentation layer cannot discover unknown .env/keyring values. Iterative (an explicit stack, no
     recursion): a container nested a thousand deep is walked like any other and never raises RecursionError."""
     if not isinstance(value, (dict, list, tuple)):
         return _redact_text(value)
