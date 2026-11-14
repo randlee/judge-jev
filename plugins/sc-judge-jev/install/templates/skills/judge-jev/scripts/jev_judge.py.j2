@@ -919,6 +919,13 @@ def remote_judge_consent(args, what: str) -> Result[None, JudgeError]:
                     action="Ask the user once whether record text may be sent to TypeSafe (Jev) for judging, record the answer "
                            f"with `{REMOTE_JUDGE_SET}`, and commit {REMOTE_JUDGE_SETTING}. Never infer consent from "
                            "existing run files or past runs. Use --dry-run to inspect the request instead.")
+    if answer.error.code == "DEPENDENCY.PYYAML":
+        return fail("POLICY.REMOTE_JUDGE_DISABLED",
+                    f"{disabled} Consent cannot be confirmed because PyYAML is unavailable to read "
+                    f"{REMOTE_JUDGE_SETTING}.",
+                    action=f"Install PyYAML (`python3 -m pip install pyyaml`) to read {REMOTE_JUDGE_SETTING}; "
+                           "only the user may set "
+                           "allow_remote_judge: true. Use --dry-run to inspect the request instead.")
     return Err(_from_tool_error(answer.error))  # DEPENDENCY.PYYAML, SETTINGS.*: never a silent default
 
 
