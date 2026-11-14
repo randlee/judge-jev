@@ -7,6 +7,16 @@ Python **3.11**, consumer source
 render plus the installer's final newline; its SHA-256 is in
 [provenance.json](provenance.json). No local or git wheel was used.
 
+The reviewed source `460489393d6de65d0a0d02e13256a109fdb033b8` has identical
+rendered `jev_judge.py`, `jev_errors.py`, batch-request schema and batch-result
+schema bytes. `runtime_artifact_hashes` in provenance records three independently
+computed SHA-256 values per file: installed evidence bytes, the original tested
+source render, and the reviewed source render. Each triple matches the retained
+installer lock, including the original recorded entrypoint digest. Rendering
+uses package version 0.3.0 and the installer's final-newline rule; schemas are
+copied unchanged. The original tested source is retained above, and this
+identity update changes no runtime file or recorded live output.
+
 Dev-sanity and QA consume this evidence for bjj-1 deliverable 4. It replaces
 the temporary-only evidence that sanity could not review at the commit.
 This committed copy can be removed once agt-r17 commits equivalent final B-1
