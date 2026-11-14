@@ -26,6 +26,34 @@ class ScDecidrErrorContracts(unittest.TestCase):
                 self.assertEqual(error.code, expected)
                 self.assertFalse(error.recoverable)
 
+    def test_remaining_final_result_mappings_keep_the_native_chain(self):
+        base = jj.load_question_set("plan").value
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 30.0, 1, 24000, False)
+        request = {"item": {"id": "item", "title": "", "text": "record"},
+                   "questions": [{"candidate_id": "cur", "questions": base.questions}]}
+        job = jj.batch_jobs(request, 1, settings, base.roles).value[0]
+        cases = (
+            ({"id": "http.quota_exhausted", "message": "quota exhausted"}, "JEV.RATE_LIMITED"),
+            ({"id": "decision.api_status", "status": 502, "message": "gateway failed"}, "JEV.HTTP"),
+            ({"id": "http.response_too_large", "message": "response exceeded its bound"}, "JEV.RESPONSE_INVALID"),
+            ({"id": "decision.schema_mismatch", "message": "wrong answer shape"}, "JEV.RESPONSE_INVALID"),
+            ({"id": "decision.cancelled", "message": "cancelled"}, "CANCELED"),
+            # Stable observed IDs with no specialized consumer mapping retain
+            # JEV.HTTP. Future unknown IDs remain JEV.UNMAPPED (f-n2).
+            ({"id": "decidr.decision", "message": "backend failed", "cause": {
+                "id": "decision.backend", "message": "wrapped", "cause": {
+                    "id": "llm.api_status", "message": "HTTP 502"}}}, "JEV.HTTP"),
+            # Message prose cannot restore the removed status-scraping fallback.
+            ({"id": "http.provider_busy", "message": "HTTP 429"}, "JEV.UNMAPPED"),
+        )
+        for detail, expected in cases:
+            with self.subTest(detail=detail):
+                line = jj._sc_agent_result(job, settings, {"position": 0, "error": detail})
+                self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"]), (False, expected, 0))
+                self.assertEqual(line["error"]["detail"], detail)
+                self.assertEqual(len(line["attempts"]), 1)
+                self.assertEqual(line["attempts"][0]["error"]["code"], expected)
+
     def test_causal_detail_is_retained_on_result_line(self):
         base = jj.load_question_set("plan").value
         settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 30.0, 1, 24000, False)
