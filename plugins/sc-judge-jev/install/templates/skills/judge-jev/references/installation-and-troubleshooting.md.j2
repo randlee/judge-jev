@@ -19,10 +19,10 @@ description: Installing judge-jev into a repository or a parent folder with the 
 ```bash
 which python3 && python3 --version
 python3 -c 'import yaml; print("PyYAML", yaml.__version__)'
-test -n "$TYPESAFE_API_KEY" && echo "environment key set (preferred)" || echo "environment key absent; check the documented platform credential store"
+test -n "$TYPESAFE_API_KEY" && echo "environment key set" || echo "environment key absent; check the repository .env file or platform keyring"
 ```
 
-The environment-key message is informational: a documented local platform credential can also satisfy live Jev authentication.
+The environment-key message is informational: `.env` and a local platform keyring can also satisfy live Jev authentication.
 
 ## Install judge-jev into a folder
 
@@ -74,11 +74,11 @@ allow_remote_judge: true
 
 **TypeSafe API key**
 
-The live judge looks for the key in this order: `TYPESAFE_API_KEY` in the process environment, then the platform credential store. An invalid environment value fails closed; it does not silently select another credential. The platform entry is local-interactive convenience only—cloud, CI, and remote agents should use their platform secret injection.
+The live judge delegates credential lookup to the released `sc-decidr` wheel. It reads `.env`, then `TYPESAFE_API_KEY` in the process environment, then the current OS account's platform keyring. An invalid selected value fails closed.
 
-- macOS: Keychain generic-password item with service `plan-anchor` and account `typesafe-api-key`.
-- Windows: Credential Manager generic credential with target `plan-anchor:typesafe-api-key`.
-- Linux: Secret Service item returned by `secret-tool lookup service plan-anchor account typesafe-api-key`. Create it without putting the key on a command line with `secret-tool store --label="plan-anchor TypeSafe API key" service plan-anchor account typesafe-api-key` and enter the value on standard input.
+- macOS: Keychain generic-password item with service `TYPESAFE_API_KEY` and the current OS account.
+- Windows: Credential Manager generic credential with target `TYPESAFE_API_KEY` and the current OS account.
+- Linux: Secret Service item returned by `secret-tool lookup service TYPESAFE_API_KEY account "$USER"`.
 
 - Create a key at typesafe.ai. Read it silently so it does not appear in the command line, shell history, or terminal output, then export it in the shell that launches Claude Code or Codex:
   ```bash

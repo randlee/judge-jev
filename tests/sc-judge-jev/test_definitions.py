@@ -308,7 +308,7 @@ class Composition(DefinitionCase):
 class Compare(DefinitionCase):
     def compare(self, *argv, answers=None, run="c1"):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
-        with env(), mock.patch.object(jj, "call_jev", never_called):  # no real key, no real settings, no live Jev
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")):  # no real key, no real settings, no live Jev
             return run_cli(["compare-definition", "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", run,
                             *argv, *extra])
 
@@ -463,8 +463,10 @@ class Compare(DefinitionCase):
         self.assertEqual((got, out["error"]["code"]), (2, "DEFINITIONS.NOT_FOUND"), out)
 
     def test_a_live_comparison_without_an_answers_file_needs_consent_before_any_call(self):
-        got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"))
-        self.assertEqual((got, out["success"], out["error"]["code"]), (2, False, "AUTH.CREDENTIALS"), out)  # no key: stopped before any call
+        (self.d / ".git").mkdir()  # isolated repository; never reads the checkout consent
+        write(self.d, ".sc/judge-jev/settings.yaml", "schema_version: 1\nallow_remote_judge: false\n")
+        got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"), "--repository-root", str(self.d))
+        self.assertEqual((got, out["success"], out["error"]["code"]), (2, False, "POLICY.REMOTE_JUDGE_DISABLED"), out)  # no key: stopped before any call
 
 
 if __name__ == "__main__":

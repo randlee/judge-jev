@@ -64,8 +64,7 @@ class ScriptErrValueTests(unittest.TestCase):
     def test_jev_judge(self):
         missing = jj.load_json("/nonexistent/x.json", "thing")
         self.assertEqual((missing.error.code, missing.error.message), ("INPUT.MISSING", "thing not found: '/nonexistent/x.json'"))
-        self.assertEqual(jj.check_api_key("").error.code, "AUTH.CREDENTIALS")
-        self.assertEqual(jj.check_api_key("k"), Ok(None))
+        self.assertFalse(hasattr(jj, "check_api_key"))
 
     def test_judge_error_is_a_value_not_an_exception(self):
         self.assertFalse(issubclass(jj.JudgeError, BaseException))
@@ -75,64 +74,29 @@ class ScriptErrValueTests(unittest.TestCase):
 
 
 class JevPropagationTests(unittest.TestCase):
-    """An Err from the transport travels into the batch line unchanged, with its attempt bookkeeping, and becomes one envelope in main."""
+    """Live wheel failures map to one consumer error; no consumer retry loop exists."""
 
-    def job(self):
-        settings = jj.BatchSettings("plan", "m", 1, "p", 0.6, 1.0, 1, 24000, False)
-        base = jj.load_question_set("plan").value
-        line = {"item": {"id": "ex-42", "title": "", "text": "Sprint 2 copies the legacy runtime crates."},
-                "anchor": {"id": "ANC-001", "statement": STATEMENT},
-                "questions": [{"candidate_id": "cur", "questions": base.questions}]}
-        return jj.batch_jobs(line, 1, settings, base.roles).value[0], settings
-
-    def run_job(self, transport_result):
-        job, settings = self.job()
-        abort = jj._AbortFlag()
-        sleeps = []
-        with mock.patch.object(jj, "call_jev", return_value=transport_result) as called, mock.patch.object(jj, "_sleep", sleeps.append):
-            line = jj.run_batch_job(job, settings, "k", None, abort)
-        return line, called.call_count, sleeps, abort
-
-    def test_non_transient_err_is_recorded_once(self):
-        line, calls, sleeps, abort = self.run_job(Err(jj.JudgeError("JEV.VALIDATION", "Jev HTTP 422: bad", status=422)))
-        self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], calls, sleeps, abort.is_set()),
-                         (False, "JEV.VALIDATION", 0, 1, [], False))
-
-    def test_abort_code_stops_the_batch(self):
-        refused = jj.JudgeError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
-        line, calls, _, abort = self.run_job(Err(refused))
-        self.assertEqual((line["error"]["code"], calls, abort.is_set(), abort.error), ("AUTH.CREDENTIALS", 1, True, refused))
-
-    def test_transient_err_is_retried_once_then_recorded(self):
-        down = jj.JudgeError("JEV.NETWORK", "down", recoverable=True)
-        line, calls, sleeps, _ = self.run_job(Err(down))
-        self.assertEqual((line["ok"], line["error"]["code"], calls, line["retry_count"], sleeps),
-                         (False, "JEV.NETWORK", jj.BATCH_RETRIES + 1, jj.BATCH_RETRIES, [jj.RETRY_DELAYS[0]]))
-
-    def test_invalid_ok_response_becomes_err(self):
-        line, calls, _, _ = self.run_job(Ok({"answers": []}))
-        self.assertEqual((line["ok"], line["error"]["code"], calls), (False, "JEV.RESPONSE_INVALID", 2))
-
-    def test_valid_ok_response_is_the_line_answer(self):
-        line, calls, _, _ = self.run_job(Ok({"model": "jev-x", "answers": plan_answers()}))
-        self.assertEqual((line["ok"], line["verdict"], line["leaning"], line["model_answered"], calls), (True, "satisfied", "satisfied", "jev-x", 1))
-
-    def run_main(self, argv):
-        buf = io.StringIO()
-        with contextlib.redirect_stdout(buf):
-            code = jj.main(argv)
-        return code, json.loads(buf.getvalue())
+    def test_wheel_failure_maps_to_nonrecoverable_consumer_error(self):
+        error = jj.sc_agent_error({"id": "http.network", "message": "connection reset",
+                                   "cause": {"id": "io.error", "message": "reset"}})
+        self.assertEqual((error.code, error.recoverable), ("JEV.NETWORK", False))
+        self.assertEqual(error.action, "")
 
     def test_main_emits_an_err_as_the_envelope_and_exits_2(self):
-        code, out = self.run_main(["batch", "--input", "/nonexistent/in.jsonl", "--run-dir", "/nonexistent/runs"])
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = jj.main(["batch", "--input", "/nonexistent/in.jsonl", "--run-dir", "/nonexistent/runs"])
         self.assertEqual(code, 2)
-        self.assertEqual(set(out), {"success", "data", "error"})
-        self.assertEqual((out["success"], out["error"]["code"]), (False, "INPUT.MISSING"))
+        self.assertEqual(set(json.loads(buf.getvalue())), {"success", "data", "error"})
+        self.assertEqual(json.loads(buf.getvalue())["error"]["code"], "INPUT.MISSING")
 
     def test_main_reports_an_unexpected_exception_as_script_internal(self):
-        with mock.patch.object(jj, "read_request_lines", side_effect=RuntimeError("boom")):
-            code, out = self.run_main(["batch", "--input", "x"])
-        self.assertEqual((code, out["error"]["code"], out["error"]["message"]), (2, "SCRIPT.INTERNAL", "RuntimeError: boom"))
+        buf = io.StringIO()
+        with mock.patch.object(jj, "read_request_lines", side_effect=RuntimeError("boom")), contextlib.redirect_stdout(buf):
+            code = jj.main(["batch", "--input", "x"])
+        envelope = json.loads(buf.getvalue())
+        self.assertEqual((code, envelope["error"]["code"], envelope["error"]["message"]),
+                         (2, "SCRIPT.INTERNAL", "RuntimeError: boom"))
 
 
 if __name__ == "__main__":

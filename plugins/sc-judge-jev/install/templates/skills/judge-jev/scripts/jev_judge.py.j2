@@ -14,13 +14,14 @@ required_variables:
 #   "pyyaml>=5.1",
 #   "pyoxigraph>=0.5,<0.6",
 #   "pyshacl>=0.30,<1",
+#   "sc-decidr==0.1.0",
 #   "sc-observability==1.5.0",
 # ]
 # ///
 """jev_judge.py
 
 Run it with ``uv run --script jev_judge.py ...``: the inline metadata above
-supplies its five dependencies. pydantic (v2) defines the model of every JSON
+supplies its six dependencies. pydantic (v2) defines the model of every JSON
 input (ADR-JEV-0005) and is imported at the top (DEPENDENCY.PYDANTIC when it
 does not import); the others are imported lazily where they are needed (pyoxigraph and pyshacl only when a definitions file is read). The
 run log goes through the sc-observability logger (``sc-observability==1.5.0``,
@@ -88,18 +89,13 @@ import collections
 import concurrent.futures
 import datetime as _dt
 import hashlib
-import http.client
 import json
 import math
 import os
 import pathlib
 import re
-import subprocess
 import sys
 import threading
-import time
-import urllib.error
-import urllib.request
 from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -123,28 +119,20 @@ except ImportError as _exc:  # before any model exists: print the typed error by
     sys.exit(2)
 
 
-JEV_URL = "https://api.typesafe.ai/v1/systemone"  # tests redirect by patching this constant in-process
-TYPESAFE_KEY_ENV = "TYPESAFE_API_KEY"
-CREDENTIAL_SERVICE = "plan-anchor"
-CREDENTIAL_ACCOUNT = "typesafe-api-key"
-WINDOWS_CREDENTIAL_TARGET = f"{CREDENTIAL_SERVICE}:{CREDENTIAL_ACCOUNT}"
 DEFAULT_MODEL = "jev-latest"
 DEFAULT_THRESHOLD = 0.6
 DEFAULT_MAX_REQUEST_BYTES = 24000  # plan gate: what Jev reads reliably (a planted contradiction 28k deep scored 0.46 vs 0.79 near the top)
-DEFAULT_MAX_REQUEST_BYTES_DEV = 64000  # dev gate: evidence is long; Jev accepted 107k bytes in one attempt, halving never fired in 245 requests
+DEFAULT_MAX_REQUEST_BYTES_DEV = 64000  # dev gate: evidence is long; bounded by the queryable log event limit
 MAX_REQUEST_BYTES_CEILING = 64000  # every request is logged whole, and the sc-observability logger refuses events over 64 KiB
 MAX_RESPONSE_BYTES = 1048576
-RETRY_DELAYS = (1.0, 2.0)          # seconds before the second and third attempt; Retry-After overrides the first
-MAX_RETRY_AFTER = 30.0
 PROBABILITY_ROUNDING = 0.01        # Jev rounds each probability; the sum may be off by this per option
 HERE = pathlib.Path(__file__).resolve().parent
 QUESTIONS_DIR = HERE.parent / "assets" / "questions"
 KINDS = ("directive", "prohibition", "structural")  # how decide() gates: see decide(); structural anchors skip Jev at the plan gate
 REQUIRED_ROLES = ("relevance", "compliance", "conflict")
 ABORT_CODES = ("AUTH.CREDENTIALS", "POLICY.REMOTE_JUDGE_DISABLED")
-TRANSIENT_CODES = ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID")
+TRANSIENT_CODES = ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID")  # fixture-only retry simulation
 
-_sleep = time.sleep  # replaced in tests
 BATCH_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")  # matched whole (fullmatch): a trailing newline is not part of an id
 MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
@@ -779,70 +767,6 @@ def encode_body(body: dict) -> bytes:
     return json.dumps(body, allow_nan=False).encode("utf-8")
 
 
-def parse_retry_after(value):
-    if value is None:
-        return None
-    try:
-        delay = float(value)
-    except (TypeError, ValueError):
-        return None
-    if not math.isfinite(delay) or delay < 0:
-        return None
-    return min(delay, MAX_RETRY_AFTER)
-
-
-def http_error(status: int, text: str, retry_after=None) -> JudgeError:
-    """Map an HTTP failure to a JudgeError. Bodies are withheld except the first 300 chars of a 422."""
-    low = text.lower()
-    if 400 <= status < 500 and ("max_tokens" in low or ("token" in low and "exceed" in low)):
-        return JudgeError("JEV.CONTEXT_EXCEEDED", f"Jev HTTP {status}: request exceeds the model's context window", recoverable=True,
-                          action="Shorten the evidence for this item.", status=status)
-    if status == 401:
-        return JudgeError("AUTH.CREDENTIALS", "Jev HTTP 401; response body withheld", action="Check TYPESAFE_API_KEY.", status=status)
-    if status == 422:
-        return JudgeError("JEV.VALIDATION", f"Jev HTTP 422: {text[:300]}", action="Fix the named field; usually a malformed question override.", status=status)
-    code = {429: "JEV.RATE_LIMITED", 529: "JEV.OVERLOADED"}.get(status, "JEV.HTTP")
-    transient = status in (429, 529) or status >= 500
-    return JudgeError(code, f"Jev HTTP {status}; response body withheld", recoverable=transient,
-                      action="Retry with backoff" if transient else "Check the request body.",
-                      status=status, retry_after=retry_after)
-
-
-def call_jev(body: dict, api_key: str, timeout: float) -> Result[dict, JudgeError]:
-    """One POST to Jev. Returns Err(JudgeError) on failure; never retries or shortens (judge_with_policy does both)."""
-    data = encode_body(body)
-    req = urllib.request.Request(
-        JEV_URL, data=data, method="POST",
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json", "User-Agent": "judge-jev/jev_judge"},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            raw = resp.read(MAX_RESPONSE_BYTES + 1)
-    except urllib.error.HTTPError as exc:
-        text = exc.read(4096).decode("utf-8", "replace")
-        retry_after = parse_retry_after(exc.headers.get("Retry-After") if exc.headers is not None else None)
-        return Err(http_error(exc.code, text, retry_after))
-    except urllib.error.URLError as exc:
-        return fail("JEV.NETWORK", f"Could not reach Jev: {exc.reason}", recoverable=True, action="Check network access and retry.")
-    except (OSError, http.client.HTTPException) as exc:
-        return fail("JEV.NETWORK", f"Jev connection failed: {type(exc).__name__}: {exc}", recoverable=True, action="Check network access and retry.")
-    if len(raw) > MAX_RESPONSE_BYTES:
-        return fail("JEV.RESPONSE_INVALID", "Jev response exceeded the size limit", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
-    try:
-        parsed = strict_loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeError, RecursionError):
-        return fail("JEV.RESPONSE_INVALID", "Jev response was not JSON", recoverable=True, action="Retry once; if it repeats, check for a proxy rewriting the response.")
-    if not isinstance(parsed, dict):
-        return fail("JEV.RESPONSE_INVALID", "Jev response was not a JSON object", recoverable=True, action="Check for a proxy rewriting the response.")
-    return Ok(parsed)
-
-
-def is_transient(exc: JudgeError) -> bool:
-    if exc.code in TRANSIENT_CODES:
-        return True
-    return exc.code == "JEV.HTTP" and exc.status is not None and exc.status >= 500
-
-
 def is_probability(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and 0 <= value <= 1
 
@@ -959,80 +883,6 @@ def decide(answers: dict, roles: dict, threshold: float, kind: str = "directive"
     return "underspecified", min_conf
 
 
-def _command_credential(argv: list[str]) -> str:
-    """Read a credential from a platform command without exposing its output on failure."""
-    try:
-        proc = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                              text=True, encoding="utf-8", timeout=5, check=False)
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
-    return proc.stdout.strip() if proc.returncode == 0 else ""
-
-
-def _windows_credential() -> str:
-    """Read the documented generic credential target from Windows Credential Manager."""
-    try:
-        import ctypes
-        from ctypes import wintypes
-
-        class Credential(ctypes.Structure):
-            _fields_ = [
-                ("Flags", wintypes.DWORD), ("Type", wintypes.DWORD), ("TargetName", wintypes.LPWSTR),
-                ("Comment", wintypes.LPWSTR), ("LastWritten", wintypes.FILETIME),
-                ("CredentialBlobSize", wintypes.DWORD), ("CredentialBlob", ctypes.c_void_p),
-                ("Persist", wintypes.DWORD), ("AttributeCount", wintypes.DWORD), ("Attributes", ctypes.c_void_p),
-                ("TargetAlias", wintypes.LPWSTR), ("UserName", wintypes.LPWSTR),
-            ]
-
-        credential = ctypes.POINTER(Credential)()
-        advapi = ctypes.windll.advapi32
-        advapi.CredReadW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
-                                     ctypes.POINTER(ctypes.POINTER(Credential)))
-        advapi.CredReadW.restype = wintypes.BOOL
-        advapi.CredFree.argtypes = (ctypes.c_void_p,)
-        if not advapi.CredReadW(WINDOWS_CREDENTIAL_TARGET, 1, 0, ctypes.byref(credential)):
-            return ""
-        try:
-            size = int(credential.contents.CredentialBlobSize)
-            if not size or not credential.contents.CredentialBlob:
-                return ""
-            return ctypes.string_at(credential.contents.CredentialBlob, size).decode("utf-16-le").strip()
-        finally:
-            advapi.CredFree(credential)
-    except (AttributeError, OSError, UnicodeDecodeError):
-        return ""
-
-
-def credential_store_api_key() -> str:
-    """Read the documented OS credential only when the environment has no key."""
-    if sys.platform == "darwin":
-        return _command_credential(["security", "find-generic-password", "-s", CREDENTIAL_SERVICE,
-                                    "-a", CREDENTIAL_ACCOUNT, "-w"])
-    if sys.platform == "win32":
-        return _windows_credential()
-    if sys.platform.startswith("linux"):
-        return _command_credential(["secret-tool", "lookup", "service", CREDENTIAL_SERVICE,
-                                    "account", CREDENTIAL_ACCOUNT])
-    return ""
-
-
-def resolved_api_key() -> str:
-    """Resolve the TypeSafe key from the environment first, then the platform credential store."""
-    environment_key = os.environ.get(TYPESAFE_KEY_ENV)
-    if environment_key is not None:
-        return environment_key.strip()
-    return credential_store_api_key()
-
-
-def check_api_key(api_key: str) -> Result[None, JudgeError]:
-    if not api_key:
-        return fail("AUTH.CREDENTIALS", "no TypeSafe API key was found", action="Export TYPESAFE_API_KEY or add the documented platform credential, or use --dry-run / --answers-file.")
-    if not api_key.isascii() or any(ord(c) <= 32 or ord(c) == 127 for c in api_key):
-        return fail("AUTH.CREDENTIALS", "the TypeSafe API key has invalid formatting (whitespace, control or non-ASCII characters)",
-                    action="Replace TYPESAFE_API_KEY or the platform credential with the key exactly as issued.")
-    return Ok(None)
-
-
 REMOTE_JUDGE_SETTING = ".sc/judge-jev/settings.yaml"
 REPO_ROOT_HELP = ("any path inside the repository; the nearest .sc/judge-jev/settings.yaml at or above it holds "
                   "allow_remote_judge (read for live Jev calls only; default .)")
@@ -1077,16 +927,12 @@ def _from_tool_error(error) -> JudgeError:
     return out
 
 
-def remote_preflight(args, what: str) -> Result[str, JudgeError]:
-    """Key and consent checks shared by every live Jev call; returns the API key. Nothing leaves the machine before this passes."""
-    api_key = resolved_api_key()
-    checked = check_api_key(api_key)
-    if isinstance(checked, Err):
-        return checked
+def remote_preflight(args, what: str) -> Result[None, JudgeError]:
+    """Check consent before the wheel resolves credentials or sends any request."""
     consent = remote_judge_consent(args, what)
     if isinstance(consent, Err):
         return consent
-    return Ok(api_key)
+    return Ok(None)
 
 
 def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, JudgeError]:
@@ -1130,7 +976,7 @@ def check_threshold(value: float, name: str = "--threshold") -> Result[float, Ju
 # --------------------------------------------------------------------------- #
 BATCH_RESULT_SCHEMA = "judge-jev/jev-batch-result/1"
 BATCH_MAX_WORKERS = 4              # parallel Jev evaluators; the anchor-tuning protocol's cap
-BATCH_RETRIES = 1                  # one retry per failed call, recorded as retry_count on the line
+BATCH_RETRIES = 1                  # deterministic fixture simulation only; live retry policy belongs to sc-decidr
 BATCH_FIXTURE_ERROR = "__error__"  # an answers-file attempt {"__error__": "<code>"} simulates a failed call
 
 
@@ -1286,7 +1132,7 @@ class _AbortFlag:
         return self._event.is_set()
 
 
-def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dry_run: bool) -> dict:
+def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dry_run: bool, error_detail=None) -> dict:
     verdict = min_conf = leaning = None
     if raw is not None and job.anchor_id is not None:  # a line without an anchor has no gate: its caller reads the answers
         verdict, min_conf = decide(raw["answers"], job.roles, settings.threshold, job.kind)
@@ -1300,12 +1146,15 @@ def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dr
         "model_answered": raw.get("model") if raw is not None else None,
         "threshold": settings.threshold, "verdict": verdict, "min_confidence": min_conf, "leaning": leaning,
         "retry_count": max(len(attempts) - 1, 0), "attempts": attempts,
-        "error": None if error is None else {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": error.recoverable},
+        "error": None if error is None else {
+            "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
+            "recoverable": error.recoverable, **({"detail": error_detail} if error_detail is not None else {}),
+        },
     })
 
 
-def run_batch_job(job: BatchJob, settings: BatchSettings, api_key: str, fixture, abort: _AbortFlag) -> dict:
-    """One call with one retry on a recoverable failure; returns the result line (raw evidence, redacted)."""
+def run_batch_job(job: BatchJob, settings: BatchSettings, fixture, abort: _AbortFlag) -> dict:
+    """One offline fixture job; live calls and provider retries belong to sc-decidr."""
     if settings.dry_run:
         return _line(job, settings, None, [], None, True)
     attempts, raw, error = [], None, None
@@ -1314,7 +1163,7 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, api_key: str, fixture,
             error = abort.error
             attempts.append({"attempt": attempt, "ok": False, "error": {"code": error.code, "message": "not sent: the batch aborted", "recoverable": False}})
             break
-        got = _fixture_attempt(job, fixture, attempt) if fixture is not None else call_jev(job.body, api_key, settings.timeout)
+        got = _fixture_attempt(job, fixture, attempt)
         if isinstance(got, Ok):
             got = validate_response(got.value, job.questions)
         if isinstance(got, Ok):
@@ -1326,10 +1175,8 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, api_key: str, fixture,
         if error.code in ABORT_CODES:
             abort.set(error)
             break
-        if not (error.recoverable or is_transient(error)) or attempt > BATCH_RETRIES:
+        if not error.recoverable or attempt > BATCH_RETRIES:
             break
-        if fixture is None:
-            _sleep(error.retry_after if error.retry_after is not None else RETRY_DELAYS[0])
     return _line(job, settings, raw, attempts, error, False)
 
 
@@ -1350,7 +1197,7 @@ class BatchInputError(Exception):
         self.error = error
 
 
-async def stream_batch(source, settings: BatchSettings, api_key: str = "", fixture=None):
+async def stream_batch(source, settings: BatchSettings, fixture=None):
     """Library API: an async iterator of result lines for an (async) iterable of request-line dicts.
 
     At most ``settings.max_workers`` Jev calls run at once. Lines are yielded in request order (candidates,
@@ -1373,7 +1220,7 @@ async def stream_batch(source, settings: BatchSettings, api_key: str = "", fixtu
             if isinstance(jobs, Err):
                 raise BatchInputError(jobs.error)
             for job in jobs.value:
-                pending.append(loop.run_in_executor(pool, run_batch_job, job, settings, api_key, fixture, abort))
+                pending.append(loop.run_in_executor(pool, run_batch_job, job, settings, fixture, abort))
                 while len(pending) >= window:
                     yield await pending.popleft()
         while pending:
@@ -1457,13 +1304,14 @@ class RunLog:
     """The run log (REQ-JEV-0008): one owned sc-observability logger per command, writing under
     ``<log_root>/logs/judge-jev.log.jsonl``. Every event carries the run name plus the caller's ``fields``."""
 
-    def __init__(self, sco, logger, run: str, log_root: pathlib.Path, size_at_open: int = 0):
+    def __init__(self, sco, logger, run: str, log_root: pathlib.Path, size_at_open: int = 0, inject_general_log: bool = False):
         self._sco = sco
         self._logger = logger
         self.run = run
         self.log_root = log_root
         self._size_at_open = size_at_open
         self._events = 0
+        self.inject_general_log = inject_general_log
 
     @property
     def path(self) -> pathlib.Path:
@@ -1512,7 +1360,7 @@ def logger_module():
     return Ok(sco)
 
 
-def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
+def open_run_log(log_root, run_name: str, inject_general_log: bool = False) -> Result[RunLog, JudgeError]:
     """Start the run's logger; the run name defaults to a UTC timestamp and must be a safe id."""
     name = run_name or stamp()
     checked = _safe_id(name, "--run-name")
@@ -1536,7 +1384,7 @@ def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
     if isinstance(created, sco.Err):
         return fail("LOG.WRITE", f"the sc-observability logger could not start under {root}: {getattr(created.error, 'message', created.error)}",
                     action="Check the run directory is writable.")
-    return Ok(RunLog(sco, created.value, name, root, size_at_open))
+    return Ok(RunLog(sco, created.value, name, root, size_at_open, inject_general_log))
 
 
 def result_line_events(line: dict, fields: dict) -> list:
@@ -1561,6 +1409,79 @@ def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, Judge
         if isinstance(logged, Err):
             return logged
     return log.flush()
+
+
+def _sc_agent_detail_nodes(detail):
+    """Yield a wheel error and its preserved lower-layer causes, from outer to inner."""
+    pending = [detail]
+    while pending:
+        current = pending.pop()
+        if not isinstance(current, dict):
+            continue
+        yield current
+        cause = current.get("cause")
+        if isinstance(cause, dict):
+            pending.append(cause)
+
+
+def sc_agent_error(detail) -> JudgeError:
+    """Map only observed wheel error ids; retain the complete Rust detail tree on the result line."""
+    nodes = list(_sc_agent_detail_nodes(detail))
+    ids = {str(node.get("id", "")) for node in nodes}
+    text = " ".join(str(node.get("message", "")) for node in nodes)
+    status_match = re.search(r"HTTP\s+(\d{3})", text)
+    status = next((node.get("status") for node in nodes if type(node.get("status")) is int), None)
+    if status is None:
+        status = int(status_match.group(1)) if status_match else None
+    if "http.provider_busy" in ids:
+        code = "JEV.RATE_LIMITED" if status == 429 else "JEV.OVERLOADED"
+    elif "http.quota_exhausted" in ids:
+        code = "JEV.RATE_LIMITED"
+    elif "http.network" in ids:
+        code = "JEV.NETWORK"
+    elif ids.intersection({"decision.response_parse", "decision.schema_mismatch", "http.response_too_large"}):
+        code = "JEV.RESPONSE_INVALID"
+    elif any(value.startswith("secrets.") for value in ids) or status == 401:
+        code = "AUTH.CREDENTIALS"
+    elif "decision.api_validation" in ids or status == 422:
+        code = "JEV.VALIDATION"
+    elif "decision.cancelled" in ids:
+        code = "CANCELED"
+    else:
+        code = "JEV.HTTP"
+    leaf = next((node for node in reversed(nodes) if node.get("message")), {})
+    message = str(leaf.get("message") or (nodes[0].get("message") if nodes else "sc-decidr failed without an error detail"))
+    # sc-decidr owns all network retries. A final error is never retried by judge-jev.
+    return JudgeError(code, message, recoverable=False, action=str(leaf.get("recovery") or ""))
+
+
+def _sc_agent_result(job: BatchJob, settings: BatchSettings, result: dict) -> dict:
+    """Convert one typed sc-decidr result line while retaining its full Rust error chain."""
+    response = result.get("response")
+    if isinstance(response, dict):
+        checked = validate_response(response, job.questions)
+        if isinstance(checked, Ok):
+            return _line(job, settings, checked.value, [{"attempt": 1, "ok": True}], None, False)
+        error = checked.error
+        line = _line(job, settings, None, [{"attempt": 1, "ok": False, "error": {
+            "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": False,
+        }}], error, False)
+        return line
+    detail = result.get("error")
+    error = sc_agent_error(detail)
+    line = _line(job, settings, None, [{"attempt": 1, "ok": False, "error": {
+        "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": False,
+    }}], error, False, detail)
+    return line
+
+
+def sc_agent_module():
+    try:
+        import sc_agent
+    except ImportError as exc:
+        return fail("DEPENDENCY.SC_DECIDR", f"sc-decidr did not import: {exc}",
+                    action="Run with `uv run --script jev_judge.py ...`; the script pins sc-decidr.")
+    return Ok(sc_agent)
 
 
 # The size of a log event is measured the way the sc-observability logger measures it (sc-observability 1.5.0,
@@ -1630,27 +1551,118 @@ def check_log_events(job: BatchJob, settings: BatchSettings, where: str, fields:
     return check_event_sizes([(action, event_fields, line["run_id"]) for action, event_fields in result_line_events(line, fields)], where)
 
 
-def pump_batch(lines: list, settings: BatchSettings, api_key: str, fixture, log: RunLog, echo: bool,
+def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo: bool,
                fields=None) -> Result[list, JudgeError]:
-    """Run the low layer over validated request lines; each result line goes, unchanged, to stdout (when ``echo``)
-    and into the run log as its request, answer and result events, flushed after every line so a crash keeps the
-    evidence."""
+    """Run fixtures locally; send live batches once through sc-decidr and keep result order stable."""
+    fields = fields or {}
+    if fixture is not None or settings.dry_run:
+        async def drive() -> Result[list, JudgeError]:
+            out = []
+            async for line in stream_batch(lines, settings, fixture=fixture):
+                logged = log_result_line(log, line, fields)
+                if isinstance(logged, Err):
+                    return logged
+                if echo:
+                    write_stdout_line(encode_result_line(line))
+                out.append(line)
+            return Ok(out)
 
-    async def drive() -> Result[list, JudgeError]:
-        out = []
-        async for line in stream_batch(lines, settings, api_key, fixture):
-            logged = log_result_line(log, line, fields or {})
+        try:
+            return asyncio.run(drive())
+        except BatchInputError as exc:
+            return Err(exc.error)
+
+    base = load_question_set(settings.gate)
+    if isinstance(base, Err):
+        return base
+    jobs = []
+    for number, request_line in enumerate(lines, start=1):
+        built = batch_jobs(request_line, number, settings, base.value.roles, fields)
+        if isinstance(built, Err):
+            return built
+        jobs.extend(built.value)
+    if not jobs:
+        return Ok([])
+    module = sc_agent_module()
+    if isinstance(module, Err):
+        return module
+
+    completed = {}
+    emitted = set()
+    next_position = 0
+    output = []
+    callback_error = []
+    cancel = module.value.CancelToken()
+
+    class _CallbackFailure(Exception):
+        pass
+
+    def accept(raw):
+        nonlocal next_position
+        if isinstance(raw, str):
+            try:
+                result = json.loads(raw)
+            except (ValueError, TypeError) as exc:
+                raise _CallbackFailure(f"sc-decidr returned an invalid result line: {exc}") from exc
+        elif isinstance(raw, dict):
+            result = raw
+        else:
+            raise _CallbackFailure(f"sc-decidr returned {type(raw).__name__}, expected a result line")
+        position = result.get("position")
+        if type(position) is not int or not 0 <= position < len(jobs):
+            raise _CallbackFailure(f"sc-decidr returned out-of-range batch position {position!r}")
+        if position in emitted or position in completed:
+            return
+        completed[position] = _sc_agent_result(jobs[position], settings, result)
+        line_error = completed[position].get("error")
+        if line_error is not None and line_error.get("code") in ABORT_CODES:
+            cancel.cancel()
+        while next_position in completed:
+            line = completed.pop(next_position)
+            logged = log_result_line(log, line, fields)
             if isinstance(logged, Err):
-                return logged
+                callback_error.append(logged.error)
+                raise _CallbackFailure(logged.error.message)
             if echo:
                 write_stdout_line(encode_result_line(line))
-            out.append(line)
-        return Ok(out)
+            output.append(line)
+            emitted.add(next_position)
+            next_position += 1
 
+    selector = "jev" if settings.model == "jev-latest" else settings.model
+    # Pass the same caller-owned Logger directly; the wheel must not close it.
+    log_options = {"general_log": log._logger} if log.inject_general_log else {}
     try:
-        return asyncio.run(drive())
-    except BatchInputError as exc:
-        return Err(exc.error)
+        result_lines = module.value.send_batch(
+            [encode_body(job.body).decode("utf-8") for job in jobs],
+            model=selector,
+            project="judge-jev",
+            agent_role="judge-jev",
+            cancel=cancel,
+            on_result=accept,
+            **log_options,
+        )
+        for raw in result_lines:
+            accept(raw)
+    except KeyboardInterrupt:
+        cancel.cancel()
+        raise
+    except Exception as exc:
+        if callback_error:
+            return Err(callback_error[0])
+        args = getattr(exc, "args", ())
+        detail = None
+        if len(args) >= 3 and isinstance(args[2], str):
+            try:
+                detail = json.loads(args[2])
+            except ValueError:
+                detail = {"id": str(args[0]) if args else "sc_agent.error", "message": str(args[1]) if len(args) > 1 else str(exc)}
+        if detail is None:
+            detail = {"id": "sc_agent.error", "message": str(exc)}
+        return Err(sc_agent_error(detail))
+    if next_position != len(jobs):
+        return fail("JEV.RESPONSE_INVALID", f"sc-decidr returned {next_position} of {len(jobs)} batch results")
+    return Ok(output)
 
 
 def validate_request_lines(lines: list, settings: BatchSettings) -> Result[int, JudgeError]:
@@ -1696,16 +1708,18 @@ def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
     checked = _safe_id(run_name, "--run-name")  # refused before the logger creates anything
     if isinstance(checked, Err):
         return checked
-    api_key = ""
     if not settings.dry_run and fixture is None:
         cleared = remote_preflight(args, "The anchor statements, scopes and item texts in the request stream")
         if isinstance(cleared, Err):
             return cleared
-        api_key = cleared.value
-    log = open_run_log(run_dir, run_name)
+    log = open_run_log(run_dir, run_name, getattr(args, "sc_agent_log", False))
     if isinstance(log, Err):
         return log
-    pumped = pump_batch(lines, settings, api_key, fixture, log.value, echo=True)
+    try:
+        pumped = pump_batch(lines, settings, fixture, log.value, echo=True)
+    except KeyboardInterrupt:
+        log.value.close()
+        raise
     closed = log.value.close()
     if isinstance(pumped, Err):
         return pumped
@@ -1728,6 +1742,7 @@ def cmd_batch(args) -> Result[Any, JudgeError]:
 
 def add_stream_options(parser) -> None:
     """Options shared by `batch` and `bead-batch`: both run the same low layer."""
+    parser.add_argument("--sc-agent-log", action="store_true", help="include decision diagnostic events in the consumer run log; the default keeps separate sc-agent file logs")
     parser.add_argument("--run-dir", default="", help="log root of the sc-observability run log (<run-dir>/logs/judge-jev.log.jsonl, appended to); default <anchors dir>/anchor-runs")
     parser.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     parser.add_argument("--repeat", type=int, default=1, help="identical requests per (item, candidate); default 1")
@@ -2059,7 +2074,8 @@ def wave_lines(record: dict, node_id: str, node: Wave, definitions=(), location=
 
 
 def quality_settings(dry_run: bool) -> BatchSettings:
-    return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, DEFAULT_MAX_REQUEST_BYTES, dry_run)
+    return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1,
+                         DEFAULT_MAX_REQUEST_BYTES, dry_run)
 
 
 def _with_refs(failed: Err, refs: dict) -> Err:
@@ -2198,20 +2214,22 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
     checked = _safe_id(run_name, "--run-name")
     if isinstance(checked, Err):
         return _with_refs(checked, run_refs)
-    api_key = ""
     if fixture is None:
         cleared = remote_preflight(args, "The record text")
         if isinstance(cleared, Err):
             return _with_refs(cleared, run_refs)
-        api_key = cleared.value
-    log = open_run_log(quality_log_root(args), run_name)
+    log = open_run_log(quality_log_root(args), run_name, getattr(args, "sc_agent_log", False))
     if isinstance(log, Err):
         return _with_refs(log, run_refs)
     results, failed = [], None
     for tree, record, refs, _job, carried in prepared:
-        walked = walk_tree(tree, record, settings, api_key, fixture, log.value,
-                           quality_fields(tree, record["id"], refs["record"]["kind"], carried,
-                                         index_record_iri(args.index, record["id"])), carried)
+        try:
+            walked = walk_tree(tree, record, settings, fixture, log.value,
+                               quality_fields(tree, record["id"], refs["record"]["kind"], carried,
+                                             index_record_iri(args.index, record["id"])), carried)
+        except KeyboardInterrupt:
+            log.value.close()
+            raise
         if isinstance(walked, Err):
             failed = _with_refs(walked, {**refs, "results": results})
             break
@@ -2266,7 +2284,7 @@ def _position(rules: list, rule) -> int:
     return next(i for i, r in enumerate(rules, 1) if r is rule)
 
 
-def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key: str, fixture, log: RunLog,
+def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, log: RunLog,
               fields: dict, definitions=(), location=None) -> Result[tuple, JudgeError]:
     """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
     Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
@@ -2289,7 +2307,7 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, api_key:
         covered = check_fixture_coverage(lines, settings, fixture)  # this wave's request ids are known: refuse before sending
         if isinstance(covered, Err):
             return covered
-        pumped = pump_batch(lines, settings, api_key, fixture, log, echo=False, fields={**fields, "node": node_id})
+        pumped = pump_batch(lines, settings, fixture, log, echo=False, fields={**fields, "node": node_id})
         if isinstance(pumped, Err):
             return pumped
         for result, statement in zip(pumped.value, statements):
@@ -2513,20 +2531,22 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
     sized = check_event_sizes([("compare", {"tree_id": prepared["with"][0].id, **worst}, None)], "the compare event")
     if isinstance(sized, Err):
         return _with_refs(sized, head)
-    api_key = ""
     if fixture is None:
         cleared = remote_preflight(args, "The record text and the definitions")
         if isinstance(cleared, Err):
             return _with_refs(cleared, head)
-        api_key = cleared.value
     walks = {}
     for arm in COMPARE_ARMS:
         tree, record, _refs, _jobs, arm_carried = prepared[arm]
-        log = open_run_log(quality_log_root(args), runs[arm])
+        log = open_run_log(quality_log_root(args), runs[arm], getattr(args, "sc_agent_log", False))
         if isinstance(log, Err):
             return _with_refs(log, head)
-        walked = walk_tree(tree, record, settings, api_key, arm_fixture(fixture, arm), log.value,
-                           {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
+        try:
+            walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
+                               {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
+        except KeyboardInterrupt:
+            log.value.close()
+            raise
         closed = log.value.close()
         if isinstance(walked, Err):
             return _with_refs(walked, {**head, "arm": arm})
@@ -2534,7 +2554,7 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
             return _with_refs(closed, {**head, "arm": arm})
         walks[arm] = walked.value
     answers = compare_answers(answer_table(walks["without"][2]), answer_table(walks["with"][2]), threshold)
-    log = open_run_log(quality_log_root(args), run_name)
+    log = open_run_log(quality_log_root(args), run_name, getattr(args, "sc_agent_log", False))
     if isinstance(log, Err):
         return _with_refs(log, head)
     logged = log.value.event("compare", {"tree_id": prepared["with"][0].id,
@@ -2817,6 +2837,7 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--questions", default="", help="a decision-tree file (.json or .ttl) overriding the shipped assets/questions/quality-<kind>.json")
     q.add_argument("--dry-run", action="store_true", help="report each record's tree and composed wave-1 request (one per statement for a per-statement wave); call nothing")
     q.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/<node>/r1', '<record>/<node>', '<node>' or '*'; no network")
+    q.add_argument("--sc-agent-log", action="store_true", help="include decision diagnostic events in the consumer run log; the default keeps separate sc-agent file logs")
     q.add_argument("--run-dir", default="", help=RUN_DIR_HELP)
     q.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
     q.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
@@ -2843,6 +2864,7 @@ def build_parser() -> argparse.ArgumentParser:
     cd.add_argument("--questions", default="", help="a decision-tree file overriding the shipped assets/questions/quality-<kind>.json")
     cd.add_argument("--dry-run", action="store_true", help="report the start-wave request of each arm, without and with the definitions; call nothing")
     cd.add_argument("--answers-file", default="", help="fixture answers keyed " + COMPARE_FIXTURE_KEYS + "; no network")
+    cd.add_argument("--sc-agent-log", action="store_true", help="include decision diagnostic events in the consumer run log; the default keeps separate sc-agent file logs")
     cd.add_argument("--run-dir", default="", help=RUN_DIR_HELP)
     cd.add_argument("--run-name", default="", help="run name of the compare event; the arms log as <run name>.without and <run name>.with; default a UTC timestamp")
     cd.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)

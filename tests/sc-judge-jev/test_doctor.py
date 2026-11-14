@@ -40,7 +40,7 @@ class DoctorCase(unittest.TestCase):
 
     def doctor(self, *argv, root=True):
         before = self.files()
-        with env(), mock.patch.object(jj, "call_jev", never_called):
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")):
             code, out = run_cli(["doctor", *argv, *(["--repository-root", str(self.root)] if root else [])])
         self.assertEqual(self.files(), before, "doctor writes nothing")
         return code, out

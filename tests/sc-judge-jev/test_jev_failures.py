@@ -26,14 +26,19 @@ DUMMY_KEY = "sk-test-closed-port-0000"  # never a real key: nothing is ever sent
 # JEV_URL still names a closed local port, so even an unpatched call could not leave the host.
 # argv[1] is the scripts directory, the rest is the command line.
 REFUSED_RUNNER = (
-    "import errno, sys, urllib.error, urllib.request\n"
+    "import json, sys, types\n"
     "sys.path.insert(0, sys.argv[1])\n"
+    "fake = types.ModuleType('sc_agent')\n"
+    "class CancelToken:\n"
+    "    def cancel(self): pass\n"
+    "fake.CancelToken = CancelToken\n"
+    "def send_batch(requests, *, on_result=None, **kwargs):\n"
+    "    results = [{'position': i, 'error': {'id': 'http.network', 'message': 'connection refused', 'cause': {'id': 'io.error', 'message': 'refused'}}} for i, _ in enumerate(requests)]\n"
+    "    for result in results: on_result(result)\n"
+    "    return results\n"
+    "fake.send_batch = send_batch\n"
+    "sys.modules['sc_agent'] = fake\n"
     "import jev_judge\n"
-    "def refused(*args, **kwargs):\n"
-    "    raise urllib.error.URLError(ConnectionRefusedError(errno.ECONNREFUSED, 'Connection refused'))\n"
-    "urllib.request.urlopen = refused\n"
-    "jev_judge.JEV_URL = 'http://127.0.0.1:9/v1/systemone'\n"
-    "jev_judge._sleep = lambda seconds: None\n"
     "raise SystemExit(jev_judge.main(sys.argv[2:]))\n"
 )
 # Runs a CLI as __main__ and interrupts it exactly where it reads one input file: the first Path.read_text of
@@ -90,9 +95,8 @@ class LiveBatchWithoutAnswers(unittest.TestCase):
         lines = [json.loads(x) for x in proc.stdout.splitlines()]
         self.assertEqual([x["item_id"] for x in lines], ["s1", "s2"])
         for line in lines:
-            self.assertEqual((line["ok"], line["verdict"], line["retry_count"], line["error"]["code"]), (False, None, 1, "JEV.NETWORK"))
-            self.assertTrue(line["error"]["message"].startswith("Could not reach Jev: "), line["error"])
-            self.assertIn("Connection refused", line["error"]["message"])
+            self.assertEqual((line["ok"], line["verdict"], line["retry_count"], line["error"]["code"]), (False, None, 0, "JEV.NETWORK"))
+            self.assertEqual(line["error"]["detail"]["cause"]["id"], "io.error")
         envelope = json.loads(proc.stderr)
         self.assertEqual((envelope["success"], set(envelope["error"]), envelope["error"]["code"]), (False, ERROR_KEYS, "JEV.NETWORK"))
         self.assertTrue(envelope["error"]["message"].startswith("2 request(s) got no answer; first batch/s1/ANC-001/cur/r1"))

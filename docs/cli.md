@@ -4,6 +4,13 @@ Draft. Two primitive commands each compose single Jev requests; the profile
 run calls the second primitive once per pair and aggregates the results.
 Every command takes `--dry-run`.
 
+Live calls use the named published `sc-decidr` wheel pinned by the installed
+script. `batch`, `quality` and `compare-definition` accept `--sc-agent-log`
+to include wheel diagnostics in the consumer-owned run log; omission keeps
+sc-agent's separate default file logs. The optional direct Logger path needs
+the B-1 prerelease fixing `agt-b-1.5`; `agt-r17` owns its final published-wheel
+verification. Provider retries belong to sc-agent, with no consumer retry loop.
+
 ## `judge-jev quality`
 
 ```

@@ -1,0 +1,43 @@
+{
+  "captured_at": "2026-11-14T13:23:03.795501+00:00",
+  "consumer_source": "168f6f1c661c2fd6fb03724f8f270a48637ef562",
+  "installed_script_sha256": "496a065a3d9689136642e40b2a0e7b59c2418a2a40c0e180e491893cb6112a54",
+  "python": "3.11 (explicit uv --python 3.11)",
+  "distribution": "sc-decidr",
+  "batch_results": 3,
+  "batch_successes": 3,
+  "model": "jev-1.14.0",
+  "quality_verdicts": {
+    "REQ-JEV-0003": "no",
+    "ADR-JEV-0007": "yes"
+  },
+  "log_query_counts": {
+    "batch-log-query.json": {
+      "request": 3,
+      "answer": 3,
+      "result": 3
+    },
+    "quality-log-query.json": {
+      "request": 3,
+      "answer": 3,
+      "result": 3,
+      "statement": 2,
+      "wave": 2,
+      "verdict": 2
+    }
+  },
+  "raptor_import": {
+    "files": 4,
+    "records": 33,
+    "issues": 0
+  },
+  "deferred": [
+    "native Logger injection and flushing",
+    "per-call timeout forwarding",
+    "final B-1 published-wheel pin and credential/retry rechecks"
+  ],
+  "deferred_owner": "agt-r17",
+  "prerelease_bead": "agt-2t0",
+  "distribution_version": "0.1.0",
+  "raptor_source": "8ce2be8363318be2f7c2e2b79d1f646399cab2fd"
+}

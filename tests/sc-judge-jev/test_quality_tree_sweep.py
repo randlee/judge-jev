@@ -103,7 +103,7 @@ class TreeSweep(unittest.TestCase):
                         sent.extend(lines)
                         return real(lines, *args, **kwargs)
 
-                    with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
+                    with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), \
                             mock.patch.object(jj, "pump_batch", counting):
                         code, out = run_cli(["quality", flag, record_id, "--index", index, "--questions", tree_file,
                                              "--run-dir", str(d / "logs"), "--run-name", "sweep", *mode])
@@ -118,7 +118,7 @@ class TreeSweep(unittest.TestCase):
                 self.assertEqual(outcomes[0], outcomes[1], f"{path} = {value!r}: dry run and live run disagree")
                 # `validate --tree` applies the tree's own checks: it refuses what quality refuses as a tree, with the same code,
                 # and accepts what quality accepts; only what needs the record (its statements) is left to quality
-                with env(), mock.patch.object(jj, "call_jev", tq.never_called):
+                with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")):
                     vcode, vout = run_cli(["validate", "--tree", tree_file])
                 verdict = (vout.get("error") or {}).get("code")
                 self.assertIsInstance(vout, dict, where)
@@ -137,7 +137,7 @@ class TreeSweep(unittest.TestCase):
             sent.extend(lines)
             return real(lines, *args, **kwargs)
 
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting):
+        with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), mock.patch.object(jj, "pump_batch", counting):
             code, out = run_cli([*argv, "--run-dir", str(d / "logs"), "--run-name", "sweep"])
         self.assertIsInstance(out, dict, argv)
         error = out.get("error") or {}
@@ -186,7 +186,7 @@ class TreeSweep(unittest.TestCase):
             index = write(d, "index.json", tq.INDEX)
             answers = write(d, "answers.json", {"ADR-T-0001/wave-1": tq.tree_answers("quality-adr.json")})
             not_a_dir = write(d, "file", "x")
-            with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
+            with env(), mock.patch.object(jj, "sc_agent_module", side_effect=AssertionError("unexpected live sc-decidr call")), \
                     mock.patch.object(jj, "pump_batch", side_effect=AssertionError("sent before the log was checked")):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--answers-file", answers,
                                      "--run-dir", not_a_dir])

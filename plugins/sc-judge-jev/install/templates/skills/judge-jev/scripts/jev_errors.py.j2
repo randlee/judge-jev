@@ -66,15 +66,11 @@ def redact_sensitive(value):
 class JudgeError:
     """An expected failure, carried in Err. Never raised: main() turns it into the error envelope and exit 2."""
 
-    def __init__(self, code: str, message: str, recoverable: bool = False, action: str = "",
-                 status=None, retry_after=None):
+    def __init__(self, code: str, message: str, recoverable: bool = False, action: str = ""):
         self.code = code
         self.message = message
         self.recoverable = recoverable
         self.action = action
-        self.status = status            # HTTP status when the error came from Jev
-        self.retry_after = retry_after  # parsed Retry-After header, seconds, or None
-        self.meta = {}                  # attempt / shortening bookkeeping, filled by judge_with_policy
         self.data = None                # optional facts that explain the error (PLAN.TOO_LARGE carries the bead's shape)
 
     def __str__(self) -> str:

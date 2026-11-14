@@ -1,0 +1,300 @@
+{
+  "success": true,
+  "error": null,
+  "data": {
+    "dry_run": false,
+    "results": [
+      {
+        "record": {
+          "id": "REQ-JEV-0003",
+          "kind": "req",
+          "source": {
+            "raptor_index": "/tmp/sai-bjj-index.json"
+          }
+        },
+        "tree": {
+          "id": "quality-req",
+          "sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525",
+          "source": "shipped",
+          "path": "/private/tmp/sai-bjj-installed/.codex/skills/judge-jev/assets/questions/quality-req.json"
+        },
+        "verdict": "no",
+        "path": [
+          "wave-1"
+        ],
+        "waves": [
+          {
+            "node": "wave-1",
+            "per": "statement",
+            "request_ids": [
+              "quality/REQ-JEV-0003.s1/wave-1/r1",
+              "quality/REQ-JEV-0003.s2/wave-1/r1"
+            ],
+            "reason": [
+              {
+                "statement": {
+                  "index": 1,
+                  "modal": "Must",
+                  "text": "judge-jev MUST use sc-agent's credential lookup: repository-root `.env`,\nthen the process environment, then the platform keyring."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "3",
+                    "criterion": "Three independent obligations.",
+                    "confidence": 0.41,
+                    "probabilities": {
+                      "1": 0.4,
+                      "2": 0.02,
+                      "3": 0.56,
+                      "4+": 0.02
+                    },
+                    "runner_up": {
+                      "choice": "1",
+                      "probability": 0.4,
+                      "criterion": "One obligation."
+                    }
+                  },
+                  {
+                    "id": "joined_by",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?",
+                    "choice": "and-list",
+                    "criterion": "A list of items joined by and or commas. Fix: split into one statement per item.",
+                    "confidence": 0.4,
+                    "probabilities": {
+                      "none": 0.27,
+                      "and-list": 0.52,
+                      "condition+obligation": 0.01,
+                      "alternatives": 0.2,
+                      "obligation+rationale": 0.0
+                    },
+                    "runner_up": {
+                      "choice": "none",
+                      "probability": 0.27,
+                      "criterion": "One obligation; nothing is joined."
+                    }
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "undefined acronym",
+                    "criterion": "An acronym that is never expanded or defined. Fix: define the acronym.",
+                    "confidence": 0.5,
+                    "probabilities": {
+                      "none": 0.17,
+                      "project term defined in a linked record": 0.01,
+                      "project term defined nowhere": 0.22,
+                      "vague qualifier": 0.0,
+                      "undefined acronym": 0.6
+                    },
+                    "runner_up": {
+                      "choice": "project term defined nowhere",
+                      "probability": 0.22,
+                      "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                    }
+                  },
+                  {
+                    "id": "check",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "unit test",
+                    "criterion": "A unit or integration test.",
+                    "confidence": 0.8,
+                    "probabilities": {
+                      "unit test": 0.84,
+                      "CLI run": 0.06,
+                      "inspection or grep": 0.08,
+                      "needs a measure": 0.0,
+                      "none": 0.02
+                    },
+                    "runner_up": {
+                      "choice": "inspection or grep",
+                      "probability": 0.08,
+                      "criterion": "Reading or searching files or output."
+                    }
+                  }
+                ]
+              },
+              {
+                "statement": {
+                  "index": 2,
+                  "modal": "Must",
+                  "text": "judge-jev MUST use the default TypeSafe keyring entry: service\n`TYPESAFE_API_KEY`, current OS account; it MUST pass no keyring selection\noptions."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "3",
+                    "criterion": "Three independent obligations.",
+                    "confidence": 0.33,
+                    "probabilities": {
+                      "1": 0.02,
+                      "2": 0.46,
+                      "3": 0.5,
+                      "4+": 0.02
+                    },
+                    "runner_up": {
+                      "choice": "2",
+                      "probability": 0.46,
+                      "criterion": "Two independent obligations."
+                    }
+                  },
+                  {
+                    "id": "joined_by",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?",
+                    "choice": "and-list",
+                    "criterion": "A list of items joined by and or commas. Fix: split into one statement per item.",
+                    "confidence": 0.92,
+                    "probabilities": {
+                      "none": 0.05,
+                      "and-list": 0.94,
+                      "condition+obligation": 0.01,
+                      "alternatives": 0.0,
+                      "obligation+rationale": 0.0
+                    },
+                    "runner_up": {
+                      "choice": "none",
+                      "probability": 0.05,
+                      "criterion": "One obligation; nothing is joined."
+                    }
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.59,
+                    "probabilities": {
+                      "none": 0.67,
+                      "project term defined in a linked record": 0.0,
+                      "project term defined nowhere": 0.2,
+                      "vague qualifier": 0.05,
+                      "undefined acronym": 0.08
+                    },
+                    "runner_up": {
+                      "choice": "project term defined nowhere",
+                      "probability": 0.2,
+                      "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                    }
+                  },
+                  {
+                    "id": "check",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "unit test",
+                    "criterion": "A unit or integration test.",
+                    "confidence": 0.55,
+                    "probabilities": {
+                      "unit test": 0.64,
+                      "CLI run": 0.12,
+                      "inspection or grep": 0.21,
+                      "needs a measure": 0.0,
+                      "none": 0.03
+                    },
+                    "runner_up": {
+                      "choice": "inspection or grep",
+                      "probability": 0.21,
+                      "criterion": "Reading or searching files or output."
+                    }
+                  }
+                ]
+              }
+            ],
+            "matched_statements": [
+              1,
+              2
+            ],
+            "next": null,
+            "verdict": "no",
+            "models": [
+              "jev-1.14.0"
+            ]
+          }
+        ]
+      },
+      {
+        "record": {
+          "id": "ADR-JEV-0007",
+          "kind": "adr",
+          "source": {
+            "raptor_index": "/tmp/sai-bjj-index.json"
+          }
+        },
+        "tree": {
+          "id": "quality-adr",
+          "sha256": "2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1",
+          "source": "shipped",
+          "path": "/private/tmp/sai-bjj-installed/.codex/skills/judge-jev/assets/questions/quality-adr.json"
+        },
+        "verdict": "yes",
+        "path": [
+          "wave-1"
+        ],
+        "waves": [
+          {
+            "node": "wave-1",
+            "request_id": "quality/ADR-JEV-0007/wave-1/r1",
+            "reason": [
+              {
+                "id": "context",
+                "text": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+                "choice": "problem and forces",
+                "criterion": "Names the problem and the forces or constraints that shaped the decision.",
+                "confidence": 0.96,
+                "probabilities": {
+                  "problem and forces": 0.97,
+                  "background only": 0.02,
+                  "missing": 0.01
+                },
+                "runner_up": {
+                  "choice": "background only",
+                  "probability": 0.02,
+                  "criterion": "Gives background but no problem. Fix: state the problem."
+                }
+              },
+              {
+                "id": "alternatives",
+                "text": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+                "choice": "named with reasons rejected",
+                "criterion": "Names alternatives and why each was rejected.",
+                "confidence": 1.0,
+                "probabilities": {
+                  "named with reasons rejected": 1.0,
+                  "named only": 0.0,
+                  "none": 0.0
+                },
+                "runner_up": null
+              },
+              {
+                "id": "consequences",
+                "text": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+                "choice": "positive and negative",
+                "criterion": "Names benefits and costs.",
+                "confidence": 0.98,
+                "probabilities": {
+                  "positive and negative": 0.99,
+                  "positive only": 0.0,
+                  "missing": 0.01
+                },
+                "runner_up": {
+                  "choice": "missing",
+                  "probability": 0.01,
+                  "criterion": "Names no consequence. Fix: add benefits and costs."
+                }
+              }
+            ],
+            "next": null,
+            "verdict": "yes",
+            "models": [
+              "jev-1.14.0"
+            ]
+          }
+        ]
+      }
+    ],
+    "log": {
+      "run": "bjj-stable-010-py311-quality",
+      "log_root": "/tmp/sai-bjj-py311-quality"
+    }
+  }
+}
