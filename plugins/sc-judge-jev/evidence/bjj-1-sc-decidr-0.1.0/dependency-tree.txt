@@ -1,0 +1,24 @@
+sc-observability v1.5.0
+sc-decidr v0.1.0
+pyyaml v6.0.3
+pyshacl v0.40.2
+├── importlib-metadata v10.2.0
+│   ├── lazy-importer v0.1.0
+│   └── zipp v4.1.2
+├── owlrl v7.6.2
+│   └── rdflib v7.6.0
+│       └── pyparsing v3.3.3
+├── packaging v26.3
+├── prettytable v3.18.0
+│   └── wcwidth v0.9.4
+└── rdflib[html] v7.6.0
+    ├── pyparsing v3.3.3
+    └── html5rdf v1.2.1 (extra: html)
+pyoxigraph v0.5.13
+pydantic v2.14.3
+├── annotated-types v0.8.0
+├── pydantic-core v2.50.4
+│   └── typing-extensions v4.16.0
+├── typing-extensions v4.16.0
+└── typing-inspection v0.4.5
+    └── typing-extensions v4.16.0

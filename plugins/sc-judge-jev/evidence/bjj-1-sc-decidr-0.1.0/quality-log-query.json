@@ -1,0 +1,1070 @@
+[
+  {
+    "action": "request",
+    "correlation_id": "1acd7ad91440b5ad",
+    "fields": {
+      "anchor_id": null,
+      "candidate_id": "wave-1",
+      "dry_run": false,
+      "item_id": "REQ-JEV-0003.s1",
+      "node": "wave-1",
+      "questions_sha256": "bf616c38308a826885e6f6a6692f1e800941270bfa35b38e1391eadae57f2407",
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "repeat": 1,
+      "request": {
+        "model": "jev-latest",
+        "questions": {
+          "check": {
+            "criteria": {
+              "CLI run": "Running a command and reading its output or exit code.",
+              "inspection or grep": "Reading or searching files or output.",
+              "needs a measure": "A check exists only once a number is given. Fix: add a threshold.",
+              "none": "Nothing could check it. Fix: rewrite as an outcome.",
+              "unit test": "A unit or integration test."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+            "type": "choice"
+          },
+          "joined_by": {
+            "criteria": {
+              "alternatives": "Alternatives joined by or. Fix: split, or state the choice.",
+              "and-list": "A list of items joined by and or commas. Fix: split into one statement per item.",
+              "condition+obligation": "A condition (when, if, unless) plus one obligation. Acceptable: a condition is not a second obligation.",
+              "none": "One obligation; nothing is joined.",
+              "obligation+rationale": "An obligation plus its reason or purpose. Fix: move the rationale to Rationale."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?",
+            "type": "choice"
+          },
+          "obligations": {
+            "criteria": {
+              "1": "One obligation.",
+              "2": "Two independent obligations.",
+              "3": "Three independent obligations.",
+              "4+": "Four or more independent obligations."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+            "type": "choice"
+          },
+          "term": {
+            "criteria": {
+              "none": "Every term is common usage or defined in the record.",
+              "project term defined in a linked record": "A project term defined in a record this one links. Acceptable.",
+              "project term defined nowhere": "A project term defined neither here nor in a linked record. Fix: define it or link the record.",
+              "undefined acronym": "An acronym that is never expanded or defined. Fix: define the acronym.",
+              "vague qualifier": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+            "type": "choice"
+          }
+        },
+        "state": {
+          "item": {
+            "id": "REQ-JEV-0003.s1",
+            "text": "{\n  \"statement\": {\n    \"index\": 1,\n    \"modal\": \"Must\",\n    \"text\": \"judge-jev MUST use sc-agent's credential lookup: repository-root `.env`,\\nthen the process environment, then the platform keyring.\"\n  },\n  \"record\": {\n    \"id\": \"REQ-JEV-0003\",\n    \"title\": \"TypeSafe key lookup\",\n    \"status\": \"Draft\",\n    \"version\": \"0.1.0\",\n    \"created\": \"2026-11-07\",\n    \"last_updated\": \"2026-11-07\",\n    \"owner\": \"Rand Lee\",\n    \"supersedes\": null,\n    \"superseded_by\": null,\n    \"requirement_statement\": {\n      \"text\": \"Definitions: TypeSafe is the company whose API (application programming\\ninterface) serves Jev, the judge model; the TypeSafe API key authenticates\\ncalls to it. The platform credential store is the macOS Keychain, the\\nWindows Credential Manager or, on Linux, the Secret Service (`secret-tool`).\",\n      \"statements\": [\n        {\n          \"modal\": \"Must\",\n          \"text\": \"judge-jev MUST use sc-agent's credential lookup: repository-root `.env`,\\nthen the process environment, then the platform keyring.\"\n        },\n        {\n          \"modal\": \"Must\",\n          \"text\": \"judge-jev MUST use the default TypeSafe keyring entry: service\\n`TYPESAFE_API_KEY`, current OS account; it MUST pass no keyring selection\\noptions.\"\n        }\n      ]\n    },\n    \"rationale\": \"Tools that call Jev share one stored key, saved once.\",\n    \"success_criteria\": {\n      \"text\": \"\",\n      \"acceptance_criteria\": [\n        {\n          \"text\": \"The repository `.env` value precedes a process environment value, and\\nthe default TypeSafe keyring entry is found without keyring overrides.\",\n          \"checked\": false\n        }\n      ],\n      \"test_evidence\": []\n    },\n    \"dependencies\": {\n      \"text\": \"\",\n      \"requires\": [],\n      \"related\": []\n    },\n    \"product_applicability\": {\n      \"text\": \"\",\n      \"applies_to\": [],\n      \"does_not_apply_to\": []\n    },\n    \"implementation_notes\": {\n      \"text\": \"\",\n      \"key_considerations\": []\n    },\n    \"test_strategy\": {\n      \"text\": \"\",\n      \"test_types\": []\n    },\n    \"related_documents\": {\n      \"text\": \"\",\n      \"requirements\": [],\n      \"architecture_decisions\": [],\n      \"design_documents\": [],\n      \"work_items\": [],\n      \"external_references\": []\n    }\n  }\n}",
+            "title": "TypeSafe key lookup"
+          }
+        }
+      },
+      "request_id": "quality/REQ-JEV-0003.s1/wave-1/r1",
+      "request_sha256": "f50a3121596e068c69dce81f0a36d3180a61604816044c16d935c47d94e527cf",
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "1acd7ad91440b5ad",
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525"
+    }
+  },
+  {
+    "action": "answer",
+    "correlation_id": "1acd7ad91440b5ad",
+    "fields": {
+      "attempts": [
+        {
+          "attempt": 1,
+          "ok": true
+        }
+      ],
+      "error": null,
+      "model_answered": "jev-1.14.0",
+      "node": "wave-1",
+      "ok": true,
+      "raw_response": {
+        "answers": {
+          "check": {
+            "choice": "unit test",
+            "confidence": 0.8,
+            "probabilities": {
+              "CLI run": 0.06,
+              "inspection or grep": 0.08,
+              "needs a measure": 0.0,
+              "none": 0.02,
+              "unit test": 0.84
+            },
+            "type": "choice"
+          },
+          "joined_by": {
+            "choice": "and-list",
+            "confidence": 0.4,
+            "probabilities": {
+              "alternatives": 0.2,
+              "and-list": 0.52,
+              "condition+obligation": 0.01,
+              "none": 0.27,
+              "obligation+rationale": 0.0
+            },
+            "type": "choice"
+          },
+          "obligations": {
+            "choice": "3",
+            "confidence": 0.41,
+            "probabilities": {
+              "1": 0.4,
+              "2": 0.02,
+              "3": 0.56,
+              "4+": 0.02
+            },
+            "type": "choice"
+          },
+          "term": {
+            "choice": "undefined acronym",
+            "confidence": 0.5,
+            "probabilities": {
+              "none": 0.17,
+              "project term defined in a linked record": 0.01,
+              "project term defined nowhere": 0.22,
+              "undefined acronym": 0.6,
+              "vague qualifier": 0.0
+            },
+            "type": "choice"
+          }
+        },
+        "model": "jev-1.14.0",
+        "usage": {
+          "input_tokens": 1620,
+          "output_tokens": 228
+        }
+      },
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "request_id": "quality/REQ-JEV-0003.s1/wave-1/r1",
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "1acd7ad91440b5ad",
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525"
+    }
+  },
+  {
+    "action": "result",
+    "correlation_id": "1acd7ad91440b5ad",
+    "fields": {
+      "anchor_id": null,
+      "answers": {
+        "check": {
+          "choice": "unit test",
+          "confidence": 0.8,
+          "probabilities": {
+            "CLI run": 0.06,
+            "inspection or grep": 0.08,
+            "needs a measure": 0.0,
+            "none": 0.02,
+            "unit test": 0.84
+          },
+          "type": "choice"
+        },
+        "joined_by": {
+          "choice": "and-list",
+          "confidence": 0.4,
+          "probabilities": {
+            "alternatives": 0.2,
+            "and-list": 0.52,
+            "condition+obligation": 0.01,
+            "none": 0.27,
+            "obligation+rationale": 0.0
+          },
+          "type": "choice"
+        },
+        "obligations": {
+          "choice": "3",
+          "confidence": 0.41,
+          "probabilities": {
+            "1": 0.4,
+            "2": 0.02,
+            "3": 0.56,
+            "4+": 0.02
+          },
+          "type": "choice"
+        },
+        "term": {
+          "choice": "undefined acronym",
+          "confidence": 0.5,
+          "probabilities": {
+            "none": 0.17,
+            "project term defined in a linked record": 0.01,
+            "project term defined nowhere": 0.22,
+            "undefined acronym": 0.6,
+            "vague qualifier": 0.0
+          },
+          "type": "choice"
+        }
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "ok": true
+        }
+      ],
+      "candidate_id": "wave-1",
+      "dry_run": false,
+      "error": null,
+      "item_id": "REQ-JEV-0003.s1",
+      "kind": "directive",
+      "leaning": null,
+      "min_confidence": null,
+      "model_answered": "jev-1.14.0",
+      "node": "wave-1",
+      "ok": true,
+      "questions_sha256": "bf616c38308a826885e6f6a6692f1e800941270bfa35b38e1391eadae57f2407",
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "repeat": 1,
+      "request_id": "quality/REQ-JEV-0003.s1/wave-1/r1",
+      "request_sha256": "f50a3121596e068c69dce81f0a36d3180a61604816044c16d935c47d94e527cf",
+      "retry_count": 0,
+      "roles": {},
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "1acd7ad91440b5ad",
+      "schema": "judge-jev/jev-batch-result/1",
+      "threshold": 0.6,
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525",
+      "verdict": null
+    }
+  },
+  {
+    "action": "request",
+    "correlation_id": "25a34f44323d5729",
+    "fields": {
+      "anchor_id": null,
+      "candidate_id": "wave-1",
+      "dry_run": false,
+      "item_id": "REQ-JEV-0003.s2",
+      "node": "wave-1",
+      "questions_sha256": "bf616c38308a826885e6f6a6692f1e800941270bfa35b38e1391eadae57f2407",
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "repeat": 1,
+      "request": {
+        "model": "jev-latest",
+        "questions": {
+          "check": {
+            "criteria": {
+              "CLI run": "Running a command and reading its output or exit code.",
+              "inspection or grep": "Reading or searching files or output.",
+              "needs a measure": "A check exists only once a number is given. Fix: add a threshold.",
+              "none": "Nothing could check it. Fix: rewrite as an outcome.",
+              "unit test": "A unit or integration test."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+            "type": "choice"
+          },
+          "joined_by": {
+            "criteria": {
+              "alternatives": "Alternatives joined by or. Fix: split, or state the choice.",
+              "and-list": "A list of items joined by and or commas. Fix: split into one statement per item.",
+              "condition+obligation": "A condition (when, if, unless) plus one obligation. Acceptable: a condition is not a second obligation.",
+              "none": "One obligation; nothing is joined.",
+              "obligation+rationale": "An obligation plus its reason or purpose. Fix: move the rationale to Rationale."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?",
+            "type": "choice"
+          },
+          "obligations": {
+            "criteria": {
+              "1": "One obligation.",
+              "2": "Two independent obligations.",
+              "3": "Three independent obligations.",
+              "4+": "Four or more independent obligations."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+            "type": "choice"
+          },
+          "term": {
+            "criteria": {
+              "none": "Every term is common usage or defined in the record.",
+              "project term defined in a linked record": "A project term defined in a record this one links. Acceptable.",
+              "project term defined nowhere": "A project term defined neither here nor in a linked record. Fix: define it or link the record.",
+              "undefined acronym": "An acronym that is never expanded or defined. Fix: define the acronym.",
+              "vague qualifier": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure."
+            },
+            "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+            "type": "choice"
+          }
+        },
+        "state": {
+          "item": {
+            "id": "REQ-JEV-0003.s2",
+            "text": "{\n  \"statement\": {\n    \"index\": 2,\n    \"modal\": \"Must\",\n    \"text\": \"judge-jev MUST use the default TypeSafe keyring entry: service\\n`TYPESAFE_API_KEY`, current OS account; it MUST pass no keyring selection\\noptions.\"\n  },\n  \"record\": {\n    \"id\": \"REQ-JEV-0003\",\n    \"title\": \"TypeSafe key lookup\",\n    \"status\": \"Draft\",\n    \"version\": \"0.1.0\",\n    \"created\": \"2026-11-07\",\n    \"last_updated\": \"2026-11-07\",\n    \"owner\": \"Rand Lee\",\n    \"supersedes\": null,\n    \"superseded_by\": null,\n    \"requirement_statement\": {\n      \"text\": \"Definitions: TypeSafe is the company whose API (application programming\\ninterface) serves Jev, the judge model; the TypeSafe API key authenticates\\ncalls to it. The platform credential store is the macOS Keychain, the\\nWindows Credential Manager or, on Linux, the Secret Service (`secret-tool`).\",\n      \"statements\": [\n        {\n          \"modal\": \"Must\",\n          \"text\": \"judge-jev MUST use sc-agent's credential lookup: repository-root `.env`,\\nthen the process environment, then the platform keyring.\"\n        },\n        {\n          \"modal\": \"Must\",\n          \"text\": \"judge-jev MUST use the default TypeSafe keyring entry: service\\n`TYPESAFE_API_KEY`, current OS account; it MUST pass no keyring selection\\noptions.\"\n        }\n      ]\n    },\n    \"rationale\": \"Tools that call Jev share one stored key, saved once.\",\n    \"success_criteria\": {\n      \"text\": \"\",\n      \"acceptance_criteria\": [\n        {\n          \"text\": \"The repository `.env` value precedes a process environment value, and\\nthe default TypeSafe keyring entry is found without keyring overrides.\",\n          \"checked\": false\n        }\n      ],\n      \"test_evidence\": []\n    },\n    \"dependencies\": {\n      \"text\": \"\",\n      \"requires\": [],\n      \"related\": []\n    },\n    \"product_applicability\": {\n      \"text\": \"\",\n      \"applies_to\": [],\n      \"does_not_apply_to\": []\n    },\n    \"implementation_notes\": {\n      \"text\": \"\",\n      \"key_considerations\": []\n    },\n    \"test_strategy\": {\n      \"text\": \"\",\n      \"test_types\": []\n    },\n    \"related_documents\": {\n      \"text\": \"\",\n      \"requirements\": [],\n      \"architecture_decisions\": [],\n      \"design_documents\": [],\n      \"work_items\": [],\n      \"external_references\": []\n    }\n  }\n}",
+            "title": "TypeSafe key lookup"
+          }
+        }
+      },
+      "request_id": "quality/REQ-JEV-0003.s2/wave-1/r1",
+      "request_sha256": "3e7b421e54a077c66de2ca8cd9178c189db9eeafe77bd909c63c44e4b3f91411",
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "25a34f44323d5729",
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525"
+    }
+  },
+  {
+    "action": "answer",
+    "correlation_id": "25a34f44323d5729",
+    "fields": {
+      "attempts": [
+        {
+          "attempt": 1,
+          "ok": true
+        }
+      ],
+      "error": null,
+      "model_answered": "jev-1.14.0",
+      "node": "wave-1",
+      "ok": true,
+      "raw_response": {
+        "answers": {
+          "check": {
+            "choice": "unit test",
+            "confidence": 0.55,
+            "probabilities": {
+              "CLI run": 0.12,
+              "inspection or grep": 0.21,
+              "needs a measure": 0.0,
+              "none": 0.03,
+              "unit test": 0.64
+            },
+            "type": "choice"
+          },
+          "joined_by": {
+            "choice": "and-list",
+            "confidence": 0.92,
+            "probabilities": {
+              "alternatives": 0.0,
+              "and-list": 0.94,
+              "condition+obligation": 0.01,
+              "none": 0.05,
+              "obligation+rationale": 0.0
+            },
+            "type": "choice"
+          },
+          "obligations": {
+            "choice": "3",
+            "confidence": 0.33,
+            "probabilities": {
+              "1": 0.02,
+              "2": 0.46,
+              "3": 0.5,
+              "4+": 0.02
+            },
+            "type": "choice"
+          },
+          "term": {
+            "choice": "none",
+            "confidence": 0.59,
+            "probabilities": {
+              "none": 0.67,
+              "project term defined in a linked record": 0.0,
+              "project term defined nowhere": 0.2,
+              "undefined acronym": 0.08,
+              "vague qualifier": 0.05
+            },
+            "type": "choice"
+          }
+        },
+        "model": "jev-1.14.0",
+        "usage": {
+          "input_tokens": 1629,
+          "output_tokens": 227
+        }
+      },
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "request_id": "quality/REQ-JEV-0003.s2/wave-1/r1",
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "25a34f44323d5729",
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525"
+    }
+  },
+  {
+    "action": "result",
+    "correlation_id": "25a34f44323d5729",
+    "fields": {
+      "anchor_id": null,
+      "answers": {
+        "check": {
+          "choice": "unit test",
+          "confidence": 0.55,
+          "probabilities": {
+            "CLI run": 0.12,
+            "inspection or grep": 0.21,
+            "needs a measure": 0.0,
+            "none": 0.03,
+            "unit test": 0.64
+          },
+          "type": "choice"
+        },
+        "joined_by": {
+          "choice": "and-list",
+          "confidence": 0.92,
+          "probabilities": {
+            "alternatives": 0.0,
+            "and-list": 0.94,
+            "condition+obligation": 0.01,
+            "none": 0.05,
+            "obligation+rationale": 0.0
+          },
+          "type": "choice"
+        },
+        "obligations": {
+          "choice": "3",
+          "confidence": 0.33,
+          "probabilities": {
+            "1": 0.02,
+            "2": 0.46,
+            "3": 0.5,
+            "4+": 0.02
+          },
+          "type": "choice"
+        },
+        "term": {
+          "choice": "none",
+          "confidence": 0.59,
+          "probabilities": {
+            "none": 0.67,
+            "project term defined in a linked record": 0.0,
+            "project term defined nowhere": 0.2,
+            "undefined acronym": 0.08,
+            "vague qualifier": 0.05
+          },
+          "type": "choice"
+        }
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "ok": true
+        }
+      ],
+      "candidate_id": "wave-1",
+      "dry_run": false,
+      "error": null,
+      "item_id": "REQ-JEV-0003.s2",
+      "kind": "directive",
+      "leaning": null,
+      "min_confidence": null,
+      "model_answered": "jev-1.14.0",
+      "node": "wave-1",
+      "ok": true,
+      "questions_sha256": "bf616c38308a826885e6f6a6692f1e800941270bfa35b38e1391eadae57f2407",
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "repeat": 1,
+      "request_id": "quality/REQ-JEV-0003.s2/wave-1/r1",
+      "request_sha256": "3e7b421e54a077c66de2ca8cd9178c189db9eeafe77bd909c63c44e4b3f91411",
+      "retry_count": 0,
+      "roles": {},
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "25a34f44323d5729",
+      "schema": "judge-jev/jev-batch-result/1",
+      "threshold": 0.6,
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525",
+      "verdict": null
+    }
+  },
+  {
+    "action": "statement",
+    "correlation_id": "1acd7ad91440b5ad",
+    "fields": {
+      "answers": {
+        "check": {
+          "choice": "unit test",
+          "confidence": 0.8,
+          "probabilities": {
+            "CLI run": 0.06,
+            "inspection or grep": 0.08,
+            "needs a measure": 0.0,
+            "none": 0.02,
+            "unit test": 0.84
+          },
+          "type": "choice"
+        },
+        "joined_by": {
+          "choice": "and-list",
+          "confidence": 0.4,
+          "probabilities": {
+            "alternatives": 0.2,
+            "and-list": 0.52,
+            "condition+obligation": 0.01,
+            "none": 0.27,
+            "obligation+rationale": 0.0
+          },
+          "type": "choice"
+        },
+        "obligations": {
+          "choice": "3",
+          "confidence": 0.41,
+          "probabilities": {
+            "1": 0.4,
+            "2": 0.02,
+            "3": 0.56,
+            "4+": 0.02
+          },
+          "type": "choice"
+        },
+        "term": {
+          "choice": "undefined acronym",
+          "confidence": 0.5,
+          "probabilities": {
+            "none": 0.17,
+            "project term defined in a linked record": 0.01,
+            "project term defined nowhere": 0.22,
+            "undefined acronym": 0.6,
+            "vague qualifier": 0.0
+          },
+          "type": "choice"
+        }
+      },
+      "choices": {
+        "check": "unit test",
+        "joined_by": "and-list",
+        "obligations": "3",
+        "term": "undefined acronym"
+      },
+      "node": "wave-1",
+      "reason": [
+        {
+          "choice": "3",
+          "confidence": 0.41,
+          "criterion": "Three independent obligations.",
+          "id": "obligations",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?"
+        },
+        {
+          "choice": "and-list",
+          "confidence": 0.4,
+          "criterion": "A list of items joined by and or commas. Fix: split into one statement per item.",
+          "id": "joined_by",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?"
+        },
+        {
+          "choice": "undefined acronym",
+          "confidence": 0.5,
+          "criterion": "An acronym that is never expanded or defined. Fix: define the acronym.",
+          "id": "term",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?"
+        },
+        {
+          "choice": "unit test",
+          "confidence": 0.8,
+          "criterion": "A unit or integration test.",
+          "id": "check",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?"
+        }
+      ],
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "request_id": "quality/REQ-JEV-0003.s1/wave-1/r1",
+      "run": "bjj-stable-010-py311-quality",
+      "statement": {
+        "index": 1,
+        "modal": "Must",
+        "text": "judge-jev MUST use sc-agent's credential lookup: repository-root `.env`,\nthen the process environment, then the platform keyring."
+      },
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525"
+    }
+  },
+  {
+    "action": "statement",
+    "correlation_id": "25a34f44323d5729",
+    "fields": {
+      "answers": {
+        "check": {
+          "choice": "unit test",
+          "confidence": 0.55,
+          "probabilities": {
+            "CLI run": 0.12,
+            "inspection or grep": 0.21,
+            "needs a measure": 0.0,
+            "none": 0.03,
+            "unit test": 0.64
+          },
+          "type": "choice"
+        },
+        "joined_by": {
+          "choice": "and-list",
+          "confidence": 0.92,
+          "probabilities": {
+            "alternatives": 0.0,
+            "and-list": 0.94,
+            "condition+obligation": 0.01,
+            "none": 0.05,
+            "obligation+rationale": 0.0
+          },
+          "type": "choice"
+        },
+        "obligations": {
+          "choice": "3",
+          "confidence": 0.33,
+          "probabilities": {
+            "1": 0.02,
+            "2": 0.46,
+            "3": 0.5,
+            "4+": 0.02
+          },
+          "type": "choice"
+        },
+        "term": {
+          "choice": "none",
+          "confidence": 0.59,
+          "probabilities": {
+            "none": 0.67,
+            "project term defined in a linked record": 0.0,
+            "project term defined nowhere": 0.2,
+            "undefined acronym": 0.08,
+            "vague qualifier": 0.05
+          },
+          "type": "choice"
+        }
+      },
+      "choices": {
+        "check": "unit test",
+        "joined_by": "and-list",
+        "obligations": "3",
+        "term": "none"
+      },
+      "node": "wave-1",
+      "reason": [
+        {
+          "choice": "3",
+          "confidence": 0.33,
+          "criterion": "Three independent obligations.",
+          "id": "obligations",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?"
+        },
+        {
+          "choice": "and-list",
+          "confidence": 0.92,
+          "criterion": "A list of items joined by and or commas. Fix: split into one statement per item.",
+          "id": "joined_by",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?"
+        },
+        {
+          "choice": "none",
+          "confidence": 0.59,
+          "criterion": "Every term is common usage or defined in the record.",
+          "id": "term",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?"
+        },
+        {
+          "choice": "unit test",
+          "confidence": 0.55,
+          "criterion": "A unit or integration test.",
+          "id": "check",
+          "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?"
+        }
+      ],
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "request_id": "quality/REQ-JEV-0003.s2/wave-1/r1",
+      "run": "bjj-stable-010-py311-quality",
+      "statement": {
+        "index": 2,
+        "modal": "Must",
+        "text": "judge-jev MUST use the default TypeSafe keyring entry: service\n`TYPESAFE_API_KEY`, current OS account; it MUST pass no keyring selection\noptions."
+      },
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525"
+    }
+  },
+  {
+    "action": "wave",
+    "correlation_id": null,
+    "fields": {
+      "matched_statements": [
+        1,
+        2
+      ],
+      "next": null,
+      "node": "wave-1",
+      "per": "statement",
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "request_ids": [
+        "quality/REQ-JEV-0003.s1/wave-1/r1",
+        "quality/REQ-JEV-0003.s2/wave-1/r1"
+      ],
+      "rule_rank": 1,
+      "run": "bjj-stable-010-py311-quality",
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525",
+      "verdict": "no"
+    }
+  },
+  {
+    "action": "verdict",
+    "correlation_id": null,
+    "fields": {
+      "path": [
+        "wave-1"
+      ],
+      "record_id": "REQ-JEV-0003",
+      "record_iri": "urn:raptor:repo:judge-jev#REQ-JEV-0003",
+      "record_kind": "req",
+      "rule_rank": 1,
+      "run": "bjj-stable-010-py311-quality",
+      "tree_id": "quality-req",
+      "tree_sha256": "8eaaf148dec7279955af7fd39a82b7e96373407e6bd7d7bd63c86daac24e1525",
+      "verdict": "no"
+    }
+  },
+  {
+    "action": "request",
+    "correlation_id": "d8b4df368299c69e",
+    "fields": {
+      "anchor_id": null,
+      "candidate_id": "wave-1",
+      "dry_run": false,
+      "item_id": "ADR-JEV-0007",
+      "node": "wave-1",
+      "questions_sha256": "0b75f41c537d02fdd08ccb654c6d29572e1279898028c328237d8058ff113f83",
+      "record_id": "ADR-JEV-0007",
+      "record_iri": "urn:raptor:repo:judge-jev#ADR-JEV-0007",
+      "record_kind": "adr",
+      "repeat": 1,
+      "request": {
+        "model": "jev-latest",
+        "questions": {
+          "alternatives": {
+            "criteria": {
+              "named only": "Names alternatives without why they were rejected. Fix: add why rejected.",
+              "named with reasons rejected": "Names alternatives and why each was rejected.",
+              "none": "Names no alternative. Fix: add alternatives."
+            },
+            "instructions": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+            "type": "choice"
+          },
+          "consequences": {
+            "criteria": {
+              "missing": "Names no consequence. Fix: add benefits and costs.",
+              "positive and negative": "Names benefits and costs.",
+              "positive only": "Names only benefits. Fix: add the costs."
+            },
+            "instructions": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+            "type": "choice"
+          },
+          "context": {
+            "criteria": {
+              "background only": "Gives background but no problem. Fix: state the problem.",
+              "missing": "No context in substance. Fix: add the problem and its forces.",
+              "problem and forces": "Names the problem and the forces or constraints that shaped the decision."
+            },
+            "instructions": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+            "type": "choice"
+          }
+        },
+        "state": {
+          "item": {
+            "id": "ADR-JEV-0007",
+            "text": "{\n  \"id\": \"ADR-JEV-0007\",\n  \"title\": \"The seam to sc-agent's Jev tool\",\n  \"status\": \"Draft\",\n  \"version\": \"0.1.0\",\n  \"created\": \"2026-11-07\",\n  \"last_updated\": \"2026-11-08\",\n  \"owner\": \"Rand Lee\",\n  \"supersedes\": null,\n  \"superseded_by\": null,\n  \"decision_date\": \"2026-11-07\",\n  \"context\": {\n    \"text\": \"sc-agent's Rust Jev tool will replace judge-jev's Python Jev core\\n(ADR-JEV-0001). Its first version will not include Oxigraph, though a later\\none may. Quality trees and their answers become an RDF graph\\n(ADR-JEV-0006). The problem is where the boundary lies, so that judge-jev\\nworks with a Jev tool that has no graph store today, and one with Oxigraph\\nlater takes over graph work without judge-jev changing its callers.\",\n    \"background\": \"\",\n    \"problem_statement\": \"\"\n  },\n  \"decision\": {\n    \"text\": \"judge-jev has two ports:\\n\\n- **Transport:** sends the request lines of one wave and returns their\\n  result lines. Its contract is the existing batch request and result\\n  schemas (`assets/schemas/jev-batch-request.schema.json`,\\n  `jev-batch-result.schema.json`), unchanged. The Python consumer calls the\\n  released `sc-decidr` wheel to implement it; sc-agent's released wheel owns\\n  transport, credentials, typed Rust errors, cancellation and retries.\\n- **Graph store:** loads a tree, validates it with SHACL, compiles a wave\\n  to its JSON questions, records a run's triples and answers queries.\\n  judge-jev implements it now with `pyoxigraph` and a SHACL validator; a\\n  Jev tool with Oxigraph may implement it later.\\n\\nOnly JSON crosses the transport. The result lines in the sc-observability\\nlog are the record of a run; a run's triples are a projection of those\\nlines and the tree, so they can be rebuilt from the log at any time. The\\ntree walk (which wave next, which verdict) uses only the compiled waves and\\nthe answers, so it runs on either side of the seam.\",\n    \"chosen_approach\": \"\",\n    \"key_principles\": []\n  },\n  \"rationale\": {\n    \"text\": \"A Jev tool without a graph store needs only the JSON contract it already\\nhas. Because the triples are rebuilt from the log, no run is lost when the\\nstore moves to the other side of the seam.\",\n    \"benefits\": [],\n    \"trade_offs\": []\n  },\n  \"consequences\": {\n    \"text\": \"\",\n    \"positive\": [\n      \"sc-agent's first Jev tool replaces the Python core with no graph work.\",\n      \"Moving the graph store into sc-agent changes the port's implementation,\\nnot its callers.\"\n    ],\n    \"negative\": [\n      \"Until sc-agent hosts the store, judge-jev carries the graph dependencies.\",\n      \"The projection from result lines to triples must stay in step with the\\nontology.\"\n    ],\n    \"neutral\": []\n  },\n  \"alternatives\": {\n    \"text\": \"\",\n    \"groups\": [\n      {\n        \"name\": \"sc-agent's Jev tool reads trees and writes triples\",\n        \"description\": \"Send the TTL tree and the record; the tool walks the tree\\nand stores the triples.\",\n        \"pros\": [],\n        \"cons\": [],\n        \"why_rejected\": \"Its first version has no graph store, so judge-jev would\\nwait for it.\"\n      },\n      {\n        \"name\": \"Triples as the only record of a run\",\n        \"description\": \"Write runs to the graph store instead of the log.\",\n        \"pros\": [],\n        \"cons\": [],\n        \"why_rejected\": \"A tool without a store could not record a run, and a lost\\nstore loses the runs.\"\n      }\n    ]\n  },\n  \"implementation\": {\n    \"text\": \"\",\n    \"key_components\": [],\n    \"integration_points\": [],\n    \"code_examples\": \"\"\n  },\n  \"impact_analysis\": {\n    \"text\": \"\",\n    \"affected_components\": \"\",\n    \"performance_impact\": \"\",\n    \"security_impact\": \"\",\n    \"maintainability_impact\": \"\"\n  },\n  \"related_documents\": {\n    \"text\": \"\",\n    \"requirements\": [],\n    \"architecture_decisions\": [],\n    \"design_documents\": [],\n    \"work_items\": [],\n    \"external_references\": []\n  }\n}",
+            "title": "The seam to sc-agent's Jev tool"
+          }
+        }
+      },
+      "request_id": "quality/ADR-JEV-0007/wave-1/r1",
+      "request_sha256": "452f9394375877c110f25a8151636d81e02d76191e439195fcf05fece68fd5d2",
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "d8b4df368299c69e",
+      "tree_id": "quality-adr",
+      "tree_sha256": "2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1"
+    }
+  },
+  {
+    "action": "answer",
+    "correlation_id": "d8b4df368299c69e",
+    "fields": {
+      "attempts": [
+        {
+          "attempt": 1,
+          "ok": true
+        }
+      ],
+      "error": null,
+      "model_answered": "jev-1.14.0",
+      "node": "wave-1",
+      "ok": true,
+      "raw_response": {
+        "answers": {
+          "alternatives": {
+            "choice": "named with reasons rejected",
+            "confidence": 1.0,
+            "probabilities": {
+              "named only": 0.0,
+              "named with reasons rejected": 1.0,
+              "none": 0.0
+            },
+            "type": "choice"
+          },
+          "consequences": {
+            "choice": "positive and negative",
+            "confidence": 0.98,
+            "probabilities": {
+              "missing": 0.01,
+              "positive and negative": 0.99,
+              "positive only": 0.0
+            },
+            "type": "choice"
+          },
+          "context": {
+            "choice": "problem and forces",
+            "confidence": 0.96,
+            "probabilities": {
+              "background only": 0.02,
+              "missing": 0.01,
+              "problem and forces": 0.97
+            },
+            "type": "choice"
+          }
+        },
+        "model": "jev-1.14.0",
+        "usage": {
+          "input_tokens": 1651,
+          "output_tokens": 129
+        }
+      },
+      "record_id": "ADR-JEV-0007",
+      "record_iri": "urn:raptor:repo:judge-jev#ADR-JEV-0007",
+      "record_kind": "adr",
+      "request_id": "quality/ADR-JEV-0007/wave-1/r1",
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "d8b4df368299c69e",
+      "tree_id": "quality-adr",
+      "tree_sha256": "2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1"
+    }
+  },
+  {
+    "action": "result",
+    "correlation_id": "d8b4df368299c69e",
+    "fields": {
+      "anchor_id": null,
+      "answers": {
+        "alternatives": {
+          "choice": "named with reasons rejected",
+          "confidence": 1.0,
+          "probabilities": {
+            "named only": 0.0,
+            "named with reasons rejected": 1.0,
+            "none": 0.0
+          },
+          "type": "choice"
+        },
+        "consequences": {
+          "choice": "positive and negative",
+          "confidence": 0.98,
+          "probabilities": {
+            "missing": 0.01,
+            "positive and negative": 0.99,
+            "positive only": 0.0
+          },
+          "type": "choice"
+        },
+        "context": {
+          "choice": "problem and forces",
+          "confidence": 0.96,
+          "probabilities": {
+            "background only": 0.02,
+            "missing": 0.01,
+            "problem and forces": 0.97
+          },
+          "type": "choice"
+        }
+      },
+      "attempts": [
+        {
+          "attempt": 1,
+          "ok": true
+        }
+      ],
+      "candidate_id": "wave-1",
+      "dry_run": false,
+      "error": null,
+      "item_id": "ADR-JEV-0007",
+      "kind": "directive",
+      "leaning": null,
+      "min_confidence": null,
+      "model_answered": "jev-1.14.0",
+      "node": "wave-1",
+      "ok": true,
+      "questions_sha256": "0b75f41c537d02fdd08ccb654c6d29572e1279898028c328237d8058ff113f83",
+      "record_id": "ADR-JEV-0007",
+      "record_iri": "urn:raptor:repo:judge-jev#ADR-JEV-0007",
+      "record_kind": "adr",
+      "repeat": 1,
+      "request_id": "quality/ADR-JEV-0007/wave-1/r1",
+      "request_sha256": "452f9394375877c110f25a8151636d81e02d76191e439195fcf05fece68fd5d2",
+      "retry_count": 0,
+      "roles": {},
+      "run": "bjj-stable-010-py311-quality",
+      "run_id": "d8b4df368299c69e",
+      "schema": "judge-jev/jev-batch-result/1",
+      "threshold": 0.6,
+      "tree_id": "quality-adr",
+      "tree_sha256": "2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1",
+      "verdict": null
+    }
+  },
+  {
+    "action": "wave",
+    "correlation_id": "d8b4df368299c69e",
+    "fields": {
+      "answers": {
+        "alternatives": {
+          "choice": "named with reasons rejected",
+          "confidence": 1.0,
+          "probabilities": {
+            "named only": 0.0,
+            "named with reasons rejected": 1.0,
+            "none": 0.0
+          },
+          "type": "choice"
+        },
+        "consequences": {
+          "choice": "positive and negative",
+          "confidence": 0.98,
+          "probabilities": {
+            "missing": 0.01,
+            "positive and negative": 0.99,
+            "positive only": 0.0
+          },
+          "type": "choice"
+        },
+        "context": {
+          "choice": "problem and forces",
+          "confidence": 0.96,
+          "probabilities": {
+            "background only": 0.02,
+            "missing": 0.01,
+            "problem and forces": 0.97
+          },
+          "type": "choice"
+        }
+      },
+      "choices": {
+        "alternatives": "named with reasons rejected",
+        "consequences": "positive and negative",
+        "context": "problem and forces"
+      },
+      "next": null,
+      "node": "wave-1",
+      "reason": [
+        {
+          "choice": "problem and forces",
+          "confidence": 0.96,
+          "criterion": "Names the problem and the forces or constraints that shaped the decision.",
+          "id": "context",
+          "text": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?"
+        },
+        {
+          "choice": "named with reasons rejected",
+          "confidence": 1.0,
+          "criterion": "Names alternatives and why each was rejected.",
+          "id": "alternatives",
+          "text": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?"
+        },
+        {
+          "choice": "positive and negative",
+          "confidence": 0.98,
+          "criterion": "Names benefits and costs.",
+          "id": "consequences",
+          "text": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?"
+        }
+      ],
+      "record_id": "ADR-JEV-0007",
+      "record_iri": "urn:raptor:repo:judge-jev#ADR-JEV-0007",
+      "record_kind": "adr",
+      "request": {
+        "model": "jev-latest",
+        "questions": {
+          "alternatives": {
+            "criteria": {
+              "named only": "Names alternatives without why they were rejected. Fix: add why rejected.",
+              "named with reasons rejected": "Names alternatives and why each was rejected.",
+              "none": "Names no alternative. Fix: add alternatives."
+            },
+            "instructions": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+            "type": "choice"
+          },
+          "consequences": {
+            "criteria": {
+              "missing": "Names no consequence. Fix: add benefits and costs.",
+              "positive and negative": "Names benefits and costs.",
+              "positive only": "Names only benefits. Fix: add the costs."
+            },
+            "instructions": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+            "type": "choice"
+          },
+          "context": {
+            "criteria": {
+              "background only": "Gives background but no problem. Fix: state the problem.",
+              "missing": "No context in substance. Fix: add the problem and its forces.",
+              "problem and forces": "Names the problem and the forces or constraints that shaped the decision."
+            },
+            "instructions": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+            "type": "choice"
+          }
+        },
+        "state": {
+          "item": {
+            "id": "ADR-JEV-0007",
+            "text": "{\n  \"id\": \"ADR-JEV-0007\",\n  \"title\": \"The seam to sc-agent's Jev tool\",\n  \"status\": \"Draft\",\n  \"version\": \"0.1.0\",\n  \"created\": \"2026-11-07\",\n  \"last_updated\": \"2026-11-08\",\n  \"owner\": \"Rand Lee\",\n  \"supersedes\": null,\n  \"superseded_by\": null,\n  \"decision_date\": \"2026-11-07\",\n  \"context\": {\n    \"text\": \"sc-agent's Rust Jev tool will replace judge-jev's Python Jev core\\n(ADR-JEV-0001). Its first version will not include Oxigraph, though a later\\none may. Quality trees and their answers become an RDF graph\\n(ADR-JEV-0006). The problem is where the boundary lies, so that judge-jev\\nworks with a Jev tool that has no graph store today, and one with Oxigraph\\nlater takes over graph work without judge-jev changing its callers.\",\n    \"background\": \"\",\n    \"problem_statement\": \"\"\n  },\n  \"decision\": {\n    \"text\": \"judge-jev has two ports:\\n\\n- **Transport:** sends the request lines of one wave and returns their\\n  result lines. Its contract is the existing batch request and result\\n  schemas (`assets/schemas/jev-batch-request.schema.json`,\\n  `jev-batch-result.schema.json`), unchanged. The Python consumer calls the\\n  released `sc-decidr` wheel to implement it; sc-agent's released wheel owns\\n  transport, credentials, typed Rust errors, cancellation and retries.\\n- **Graph store:** loads a tree, validates it with SHACL, compiles a wave\\n  to its JSON questions, records a run's triples and answers queries.\\n  judge-jev implements it now with `pyoxigraph` and a SHACL validator; a\\n  Jev tool with Oxigraph may implement it later.\\n\\nOnly JSON crosses the transport. The result lines in the sc-observability\\nlog are the record of a run; a run's triples are a projection of those\\nlines and the tree, so they can be rebuilt from the log at any time. The\\ntree walk (which wave next, which verdict) uses only the compiled waves and\\nthe answers, so it runs on either side of the seam.\",\n    \"chosen_approach\": \"\",\n    \"key_principles\": []\n  },\n  \"rationale\": {\n    \"text\": \"A Jev tool without a graph store needs only the JSON contract it already\\nhas. Because the triples are rebuilt from the log, no run is lost when the\\nstore moves to the other side of the seam.\",\n    \"benefits\": [],\n    \"trade_offs\": []\n  },\n  \"consequences\": {\n    \"text\": \"\",\n    \"positive\": [\n      \"sc-agent's first Jev tool replaces the Python core with no graph work.\",\n      \"Moving the graph store into sc-agent changes the port's implementation,\\nnot its callers.\"\n    ],\n    \"negative\": [\n      \"Until sc-agent hosts the store, judge-jev carries the graph dependencies.\",\n      \"The projection from result lines to triples must stay in step with the\\nontology.\"\n    ],\n    \"neutral\": []\n  },\n  \"alternatives\": {\n    \"text\": \"\",\n    \"groups\": [\n      {\n        \"name\": \"sc-agent's Jev tool reads trees and writes triples\",\n        \"description\": \"Send the TTL tree and the record; the tool walks the tree\\nand stores the triples.\",\n        \"pros\": [],\n        \"cons\": [],\n        \"why_rejected\": \"Its first version has no graph store, so judge-jev would\\nwait for it.\"\n      },\n      {\n        \"name\": \"Triples as the only record of a run\",\n        \"description\": \"Write runs to the graph store instead of the log.\",\n        \"pros\": [],\n        \"cons\": [],\n        \"why_rejected\": \"A tool without a store could not record a run, and a lost\\nstore loses the runs.\"\n      }\n    ]\n  },\n  \"implementation\": {\n    \"text\": \"\",\n    \"key_components\": [],\n    \"integration_points\": [],\n    \"code_examples\": \"\"\n  },\n  \"impact_analysis\": {\n    \"text\": \"\",\n    \"affected_components\": \"\",\n    \"performance_impact\": \"\",\n    \"security_impact\": \"\",\n    \"maintainability_impact\": \"\"\n  },\n  \"related_documents\": {\n    \"text\": \"\",\n    \"requirements\": [],\n    \"architecture_decisions\": [],\n    \"design_documents\": [],\n    \"work_items\": [],\n    \"external_references\": []\n  }\n}",
+            "title": "The seam to sc-agent's Jev tool"
+          }
+        }
+      },
+      "request_id": "quality/ADR-JEV-0007/wave-1/r1",
+      "rule_rank": 2,
+      "run": "bjj-stable-010-py311-quality",
+      "tree_id": "quality-adr",
+      "tree_sha256": "2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1",
+      "verdict": "yes"
+    }
+  },
+  {
+    "action": "verdict",
+    "correlation_id": null,
+    "fields": {
+      "path": [
+        "wave-1"
+      ],
+      "record_id": "ADR-JEV-0007",
+      "record_iri": "urn:raptor:repo:judge-jev#ADR-JEV-0007",
+      "record_kind": "adr",
+      "rule_rank": 2,
+      "run": "bjj-stable-010-py311-quality",
+      "tree_id": "quality-adr",
+      "tree_sha256": "2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1",
+      "verdict": "yes"
+    }
+  }
+]
