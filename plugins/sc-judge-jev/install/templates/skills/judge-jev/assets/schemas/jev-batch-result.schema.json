@@ -153,8 +153,8 @@
     "retry_count": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 1,
-      "description": "Live calls do not retry in judge-jev; sc-decidr owns retries. Fixture answers may deterministically simulate one retry."
+      "maximum": 0,
+      "description": "Always zero: live retries belong to sc-decidr, and a fixture supplies one final consumer-visible result."
     },
     "attempts": {
       "type": "array",

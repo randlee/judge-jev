@@ -383,7 +383,7 @@ class ErrorHandlingTests(unittest.TestCase):
             self.assertIn(f"argument {flag}: invalid", out["error"]["message"])
         self.assertEqual((jj.DEFAULT_MODEL, jj.DEFAULT_THRESHOLD, jj.DEFAULT_MAX_REQUEST_BYTES, jj.DEFAULT_MAX_REQUEST_BYTES_DEV),
                          ("jev-latest", 0.6, 24000, 64000))
-        self.assertEqual((jj.BATCH_MAX_WORKERS, jj.BATCH_RETRIES, jj.MAX_RESPONSE_BYTES), (4, 1, 1048576))
+        self.assertEqual((jj.BATCH_MAX_WORKERS, jj.MAX_RESPONSE_BYTES), (4, 1048576))
         self.assertFalse(hasattr(jj, "JEV_URL"))
 
     def test_out_of_range_values_are_validation_input(self):

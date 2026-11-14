@@ -212,7 +212,7 @@ class BatchTests(BatchCase):
         self.assertEqual(proc.returncode, 2)
         lines = [json.loads(x) for x in proc.stdout.decode("utf-8").splitlines()]
         failed = next(x for x in lines if x["candidate_id"] == "cur")
-        self.assertEqual((failed["ok"], failed["retry_count"], failed["error"]["code"], failed["verdict"]), (False, 1, "JEV.OVERLOADED", None))
+        self.assertEqual((failed["ok"], failed["retry_count"], failed["error"]["code"], failed["verdict"]), (False, 0, "JEV.OVERLOADED", None))
         self.assertTrue(next(x for x in lines if x["candidate_id"] == "alt")["ok"])
         self.assertEqual(json.loads(proc.stderr)["error"]["code"], "JEV.OVERLOADED")
         self.assertEqual(self.log("runs"), lines)

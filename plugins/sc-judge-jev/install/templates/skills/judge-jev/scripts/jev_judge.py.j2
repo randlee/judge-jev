@@ -131,7 +131,6 @@ QUESTIONS_DIR = HERE.parent / "assets" / "questions"
 KINDS = ("directive", "prohibition", "structural")  # how decide() gates: see decide(); structural anchors skip Jev at the plan gate
 REQUIRED_ROLES = ("relevance", "compliance", "conflict")
 ABORT_CODES = ("AUTH.CREDENTIALS", "POLICY.REMOTE_JUDGE_DISABLED")
-TRANSIENT_CODES = ("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID")  # fixture-only retry simulation
 
 BATCH_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}")  # matched whole (fullmatch): a trailing newline is not part of an id
 MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
@@ -648,7 +647,8 @@ class FixtureError(Closed):
 def _fixture_problems(entries: dict) -> list:
     """Each envelope problem of an answers file as ``path: rule``. The envelope is what is decidable before any request: an
     entry is an object, {"__error__": code} (a string code of 1 to FIXTURE_CODE_LIMIT characters, nothing else), or a non-empty list of
-    those (successive attempts). What an answer object holds (its questions, choices, probabilities) is Jev's response and is
+    those (the first is the final consumer-visible result; later entries are unused). What an answer object holds
+    (its questions, choices, probabilities) is Jev's response and is
     checked after the send (JEV.RESPONSE_INVALID), so a test can feed an invalid answer on purpose."""
     problems = []
     for key, entry in entries.items():
@@ -976,7 +976,6 @@ def check_threshold(value: float, name: str = "--threshold") -> Result[float, Ju
 # --------------------------------------------------------------------------- #
 BATCH_RESULT_SCHEMA = "judge-jev/jev-batch-result/1"
 BATCH_MAX_WORKERS = 4              # parallel Jev evaluators; the anchor-tuning protocol's cap
-BATCH_RETRIES = 1                  # deterministic fixture simulation only; live retry policy belongs to sc-decidr
 BATCH_FIXTURE_ERROR = "__error__"  # an answers-file attempt {"__error__": "<code>"} simulates a failed call
 
 
@@ -1102,7 +1101,7 @@ def check_fixture_coverage(lines: list, settings: BatchSettings, fixture) -> Res
     return Ok(None)
 
 
-def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int) -> Result[dict, JudgeError]:
+def _fixture_result(job: BatchJob, fixture: dict) -> Result[dict, JudgeError]:
     keys = _fixture_keys(job)
     entry = next((fixture[k] for k in keys if k in fixture), None)
     if entry is None:
@@ -1110,10 +1109,24 @@ def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int) -> Result[dict,
     if isinstance(entry, list):
         if not entry:
             return fail("FIXTURE.MISSING", f"answers fixture entry for {keys[0]} is an empty list")
-        entry = entry[min(attempt, len(entry)) - 1]
+        entry = entry[0]
     if isinstance(entry, dict) and BATCH_FIXTURE_ERROR in entry:
         code = str(entry[BATCH_FIXTURE_ERROR])
-        return fail(code, f"fixture failure {code}", recoverable=code in TRANSIENT_CODES)
+        # Legacy outward codes remain accepted by answers files. Translate known
+        # provider codes to the same typed wheel detail used by live results.
+        legacy = {
+            "JEV.RATE_LIMITED": {"id": "http.provider_busy", "status": 429},
+            "JEV.OVERLOADED": {"id": "http.provider_busy", "status": 529},
+            "JEV.NETWORK": {"id": "http.network"},
+            "JEV.RESPONSE_INVALID": {"id": "decision.response_parse"},
+            "JEV.VALIDATION": {"id": "decision.api_validation"},
+            "AUTH.CREDENTIALS": {"id": "secrets.credential_missing"},
+            "CANCELED": {"id": "decision.cancelled"},
+        }
+        detail = legacy.get(code)
+        if detail is not None or code.startswith(("http.", "decision.", "secrets.")):
+            return Err(sc_agent_error({**(detail or {"id": code}), "message": f"fixture failure {code}"}))
+        return fail(code, f"fixture failure {code}")
     return Ok({"model": "fixture", "answers": entry})
 
 
@@ -1157,27 +1170,24 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture, abort: _Abort
     """One offline fixture job; live calls and provider retries belong to sc-decidr."""
     if settings.dry_run:
         return _line(job, settings, None, [], None, True)
-    attempts, raw, error = [], None, None
-    for attempt in range(1, BATCH_RETRIES + 2):
-        if abort.is_set():
-            error = abort.error
-            attempts.append({"attempt": attempt, "ok": False, "error": {"code": error.code, "message": "not sent: the batch aborted", "recoverable": False}})
-            break
-        got = _fixture_attempt(job, fixture, attempt)
-        if isinstance(got, Ok):
-            got = validate_response(got.value, job.questions)
-        if isinstance(got, Ok):
-            raw, error = got.value, None
-            attempts.append({"attempt": attempt, "ok": True})
-            break
-        error = got.error
-        attempts.append({"attempt": attempt, "ok": False, "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": error.recoverable}})
-        if error.code in ABORT_CODES:
-            abort.set(error)
-            break
-        if not error.recoverable or attempt > BATCH_RETRIES:
-            break
-    return _line(job, settings, raw, attempts, error, False)
+    if abort.is_set():
+        error = abort.error
+        attempt = {"attempt": 1, "ok": False, "error": {
+            "code": error.code, "message": "not sent: the batch aborted", "recoverable": False,
+        }}
+        return _line(job, settings, None, [attempt], error, False)
+    got = _fixture_result(job, fixture)
+    if isinstance(got, Ok):
+        got = validate_response(got.value, job.questions)
+    if isinstance(got, Ok):
+        return _line(job, settings, got.value, [{"attempt": 1, "ok": True}], None, False)
+    error = got.error
+    if error.code in ABORT_CODES:
+        abort.set(error)
+    attempt = {"attempt": 1, "ok": False, "error": {
+        "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": False,
+    }}
+    return _line(job, settings, None, [attempt], error, False)
 
 
 async def _aiter(source):
@@ -1535,20 +1545,25 @@ def worst_answers(questions: dict, pick=None) -> dict:
 
 
 def worst_line(job: BatchJob, settings: BatchSettings, pick=None) -> dict:
-    """The largest result line ``job`` can produce: the largest answers, a first attempt that failed with the longest
-    message and a second that answered (only a transient failure is retried, and its code is short). Messages are clipped
-    by characters but the logger measures ASCII-escaped JSON, so the worst message is ATTEMPT_MESSAGE_LIMIT characters that
-    each escape to 12 bytes (WORST_CHAR), not "x"s."""
+    """The largest successful final result for log sizing; there is one consumer-visible attempt."""
     raw = {"model": "m" * 64, "answers": worst_answers(job.questions, pick), "usage": {"input_tokens": 2 ** 63 - 1, "output_tokens": 2 ** 63 - 1}}
-    failed = {"attempt": 1, "ok": False, "error": {"code": "JEV.RESPONSE_INVALID", "message": WORST_CHAR * ATTEMPT_MESSAGE_LIMIT, "recoverable": True}}
-    return _line(job, settings, raw, [failed, {"attempt": 2, "ok": True}], None, False)
+    return _line(job, settings, raw, [{"attempt": 1, "ok": True}], None, False)
+
+
+def worst_failure_line(job: BatchJob, settings: BatchSettings) -> dict:
+    """Size a final failure independently of success. Messages are clipped by characters,
+    but each WORST_CHAR escapes to 12 bytes in the logger's JSON representation."""
+    error = JudgeError(WORST_CHAR * FIXTURE_CODE_LIMIT, WORST_CHAR * ATTEMPT_MESSAGE_LIMIT, recoverable=False)
+    failed = {"attempt": 1, "ok": False, "error": {"code": error.code, "message": error.message, "recoverable": False}}
+    return _line(job, settings, None, [failed], error, False)
 
 
 def check_log_events(job: BatchJob, settings: BatchSettings, where: str, fields: dict) -> Result[None, JudgeError]:
-    """REQ-JEV-0211: the request event, the largest possible answer event and the result event of ``job`` fit the logger's
-    event limit, before anything is sent (and in a dry run alike)."""
-    line = worst_line(job, settings)
-    return check_event_sizes([(action, event_fields, line["run_id"]) for action, event_fields in result_line_events(line, fields)], where)
+    """REQ-JEV-0211: request, answer and result events for both the largest success
+    and the largest failure fit the event limit before anything is sent."""
+    lines = (worst_line(job, settings), worst_failure_line(job, settings))
+    return check_event_sizes([(action, event_fields, line["run_id"])
+                              for line in lines for action, event_fields in result_line_events(line, fields)], where)
 
 
 def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo: bool,
