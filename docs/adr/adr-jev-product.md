@@ -18,7 +18,9 @@ what the first version leaves out.
 
 ## ADR-JEV-0001: Keep the Jev core unchanged until its Rust replacement
 
-**Status:** Draft  
+**Status:** Approved
+
+Owner approval: 2026-11-14T14:05:29Z (confirmed by the phase lead).
 
 ### Context
 
@@ -211,7 +213,9 @@ the same way (REQ-JEV-0203).
 
 ## ADR-JEV-0005: Pydantic models validate every JSON input
 
-**Status:** Draft  
+**Status:** Approved
+
+Owner approval: 2026-11-14T14:05:29Z (confirmed by the phase lead).
 
 ### Context
 
@@ -274,7 +278,9 @@ validation still handles untyped dictionaries.
 
 ## ADR-JEV-0006: Quality trees and their answers are an RDF graph
 
-**Status:** Draft  
+**Status:** Approved
+
+Owner approval: 2026-11-14T14:05:29Z (confirmed by the phase lead).
 
 ### Context
 
@@ -363,7 +369,9 @@ answers cannot be joined to questions without scraping logs.
 
 ## ADR-JEV-0007: The seam to sc-agent's Jev tool
 
-**Status:** Draft  
+**Status:** Approved
+
+Owner approval: 2026-11-14T14:05:29Z (confirmed by the phase lead).
 
 ### Context
 
@@ -436,7 +444,9 @@ store loses the runs.
 
 ## ADR-JEV-0008: Definitions are graph nodes targeted at records
 
-**Status:** Draft  
+**Status:** Approved
+
+Owner approval: 2026-11-14T14:05:29Z (confirmed by the phase lead).
 
 ### Context
 
