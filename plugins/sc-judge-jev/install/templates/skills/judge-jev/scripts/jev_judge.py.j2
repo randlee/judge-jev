@@ -1185,7 +1185,7 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture, abort: _Abort
     if error.code in ABORT_CODES:
         abort.set(error)
     attempt = {"attempt": 1, "ok": False, "error": {
-        "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": False,
+        "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": error.recoverable,
     }}
     return _line(job, settings, None, [attempt], error, False)
 
@@ -1584,7 +1584,7 @@ def sc_agent_error(detail) -> JudgeError:
     action = str(leaf.get("recovery") or "")
     if code == "JEV.UNMAPPED":
         action = "Report the preserved error ID/detail; do not infer status from message text. See B-1 finding agt-zii."
-    return JudgeError(code, message, recoverable=False, action=action)
+    return JudgeError(code, message, recoverable=(code == "CANCELED"), action=action)
 
 
 def _sc_agent_exception_detail(exc: Exception, module) -> dict:
@@ -1620,7 +1620,7 @@ def _sc_agent_result(job: BatchJob, settings: BatchSettings, result: dict) -> di
     detail = result.get("error")
     error = sc_agent_error(detail)
     line = _line(job, settings, None, [{"attempt": 1, "ok": False, "error": {
-        "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": False,
+        "code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT), "recoverable": error.recoverable,
     }}], error, False, detail)
     return line
 
