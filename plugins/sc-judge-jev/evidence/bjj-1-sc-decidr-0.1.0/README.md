@@ -32,6 +32,21 @@ published-wheel verification; the original run files remain retained. It is not 
   sc-observability 1.5.0 `Logger.query`, normalized by the existing test helper's
   typed-value conversion. Each run has three request, answer and result events.
   Quality also has two statement, wave and verdict events of each kind.
+- [native-session-readback.json](native-session-readback.json): identity/correlation
+  projection read from the real wheel's retained default session JSONL. Its final
+  six rows (13:22:29–13:22:30 UTC) match all three batch and three quality raw
+  responses in the query artifacts above. Each row has the expected repo,
+  project and agent role, a canonical ULID session ID equal to its correlation
+  ID, and matching answer/digest keys. Canonical response hashes match in both
+  artifacts. One response also occurs in an earlier run; the recorded final-run
+  window selects the matching row alongside the other five unique responses.
+  Original row/whole-snapshot hashes and line numbers allow a local verifier to
+  check the retained source. Payloads stay in the local native file.
+- [real-wheel-offline-refusal.json](real-wheel-offline-refusal.json): published
+  0.1.0 `send_batch` rejected malformed request JSON with native
+  `decision.request_parse` before context/logger/credential setup. This new
+  offline case used an explicit dummy ENV backstop; it sent nothing and read no
+  keychain. The session readback above used existing live-run files.
 - [dependency-tree.txt](dependency-tree.txt): the installed script's resolved
   dependency tree, including sc-decidr 0.1.0 and sc-observability 1.5.0.
 
@@ -78,8 +93,24 @@ Re-running paid calls may yield different quality judgments.
 
 ## Still pending
 
+Default native session identity/layout and persisted output are now read back
+from the original real-wheel runs. This verifies default owned-log persistence;
+it does not verify caller-owned injection/flush lifetime. Producer timeout
+implementation `agt-b-1.8` is closed; publication `agt-2t0` and final pin/rechecks
+`agt-r17` remain open. The installed API reference retains the parsed `--timeout`
+option and explicitly says 0.1.0 does not forward it.
+
 Native direct Logger injection/flushing, per-call timeout forwarding, the
 final B-1 wheel pin and credential/retry rechecks remain pending the B-1
 prerelease **agt-2t0**, owned by **agt-r17**. They were not exercised by these
 successful default-logging runs and are not reported as passed. The lead's
 initial consumer-exit ruling is 01M7D28SQ615B60CV4AA83XKG9.
+
+The native session source is
+`~/.sc-agent/logs/github.com/randlee/judge-jev/judge-jev/judge-jev/sessions.jsonl`.
+For a readback, parse its JSONL, select the recorded six row timestamps, check
+`service=sc-agent-session`, `target=sc_agent.session`, `action=session.row`,
+`fields.session_id == correlation_id`, the identity fields and the response
+hashes against the committed consumer answer events. JSON hashing uses the
+encoding declared in the readback artifact. No service or credential lookup
+is needed. New credentialed runs require lead approval and owner attendance.
