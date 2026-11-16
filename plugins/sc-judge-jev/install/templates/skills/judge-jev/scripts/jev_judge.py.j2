@@ -1133,11 +1133,10 @@ def check_fixture_coverage(lines: list, settings: BatchSettings, fixture) -> Res
 
 
 def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int = 1) -> Result[dict, JudgeError]:
-    keys = (f"{job.item_id}/{job.candidate_id}/r{job.repeat}", f"{job.item_id}/{job.candidate_id}", job.candidate_id, "*")
+    keys = _fixture_keys(job)
     entry = next((fixture[k] for k in keys if k in fixture), None)
     if entry is None:
-        return fail("FIXTURE.MISSING", f"answers fixture has no entry for {keys[0]} (or {keys[1]}, {keys[2]}, '*')",
-                    action=f"Add an entry for {keys[0]} to the answers file.")
+        return _fixture_missing(keys)
     if isinstance(entry, list):
         if not entry:
             return fail("FIXTURE.MISSING", f"answers fixture entry for {keys[0]} is an empty list")
