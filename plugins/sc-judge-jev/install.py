@@ -252,8 +252,6 @@ def load_package(plugin_dir: Path = PLUGIN_DIR) -> Result[Package, ToolError]:
     if sitr_match is None:
         return err(bad, f"{runtime_template} must pin sitr to an exact X.Y.Z version")
     sitr_version = sitr_match.group(1)
-    if sitr_version != sc_decidr_version:
-        return err(bad, f"{runtime_template} must pin sitr to the sc-decidr version {sc_decidr_version}")
     agents_src = plugin_dir / "install" / "templates" / "agents"
     harness = plugin_dir / "install" / "harness"
     if not skill_src.is_dir():

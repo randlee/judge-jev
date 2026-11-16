@@ -174,7 +174,7 @@ class RenderingTests(unittest.TestCase):
         self.assertIn('"extract"', rendered.value)
         self.assertNotIn("0.2.0", rendered.value)
 
-    def test_sitr_pin_matches_sc_decidr_pin(self):
+    def test_installer_reads_sitr_and_sc_decidr_pins_independently(self):
         runtime = (SKILL_SRC / "scripts" / "jev_judge.py.j2").read_text(encoding="utf-8")
         metadata = runtime.split("# /// script\n", 1)[1].split("# ///", 1)[0]
         dependencies = tomllib.loads("\n".join(line.removeprefix("# ") for line in metadata.splitlines()))["dependencies"]
@@ -184,7 +184,6 @@ class RenderingTests(unittest.TestCase):
         self.assertEqual(len(pins["sitr"]), 1)
         self.assertEqual((self.package.sc_decidr_version, self.package.sitr_version),
                          (pins["sc-decidr"][0], pins["sitr"][0]))
-        self.assertEqual(self.package.sc_decidr_version, self.package.sitr_version)
 
     def test_sitr_is_always_enabled_for_judge_jev(self):
         template = SKILL_SRC / "scripts" / "decidr_client.py.j2"
@@ -270,7 +269,7 @@ class TemplatePinTests(unittest.TestCase):
         self.assertIn('SC_DECIDR_VERSION = "7.0.0"', text)
         self.assertIn("Optional sitr 8.0.0", text)
 
-    def test_installer_rejects_a_drifting_sitr_pin(self):
+    def test_installer_accepts_and_records_a_different_sitr_pin(self):
         with tempfile.TemporaryDirectory() as tmp:
             plugin = Path(tmp) / "plugin"
             shutil.copytree(PLUGIN, plugin, ignore=shutil.ignore_patterns("__pycache__"))
@@ -281,8 +280,9 @@ class TemplatePinTests(unittest.TestCase):
             pin = next(item for item in dependencies if item.startswith("sitr=="))
             runtime.write_text(text.replace(f'"{pin}"', '"sitr==999.0.0"'), encoding="utf-8")
             package = inst.load_package(plugin)
-            self.assertIsInstance(package, inst.Err)
-            self.assertIn("must pin sitr to the sc-decidr version", package.error.message)
+            self.assertIsInstance(package, inst.Ok, getattr(package, "error", None))
+            self.assertEqual(package.value.sc_decidr_version, "0.2.4")
+            self.assertEqual(package.value.sitr_version, "999.0.0")
 
     def test_installer_reads_the_real_script_metadata_pin(self):
         template = SKILL_SRC / "scripts" / "jev_judge.py.j2"
