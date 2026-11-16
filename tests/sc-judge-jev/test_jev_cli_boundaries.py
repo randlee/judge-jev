@@ -56,8 +56,6 @@ class RenderedTextTests(unittest.TestCase):
             text = (SCRIPTS / name).read_text(encoding="utf-8")
             with self.subTest(name=name):
                 self.assertIsNone(re.search(r"\{\{\s*\w|\{%-?\s*\w", text))
-                # the one plan-anchor name kept on purpose: the shared credential store entry
-                text = text.replace('CREDENTIAL_SERVICE = "plan-anchor"', "")
                 if name == "decidr_client.py":
                     provenance = "# Derived from plan-anchor fff69b2, plugins/sc-plan-anchor/install/templates/skills/plan-anchoring/scripts/decidr_client.py.j2."
                     self.assertIn(provenance, text)
