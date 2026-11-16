@@ -12,7 +12,7 @@ import atexit
 from pathlib import Path
 import re
 import shutil
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 
@@ -41,12 +41,12 @@ def _render(dest: Path) -> Path:
     templates += [(t, skill / "references") for t in sorted((SKILL_SRC / "references").glob("*.md.j2"))]
     for template, target in templates:
         out = target / template.name[:-len(".j2")]
-        proc = subprocess.run([binary, "render", "--root", str(template.parent), "--strict",
+        proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
                                "--var", f"version={RENDER_VERSION}",
                                "--var", f"sc_decidr_version={SC_DECIDR_VERSION}",
                                "--var", "general_log=true",
                                "--file", str(template), "--output", str(out)],
-                              capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+                              text=True, encoding="utf-8", errors="replace", check=False)
         if proc.returncode != 0:
             raise RuntimeError(f"sc-compose render {template.name} failed: {proc.stderr[-2000:]}")
         data = out.read_bytes()

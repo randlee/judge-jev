@@ -12,7 +12,7 @@ import io
 import json
 import os
 from pathlib import Path
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -118,8 +118,8 @@ class ConsentTests(unittest.TestCase):
         for value, code, shown, error in cases:
             with self.subTest(value=value):
                 repo = Repo(self).answer(value)
-                proc = subprocess.run([sys.executable, str(SETTINGS_SCRIPT), "show", "--repository-root", str(repo.root)],
-                                      capture_output=True, text=True, encoding="utf-8",
+                proc = run_child([sys.executable, str(SETTINGS_SCRIPT), "show", "--repository-root", str(repo.root)],
+                                      text=True, encoding="utf-8",
                                       env={k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"})
                 self.assertEqual(proc.returncode, code, proc.stdout + proc.stderr)
                 out = json.loads(proc.stdout)
@@ -218,9 +218,9 @@ class SetCommandTests(unittest.TestCase):
 
     def test_the_script_runs_end_to_end(self):
         repo = Repo(self)
-        subprocess.run(["git", "init", "-q", str(repo.root)], check=False, capture_output=True)
-        proc = subprocess.run([sys.executable, str(SETTINGS_SCRIPT), "set", "allow_remote_judge", "true",
-                               "--repository-root", str(repo.root)], capture_output=True, text=True, encoding="utf-8")
+        run_child(["git", "init", "-q", str(repo.root)], check=False)
+        proc = run_child([sys.executable, str(SETTINGS_SCRIPT), "set", "allow_remote_judge", "true",
+                               "--repository-root", str(repo.root)], text=True, encoding="utf-8")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertTrue(json.loads(proc.stdout)["data"]["written"])
         self.assertIn("allow_remote_judge: true\n", repo.settings.read_text(encoding="utf-8"))

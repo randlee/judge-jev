@@ -4,7 +4,7 @@ import copy
 import hashlib
 import io
 import json
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -198,7 +198,7 @@ class StdinIsNeverACrash(unittest.TestCase):
     BAD = b"\xff\xfe{"
 
     def run_script(self, *argv):
-        proc = subprocess.run([sys.executable, str(SCRIPTS / "jev_judge.py"), *argv], input=self.BAD, capture_output=True, timeout=120)
+        proc = run_child([sys.executable, str(SCRIPTS / "jev_judge.py"), *argv], input=self.BAD)
         self.assertNotIn(b"Traceback", proc.stderr)
         return proc.returncode, json.loads(proc.stdout.decode("utf-8"))
 

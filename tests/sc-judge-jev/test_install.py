@@ -14,7 +14,7 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -68,8 +68,7 @@ def needs_wheel(cls):
 
 
 def _has_commit(rev):
-    return subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"],
-                          capture_output=True).returncode == 0
+    return run_child(["git", "-C", str(ROOT), "rev-parse", "--verify", "--quiet", f"{rev}^{{commit}}"]).returncode == 0
 
 
 def sha(data):
@@ -83,7 +82,7 @@ class TempRepo:
         self.dir = tempfile.TemporaryDirectory()
         test.addCleanup(self.dir.cleanup)
         self.root = Path(self.dir.name).resolve()
-        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        run_child(["git", "init", "-q", str(self.root)], check=True)
 
     def path(self, rel):
         return self.root / rel
@@ -207,7 +206,7 @@ class RenderingTests(unittest.TestCase):
                     "for remote in (None, True, False):\n"
                     "    out[str(remote)] = s.render_settings(s.Settings(1, remote))\n"
                     "print(json.dumps(out))\n")
-            proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, encoding="utf-8")
+            proc = run_child([sys.executable, "-c", code], text=True, encoding="utf-8")
             self.assertEqual(proc.returncode, 0, proc.stderr)
             installed = json.loads(proc.stdout)
         for remote in (None, True, False):
@@ -768,14 +767,14 @@ class RealInstallTests(unittest.TestCase):
     def repo(self, name):
         root = self.tmp / name
         root.mkdir()
-        subprocess.run(["git", "init", "-q", str(root)], check=True)
+        run_child(["git", "init", "-q", str(root)], check=True)
         return root
 
     def install(self, root, plugin=PLUGIN, extra=("--no-remote-judge",)):
         env = {k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"}
-        proc = subprocess.run([sys.executable, str(Path(plugin) / "install.py"), "--dest", str(root),
+        proc = run_child([sys.executable, str(Path(plugin) / "install.py"), "--dest", str(root),
                                "--target", ",".join(inst.TARGETS), *extra],
-                              env=env, capture_output=True, text=True, encoding="utf-8")
+                              env=env, text=True, encoding="utf-8")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertTrue(json.loads(proc.stdout)["success"], proc.stdout)
         return root
@@ -803,8 +802,8 @@ class RealInstallTests(unittest.TestCase):
 
     def test_installed_scripts_run(self):
         root = self.install(self.repo("run"))
-        proc = subprocess.run([sys.executable, str(root / ".codex/skills/judge-jev/scripts/judge_jev_settings.py"),
-                               "show", "--repository-root", str(root)], capture_output=True, text=True, encoding="utf-8")
+        proc = run_child([sys.executable, str(root / ".codex/skills/judge-jev/scripts/judge_jev_settings.py"),
+                               "show", "--repository-root", str(root)], text=True, encoding="utf-8")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertIs(json.loads(proc.stdout)["data"]["allow_remote_judge"], False)
 

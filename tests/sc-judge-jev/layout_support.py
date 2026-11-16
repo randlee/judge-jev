@@ -28,7 +28,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -125,11 +125,11 @@ def render_cli(template: Path, out: Path) -> None:
     if match is None:
         raise RuntimeError("jev_judge.py.j2 must pin sc-decidr to an exact X.Y.Z version")
     out.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run([binary, "render", "--root", str(template.parent), "--strict",
+    proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
                            "--var", f"version={version}", "--var", f"sc_decidr_version={match.group(1)}",
                            "--var", "general_log=true",
                            "--file", str(template), "--output", str(out)],
-                          capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+                          text=True, encoding="utf-8", errors="replace", check=False)
     if proc.returncode != 0:
         raise RuntimeError(f"sc-compose render {template.name} failed: {proc.stderr[-2000:]}")
     data = out.read_bytes()

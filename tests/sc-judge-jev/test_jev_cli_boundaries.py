@@ -7,7 +7,7 @@ copied from.
 import json
 import os
 import re
-import subprocess
+from child_support import run_child
 import sys
 import unittest
 
@@ -17,7 +17,7 @@ CLEAN_ENV = {k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"}
 
 
 def run(script, *argv):
-    proc = subprocess.run([sys.executable, str(SCRIPTS / script), *argv], capture_output=True, text=True,
+    proc = run_child([sys.executable, str(SCRIPTS / script), *argv], text=True,
                           encoding="utf-8", env=CLEAN_ENV)
     return proc.returncode, proc.stdout, proc.stderr
 

@@ -18,7 +18,7 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -65,7 +65,7 @@ def tree(root):
 
 def git_repo(path, settings=None):
     path.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    run_child(["git", "init", "-q", str(path)], check=True)
     if settings is not None:
         (path / ".sc" / "judge-jev").mkdir(parents=True)
         (path / ".sc" / "judge-jev" / "settings.yaml").write_text(settings, encoding="utf-8")
@@ -132,8 +132,8 @@ class GlobalDestinationTests(Scratch):
     def test_refusal_through_the_real_process(self):
         dest = self.home / ".claude"
         dest.mkdir()
-        proc = subprocess.run([sys.executable, str(PLUGIN / "install.py"), "--dest", str(dest)],
-                              env=child_env(self.home), capture_output=True, text=True, encoding="utf-8")
+        proc = run_child([sys.executable, str(PLUGIN / "install.py"), "--dest", str(dest)],
+                              env=child_env(self.home), text=True, encoding="utf-8")
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         envelope = json.loads(proc.stdout)
         self.assertEqual((envelope["success"], envelope["error"]["code"]), (False, "INSTALL.DEST_GLOBAL"))
@@ -230,8 +230,8 @@ class ParentFolderInstallTests(Scratch):
 
 class SessionStartHookTests(Scratch):
     def run_hook(self, cwd):
-        proc = subprocess.run([sys.executable, str(HOOK)], input=json.dumps({"cwd": str(cwd), "hook_event_name": "SessionStart"}),
-                              env=child_env(self.home), capture_output=True, text=True, encoding="utf-8", timeout=30)
+        proc = run_child([sys.executable, str(HOOK)], input=json.dumps({"cwd": str(cwd), "hook_event_name": "SessionStart"}),
+                              env=child_env(self.home), text=True, encoding="utf-8", hang_guard=30)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(proc.stderr, "")
         return proc.stdout
@@ -279,8 +279,8 @@ class SessionStartHookTests(Scratch):
         lock = write_lock(repo, "0.0.1")
         lock.write_text("{not json", encoding="utf-8")
         self.assertEqual(self.run_hook(repo), "")
-        proc = subprocess.run([sys.executable, str(HOOK)], input="not json", cwd=str(repo), env=child_env(self.home),
-                              capture_output=True, text=True, encoding="utf-8")
+        proc = run_child([sys.executable, str(HOOK)], input="not json", cwd=str(repo), env=child_env(self.home),
+                              text=True, encoding="utf-8")
         self.assertEqual((proc.returncode, proc.stdout), (0, ""))
 
     def test_registered_for_session_start_and_offline(self):
@@ -370,9 +370,9 @@ class SelfContainedPluginTests(Scratch):
         copy = self.tmp / "cache" / "sc-judge-jev"
         shutil.copytree(PLUGIN, copy, ignore=shutil.ignore_patterns("__pycache__"))
         repo = git_repo(self.tmp / "repo")
-        proc = subprocess.run([sys.executable, "-I", str(copy / "install.py"), "--dest", str(repo),
+        proc = run_child([sys.executable, "-I", str(copy / "install.py"), "--dest", str(repo),
                                "--no-remote-judge", "--target", "claude,codex,cursor"], cwd=str(self.tmp),
-                              env=child_env(self.home), capture_output=True, text=True, encoding="utf-8")
+                              env=child_env(self.home), text=True, encoding="utf-8")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         mirror = git_repo(self.tmp / "mirror")
         code, out = call_main(["--dest", str(mirror), "--no-remote-judge", "--target", "claude,codex,cursor"])
