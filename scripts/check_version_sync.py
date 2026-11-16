@@ -15,8 +15,10 @@ Consistency:
   paths, manifest identities and marketplace sources are checked too, and the
   plugin must expose only the judge-jev-installer skill.
 
-There is no pull-request bump rule: VERSION stays 0.1.0 (the first release), and
-no PR raises it. Changes accumulate under "## Unreleased" in CHANGELOG.md.
+Every PR raises VERSION by at least a patch and changes every declaration with
+it (CONTRIBUTING.md). This script checks that the declarations agree and that
+CHANGELOG.md has a "## <VERSION>" entry (or "## Unreleased"); it does not yet
+compare VERSION with the base branch.
 
 Every other version number is locked too, with no exclusions: each template's
 own header `version:` (every *.j2) equals VERSION, and every integer version

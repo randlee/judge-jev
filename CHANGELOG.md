@@ -1,8 +1,8 @@
 # Changelog
 
-`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) equals it exactly. 0.1.0 is the first release. Every version number is locked: `VERSION` and every template's own `version:` stay `0.1.0`, every integer version (question sets, trees, `schema_version`) stays `1`, and no PR bumps any of them; changes after 0.1.0 go under a `## Unreleased` section. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` enforce it (see CONTRIBUTING.md).
+`VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
-## Unreleased
+## 0.3.1 — 2026-11-16
 
 - New command `drift`: compares records between two Raptor indexes and reports, per
   record, whether the rewrite still requires exactly what the original required
@@ -13,6 +13,72 @@
   questions by feature and decides per group; `brief` and `sixteen` are kept
   for comparison. A review aid: it flags records for a human drift review and
   never accepts or rejects one. Tests: `tests/sc-judge-jev/test_drift.py`.
+
+## 0.3.0 — 2026-11-13
+
+A second way to make a failing record pass: have it written from a list of what it requires, in place of editing its text. Reinstall with the `judge-jev-installer` skill.
+
+- `references/write-records.md` (new) says when to use it and how. Use it when
+  a statement holds two or more joined obligations, when three or more
+  statements of a record are weak, when three fix rounds left a record
+  unresolved, or when the record is new. One or two weak answers on one
+  statement still go to `references/fix-strategy.md`, which now points here
+  for the other cases.
+- `assets/templates/record-tenets.md.j2` (new) asks one writer who knows the
+  PRD to list what a record requires, one tenet per obligation, with the PRD
+  clauses each serves, the terms it uses, what the PRD forbids the record to
+  say, and any conflict with the PRD. This step is the split of a statement
+  that holds several obligations.
+- `assets/templates/record-write.md.j2` (new) asks each record writer for N
+  complete candidate texts (default 3) that require exactly those tenets. It
+  lists the questions Jev asks and the passing and failing choices of each,
+  copied from the shipped tree and checked against it by a test, the PRD
+  clauses, and the record format. The writer never sees the old text.
+- Both are runtime sc-compose templates: the installer copies them unchanged,
+  and the coordinator renders them with `sc-compose render --root <dir>
+  --file <template> --var-file <json> --strict`.
+- The page gives the coordinator three commands that need no judgement: a
+  check that every tenet is covered by its own statement, a script that
+  replaces only the sections a candidate wrote, and the existing `verify`.
+  The candidate with the highest lowest median among those that pass is kept.
+
+## 0.2.0 — 2026-11-13
+
+The fix procedure is replaced. Fixing a record now starts by asking Jev why: the result shows the option Jev nearly chose for every weak answer, the gate is the median of three runs, and every run logs to one folder per repository outside the repository. Reinstall with the `judge-jev-installer` skill; an install made by 0.1.0 is upgraded in place.
+
+- The fix strategy says which model does what: the fast model (Claude Code
+  `haiku`, Codex `luna`) for mechanical steps that rewrite nothing, the
+  proposer's own model for writing a candidate, the frontier model for the
+  lead and for meaning review. The proposer's model is unchanged.
+- `quality` and `compare-definition` now log to one per-user folder,
+  `~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`, in
+  place of `.sc/judge-jev/logs/` inside the working directory. Every worktree
+  and scratch copy of a repository logs under the name of its main checkout,
+  so logs no longer vanish with a worktree or a temp folder. `--run-dir` still
+  chooses another root; with no home directory the root is `.sc/judge-jev`.
+- A `quality` result now reveals what Jev's answer held and the result
+  dropped: every answer carries `probabilities` (each option) and `runner_up`
+  (the option Jev nearly chose, its probability and its criterion), and every
+  wave carries `models` (the Jev versions that answered). `jev_gate.py` lists
+  the median runner-up of each answer below the gate, and the fix strategy's
+  `verify` step prints it as `nearly:`. Logged events are unchanged.
+- `references/fix-strategy.md` is rewritten around asking Jev why. It replaces
+  the nine-step loop (mandatory proposers, 3 and 6 repeated runs, noise
+  routing) with: diagnose once with `assets/questions/diag-<kind>.json` (the
+  shipped tree plus appended `d_*` questions, same verdict rules), pick
+  strategies from a trigger table, launch one `jev-fix-proposer` per statement
+  and strategy in parallel, verify each candidate on the median of three runs
+  and freeze accepted records in `.sc/judge-jev/accepted.jsonl`. It states the
+  confidence gate, the one-record unit of work, a state file in place of
+  memory, five rules, and the commit and report format. `jev-fix-proposer`
+  now takes one `strategy` and returns one candidate. SKILL.md hard stops and
+  `quality-workflow.md` follow. Closes #40 and #41.
+- New `scripts/jev_gate.py`: the confidence gate over repeated `quality` runs
+  of identical text. It takes the median confidence of every gate answer
+  across the run files and passes a record when the verdict is `yes` in most
+  runs and every median is at or above `--threshold` (default 0.6). `d_*`
+  answers never gate; runs of different text are not comparable. Offline,
+  standard library only. The fix strategy's `verify` step uses it.
 
 ## 0.1.0 — 2026-11-10
 

@@ -51,7 +51,7 @@ class UsageErrorEnvelopeTests(unittest.TestCase):
 class RenderedTextTests(unittest.TestCase):
     def test_rendered_scripts_hold_no_template_syntax_or_plan_anchor_names(self):
         names = sorted(p.name for p in SCRIPTS.glob("*.py"))
-        self.assertEqual(names, ["jev_definitions.py", "jev_errors.py", "jev_graph.py", "jev_judge.py", "jev_ports.py", "jev_runs.py", "judge_jev_paths.py", "judge_jev_settings.py", "result.py"])
+        self.assertEqual(names, ["jev_definitions.py", "jev_errors.py", "jev_gate.py", "jev_graph.py", "jev_judge.py", "jev_ports.py", "jev_runs.py", "judge_jev_paths.py", "judge_jev_settings.py", "result.py"])
         for name in names:
             text = (SCRIPTS / name).read_text(encoding="utf-8")
             with self.subTest(name=name):
