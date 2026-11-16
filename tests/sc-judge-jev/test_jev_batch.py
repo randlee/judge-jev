@@ -248,14 +248,15 @@ class BatchRetryPolicyTests(BatchCase):
         detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
         code, lines, envelope = self.live_batch((json.dumps({"error": detail, "sends": 4}), "JEV.OVERLOADED"))
         line, = lines
-        self.assertEqual((code, line["ok"], line["retry_count"], line["attempts"][-1]["attempt"]), (2, False, 3, 4))
+        self.assertEqual((code, line["ok"], line["retry_count"], line["attempts"]), (2, False, 3, []))
         self.assertEqual(envelope["error"]["code"], "JEV.OVERLOADED")
 
     def test_success_is_not_retried_by_judge_jev(self):
         response = {"model": "jev-x", "answers": plan_answers()}
         code, lines, envelope = self.live_batch((json.dumps({"response": response, "sends": 1}), None))
         line, = lines
-        self.assertEqual((code, envelope, line["ok"], line["retry_count"], line["verdict"]), (0, None, True, 0, "satisfied"))
+        self.assertEqual((code, envelope, line["ok"], line["retry_count"], line["attempts"], line["verdict"]),
+                         (0, None, True, 0, [], "satisfied"))
 
 
 if __name__ == "__main__":

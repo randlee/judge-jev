@@ -22,7 +22,7 @@ class ConsumerErrorContracts(unittest.TestCase):
         self.assertEqual(call.call_args.kwargs["agent_role"], "judge")
         self.assertEqual(call.call_args.kwargs["abort_on"], frozenset({"auth"}))
         self.assertEqual(call.call_args.kwargs["timeout_secs"], 12.5)
-        self.assertEqual(call.call_args.kwargs["category_codes"], {"context_exceeded": "JEV.CONTEXT_EXCEEDED"})
+        self.assertNotIn("category_codes", call.call_args.kwargs)
         for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
             self.assertNotIn(name, call.call_args.kwargs)
 
@@ -57,7 +57,8 @@ class ConsumerErrorContracts(unittest.TestCase):
                 mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result) as call:
             got = jj._live_batch_results([request_line()], settings, log, False)
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
-                          got.value[0]["attempts"][-1]["attempt"]), ("JEV.OVERLOADED", 3, 4))
+                          got.value[0]["attempts"]), ("JEV.OVERLOADED", 3, []))
+        self.assertNotIn("category_codes", call.call_args.kwargs)
         self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
         self.assertEqual(call.call_args.kwargs["agent_role"], "quality")
         self.assertEqual(call.call_args.kwargs["timeout_secs"], 42.0)

@@ -764,9 +764,6 @@ def encode_body(body: dict) -> bytes:
     return json.dumps(body, allow_nan=False).encode("utf-8")
 
 
-DECIDR_CATEGORY_OVERRIDES = {"context_exceeded": "JEV.CONTEXT_EXCEEDED"}
-
-
 class _JevResponse(dict):
     """A normal response mapping with the send count returned by the wheel."""
 
@@ -795,8 +792,7 @@ def call_jev(body: dict, timeout: float) -> Result[dict, JudgeError]:
     """Call the shared client; credentials and provider retries belong to sc-decidr."""
     record = decidr_client.call_result(
         encode_body(body).decode("utf-8"), model=body["model"], project="judge-jev", agent_role="judge",
-        abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_OVERRIDES,
-        timeout_secs=timeout,
+        abort_on=frozenset({"auth"}), timeout_secs=timeout,
     )
     return _judge_result(record)
 
@@ -1165,7 +1161,9 @@ def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dr
         "raw_response": raw, "answers": raw["answers"] if raw is not None else None,
         "model_answered": raw.get("model") if raw is not None else None,
         "threshold": settings.threshold, "verdict": verdict, "min_confidence": min_conf, "leaning": leaning,
-        "retry_count": max((wheel_attempts if wheel_attempts is not None else len(attempts)) - 1, 0), "attempts": attempts,
+        "retry_count": (max(wheel_attempts - 1, 0) if type(wheel_attempts) is int else
+                        max(len(attempts) - 1, 0) if attempts else 0 if dry_run else None),
+        "attempts": attempts,
         "error": None if error is None else {"code": error.code,
                                              "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
                                              "recoverable": error.recoverable},
@@ -1183,23 +1181,12 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
             wheel_attempts = getattr(got.value, "sc_agent_sends", None)
             got = validate_response(got.value, job.questions)
         if isinstance(got, Ok):
-            attempts = ([{"attempt": attempt, "ok": False} for attempt in range(1, wheel_attempts)] +
-                        [{"attempt": wheel_attempts, "ok": True}]) if type(wheel_attempts) is int and wheel_attempts > 0 else []
-            return _line(job, settings, got.value, attempts, None, False,
-                         wheel_attempts if type(wheel_attempts) is int and wheel_attempts > 0 else 0)
+            return _line(job, settings, got.value, [], None, False, wheel_attempts)
         error = got.error
         observed_attempts = (error.meta or {}).get("attempts")
         if type(observed_attempts) is int:
             wheel_attempts = observed_attempts
-        if type(wheel_attempts) is int and wheel_attempts > 0:
-            attempts = [{"attempt": attempt, "ok": False} for attempt in range(1, wheel_attempts)]
-            attempts.append({"attempt": wheel_attempts, "ok": False,
-                             "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
-                                       "recoverable": error.recoverable}})
-        else:
-            attempts = []
-        return _line(job, settings, None, attempts, error, False,
-                     wheel_attempts if type(wheel_attempts) is int and wheel_attempts > 0 else 0)
+        return _line(job, settings, None, [], error, False, wheel_attempts)
 
     attempts, raw, error = [], None, None
     for attempt in range(1, BATCH_FIXTURE_RETRY_LIMIT + 2):
@@ -1548,17 +1535,8 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
                 raw, error = None, checked.error
         else:
             raw, error = None, got.error
-        if type(attempts_count) is int and attempts_count > 0:
-            attempts = [{"attempt": attempt, "ok": False} for attempt in range(1, attempts_count)]
-            attempts.append({"attempt": attempts_count, "ok": error is None})
-            if error is not None:
-                attempts[-1]["error"] = {"code": error.code,
-                                          "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
-                                          "recoverable": error.recoverable}
-        else:
-            attempts = []
-        result_line = _line(job, settings, raw, attempts, error, False,
-                            attempts_count if type(attempts_count) is int and attempts_count > 0 else 0)
+        attempts = []
+        result_line = _line(job, settings, raw, attempts, error, False, attempts_count)
         logged = log_result_line(log, result_line, fields or {})
         if isinstance(logged, Err):
             general_log_errors.append(logged.error)
@@ -1569,8 +1547,7 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
     batch = decidr_client.call_batch_results(
         [encode_body(job.body).decode("utf-8") for job in jobs],
         model=settings.model, project="judge-jev", agent_role="quality",
-        abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_OVERRIDES,
-        general_log=record_general, timeout_secs=settings.timeout,
+        abort_on=frozenset({"auth"}), general_log=record_general, timeout_secs=settings.timeout,
         workers=settings.max_workers, on_result=persist,
     )
     if general_log_errors:

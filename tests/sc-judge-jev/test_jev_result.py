@@ -97,8 +97,8 @@ class JevPropagationTests(unittest.TestCase):
 
     def test_non_transient_err_is_recorded_once(self):
         line, calls = self.run_job(Err(jj.JudgeError("JEV.VALIDATION", "typed validation error")))
-        self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], calls),
-                         (False, "JEV.VALIDATION", 0, 1))
+        self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], line["attempts"], calls),
+                         (False, "JEV.VALIDATION", None, [], 1))
 
     def test_abort_code_stops_the_batch(self):
         refused = jj.JudgeError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
@@ -109,8 +109,8 @@ class JevPropagationTests(unittest.TestCase):
         down = jj.JudgeError("JEV.NETWORK", "down", recoverable=True)
         down.meta = {"attempts": 4}
         line, calls = self.run_job(Err(down))
-        self.assertEqual((line["ok"], line["error"]["code"], calls, line["retry_count"], line["attempts"][-1]["attempt"]),
-                         (False, "JEV.NETWORK", 1, 3, 4))
+        self.assertEqual((line["ok"], line["error"]["code"], calls, line["retry_count"], line["attempts"]),
+                         (False, "JEV.NETWORK", 1, 3, []))
 
     def test_controlled_fixture_sequence_records_failure_then_fallback(self):
         job, settings = self.job()
