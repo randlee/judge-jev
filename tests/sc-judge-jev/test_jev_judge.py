@@ -117,11 +117,11 @@ def wheel_record(result, position=0):
     error = parsed.get("error")
     if isinstance(error, dict):
         category = error.get("category")
-        code = mapped or {"auth": "AUTH.CREDENTIALS", "quota": "JEV.RATE_LIMITED", "busy": "JEV.OVERLOADED",
-                          "network": "JEV.NETWORK", "response_invalid": "JEV.RESPONSE_INVALID",
-                          "validation": "JEV.VALIDATION", "cancelled": "CANCELED"}.get(category, "DECIDR.ERROR")
+        code = mapped or {"auth": "AUTH.CREDENTIALS", "quota": "DECIDR.RATE_LIMITED", "busy": "DECIDR.OVERLOADED",
+                          "network": "DECIDR.NETWORK", "response_invalid": "DECIDR.RESPONSE_INVALID",
+                          "validation": "DECIDR.VALIDATION", "cancelled": "CANCELED"}.get(category, "DECIDR.ERROR")
         if error.get("id") == "decision.context_exceeded":
-            code = "JEV.CONTEXT_EXCEEDED"
+            code = "DECIDR.CONTEXT_EXCEEDED"
         detail = jj.ClientError(code, error.get("message", "wheel error"),
                                 retryable=(error.get("id") == "decision.context_exceeded" or
                                            category in ("quota", "busy", "network", "response_invalid")),
@@ -278,10 +278,10 @@ class ResponseValidationTests(unittest.TestCase):
 
 class WheelErrorMappingTests(unittest.TestCase):
     def test_context_error_uses_shared_record_and_preserves_attempt_metadata(self):
-        detail = jj.ClientError("JEV.CONTEXT_EXCEEDED", "context exceeded", True, "Shorten the evidence for this item.", retry_after_ms=1200, attempts=3, data={"id": "decision.context_exceeded"})
+        detail = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "context exceeded", True, "Shorten the evidence for this item.", retry_after_ms=1200, attempts=3, data={"id": "decision.context_exceeded"})
         error = jj._judge_result({"ok": False, "error": detail, "attempts": 3, "position": None, "line": None}).error
         self.assertEqual((error.code, error.retryable, error.attempts, error.retry_after_ms),
-                         ("JEV.CONTEXT_EXCEEDED", True, 3, 1200))
+                         ("DECIDR.CONTEXT_EXCEEDED", True, 3, 1200))
 
     def test_auth_error_withholds_provider_message(self):
         detail = jj.ClientError("AUTH.CREDENTIALS", "Rust authentication failure", action="Check credentials.", status=401, attempts=1)

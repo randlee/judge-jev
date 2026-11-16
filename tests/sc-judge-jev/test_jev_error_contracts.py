@@ -36,23 +36,23 @@ class ConsumerErrorContracts(unittest.TestCase):
     def test_context_error_preserves_retryability_and_metadata(self):
         detail = {"id": "decision.context_exceeded", "category": "validation", "message": "oversized",
                   "sends": 3, "retry_after_ms": 500}
-        record = wheel_record((json.dumps({"error": detail, "sends": 3}), "JEV.VALIDATION"))
+        record = wheel_record((json.dumps({"error": detail, "sends": 3}), "DECIDR.VALIDATION"))
         with mock.patch.object(decidr_client, "call_result", return_value=record):
             got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
         self.assertEqual((got.error.code, got.error.retryable, got.error.attempts, got.error.retry_after_ms),
-                         ("JEV.CONTEXT_EXCEEDED", True, 3, 500))
+                         ("DECIDR.CONTEXT_EXCEEDED", True, 3, 500))
 
     def test_batch_uses_records_default_credentials_and_attempt_count(self):
         settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
         detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
-        record = wheel_record((json.dumps({"error": detail, "sends": 4}), "JEV.OVERLOADED"))
+        record = wheel_record((json.dumps({"error": detail, "sends": 4}), "DECIDR.OVERLOADED"))
         log = mock.Mock()
         log.event.return_value = jj.Ok(None)
 
         def batch_result(_requests, **kwargs):
             kwargs["general_log"]({"action": "sc_decidr.error", "target": "sc_decidr",
                                    "correlation_id": "request-1",
-                                   "fields": {"code": "JEV.OVERLOADED", "message": "busy"}})
+                                   "fields": {"code": "DECIDR.OVERLOADED", "message": "busy"}})
             kwargs["on_result"](record)
             return {"ok": True, "value": [record], "position": None, "line": None, "attempts": None}
 
@@ -61,10 +61,10 @@ class ConsumerErrorContracts(unittest.TestCase):
                 mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result) as call:
             got = jj._live_batch_results([request_line()], settings, log, False)
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
-                          got.value[0]["attempts"]), ("JEV.OVERLOADED", 3, []))
+                          got.value[0]["attempts"]), ("DECIDR.OVERLOADED", 3, []))
         log_line.assert_not_called()
         log.event.assert_called_once_with("sc_decidr.error",
-                                          {"sc_agent_target": "sc_decidr", "code": "JEV.OVERLOADED", "message": "busy"},
+                                          {"sc_agent_target": "sc_decidr", "code": "DECIDR.OVERLOADED", "message": "busy"},
                                           correlation_id="request-1")
         self.assertNotIn("category_codes", call.call_args.kwargs)
         self.assertEqual(call.call_args.kwargs["project"], "judge-jev")

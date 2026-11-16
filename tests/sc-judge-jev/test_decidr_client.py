@@ -20,6 +20,31 @@ import jev_judge
 
 
 class ConsumerAdoptionTests(unittest.TestCase):
+    def test_shared_default_codes_preserve_wheel_message_and_recovery(self):
+        wheel = types.ModuleType("sc_agent")
+        wheel.category = lambda encoded: json.loads(encoded)["category"]
+        wheel.retryable = lambda encoded: True
+        for category, expected in (("quota", "DECIDR.RATE_LIMITED"), ("busy", "DECIDR.OVERLOADED"),
+                                   ("network", "DECIDR.NETWORK"), ("validation", "DECIDR.VALIDATION"),
+                                   ("response_invalid", "DECIDR.RESPONSE_INVALID")):
+            with self.subTest(category=category), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+                error = decidr_client.wheel_error({"id": "test", "category": category,
+                                                   "message": "Rust message", "recovery": "Rust recovery"})
+                self.assertEqual((error.code, error.message, error.action),
+                                 (expected, "Rust message", "Rust recovery"))
+        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+            error = decidr_client.wheel_error({"id": "decision.context_exceeded", "category": "validation",
+                                               "message": "context too large"})
+        self.assertEqual(error.code, "DECIDR.CONTEXT_EXCEEDED")
+
+    def test_missing_sitr_returns_actionable_shared_error(self):
+        with mock.patch.dict(sys.modules, {"sc_treesitter": None}):
+            with self.assertRaises(decidr_client.ClientError) as caught:
+                decidr_client.extract("python", "query", "source")
+        self.assertEqual(caught.exception.code, "DEPENDENCY.SITR")
+        self.assertIn(f"sitr=={jev_support.SITR_VERSION}", caught.exception.message)
+        self.assertIn(f"sitr=={jev_support.SITR_VERSION}", caught.exception.action)
+
     def test_script_render_uses_the_sitr_pin_independently(self):
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.object(jev_support, "SC_DECIDR_VERSION", "7.0.0"), \

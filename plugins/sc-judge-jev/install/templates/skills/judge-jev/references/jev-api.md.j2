@@ -82,10 +82,10 @@ The answer is recorded once per repository, never per session: ask the user, the
 | `AUTH.CREDENTIALS` | sc-agent | Credential missing, malformed, or rejected. Authentication failure cancels remaining batch requests. |
 | `POLICY.REMOTE_JUDGE_DISABLED` | pre-flight | `allow_remote_judge` is `false` or absent. Absent: ask the user once, record it with `judge_jev_settings.py set`, commit. `false`: only the user changes it. `--dry-run` works either way |
 | `DEPENDENCY.PYYAML`, `SETTINGS.*`, `REPO.NOT_FOUND` | pre-flight | The settings file could not be read; fix what the error names. Never a silent default |
-| `JEV.RATE_LIMITED`, `JEV.OVERLOADED`, `JEV.NETWORK` | sc-agent | Typed transport errors. See `attempts` for sends made; judge-jev does not resend requests. |
-| `JEV.RESPONSE_INVALID` | client or response validation | Malformed client result or answer. The judge validates the response and does not resend it. |
-| `JEV.CONTEXT_EXCEEDED` | `decision.context_exceeded` | The provider rejected the request for context size; shorten the evidence. |
-| `JEV.VALIDATION` | typed request validation | Request rejected; usually a malformed override |
+| `DECIDR.RATE_LIMITED`, `DECIDR.OVERLOADED`, `DECIDR.NETWORK` | sc-agent | Typed transport errors. See `attempts` for sends made; judge-jev does not resend requests. |
+| `DECIDR.RESPONSE_INVALID`, `JEV.RESPONSE_INVALID` | client or response validation | Malformed provider result or answer. The judge validates the response and does not resend it. |
+| `DECIDR.CONTEXT_EXCEEDED` | `decision.context_exceeded` | The provider rejected the request for context size; shorten the evidence. |
+| `DECIDR.VALIDATION` | typed request validation | Request rejected; usually a malformed override |
 | `VALIDATION.ANCHORS`, `VALIDATION.INPUT` | record / arguments | Fix `anchors.json` (`validate`) or the flags |
 | `QUESTIONS.ROLES` | question set | An override renamed a question ID; keep the default IDs |
 | `INPUT.MISSING`, `INPUT.MALFORMED`, `INPUT.EMPTY` | files | A path is not a file, not JSON, or the item text is empty |

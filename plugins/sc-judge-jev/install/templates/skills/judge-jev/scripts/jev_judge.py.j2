@@ -17,8 +17,8 @@ required_variables:
 #   "pyshacl>=0.30,<1",
 #   "sc-observability==1.5.0",
 # # Matched sc-decidr and sitr releases are documented, not enforced (REQ-SAG-0018; ADR-SAG-0019 decision 4).
-#   "sc-decidr==0.2.4",
-#   "sitr==0.2.4",
+#   "sc-decidr==0.2.5",
+#   "sitr==0.2.5",
 # ]
 # ///
 """jev_judge.py
@@ -1000,7 +1000,8 @@ BATCH_RESULT_SCHEMA = "judge-jev/jev-batch-result/1"
 BATCH_MAX_WORKERS = 4              # parallel Jev evaluators; the anchor-tuning protocol's cap
 BATCH_FIXTURE_RETRY_LIMIT = 1       # advances only an explicit controlled fixture sequence; live retries belong to sc-agent
 BATCH_FIXTURE_ERROR = "__error__"  # an answers-file attempt {"__error__": "<code>"} simulates a failed call
-FIXTURE_RETRYABLE_CODES = frozenset(("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID"))
+FIXTURE_RETRYABLE_CODES = frozenset(("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID",
+                                     "DECIDR.RATE_LIMITED", "DECIDR.OVERLOADED", "DECIDR.NETWORK", "DECIDR.RESPONSE_INVALID"))
 
 
 class BatchSettings(NamedTuple):

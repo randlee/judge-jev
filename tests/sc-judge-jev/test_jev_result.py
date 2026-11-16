@@ -64,10 +64,10 @@ class ScriptErrValueTests(unittest.TestCase):
     def test_jev_judge(self):
         missing = jj.load_json("/nonexistent/x.json", "thing")
         self.assertEqual((missing.error.code, missing.error.message), ("INPUT.MISSING", "thing not found: '/nonexistent/x.json'"))
-        error = jj.ClientError("JEV.CONTEXT_EXCEEDED", "large", True, "Shorten evidence.", attempts=2)
+        error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "large", True, "Shorten evidence.", attempts=2)
         mapped = jj._judge_result({"ok": False, "error": error, "attempts": 2})
         self.assertIs(mapped.error, error)
-        self.assertEqual((mapped.error.code, mapped.error.attempts), ("JEV.CONTEXT_EXCEEDED", 2))
+        self.assertEqual((mapped.error.code, mapped.error.attempts), ("DECIDR.CONTEXT_EXCEEDED", 2))
 
     def test_shared_error_is_carried_in_result_and_can_be_raised(self):
         self.assertTrue(issubclass(jj.ClientError, BaseException))
@@ -95,9 +95,9 @@ class JevPropagationTests(unittest.TestCase):
         return line, called.call_count
 
     def test_non_transient_err_is_recorded_once(self):
-        line, calls = self.run_job(Err(jj.ClientError("JEV.VALIDATION", "typed validation error")))
+        line, calls = self.run_job(Err(jj.ClientError("DECIDR.VALIDATION", "typed validation error")))
         self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], line["attempts"], calls),
-                         (False, "JEV.VALIDATION", None, [], 1))
+                         (False, "DECIDR.VALIDATION", None, [], 1))
 
     def test_abort_code_stops_the_batch(self):
         refused = jj.ClientError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
@@ -106,14 +106,14 @@ class JevPropagationTests(unittest.TestCase):
 
     def test_batch_preserves_wheel_message_and_action(self):
         message = "Rust error " + "x" * 5000
-        error = jj.ClientError("JEV.NETWORK", message, action="Rust recovery", attempts=2)
+        error = jj.ClientError("DECIDR.NETWORK", message, action="Rust recovery", attempts=2)
         line, calls = self.run_job(Err(error))
         self.assertEqual(calls, 1)
         self.assertEqual(line["error"]["message"], message)
         self.assertEqual(line["error"]["suggested_action"], "Rust recovery")
 
     def test_stream_summary_preserves_wheel_message_and_action(self):
-        failed = [{"request_id": "r1", "error": {"code": "JEV.NETWORK", "message": "Rust failure",
+        failed = [{"request_id": "r1", "error": {"code": "DECIDR.NETWORK", "message": "Rust failure",
                                                    "recoverable": True, "suggested_action": "Rust recovery"}}]
         args = mock.Mock(format="json")
         args.func.return_value = jj.Ok(jj.StreamedResult(failed))
@@ -127,11 +127,11 @@ class JevPropagationTests(unittest.TestCase):
         self.assertEqual(error["suggested_action"], "Rust recovery")
 
     def test_retry_count_comes_from_the_wheel_error_detail(self):
-        down = jj.ClientError("JEV.NETWORK", "down", retryable=True)
+        down = jj.ClientError("DECIDR.NETWORK", "down", retryable=True)
         down.attempts = 4
         line, calls = self.run_job(Err(down))
         self.assertEqual((line["ok"], line["error"]["code"], calls, line["retry_count"], line["attempts"]),
-                         (False, "JEV.NETWORK", 1, 3, []))
+                         (False, "DECIDR.NETWORK", 1, 3, []))
 
     def test_controlled_fixture_sequence_records_failure_then_fallback(self):
         job, settings = self.job()
@@ -142,6 +142,13 @@ class JevPropagationTests(unittest.TestCase):
                                     "error": {"code": "JEV.NETWORK", "message": "fixture failure JEV.NETWORK",
                                               "recoverable": True}},
                                    {"attempt": 2, "ok": True}]))
+
+    def test_controlled_fixture_accepts_shared_transient_codes(self):
+        job, settings = self.job()
+        line = jj.run_batch_job(job, settings, {"cur": [{"__error__": "DECIDR.NETWORK"}, plan_answers()]})
+        self.assertTrue(line["ok"])
+        self.assertEqual(line["retry_count"], 1)
+        self.assertEqual(line["attempts"][0]["error"]["code"], "DECIDR.NETWORK")
 
     def test_invalid_ok_response_becomes_err(self):
         line, calls = self.run_job(Ok({"answers": []}))

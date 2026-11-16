@@ -281,7 +281,7 @@ class TemplatePinTests(unittest.TestCase):
             runtime.write_text(text.replace(f'"{pin}"', '"sitr==999.0.0"'), encoding="utf-8")
             package = inst.load_package(plugin)
             self.assertIsInstance(package, inst.Ok, getattr(package, "error", None))
-            self.assertEqual(package.value.sc_decidr_version, "0.2.4")
+            self.assertEqual(package.value.sc_decidr_version, inst.load_package().value.sc_decidr_version)
             self.assertEqual(package.value.sitr_version, "999.0.0")
 
     def test_installer_reads_the_real_script_metadata_pin(self):

@@ -246,10 +246,10 @@ class BatchRetryPolicyTests(BatchCase):
 
     def test_retry_count_comes_from_wheel_error_attempts(self):
         detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
-        code, lines, envelope = self.live_batch((json.dumps({"error": detail, "sends": 4}), "JEV.OVERLOADED"))
+        code, lines, envelope = self.live_batch((json.dumps({"error": detail, "sends": 4}), "DECIDR.OVERLOADED"))
         line, = lines
         self.assertEqual((code, line["ok"], line["retry_count"], line["attempts"]), (2, False, 3, []))
-        self.assertEqual(envelope["error"]["code"], "JEV.OVERLOADED")
+        self.assertEqual(envelope["error"]["code"], "DECIDR.OVERLOADED")
 
     def test_success_is_not_retried_by_judge_jev(self):
         response = {"model": "jev-x", "answers": plan_answers()}
