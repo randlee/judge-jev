@@ -122,6 +122,7 @@ class LiveCallConsentTests(unittest.TestCase):
         b = Batched(self, Repo(self, "schema_version: 1\n"))
         self.assertEqual((b.code, b.out["error"]["suggested_action"], b.transport.bodies), (2, ABSENT_ACTION, []))
 
+    @yaml_test
     def test_malformed_consent_is_refused_before_client_is_called(self):
         b = Batched(self, Repo(self, "schema_version: [1\n"), env_values={})
         self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "SETTINGS.MALFORMED", []))

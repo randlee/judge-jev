@@ -229,7 +229,8 @@ class WaveReasons(QualityCase):
 
     def test_live_client_auth_error_is_typed_and_writes_no_result_event(self):
         auth_error = jj.decidr_client.ClientError("AUTH.CREDENTIALS", "no test credential")
-        with env(), mock.patch.object(jj, "_new_cancel_token", return_value=object()), \
+        with env(), mock.patch.object(jj, "remote_preflight", return_value=jj.Ok(None)), \
+                mock.patch.object(jj, "_new_cancel_token", return_value=object()), \
                 mock.patch.object(jj.decidr_client, "call_batch", side_effect=auth_error):
             code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs")])
         self.assertEqual((code, out["error"]["code"]), (2, "AUTH.CREDENTIALS"))
