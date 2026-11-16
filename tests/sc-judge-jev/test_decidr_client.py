@@ -3,6 +3,7 @@ import json
 from importlib import metadata
 from importlib.util import find_spec
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import importlib.util
 import os
 from pathlib import Path
 import sys
@@ -27,7 +28,43 @@ class ConsumerAdoptionTests(unittest.TestCase):
             # The wheel is an optional inline-script dependency and unit CI does not install it.
             installed_version = jev_support.SC_DECIDR_VERSION
         self.assertEqual(decidr_client.SC_DECIDR_VERSION, installed_version)
-        self.assertFalse(hasattr(decidr_client, "extract"))
+        self.assertTrue(callable(decidr_client.extract))
+        self.assertIn("Optional sitr 0.2.4", Path(decidr_client.__file__).read_text(encoding="utf-8"))
+
+    def test_importing_rendered_client_does_not_import_sitr(self):
+        path = Path(decidr_client.__file__)
+        spec = importlib.util.spec_from_file_location("isolated_decidr_client", path)
+        isolated = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {"sc_treesitter": None}):
+            spec.loader.exec_module(isolated)
+        self.assertTrue(callable(isolated.extract))
+
+    def test_optional_sitr_is_lazy_and_extraction_reaches_a_dry_run(self):
+        if importlib.util.find_spec("sc_treesitter") is None:
+            self.skipTest("sitr wheel is not installed in this test environment")
+
+        source = Path(__file__).parent / "fixtures" / "sitr_match.rs"
+        captures = decidr_client.extract("rust", "(match_expression) @match", source.read_text(encoding="utf-8"))
+        self.assertTrue(captures)
+        prompt = "\n".join(capture.text for capture in captures)
+        sent = []
+
+        wheel = types.ModuleType("sc_agent")
+        wheel.SagError = type("SagError", (Exception,), {})
+
+        def dry_run(request, **kwargs):
+            sent.append(json.loads(request))
+            return '{"response": {"dry_run": true}}'
+
+        wheel.send = dry_run
+        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+            request = json.dumps({"model": "jev", "state": prompt, "questions": {"q": {"type": "noul"}}})
+            result = decidr_client.call_result(request, model="jev", project="judge-jev", agent_role="quality",
+                                                abort_on=frozenset(), category_codes={},
+                                                cancel=mock.Mock())
+        self.assertTrue(result["ok"])
+        self.assertEqual(sent[0]["state"], prompt)
+        self.assertIn("match", prompt)
 
     def test_public_client_forwards_explicit_keyring_values_when_requested(self):
         wheel = types.ModuleType("sc_agent")

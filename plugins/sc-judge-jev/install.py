@@ -195,6 +195,7 @@ def version_tuple(version: Optional[str]) -> Optional[Tuple[int, int, int]]:
 class Package:
     version: str
     sc_decidr_version: str
+    sitr_version: str
     skill: Tuple[str, ...]                    # paths under .<target>/skills/judge-jev/
     rendered: frozenset                       # skill paths rendered from <rel>.j2
     agents: Tuple[str, ...]                   # agent file names, the same for every target
@@ -247,6 +248,12 @@ def load_package(plugin_dir: Path = PLUGIN_DIR) -> Result[Package, ToolError]:
     if decidr_match is None:
         return err(bad, f"{runtime_template} must pin sc-decidr to an exact X.Y.Z version")
     sc_decidr_version = decidr_match.group(1)
+    sitr_match = re.search(r'^\s*#\s*"sitr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', runtime_text, re.M)
+    if sitr_match is None:
+        return err(bad, f"{runtime_template} must pin sitr to an exact X.Y.Z version")
+    sitr_version = sitr_match.group(1)
+    if sitr_version != sc_decidr_version:
+        return err(bad, f"{runtime_template} must pin sitr to the sc-decidr version {sc_decidr_version}")
     agents_src = plugin_dir / "install" / "templates" / "agents"
     harness = plugin_dir / "install" / "harness"
     if not skill_src.is_dir():
@@ -282,7 +289,7 @@ def load_package(plugin_dir: Path = PLUGIN_DIR) -> Result[Package, ToolError]:
         legacy_agents = {t: {n: set(s) for n, s in lg["agents"].get(t, {}).items()} for t in TARGETS}
     except (KeyError, TypeError, AttributeError) as exc:
         return err(bad, f"install/legacy-owned.json is malformed ({exc})", "Regenerate it with scripts/gen_install_data.py.")
-    return Ok(Package(version, sc_decidr_version, tuple(sorted(skill)), frozenset(rendered), tuple(agents),
+    return Ok(Package(version, sc_decidr_version, sitr_version, tuple(sorted(skill)), frozenset(rendered), tuple(agents),
                       legacy_skill, legacy_agents))
 
 
@@ -349,6 +356,8 @@ class Renderer:
         if key not in self._cache:
             out = render_template(self.sc_compose, template, self.package.version,
                                   {"sc_decidr_version": self.package.sc_decidr_version,
+                                   "sitr": "true",
+                                   "sitr_version": self.package.sitr_version,
                                    "general_log": "true"})
             if isinstance(out, Err):
                 return out
