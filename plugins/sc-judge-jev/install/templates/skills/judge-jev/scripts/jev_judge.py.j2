@@ -1526,6 +1526,7 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
         position = record["position"]
         job = jobs[position]
         got = _judge_result(record)
+        wheel_error = isinstance(got, Err)
         attempts_count = record["attempts"]
         if isinstance(got, Ok):
             checked = validate_response(got.value, job.questions)
@@ -1537,10 +1538,11 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
             raw, error = None, got.error
         attempts = []
         result_line = _line(job, settings, raw, attempts, error, False, attempts_count)
-        logged = log_result_line(log, result_line, fields or {})
-        if isinstance(logged, Err):
-            general_log_errors.append(logged.error)
-        elif echo:
+        if not wheel_error:
+            logged = log_result_line(log, result_line, fields or {})
+            if isinstance(logged, Err):
+                general_log_errors.append(logged.error)
+        if echo:
             write_stdout_line(encode_result_line(result_line))
         result_lines[position] = result_line
 

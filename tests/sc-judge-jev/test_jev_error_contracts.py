@@ -47,17 +47,25 @@ class ConsumerErrorContracts(unittest.TestCase):
         detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
         record = wheel_record((json.dumps({"error": detail, "sends": 4}), "JEV.OVERLOADED"))
         log = mock.Mock()
+        log.event.return_value = jj.Ok(None)
 
         def batch_result(_requests, **kwargs):
+            kwargs["general_log"]({"action": "sc_decidr.error", "target": "sc_decidr",
+                                   "correlation_id": "request-1",
+                                   "fields": {"code": "JEV.OVERLOADED", "message": "busy"}})
             kwargs["on_result"](record)
             return {"ok": True, "value": [record], "position": None, "line": None, "attempts": None}
 
         with mock.patch.object(jj, "check_log_events", return_value=jj.Ok(None)), \
-                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)), \
+                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)) as log_line, \
                 mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result) as call:
             got = jj._live_batch_results([request_line()], settings, log, False)
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
                           got.value[0]["attempts"]), ("JEV.OVERLOADED", 3, []))
+        log_line.assert_not_called()
+        log.event.assert_called_once_with("sc_decidr.error",
+                                          {"sc_agent_target": "sc_decidr", "code": "JEV.OVERLOADED", "message": "busy"},
+                                          correlation_id="request-1")
         self.assertNotIn("category_codes", call.call_args.kwargs)
         self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
         self.assertEqual(call.call_args.kwargs["agent_role"], "quality")
