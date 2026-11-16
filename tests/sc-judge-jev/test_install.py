@@ -17,6 +17,7 @@ import shutil
 from child_support import run_child
 import sys
 import tempfile
+import tomllib
 import unittest
 from unittest import mock
 
@@ -226,6 +227,20 @@ class RenderingTests(unittest.TestCase):
 
 
 # ---------------------------------------------------------------- generated data
+
+
+class TemplatePinTests(unittest.TestCase):
+    def test_installer_reads_the_real_script_metadata_pin(self):
+        template = SKILL_SRC / "scripts" / "jev_judge.py.j2"
+        text = template.read_text(encoding="utf-8")
+        metadata = text.split("# /// script\n", 1)[1].split("# ///", 1)[0]
+        parsed = tomllib.loads("\n".join(line.removeprefix("# ") for line in metadata.splitlines()))
+        pins = [item.removeprefix("sc-decidr==") for item in parsed["dependencies"]
+                if item.startswith("sc-decidr==")]
+        self.assertEqual(len(pins), 1, "jev_judge.py.j2 must contain one exact sc-decidr pin")
+        package = inst.load_package()
+        self.assertIsInstance(package, inst.Ok, f"installer cannot parse the real script pin: {getattr(package, 'error', None)}")
+        self.assertEqual(package.value.sc_decidr_version, pins[0], "installer pin differs from script metadata")
 
 
 class GeneratedDataTests(unittest.TestCase):
