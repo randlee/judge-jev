@@ -120,8 +120,6 @@ except ImportError as _exc:  # before any model exists: print the typed error by
     sys.exit(2)
 
 
-CREDENTIAL_SERVICE = "plan-anchor"
-CREDENTIAL_ACCOUNT = "typesafe-api-key"
 DEFAULT_MODEL = "jev-latest"
 DEFAULT_THRESHOLD = 0.6
 DEFAULT_MAX_REQUEST_BYTES = 24000  # plan gate: what Jev reads reliably (a planted contradiction 28k deep scored 0.46 vs 0.79 near the top)
@@ -894,8 +892,7 @@ def call_jev(body: dict, timeout: float) -> Result[dict, JudgeError]:
         line, mapped_code = decidr_client.call(
             encode_body(body).decode("utf-8"), model=body["model"], project="judge-jev", agent_role="judge",
             abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_CODES, cancel=_new_cancel_token(),
-            keyring_service=CREDENTIAL_SERVICE, keyring_account=CREDENTIAL_ACCOUNT, timeout_secs=timeout,
-            session_log=record_session,
+            timeout_secs=timeout, session_log=record_session,
         )
     except decidr_client.ClientError as exc:
         return fail(exc.code, str(exc), action="Run with the jev_judge.py inline dependencies in the active Python environment.")
@@ -1643,7 +1640,7 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
             [encode_body(job.body).decode("utf-8") for job in jobs],
             model=settings.model, project="judge-jev", agent_role="quality",
             abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_CODES,
-            cancel=_new_cancel_token(), keyring_service=CREDENTIAL_SERVICE, keyring_account=CREDENTIAL_ACCOUNT,
+            cancel=_new_cancel_token(),
             general_log=record_general, session_log=record_session,
             timeout_secs=settings.timeout, workers=settings.max_workers,
         )

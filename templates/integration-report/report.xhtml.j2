@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>judge-jev live integration report: {{ platform }}</title>
+  <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+</head>
+<body>
+  <h1>judge-jev live integration report</h1>
+  <p>This report records an owner-attended run against the real Jev provider.</p>
+  <dl>
+    <dt>Platform</dt><dd>{{ platform }}</dd>
+    <dt>Run date and time (UTC)</dt><dd>{{ run_utc }}</dd>
+    <dt>Owner present</dt><dd>{{ owner }}</dd>
+    <dt>judge-jev commit</dt><dd>{{ judge_jev_commit }}</dd>
+    <dt>sc-agent version</dt><dd>{{ sc_agent_version }}</dd>
+    <dt>Python version</dt><dd>{{ python_version }}</dd>
+    <dt>Command and selected cases</dt><dd><pre>{{ command_and_cases }}</pre></dd>
+    <dt>Outcome</dt><dd>{{ outcome }}</dd>
+    <dt>Evidence and failures</dt><dd><pre>{{ evidence_and_failures }}</pre></dd>
+  </dl>
+</body>
+</html>

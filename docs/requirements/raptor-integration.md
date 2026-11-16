@@ -108,8 +108,9 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 **MUST statements:**
 
 - The adopted sc-agent client MUST resolve the TypeSafe API key from the
-  repository `.env` file first, then `TYPESAFE_API_KEY`, then the platform
-  credential store, service `plan-anchor`, account `typesafe-api-key`.
+  repository `.env` file first, then `TYPESAFE_API_KEY`, then its default
+  platform credential entry (service `TYPESAFE_API_KEY`, current OS account).
+- judge-jev MUST NOT pass keyring service or account overrides to sc-agent.
 
 ### Rationale
 
@@ -119,8 +120,8 @@ Tools that call Jev share one stored key, saved once.
 
 **Acceptance Criteria:**
 
-- [ ] A key stored under that service and account is found with no other
-  setup.
+- [ ] A key stored in sc-agent's default credential entry is found with no
+  other setup.
 
 ## REQ-JEV-0004: Remote-judge consent
 

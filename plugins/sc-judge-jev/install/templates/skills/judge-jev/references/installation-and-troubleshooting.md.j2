@@ -76,9 +76,9 @@ allow_remote_judge: true
 
 sc-agent resolves the key in this order: the repository `.env` file, `TYPESAFE_API_KEY` in the process environment, then the platform credential store. judge-jev does not read, validate, or retry credentials itself. An invalid higher-priority value fails closed. Cloud, CI, and remote agents should use their platform secret injection.
 
-- macOS: Keychain generic-password item with service `plan-anchor` and account `typesafe-api-key`.
-- Windows: Credential Manager generic credential with target `plan-anchor:typesafe-api-key`.
-- Linux: Secret Service item returned by `secret-tool lookup service plan-anchor account typesafe-api-key`. Create it without putting the key on a command line with `secret-tool store --label="plan-anchor TypeSafe API key" service plan-anchor account typesafe-api-key` and enter the value on standard input.
+- macOS: Keychain generic-password item with service `TYPESAFE_API_KEY` and the current OS account.
+- Windows: Credential Manager generic credential with target `TYPESAFE_API_KEY` for the current OS account.
+- Linux: Secret Service item returned by `secret-tool lookup service TYPESAFE_API_KEY`. Create it without putting the key on a command line with `secret-tool store --label="TypeSafe API key" service TYPESAFE_API_KEY` and enter the value on standard input.
 
 - Create a key at typesafe.ai. Read it silently so it does not appear in the command line, shell history, or terminal output, then export it in the shell that launches Claude Code or Codex:
   ```bash

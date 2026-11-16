@@ -13,7 +13,7 @@ class ConsumerErrorContracts(unittest.TestCase):
     def setUp(self):
         self.cancel = mock.Mock()
 
-    def test_single_call_uses_public_client_and_judge_jev_overrides(self):
+    def test_single_call_uses_public_client_and_default_sc_agent_credentials(self):
         response = {"model": "jev-x", "answers": plan_answers()}
         wire = json.dumps({"response": response})
         with mock.patch.object(jj, "_new_cancel_token", return_value=self.cancel), \
@@ -26,8 +26,8 @@ class ConsumerErrorContracts(unittest.TestCase):
         self.assertEqual(call.call_args.kwargs["agent_role"], "judge")
         self.assertEqual(call.call_args.kwargs["abort_on"], frozenset({"auth"}))
         self.assertEqual(call.call_args.kwargs["timeout_secs"], 12.5)
-        self.assertEqual(call.call_args.kwargs["keyring_service"], jj.CREDENTIAL_SERVICE)
-        self.assertEqual(call.call_args.kwargs["keyring_account"], jj.CREDENTIAL_ACCOUNT)
+        self.assertNotIn("keyring_service", call.call_args.kwargs)
+        self.assertNotIn("keyring_account", call.call_args.kwargs)
         self.assertTrue(call.call_args.kwargs["session_log"])
 
     def test_single_call_reads_success_send_count_from_session_row(self):
@@ -74,6 +74,8 @@ class ConsumerErrorContracts(unittest.TestCase):
         self.assertEqual(call.call_args.kwargs["workers"], 2)
         self.assertTrue(call.call_args.kwargs["general_log"])
         self.assertTrue(call.call_args.kwargs["session_log"])
+        self.assertNotIn("keyring_service", call.call_args.kwargs)
+        self.assertNotIn("keyring_account", call.call_args.kwargs)
 
     def test_batch_success_uses_send_count_from_session_row(self):
         settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
