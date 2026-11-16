@@ -228,14 +228,13 @@ class WaveReasons(QualityCase):
         self.assertEqual(out["data"]["tree"]["id"], "quality-adr")
 
     def test_live_client_auth_error_is_typed_and_writes_no_result_event(self):
-        auth_record = {"ok": False, "position": None, "line": None, "attempts": None,
-                       "error": {"code": "AUTH.CREDENTIALS", "message": "no test credential",
-                                 "retryable": False, "action": "Check credentials.", "status": 401,
-                                 "retry_after_ms": None, "attempts": None, "data": {}}}
+        auth = jj.ClientError("AUTH.CREDENTIALS", "no test credential", action="Check credentials.", status=401)
+        auth_record = {"ok": False, "position": None, "line": None, "attempts": None, "error": auth}
         with env(), mock.patch.object(jj, "remote_preflight", return_value=jj.Ok(None)), \
                 mock.patch.object(jj.decidr_client, "call_batch_results", return_value=auth_record):
             code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs")])
-        self.assertEqual((code, out["error"]["code"]), (2, "AUTH.CREDENTIALS"))
+        self.assertEqual((code, out["error"]["code"], out["error"]["message"], out["error"]["suggested_action"]),
+                         (2, "AUTH.CREDENTIALS", "no test credential", "Check credentials."))
         self.assertEqual(read_log(self.d / "logs"), [])
 
 

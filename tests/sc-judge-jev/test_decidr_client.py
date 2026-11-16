@@ -71,15 +71,15 @@ class ConsumerAdoptionTests(unittest.TestCase):
         wheel.SagError = type("SagError", (Exception,), {})
         line = json.dumps({"response": {"answers": {}}})
         wheel.send = mock.Mock(return_value=line)
-        wheel.send_batch = mock.Mock(return_value=[line, line])
+        wheel.send_batch = mock.Mock(return_value=[json.dumps({"response": {"answers": {}}, "position": i}) for i in range(2)])
         wheel.category = mock.Mock()
         cancel = mock.Mock()
         options = dict(model="jev", project="judge-jev", agent_role="quality",
                        abort_on=frozenset(), category_codes={}, cancel=cancel,
                        keyring_service="plan-anchor", keyring_account="typesafe-api-key")
         with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
-            self.assertEqual(decidr_client.call("one", **options), (line, None))
-            self.assertEqual(decidr_client.call_batch(["one", "two"], **options), [(line, None), (line, None)])
+            self.assertTrue(decidr_client.call_result("one", **options)["ok"])
+            self.assertTrue(decidr_client.call_batch_results(["one", "two"], **options)["ok"])
         for operation in (wheel.send, wheel.send_batch):
             args = operation.call_args.kwargs
             self.assertEqual(args["keyring_service"], "plan-anchor")
@@ -145,13 +145,13 @@ class ConsumerAdoptionTests(unittest.TestCase):
                                    category_codes={}, cancel=sc_agent.CancelToken(), config_dir=str(config))
                     dotenv = root / ".env"
                     dotenv.write_text("TYPESAFE_API_KEY=dotenv-test-key\n")
-                    decidr_client.call(request, **options)
+                    decidr_client.call_result(request, **options)
                     dotenv.unlink()
-                    decidr_client.call(request, **options)
+                    decidr_client.call_result(request, **options)
                     del os.environ["TYPESAFE_API_KEY"]
-                    with self.assertRaises(sc_agent.SagError) as caught:
-                        decidr_client.call(request, **options)
-                    self.assertIn("secrets.keyring_construction_refused", caught.exception.detail)
+                    result = decidr_client.call_result(request, **options)
+                    self.assertFalse(result["ok"])
+                    self.assertIn("secrets.keyring_construction_refused", json.dumps(result["error"].data))
             finally:
                 os.chdir(previous)
         self.assertEqual(seen, ["Bearer dotenv-test-key", "Bearer env-test-key"])
@@ -159,15 +159,16 @@ class ConsumerAdoptionTests(unittest.TestCase):
     def test_auth_error_line_maps_category_and_cancels(self):
         wheel = types.ModuleType("sc_agent")
         wheel.SagError = type("SagError", (Exception,), {})
-        line = json.dumps({"error": {"id": "auth", "category": "auth"}})
+        line = json.dumps({"error": {"id": "auth", "category": "auth", "message": "Rust auth failure", "recovery": "Fix key"}})
         wheel.send = mock.Mock(return_value=line)
         wheel.category = mock.Mock(return_value="auth")
+        wheel.retryable = mock.Mock(return_value=False)
         cancel = mock.Mock()
         with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
-            result = decidr_client.call("one", model="jev", project="judge-jev",
+            result = decidr_client.call_result("one", model="jev", project="judge-jev",
                                        agent_role="quality", abort_on=frozenset({"auth"}),
                                        category_codes={"auth": "AUTH"}, cancel=cancel)
-        self.assertEqual(result, (line, "AUTH"))
+        self.assertEqual((result["error"].code, result["error"].message, result["error"].action), ("AUTH", "Rust auth failure", "Fix key"))
         cancel.cancel.assert_called_once_with()
         self.assertEqual(json.loads(wheel.category.call_args.args[0])["category"], "auth")
 
@@ -176,14 +177,17 @@ class ConsumerAdoptionTests(unittest.TestCase):
         wheel.SagError = type("SagError", (Exception,), {})
         error = wheel.SagError("denied")
         error.category = "auth"
+        error.detail = {"id": "auth", "category": "auth", "message": "Rust denied", "recovery": "Fix key"}
+        wheel.category = mock.Mock(return_value="auth")
+        wheel.retryable = mock.Mock(return_value=False)
         wheel.send = mock.Mock(side_effect=error)
         cancel = mock.Mock()
         with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
-            with self.assertRaises(wheel.SagError) as caught:
-                decidr_client.call("one", model="jev", project="judge-jev",
-                                   agent_role="quality", abort_on=frozenset({"auth"}),
-                                   category_codes={}, cancel=cancel)
-        self.assertIs(caught.exception, error)
+            result = decidr_client.call_result("one", model="jev", project="judge-jev",
+                                               agent_role="quality", abort_on=frozenset({"auth"}),
+                                               category_codes={}, cancel=cancel)
+        self.assertIsInstance(result["error"], decidr_client.ClientError)
+        self.assertEqual((result["error"].message, result["error"].action), ("Rust denied", "Fix key"))
         cancel.cancel.assert_called_once_with()
 
     def test_keyboard_interrupt_cancels_and_propagates(self):
@@ -193,7 +197,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
         cancel = mock.Mock()
         with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             with self.assertRaises(KeyboardInterrupt):
-                decidr_client.call("one", model="jev", project="judge-jev",
+                decidr_client.call_result("one", model="jev", project="judge-jev",
                                    agent_role="quality", abort_on=frozenset(),
                                    category_codes={}, cancel=cancel)
         cancel.cancel.assert_called_once_with()

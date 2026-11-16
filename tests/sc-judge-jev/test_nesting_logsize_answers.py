@@ -75,7 +75,7 @@ class RedactionIsIterative(unittest.TestCase):
                     self.assertLessEqual(depth_of(out["data"])[0], jj.EMIT_MAX_DEPTH)
 
     def test_a_judge_error_with_deep_data_serialises(self):
-        error = jj.JudgeError("PLAN.TOO_LARGE", "big")
+        error = jj.ClientError("PLAN.TOO_LARGE", "big")
         error.data = nested(5000)
         self.assertEqual(depth_of(error.to_json()["data"])[0], 5000)
 

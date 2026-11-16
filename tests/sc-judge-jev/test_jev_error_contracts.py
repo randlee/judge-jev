@@ -39,8 +39,8 @@ class ConsumerErrorContracts(unittest.TestCase):
         record = wheel_record((json.dumps({"error": detail, "sends": 3}), "JEV.VALIDATION"))
         with mock.patch.object(decidr_client, "call_result", return_value=record):
             got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
-        self.assertEqual((got.error.code, got.error.recoverable, got.error.meta["attempts"], got.error.retry_after),
-                         ("JEV.CONTEXT_EXCEEDED", True, 3, 0.5))
+        self.assertEqual((got.error.code, got.error.retryable, got.error.attempts, got.error.retry_after_ms),
+                         ("JEV.CONTEXT_EXCEEDED", True, 3, 500))
 
     def test_batch_uses_records_default_credentials_and_attempt_count(self):
         settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
@@ -100,11 +100,9 @@ class ConsumerErrorContracts(unittest.TestCase):
         self.assertEqual([line["model_answered"] for line in got.value], ["first", "second"])
 
     def test_shared_invalid_result_is_typed(self):
-        detail = {"code": "DECIDR.INVALID_RESULT", "message": "invalid JSON", "retryable": False,
-                  "action": "Inspect the invalid result.", "status": None, "retry_after_ms": None,
-                  "attempts": None, "data": {}}
+        detail = jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON", action="Inspect the invalid result.")
         got = jj._judge_result({"ok": False, "error": detail, "attempts": None, "position": None, "line": None})
-        self.assertEqual((got.error.code, got.error.recoverable), ("DECIDR.INVALID_RESULT", False))
+        self.assertEqual((got.error.code, got.error.retryable), ("DECIDR.INVALID_RESULT", False))
 
 
 if __name__ == "__main__":

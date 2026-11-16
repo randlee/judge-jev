@@ -216,6 +216,9 @@
             },
             "recoverable": {
               "type": "boolean"
+            },
+            "suggested_action": {
+              "type": "string"
             }
           }
         }

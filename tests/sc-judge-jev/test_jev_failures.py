@@ -24,23 +24,21 @@ class SharedClientFailureCompatibility(unittest.TestCase):
             return jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
 
     def test_auth_result_is_typed_and_redacted(self):
-        record = {"ok": False, "position": None, "line": None, "attempts": 1,
-                  "error": {"code": "AUTH.CREDENTIALS", "message": "Bearer secret-token", "retryable": False,
-                            "action": "Check credentials.", "status": 401, "retry_after_ms": None,
-                            "attempts": 1, "data": {"id": "auth.credentials"}}}
+        error = jj.ClientError("AUTH.CREDENTIALS", "Bearer secret-token", action="Check credentials.", status=401, attempts=1)
+        record = {"ok": False, "position": None, "line": None, "attempts": 1, "error": error}
         got = self.call_with(record)
         self.assertIsInstance(got, jj.Err)
         self.assertEqual(got.error.code, "AUTH.CREDENTIALS")
-        self.assertNotIn("secret-token", got.error.message)
+        self.assertIs(got.error, error)
+        self.assertEqual(got.error.message, "Bearer secret-token")
+        self.assertNotIn("secret-token", json.dumps(jj.redact_sensitive(got.error.to_json())))
 
     def test_context_result_uses_shared_category_code(self):
-        record = {"ok": False, "position": None, "line": None, "attempts": 2,
-                  "error": {"code": "JEV.CONTEXT_EXCEEDED", "message": "request too large", "retryable": True,
-                            "action": "Shorten evidence.", "status": None, "retry_after_ms": None,
-                            "attempts": 2, "data": {"id": "decision.context_exceeded"}}}
+        error = jj.ClientError("JEV.CONTEXT_EXCEEDED", "request too large", True, "Shorten evidence.", attempts=2)
+        record = {"ok": False, "position": None, "line": None, "attempts": 2, "error": error}
         got = self.call_with(record)
         self.assertIsInstance(got, jj.Err)
-        self.assertEqual((got.error.code, got.error.recoverable, got.error.meta["attempts"]),
+        self.assertEqual((got.error.code, got.error.retryable, got.error.attempts),
                          ("JEV.CONTEXT_EXCEEDED", True, 2))
 
 

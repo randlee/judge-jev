@@ -39,7 +39,7 @@ and then by one strict pydantic model; a refusal names the field path and the
 rule it breaks. ``validate`` runs those models and nothing else.
 
 Expected failures travel as values: a function that can fail returns
-``Ok(value)`` or ``Err(JudgeError)`` (see ``result.py``) and its caller
+``Ok(value)`` or ``Err(ClientError)`` (see ``result.py``) and its caller
 propagates the ``Err`` explicitly. ``main`` is the only place an error becomes
 JSON on stdout and an exit code; anything unexpected that still raises is
 reported there as SCRIPT.INTERNAL.
@@ -101,7 +101,8 @@ from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, utf8_stdio  # noqa: E402
-from jev_errors import BEARER_RE, JudgeError, redact_sensitive, _redact_text  # noqa: E402,F401  (standard library only)
+from jev_errors import BEARER_RE, redact_sensitive, _redact_text
+from decidr_client import ClientError  # noqa: E402,F401  (standard library only)
 import jev_definitions  # noqa: E402  (standard library only)
 import jev_runs  # noqa: E402  (standard library at import)
 import judge_jev_paths  # noqa: E402  (standard library only)
@@ -143,9 +144,9 @@ WORST_PROBABILITY = 1.2345678901234567e-300  # the longest repr a probability in
 # --------------------------------------------------------------------------- #
 # plumbing
 # --------------------------------------------------------------------------- #
-def fail(code: str, message: str, **fields) -> Err[JudgeError]:
+def fail(code: str, message: str, **fields) -> Err[ClientError]:
     """An expected failure as a value: ``return fail(...)`` where the old code raised."""
-    return Err(JudgeError(code, message, **fields))
+    return Err(ClientError(code, message, **fields))
 
 
 EMIT_MAX_DEPTH = 100  # containers nested deeper than this are replaced by a marker in emitted output (json.dumps(indent=) recurses)
@@ -238,7 +239,7 @@ def stamp() -> str:
     return now_utc().strftime("%Y%m%dT%H%M%SZ")
 
 
-def read_source(path: str, what: str, action: str = "") -> Result[str, JudgeError]:
+def read_source(path: str, what: str, action: str = "") -> Result[str, ClientError]:
     """The UTF-8 text of a file, or of stdin for ``-``; line endings are normalised to LF. Invalid UTF-8 is INPUT.MALFORMED
     (a typed error, never a crash)."""
     if path == "-":
@@ -259,7 +260,7 @@ def read_source(path: str, what: str, action: str = "") -> Result[str, JudgeErro
         return fail("INPUT.MALFORMED", f"{what} could not be read: {exc}", action=f"Check {path} is a readable UTF-8 file.")
 
 
-def decode_json(text: str, path: str, what: str) -> Result[Any, JudgeError]:
+def decode_json(text: str, path: str, what: str) -> Result[Any, ClientError]:
     """The strict JSON of ``text`` (see strict_loads); INPUT.MALFORMED for anything else."""
     on = " on stdin" if path == "-" else ""
     try:
@@ -269,7 +270,7 @@ def decode_json(text: str, path: str, what: str) -> Result[Any, JudgeError]:
                     action=f"Fix the JSON in {'the input' if path == '-' else path}.")
 
 
-def load_json(path: str, what: str) -> Result[Any, JudgeError]:
+def load_json(path: str, what: str) -> Result[Any, ClientError]:
     text = read_source(path, what)
     if isinstance(text, Err):
         return text
@@ -719,21 +720,21 @@ def validate_model(model, data, context=None) -> Result[Any, Refused]:
 # --------------------------------------------------------------------------- #
 # judging
 # --------------------------------------------------------------------------- #
-def question_set_error(refused: Refused, where: str) -> JudgeError:
+def question_set_error(refused: Refused, where: str) -> ClientError:
     """A question-set refusal: QUESTIONS.ROLES when a role is the problem, else INPUT.MALFORMED."""
     roles = refused.first_type == "roles" or refused.first_loc[:1] == ("roles",)
-    return JudgeError("QUESTIONS.ROLES" if roles else "INPUT.MALFORMED", f"{where}: {refused.text}",
+    return ClientError("QUESTIONS.ROLES" if roles else "INPUT.MALFORMED", f"{where}: {refused.text}",
                       action="See references/verdict-gating.md for the role contract." if roles else "See assets/questions/plan.json for the shape.")
 
 
-def parse_question_set(data, where: str) -> Result[QuestionSet, JudgeError]:
+def parse_question_set(data, where: str) -> Result[QuestionSet, ClientError]:
     parsed = validate_model(QuestionSet, data)
     if isinstance(parsed, Err):
         return Err(question_set_error(parsed.error, where))
     return parsed
 
 
-def load_question_set(gate: str, override_path: str = "") -> Result[QuestionSet, JudgeError]:
+def load_question_set(gate: str, override_path: str = "") -> Result[QuestionSet, ClientError]:
     path = override_path or str(QUESTIONS_DIR / f"{gate}.json")
     loaded = load_json(path, f"question set for gate '{gate}'")
     if isinstance(loaded, Err):
@@ -773,23 +774,14 @@ class _JevResponse(dict):
         self.sc_agent_sends = sends
 
 
-def _judge_result(record: dict) -> Result[dict, JudgeError]:
+def _judge_result(record: dict) -> Result[dict, ClientError]:
     """Convert the shared client's typed result record to judge-jev's Result once."""
     if record["ok"]:
         return Ok(_JevResponse(record["value"], record["attempts"]))
-    detail = record["error"]
-    retry_after_ms = detail["retry_after_ms"]
-    message = ("Jev authentication failed; response body withheld"
-               if detail["code"] == "AUTH.CREDENTIALS" else detail["message"])
-    error = JudgeError(detail["code"], message, recoverable=detail["retryable"],
-                       action=detail["action"], status=detail["status"],
-                       retry_after=retry_after_ms / 1000 if retry_after_ms is not None else None)
-    error.meta = {"attempts": record["attempts"], "retry_after_ms": retry_after_ms}
-    error.data = detail["data"]
-    return Err(error)
+    return Err(record["error"])
 
 
-def call_jev(body: dict, timeout: float) -> Result[dict, JudgeError]:
+def call_jev(body: dict, timeout: float) -> Result[dict, ClientError]:
     """Call the shared client; credentials and provider retries belong to sc-decidr."""
     record = decidr_client.call_result(
         encode_body(body).decode("utf-8"), model=body["model"], project="judge-jev", agent_role="judge",
@@ -829,23 +821,23 @@ def answer_problem(ans, question) -> Optional[str]:
     return None if isinstance(parsed, Ok) else parsed.error.text
 
 
-def validate_response(resp: dict, questions: dict, optional=frozenset()) -> Result[dict, JudgeError]:
+def validate_response(resp: dict, questions: dict, optional=frozenset()) -> Result[dict, ClientError]:
     """Every question must be answered except the ``optional`` (extra, never-gating) ones; no unknown ids."""
     if not isinstance(resp, dict) or not isinstance(resp.get("answers"), dict):
-        return fail("JEV.RESPONSE_INVALID", "Jev response has no 'answers' object", recoverable=True,
+        return fail("JEV.RESPONSE_INVALID", "Jev response has no 'answers' object", retryable=True,
                     action="Retry; if it repeats, check the --model name.")
     answers = resp["answers"]
     required = set(questions) - set(optional)
     if not required <= set(answers) or not set(answers) <= set(questions):
         missing, extra = sorted(required - set(answers)), sorted(set(answers) - set(questions))
-        return fail("JEV.RESPONSE_INVALID", f"Jev answer ids differ from the questions (missing {missing}, unexpected {extra})", recoverable=True,
+        return fail("JEV.RESPONSE_INVALID", f"Jev answer ids differ from the questions (missing {missing}, unexpected {extra})", retryable=True,
                     action="Retry; if it repeats, check the question ids in the overrides.")
     for qid, q in questions.items():
         if qid not in answers:
             continue  # an optional question left unanswered
         problem = answer_problem(answers[qid], q)
         if problem:
-            return fail("JEV.RESPONSE_INVALID", _clip(f"invalid answer for {qid}: {problem}", ATTEMPT_MESSAGE_LIMIT), recoverable=True,
+            return fail("JEV.RESPONSE_INVALID", _clip(f"invalid answer for {qid}: {problem}", ATTEMPT_MESSAGE_LIMIT), retryable=True,
                         action="Retry; if it repeats, the question set or the model changed shape.")
     return Ok(resp)
 
@@ -921,7 +913,7 @@ REPO_ROOT_HELP = ("any path inside the repository; the nearest .sc/judge-jev/set
 REMOTE_JUDGE_SET = "python3 scripts/judge_jev_settings.py set allow_remote_judge true|false"
 
 
-def remote_judge_consent(args, what: str) -> Result[None, JudgeError]:
+def remote_judge_consent(args, what: str) -> Result[None, ClientError]:
     """The repository's committed answer to whether record text may go to TypeSafe: ``allow_remote_judge`` in
     .sc/judge-jev/settings.yaml. Only ``true`` passes; ``false`` and an absent answer refuse.
 
@@ -953,18 +945,18 @@ def remote_judge_consent(args, what: str) -> Result[None, JudgeError]:
     return Err(_from_tool_error(answer.error))  # DEPENDENCY.PYYAML, SETTINGS.*: never a silent default
 
 
-def _from_tool_error(error) -> JudgeError:
-    out = JudgeError(error.code, error.message, action=error.action or "")
+def _from_tool_error(error) -> ClientError:
+    out = ClientError(error.code, error.message, action=error.action or "")
     out.data = dict(error.data) if error.data is not None else None
     return out
 
 
-def remote_preflight(args, what: str) -> Result[None, JudgeError]:
+def remote_preflight(args, what: str) -> Result[None, ClientError]:
     """Check repository consent before any record text is sent; sc-agent resolves credentials."""
     return remote_judge_consent(args, what)
 
 
-def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, JudgeError]:
+def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, ClientError]:
     """A fixture of Jev answers keyed by id (or '*'); Ok(None) when no path is given."""
     if not path:
         return Ok(None)
@@ -980,18 +972,18 @@ def load_answers_fixture(path: str, keyed_by: str) -> Result[Any, JudgeError]:
     return Ok(fixture)
 
 
-def answers_envelope_error(data, where: str) -> Optional[JudgeError]:
+def answers_envelope_error(data, where: str) -> Optional[ClientError]:
     """None when ``data`` is a valid answers-file envelope (AnswersFile), else INPUT.MALFORMED naming the field path; the one
     check behind `validate --answers` and --answers-file."""
     parsed = validate_model(AnswersFile, data)
     if isinstance(parsed, Ok):
         return None
-    return JudgeError("INPUT.MALFORMED", f"{where}: {parsed.error.text}",
+    return ClientError("INPUT.MALFORMED", f"{where}: {parsed.error.text}",
                       action="An answers file maps a request key to Jev's answers (an object), a non-empty list of them, or "
                              "an __error__ object with a string code of 1 to " + str(FIXTURE_CODE_LIMIT) + " characters and nothing else.")
 
 
-def check_threshold(value: float, name: str = "--threshold") -> Result[float, JudgeError]:
+def check_threshold(value: float, name: str = "--threshold") -> Result[float, ClientError]:
     if not (0.0 <= value <= 1.0):
         return fail("VALIDATION.INPUT", f"{name} must be between 0 and 1, got {value}")
     return Ok(value)
@@ -1045,14 +1037,14 @@ def batch_run_id(request_id: str) -> str:
     return hashlib.sha256(request_id.encode("utf-8")).hexdigest()[:16]
 
 
-def _safe_id(value, what: str) -> Result[str, JudgeError]:
+def _safe_id(value, what: str) -> Result[str, ClientError]:
     if not isinstance(value, str) or not BATCH_ID_RE.fullmatch(value):
         return fail("VALIDATION.INPUT", f"{what} {value!r} is not a safe id (letters, digits and _.:- only)",
                     action="See assets/schemas/jev-batch-request.schema.json.")
     return Ok(value)
 
 
-def request_line_error(refused: Refused, where: str) -> JudgeError:
+def request_line_error(refused: Refused, where: str) -> ClientError:
     """A request-line refusal: QUESTIONS.ROLES for a role problem, INPUT.MALFORMED for a candidate's question set, else
     VALIDATION.INPUT."""
     loc = refused.first_loc
@@ -1062,10 +1054,10 @@ def request_line_error(refused: Refused, where: str) -> JudgeError:
         code = "INPUT.MALFORMED"
     else:
         code = "VALIDATION.INPUT"
-    return JudgeError(code, f"{where}: {refused.text}", action="See assets/schemas/jev-batch-request.schema.json.")
+    return ClientError(code, f"{where}: {refused.text}", action="See assets/schemas/jev-batch-request.schema.json.")
 
 
-def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict, log_fields=None) -> Result[list, JudgeError]:
+def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict, log_fields=None) -> Result[list, ClientError]:
     """One request line -> its jobs (candidates x repeats, in order). Refuses a malformed line, an oversized request, or a
     request whose log events the logger would refuse, before any call (``log_fields``: the fields the caller adds to every
     event of the line).
@@ -1113,7 +1105,7 @@ def _fixture_missing(keys: tuple) -> Err:
                 action=f"Add an entry for {keys[0]} to the answers file.")
 
 
-def check_fixture_coverage(lines: list, settings: BatchSettings, fixture) -> Result[None, JudgeError]:
+def check_fixture_coverage(lines: list, settings: BatchSettings, fixture) -> Result[None, ClientError]:
     """FIXTURE.MISSING for the first request of ``lines`` the answers fixture has no entry (and no ``*``) for, before any is
     sent. Ok when there is no fixture or the run is a dry run (it consults none)."""
     if fixture is None or settings.dry_run:
@@ -1132,7 +1124,7 @@ def check_fixture_coverage(lines: list, settings: BatchSettings, fixture) -> Res
     return Ok(None)
 
 
-def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int = 1) -> Result[dict, JudgeError]:
+def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int = 1) -> Result[dict, ClientError]:
     keys = _fixture_keys(job)
     entry = next((fixture[k] for k in keys if k in fixture), None)
     if entry is None:
@@ -1143,7 +1135,7 @@ def _fixture_attempt(job: BatchJob, fixture: dict, attempt: int = 1) -> Result[d
         entry = entry[min(attempt, len(entry)) - 1]
     if isinstance(entry, dict) and BATCH_FIXTURE_ERROR in entry:
         code = str(entry[BATCH_FIXTURE_ERROR])
-        return fail(code, f"fixture failure {code}", recoverable=code in FIXTURE_RETRYABLE_CODES)
+        return fail(code, f"fixture failure {code}", retryable=code in FIXTURE_RETRYABLE_CODES)
     return Ok({"model": "fixture", "answers": entry})
 
 
@@ -1165,8 +1157,9 @@ def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dr
                         max(len(attempts) - 1, 0) if attempts else 0 if dry_run else None),
         "attempts": attempts,
         "error": None if error is None else {"code": error.code,
-                                             "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
-                                             "recoverable": error.recoverable},
+                                             "message": error.message,
+                                             "recoverable": error.retryable,
+                                             **({"suggested_action": error.action} if error.action is not None else {})},
     })
 
 
@@ -1183,7 +1176,7 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
     if fixture is None:
         got = call_jev(job.body, settings.timeout)
         count = (getattr(got.value, "sc_agent_sends", None) if isinstance(got, Ok)
-                 else (got.error.meta or {}).get("attempts"))
+                 else got.error.attempts)
         return _batch_result_line(job, settings, got, count)
 
     attempts, raw, error = [], None, None
@@ -1198,8 +1191,8 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
         error = got.error
         attempts.append({"attempt": attempt, "ok": False,
                          "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
-                                   "recoverable": error.recoverable}})
-        if not error.recoverable and error.code not in FIXTURE_RETRYABLE_CODES:
+                                   "recoverable": error.retryable}})
+        if not error.retryable and error.code not in FIXTURE_RETRYABLE_CODES:
             break
     return _line(job, settings, raw, attempts, error, False)
 
@@ -1214,9 +1207,9 @@ async def _aiter(source):
 
 
 class BatchInputError(Exception):
-    """A request line the async API cannot judge; carries the typed JudgeError. The CLI validates every line first, so it never sees one."""
+    """A request line the async API cannot judge; carries the typed ClientError. The CLI validates every line first, so it never sees one."""
 
-    def __init__(self, error: JudgeError):
+    def __init__(self, error: ClientError):
         super().__init__(error.message)
         self.error = error
 
@@ -1244,7 +1237,7 @@ async def stream_batch(source, settings: BatchSettings, fixture=None):
             yield await pending.popleft()
 
 
-def parse_request_lines(text: str, path: str) -> Result[list, JudgeError]:
+def parse_request_lines(text: str, path: str) -> Result[list, ClientError]:
     """Request lines from the text of a request stream: one JSON object per non-empty line."""
     lines = []
     for n, line in enumerate(text.splitlines(), start=1):
@@ -1259,7 +1252,7 @@ def parse_request_lines(text: str, path: str) -> Result[list, JudgeError]:
     return Ok(lines)
 
 
-def read_request_lines(path: str) -> Result[list, JudgeError]:
+def read_request_lines(path: str) -> Result[list, ClientError]:
     """Request lines from a file or stdin (``-``): the same parser for both, one JSON object per non-empty line."""
     raw = read_source(path, "request stream", action="Pass a JSONL file, or - for stdin.")
     if isinstance(raw, Err):
@@ -1284,7 +1277,7 @@ def encode_result_line(line: dict) -> str:
     return json.dumps(line, ensure_ascii=False) + "\n"  # key order kept: request_sha256 hashes the request as sent
 
 
-def batch_settings(args, prefix: str) -> Result[BatchSettings, JudgeError]:
+def batch_settings(args, prefix: str) -> Result[BatchSettings, ClientError]:
     if getattr(args, "repeat", 1) < 1:
         return fail("VALIDATION.INPUT", "--repeat must be at least 1")
     if not 1 <= args.max_workers <= BATCH_MAX_WORKERS:
@@ -1302,7 +1295,7 @@ def batch_settings(args, prefix: str) -> Result[BatchSettings, JudgeError]:
                             args.max_workers, cap.value, bool(args.dry_run)))
 
 
-def request_cap(gate: str, requested) -> Result[int, JudgeError]:
+def request_cap(gate: str, requested) -> Result[int, ClientError]:
     """The request size limit: ``requested`` or the gate's default, at most MAX_REQUEST_BYTES_CEILING."""
     cap = requested or (DEFAULT_MAX_REQUEST_BYTES if gate == "plan" else DEFAULT_MAX_REQUEST_BYTES_DEV)
     if cap > MAX_REQUEST_BYTES_CEILING:
@@ -1333,7 +1326,7 @@ class RunLog:
     def path(self) -> pathlib.Path:
         return self.log_root / "logs" / f"{LOG_SERVICE}.log.jsonl"
 
-    def event(self, action: str, fields: dict, correlation_id=None) -> Result[None, JudgeError]:
+    def event(self, action: str, fields: dict, correlation_id=None) -> Result[None, ClientError]:
         """One log event, redacted like every emitted value; anything but an accepted admission is LOG.WRITE."""
         got = self._logger.log(self._sco.LogEvent(level="info", target=LOG_TARGET, action=action,
                                                   correlation_id=correlation_id,
@@ -1345,13 +1338,13 @@ class RunLog:
         self._events += 1
         return Ok(None)
 
-    def flush(self) -> Result[None, JudgeError]:
+    def flush(self) -> Result[None, ClientError]:
         got = self._logger.flush()
         if isinstance(got, self._sco.Err):
             return fail("LOG.WRITE", f"the sc-observability logger could not flush: {getattr(got.error, 'message', got.error)}")
         return Ok(None)
 
-    def close(self) -> Result[None, JudgeError]:
+    def close(self) -> Result[None, ClientError]:
         got = self._logger.shutdown()
         if isinstance(got, self._sco.Err):
             return fail("LOG.WRITE", f"the sc-observability logger could not shut down: {getattr(got.error, 'message', got.error)}")
@@ -1376,7 +1369,7 @@ def logger_module():
     return Ok(sco)
 
 
-def open_run_log(log_root, run_name: str) -> Result[RunLog, JudgeError]:
+def open_run_log(log_root, run_name: str) -> Result[RunLog, ClientError]:
     """Start the run's logger; the run name defaults to a UTC timestamp and must be a safe id."""
     name = run_name or stamp()
     checked = _safe_id(name, "--run-name")
@@ -1417,7 +1410,7 @@ def result_line_events(line: dict, fields: dict) -> list:
     return events
 
 
-def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, JudgeError]:
+def log_result_line(log: RunLog, line: dict, fields: dict) -> Result[None, ClientError]:
     """A result line as its events (result_line_events), flushed. The logger refuses an event over its size limit; every
     event was sized before the request was sent (check_log_events)."""
     for action, event_fields in result_line_events(line, fields):
@@ -1443,7 +1436,7 @@ def log_event_size(sco, action: str, fields: dict, correlation_id=None) -> Resul
     return Ok(len(json.dumps(encoded.value, separators=(",", ":")).encode("utf-8")))
 
 
-def check_event_sizes(events: list, where: str) -> Result[None, JudgeError]:
+def check_event_sizes(events: list, where: str) -> Result[None, ClientError]:
     """Each (action, fields, correlation_id) event fits the logger's limit; else the event and its size are named."""
     module = logger_module()
     if isinstance(module, Err):
@@ -1487,7 +1480,7 @@ def worst_line(job: BatchJob, settings: BatchSettings, pick=None) -> dict:
     return _line(job, settings, raw, [failed, {"attempt": 2, "ok": True}], None, False)
 
 
-def check_log_events(job: BatchJob, settings: BatchSettings, where: str, fields: dict) -> Result[None, JudgeError]:
+def check_log_events(job: BatchJob, settings: BatchSettings, where: str, fields: dict) -> Result[None, ClientError]:
     """REQ-JEV-0211: the request event, the largest possible answer event and the result event of ``job`` fit the logger's
     event limit, before anything is sent (and in a dry run alike)."""
     line = worst_line(job, settings)
@@ -1495,7 +1488,7 @@ def check_log_events(job: BatchJob, settings: BatchSettings, where: str, fields:
 
 
 def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo: bool,
-                        fields=None) -> Result[list, JudgeError]:
+                        fields=None) -> Result[list, ClientError]:
     """Send validated jobs through sc-agent's batch API and persist each result as it arrives."""
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
@@ -1549,12 +1542,12 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
 
 
 def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo: bool,
-               fields=None) -> Result[list, JudgeError]:
+               fields=None) -> Result[list, ClientError]:
     """Run fixture/dry requests locally and live requests through sc-agent, persisting each result."""
     if fixture is None and not settings.dry_run:
         return _live_batch_results(lines, settings, log, echo, fields)
 
-    async def drive() -> Result[list, JudgeError]:
+    async def drive() -> Result[list, ClientError]:
         out = []
         async for result_line in stream_batch(lines, settings, fixture):
             logged = log_result_line(log, result_line, fields or {})
@@ -1571,7 +1564,7 @@ def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo:
         return Err(exc.error)
 
 
-def validate_request_lines(lines: list, settings: BatchSettings) -> Result[int, JudgeError]:
+def validate_request_lines(lines: list, settings: BatchSettings) -> Result[int, ClientError]:
     """Every line checked before any call: a bad line late in the stream never leaves earlier requests half-sent."""
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
@@ -1590,7 +1583,7 @@ def validate_request_lines(lines: list, settings: BatchSettings) -> Result[int, 
     return Ok(total)
 
 
-def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
+def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
     """The shared CLI path for `batch` and `bead-batch`: validate, consent, stream, log. Stdout carries only result lines."""
     settings = batch_settings(args, args.request_prefix)
     if isinstance(settings, Err):
@@ -1639,7 +1632,7 @@ class StreamedResult(NamedTuple):
     failed: list
 
 
-def cmd_batch(args) -> Result[Any, JudgeError]:
+def cmd_batch(args) -> Result[Any, ClientError]:
     lines = read_request_lines(args.input)
     if isinstance(lines, Err):
         return lines
@@ -1703,12 +1696,12 @@ class QualityTree(NamedTuple):
         return ranks[position - 1] if ranks else position
 
 
-def _tree_error(path: str, message: str) -> Err[JudgeError]:
+def _tree_error(path: str, message: str) -> Err[ClientError]:
     return fail("QUALITY.TREE", f"quality tree {path}: {message}",
                 action="Fix the tree file; see assets/questions/quality-req.json for the shape.")
 
 
-def parse_quality_tree(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+def parse_quality_tree(raw: str, path: str, override: bool = False) -> Result[QualityTree, ClientError]:
     """The text of a tree file as a QualityTree: strict JSON, then the QualityTreeModel (every node, question and rule, the
     graph and its cycles). A node is a wave or a leaf ({verdict}). A wave has questions and exactly one of: ``next``, an
     ordered list of {when: {question id: choice}, goto: node} (every pair must match; the first matching rule wins), or
@@ -1730,7 +1723,7 @@ def parse_quality_tree(raw: str, path: str, override: bool = False) -> Result[Qu
     return Ok(QualityTree(tree.id, content_sha256(raw), path, override, tree.start, tree.nodes, tree.kind))
 
 
-def parse_quality_tree_ttl(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+def parse_quality_tree_ttl(raw: str, path: str, override: bool = False) -> Result[QualityTree, ClientError]:
     """A tree file in Turtle: loaded and SHACL-validated by jev_graph (its errors as they are), compiled to the quality JSON,
     then parsed as a JSON tree. The digest is that of the file's bytes."""
     import jev_graph
@@ -1747,14 +1740,14 @@ def parse_quality_tree_ttl(raw: str, path: str, override: bool = False) -> Resul
     return Ok(parsed.value._replace(sha256=content_sha256(raw), rule_ranks=jev_graph.rule_ranks(loaded.value)))
 
 
-def parse_quality_tree_file(raw: str, path: str, override: bool = False) -> Result[QualityTree, JudgeError]:
+def parse_quality_tree_file(raw: str, path: str, override: bool = False) -> Result[QualityTree, ClientError]:
     """``parse_quality_tree`` for a .json tree, ``parse_quality_tree_ttl`` for a .ttl tree (by the path's extension)."""
     if path.lower().endswith(".ttl"):
         return parse_quality_tree_ttl(raw, path, override)
     return parse_quality_tree(raw, path, override)
 
 
-def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree, JudgeError]:
+def load_quality_tree(kind: str, override_path: str = "") -> Result[QualityTree, ClientError]:
     """The record kind's shipped tree, or the --questions override (.json or .ttl; see parse_quality_tree)."""
     path = override_path or str(QUESTIONS_DIR / f"quality-{kind}.json")
     raw = read_source(path, "quality tree", action="Pass the path of an existing tree file.")
@@ -1821,7 +1814,7 @@ def reveal(node: Wave, answers: dict, reason: list) -> list:
     return out
 
 
-def record_statements(record: dict, node: Wave) -> Result[list, JudgeError]:
+def record_statements(record: dict, node: Wave) -> Result[list, ClientError]:
     """A per-statement wave's statements: the list at the node's ``statements`` field path in the record, each a string or
     an object with text (and modal), kept when its modal is one of the node's ``modals`` (all when absent). Index is the
     statement's 1-based position in that field."""
@@ -1845,7 +1838,7 @@ def record_statements(record: dict, node: Wave) -> Result[list, JudgeError]:
     return Ok(out)
 
 
-def parse_index(data, index_path: str) -> Result[RaptorIndex, JudgeError]:
+def parse_index(data, index_path: str) -> Result[RaptorIndex, ClientError]:
     parsed = validate_model(RaptorIndex, data)
     if isinstance(parsed, Err):
         return fail("INPUT.MALFORMED", f"{index_path} is not a Raptor import index: {parsed.error.text}",
@@ -1866,7 +1859,7 @@ def index_record_iri(index_path: str, record_id: str) -> str:
     return jev_runs.record_iri({"repository": index_repository(index_path), "record_id": record_id})
 
 
-def _graph_module() -> Result[Any, JudgeError]:
+def _graph_module() -> Result[Any, ClientError]:
     """``jev_graph`` (imported lazily: it needs pyoxigraph, and pyshacl to validate)."""
     try:
         import jev_graph
@@ -1877,7 +1870,7 @@ def _graph_module() -> Result[Any, JudgeError]:
     return Ok(jev_graph)
 
 
-def load_definitions_file(path) -> Result[tuple, JudgeError]:
+def load_definitions_file(path) -> Result[tuple, ClientError]:
     """One definitions file: size, UTF-8 and Turtle (``jev_graph.load_definitions``), the closed SHACL shapes, then the pydantic
     body of every definition. ``Ok((rows, warnings))``: the validated rows (``jev_graph.definition_rows``) and the SHACL
     warnings (a definition with no attachment). Every refusal is typed and names the file, the definition and the rule."""
@@ -1901,7 +1894,7 @@ def load_definitions_file(path) -> Result[tuple, JudgeError]:
     return Ok((rows, checked.value))
 
 
-def load_definition_set(paths: list) -> Result[Any, JudgeError]:
+def load_definition_set(paths: list) -> Result[Any, ClientError]:
     """Every file in ``paths`` loaded and validated; a ``jev_definitions.DefinitionSet`` of all their definitions. The first
     bad file is the error. The definitions are data of their own: they are never loaded into a tree's graph."""
     loaded = []
@@ -1916,14 +1909,14 @@ def load_definition_set(paths: list) -> Result[Any, JudgeError]:
     return Ok(built)
 
 
-def definitions_for_args(args) -> Result[Any, JudgeError]:
+def definitions_for_args(args) -> Result[Any, ClientError]:
     """The definitions a command uses: the files named by ``--definitions`` (repeatable), else every definitions file in
     ``<--repository-root>/.sc/judge-jev/``. ``Ok(None)`` when there are none: the requests are then exactly as before."""
     paths = list(getattr(args, "definitions", None) or []) or jev_definitions.discover(getattr(args, "repository_root", "."))
     return load_definition_set(paths) if paths else Ok(None)
 
 
-def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, JudgeError]:
+def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, ClientError]:
     """One record from a Raptor import index (scripts/extract.py output). A record with import diagnostics is refused."""
     loaded = load_json(index_path, "Raptor import index")
     if isinstance(loaded, Err):
@@ -1938,7 +1931,7 @@ def quality_record(index_path: str, kind: str, record_id: str) -> Result[dict, J
                     action="Pass the JSON written by Raptor's scripts/extract.py --output.")
     found = [i for i in index.diagnostics.issues if i.get("id") == record_id]
     if found:
-        error = JudgeError("RECORD.DIAGNOSTICS", f"{record_id} has {len(found)} Raptor import diagnostic(s); only records imported without diagnostics are judged",
+        error = ClientError("RECORD.DIAGNOSTICS", f"{record_id} has {len(found)} Raptor import diagnostic(s); only records imported without diagnostics are judged",
                            action="Fix each diagnostic (its remedy says how), rebuild the index, then rerun.")
         error.data = {"record_id": record_id, "diagnostics": found}
         return Err(error)
@@ -1968,7 +1961,7 @@ def wave_line(record: dict, node_id: str, node: Wave, statement=None, definition
     return line
 
 
-def wave_lines(record: dict, node_id: str, node: Wave, definitions=(), location=None) -> Result[tuple, JudgeError]:
+def wave_lines(record: dict, node_id: str, node: Wave, definitions=(), location=None) -> Result[tuple, ClientError]:
     """The wave's request lines and their statements: one line (statements [None]), or one per statement."""
     if node.per != "statement":
         return Ok(([wave_line(record, node_id, node, None, definitions, location)], [None]))
@@ -2006,7 +1999,7 @@ def _longest(values: list):
 
 
 def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statements: list,
-                      settings: BatchSettings, rank: int) -> Result[None, JudgeError]:
+                      settings: BatchSettings, rank: int) -> Result[None, ClientError]:
     """REQ-JEV-0211: the statement, wave and verdict events a wave's walk logs, with the largest answers and the longest
     next or verdict, fit the logger's event limit. (The request, answer and result events were sized with the request.)"""
     where = f"wave {node_id}"
@@ -2024,7 +2017,7 @@ def check_wave_events(fields: dict, node_id: str, node: Wave, jobs: list, statem
 
 
 def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: BatchSettings, definitions=None,
-                    location=None, extra_fields=None) -> Result[tuple, JudgeError]:
+                    location=None, extra_fields=None) -> Result[tuple, ClientError]:
     """Load (once per kind) the tree, the record and its wave-1 jobs, one per statement for a per-statement wave (the size
     check). Every wave's statements, request sizes and log events are checked here, before any call, with the record's
     definitions in every request and log event (``definitions``: a DefinitionSet or None; ``location``: the location
@@ -2089,7 +2082,7 @@ def dry_run_wave(tree: QualityTree, jobs: list, settings: BatchSettings) -> dict
     return {**wave, "max_request_bytes": settings.max_request_bytes}
 
 
-def cmd_quality(args) -> Result[Any, JudgeError]:
+def cmd_quality(args) -> Result[Any, ClientError]:
     """Every record named by a repeated --req/--adr/--nfr (REQs, then ADRs, then NFRs, each in the order given), under one
     run name and one run log. Every record is
     loaded and size-checked before the first call; a wave without an answer stops the run with the results so far."""
@@ -2189,7 +2182,7 @@ def _position(rules: list, rule) -> int:
 
 
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, log: RunLog,
-              fields: dict, definitions=(), location=None) -> Result[tuple, JudgeError]:
+              fields: dict, definitions=(), location=None) -> Result[tuple, ClientError]:
     """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
     Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
     request, answers and selected branch or verdict; the verdict is logged with the path."""
@@ -2217,8 +2210,8 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture,
         for result, statement in zip(pumped.value, statements):
             if not result["ok"]:
                 which = "" if statement is None else f" statement {statement['index']} ({statement['text']!r})"
-                error = JudgeError(result["error"]["code"], f"wave {node_id}{which} got no answer: {result['error']['message']}",
-                                   recoverable=result["error"]["recoverable"], action="Rerun once the cause is fixed.")
+                error = ClientError(result["error"]["code"], f"wave {node_id}{which} got no answer: {result['error']['message']}",
+                                   retryable=result["error"]["recoverable"], action=result["error"].get("suggested_action"))
                 error.data = {"path": path, "waves": waves, **({} if statement is None else {"statement": statement})}
                 return Err(error)
         per_choices = [{qid: answer_choice(ans)[0] for qid, ans in r["answers"].items()} for r in pumped.value]
@@ -2258,7 +2251,7 @@ VALIDATE_KINDS = (("tree", "quality tree"), ("questions", "question set"), ("ans
                   ("requests", "request stream"))
 
 
-def validate_input(kind: str, raw: str, path: str, args) -> Result[None, JudgeError]:
+def validate_input(kind: str, raw: str, path: str, args) -> Result[None, ClientError]:
     """``raw`` (the text of an input of ``kind``) accepted or refused exactly as the command that reads it would."""
     what = dict(VALIDATE_KINDS)[kind]
     if kind == "tree":
@@ -2287,7 +2280,7 @@ def validate_input(kind: str, raw: str, path: str, args) -> Result[None, JudgeEr
     return Ok(None) if isinstance(parsed, Ok) else parsed
 
 
-def cmd_validate(args) -> Result[Any, JudgeError]:
+def cmd_validate(args) -> Result[Any, ClientError]:
     """Exactly one input file (``-`` is stdin) checked with its model; never calls Jev, reads no key, writes no log."""
     kind, path = next((k, getattr(args, k)) for k, _what in VALIDATE_KINDS if getattr(args, k) is not None)
     raw = read_source(path, dict(VALIDATE_KINDS)[kind])
@@ -2362,7 +2355,7 @@ def compare_event_fields(record_id: str, definitions: list, location, threshold:
     return fields
 
 
-def cmd_compare_definition(args) -> Result[Any, JudgeError]:
+def cmd_compare_definition(args) -> Result[Any, ClientError]:
     """Run the requests one or more candidate definitions reach without them and with them, and report each answer's choice and
     confidence on both sides. The candidates are named by ``--definition`` (IRIs, repeatable; from ``--definitions`` or the
     repository's files) and are compared together: the ``without`` arm drops all of them, the ``with`` arm keeps all of them,
@@ -2660,7 +2653,7 @@ def doctor_scope_files(args) -> list:
     return out
 
 
-def cmd_doctor(args) -> Result[Any, JudgeError]:
+def cmd_doctor(args) -> Result[Any, ClientError]:
     """Check the repository scope and call nothing (no Jev, no key, no log): every tree, question set and definitions file
     against its model and shapes (errors, exit 2 with the report in ``data``), the question ids of the scope for
     duplicates (errors), and the warnings of ``definition_warnings`` (exit 0 when nothing else is wrong)."""
@@ -2705,7 +2698,7 @@ def cmd_doctor(args) -> Result[Any, JudgeError]:
             "counts": {"files": len(scope.checked), "errors": len(errors), "warnings": len(warnings)}}
     if errors:
         first = errors[0]
-        error = JudgeError("DOCTOR.FAILED", f"{len(errors)} error(s) and {len(warnings)} warning(s); first: {first['code']}"
+        error = ClientError("DOCTOR.FAILED", f"{len(errors)} error(s) and {len(warnings)} warning(s); first: {first['code']}"
                            + (f" in {first['file']}" if first["file"] else "") + f": {_clip(first['message'])}",
                            action="Fix each error in data.errors (each names its file and the rule), then rerun doctor.")
         error.data = data
@@ -2789,7 +2782,7 @@ CANCELED_EXIT = 130
 
 def canceled_envelope() -> dict:
     """The interrupt envelope: typed like every error, plus the canceled / aborted_by flags."""
-    out = JudgeError("CANCELED", "interrupted before the command finished", recoverable=True,
+    out = ClientError("CANCELED", "interrupted before the command finished", retryable=True,
                      action="Rerun the command; a judge run is written only when it completes, so nothing partial was recorded.").to_json()
     out.update({"canceled": True, "aborted_by": "user"})
     return out
@@ -2807,19 +2800,19 @@ def main(argv=None) -> int:
 def _main(argv=None) -> int:
     bad = next((a for a in (sys.argv[1:] if argv is None else argv) if isinstance(a, str) and utf8_text(a) != a), None)
     if bad is not None:
-        emit(JudgeError("VALIDATION.INPUT", f"argument {utf8_text(bad)!r} is not valid UTF-8",
+        emit(ClientError("VALIDATION.INPUT", f"argument {utf8_text(bad)!r} is not valid UTF-8",
                         action="Pass ids, paths and names as UTF-8 text.").to_json())
         return 2
     try:
         args = build_parser().parse_args(argv)
     except _UsageError as exc:
-        emit(JudgeError("VALIDATION.INPUT", str(exc), action="Run 'jev_judge.py <subcommand> --help' for the accepted arguments.").to_json())
+        emit(ClientError("VALIDATION.INPUT", str(exc), action="Run 'jev_judge.py <subcommand> --help' for the accepted arguments.").to_json())
         return 2
     fmt = getattr(args, "format", "json")
     try:
         outcome = args.func(args)
     except Exception as exc:  # noqa: BLE001 - a JSON error object beats a traceback for the calling agent
-        emit(JudgeError("SCRIPT.INTERNAL", f"{type(exc).__name__}: {exc}",
+        emit(ClientError("SCRIPT.INTERNAL", f"{type(exc).__name__}: {exc}",
                         action="Report this with the command line; check the JSON inputs against references/anchor-document.md.").to_json())
         return 2
     if isinstance(outcome, Err):
@@ -2830,11 +2823,11 @@ def _main(argv=None) -> int:
         if not failed:
             return 0
         first = failed[0]["error"] or {}
-        error = JudgeError(first.get("code") or "EXECUTION.JEV",
+        error = ClientError(first.get("code") or "EXECUTION.JEV",
                            f"{len(failed)} request(s) got no answer; first {failed[0]['request_id']}: {first.get('message')}",
-                           recoverable=bool(first.get("recoverable")),
-                           action="Read each failed line's error field; rerun only those requests once the cause is fixed.")
-        sys.stderr.write(json.dumps(error.to_json(), sort_keys=True) + "\n")  # stdout stays pure result lines
+                           retryable=bool(first.get("recoverable")),
+                           action=first.get("suggested_action"))
+        sys.stderr.write(json.dumps(redact_sensitive(error.to_json()), sort_keys=True) + "\n")  # stdout stays pure result lines
         return 2
     emit(outcome.value, fmt)
     return 0

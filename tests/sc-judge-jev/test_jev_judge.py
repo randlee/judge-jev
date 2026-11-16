@@ -83,7 +83,7 @@ def ok(result):
 
 def failure(result):
     """The JudgeError of an Err result; an Ok fails the test."""
-    if not isinstance(result, jj.Err) or not isinstance(result.error, jj.JudgeError):
+    if not isinstance(result, jj.Err) or not isinstance(result.error, jj.ClientError):
         raise AssertionError(f"expected Err(JudgeError), got {result!r}")
     return result.error
 
@@ -99,7 +99,7 @@ class Transport:
     def __call__(self, body, timeout):
         self.bodies.append(json.loads(json.dumps(body)))
         step = self.script.pop(0) if self.script else self.default()
-        if isinstance(step, jj.JudgeError):
+        if isinstance(step, jj.ClientError):
             return jj.Err(step)
         if isinstance(step, Exception):
             raise step
@@ -122,12 +122,12 @@ def wheel_record(result, position=0):
                           "validation": "JEV.VALIDATION", "cancelled": "CANCELED"}.get(category, "DECIDR.ERROR")
         if error.get("id") == "decision.context_exceeded":
             code = "JEV.CONTEXT_EXCEEDED"
-        return {"ok": False, "error": {"code": code, "message": error.get("message", "wheel error"),
-                "retryable": (error.get("id") == "decision.context_exceeded" or
-                              category in ("quota", "busy", "network", "response_invalid")),
-                "action": "Inspect the typed error and correct its cause.", "status": error.get("status"),
-                "retry_after_ms": error.get("retry_after_ms"), "attempts": attempts, "data": error},
-                "position": position, "line": line, "attempts": attempts}
+        detail = jj.ClientError(code, error.get("message", "wheel error"),
+                                retryable=(error.get("id") == "decision.context_exceeded" or
+                                           category in ("quota", "busy", "network", "response_invalid")),
+                                action=error.get("recovery"), status=error.get("status"),
+                                retry_after_ms=error.get("retry_after_ms"), attempts=attempts, data=error)
+        return {"ok": False, "error": detail, "position": position, "line": line, "attempts": attempts}
     return {"ok": True, "value": parsed["response"], "position": position, "line": line, "attempts": attempts}
 
 
@@ -268,7 +268,7 @@ class ResponseValidationTests(unittest.TestCase):
         questions = {"relevant": self.question, "addressed": self.question, "contradicted": self.question}
         error = failure(jj.validate_response({"answers": {"relevant": answer("yes")}}, questions))
         self.assertEqual(error.code, "JEV.RESPONSE_INVALID")
-        self.assertTrue(error.recoverable)
+        self.assertTrue(error.retryable)
         extra = dict(plan_answers(), bonus=answer("yes"))
         failure(jj.validate_response({"answers": extra}, questions))
         failure(jj.validate_response({"answers": []}, questions))
@@ -278,25 +278,20 @@ class ResponseValidationTests(unittest.TestCase):
 
 class WheelErrorMappingTests(unittest.TestCase):
     def test_context_error_uses_shared_record_and_preserves_attempt_metadata(self):
-        detail = {"code": "JEV.CONTEXT_EXCEEDED", "message": "context exceeded", "retryable": True,
-                  "action": "Shorten the evidence for this item.", "status": None,
-                  "retry_after_ms": 1200, "attempts": 3, "data": {"id": "decision.context_exceeded"}}
+        detail = jj.ClientError("JEV.CONTEXT_EXCEEDED", "context exceeded", True, "Shorten the evidence for this item.", retry_after_ms=1200, attempts=3, data={"id": "decision.context_exceeded"})
         error = jj._judge_result({"ok": False, "error": detail, "attempts": 3, "position": None, "line": None}).error
-        self.assertEqual((error.code, error.recoverable, error.meta, error.retry_after),
-                         ("JEV.CONTEXT_EXCEEDED", True, {"attempts": 3, "retry_after_ms": 1200}, 1.2))
+        self.assertEqual((error.code, error.retryable, error.attempts, error.retry_after_ms),
+                         ("JEV.CONTEXT_EXCEEDED", True, 3, 1200))
 
     def test_auth_error_withholds_provider_message(self):
-        detail = {"code": "AUTH.CREDENTIALS", "message": "token secret", "retryable": False,
-                  "action": "Check credentials.", "status": 401, "retry_after_ms": None,
-                  "attempts": 1, "data": {"message": "token secret"}}
+        detail = jj.ClientError("AUTH.CREDENTIALS", "Rust authentication failure", action="Check credentials.", status=401, attempts=1)
         error = jj._judge_result({"ok": False, "error": detail, "attempts": 1, "position": None, "line": None}).error
         self.assertEqual(error.code, "AUTH.CREDENTIALS")
-        self.assertNotIn("secret", error.message)
+        self.assertIs(error, detail)
+        self.assertEqual(error.message, "Rust authentication failure")
 
     def test_shared_invalid_result_is_a_typed_refusal(self):
-        detail = {"code": "DECIDR.INVALID_RESULT", "message": "invalid JSON", "retryable": False,
-                  "action": "Inspect the invalid result.", "status": None, "retry_after_ms": None,
-                  "attempts": None, "data": {}}
+        detail = jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON", action="Inspect the invalid result.")
         error = jj._judge_result({"ok": False, "error": detail, "attempts": None, "position": None, "line": None}).error
         self.assertEqual(error.code, "DECIDR.INVALID_RESULT")
 

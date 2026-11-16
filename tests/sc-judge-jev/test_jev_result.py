@@ -64,15 +64,14 @@ class ScriptErrValueTests(unittest.TestCase):
     def test_jev_judge(self):
         missing = jj.load_json("/nonexistent/x.json", "thing")
         self.assertEqual((missing.error.code, missing.error.message), ("INPUT.MISSING", "thing not found: '/nonexistent/x.json'"))
-        mapped = jj._judge_result({"ok": False, "position": None, "line": None, "attempts": 2,
-                                   "error": {"code": "JEV.CONTEXT_EXCEEDED", "message": "large", "retryable": True,
-                                             "action": "Shorten evidence.", "status": None, "retry_after_ms": None,
-                                             "attempts": 2, "data": {"id": "decision.context_exceeded"}}})
-        self.assertEqual((mapped.error.code, mapped.error.meta["attempts"]), ("JEV.CONTEXT_EXCEEDED", 2))
+        error = jj.ClientError("JEV.CONTEXT_EXCEEDED", "large", True, "Shorten evidence.", attempts=2)
+        mapped = jj._judge_result({"ok": False, "error": error, "attempts": 2})
+        self.assertIs(mapped.error, error)
+        self.assertEqual((mapped.error.code, mapped.error.attempts), ("JEV.CONTEXT_EXCEEDED", 2))
 
-    def test_judge_error_is_a_value_not_an_exception(self):
-        self.assertFalse(issubclass(jj.JudgeError, BaseException))
-        e = jj.JudgeError("C.X", "msg", recoverable=True, action="act")
+    def test_shared_error_is_carried_in_result_and_can_be_raised(self):
+        self.assertTrue(issubclass(jj.ClientError, BaseException))
+        e = jj.ClientError("C.X", "msg", retryable=True, action="act")
         self.assertEqual(str(e), "msg")
         self.assertEqual(jj.fail("C.X", "msg").error.to_json()["error"]["message"], "msg")
 
@@ -96,18 +95,40 @@ class JevPropagationTests(unittest.TestCase):
         return line, called.call_count
 
     def test_non_transient_err_is_recorded_once(self):
-        line, calls = self.run_job(Err(jj.JudgeError("JEV.VALIDATION", "typed validation error")))
+        line, calls = self.run_job(Err(jj.ClientError("JEV.VALIDATION", "typed validation error")))
         self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], line["attempts"], calls),
                          (False, "JEV.VALIDATION", None, [], 1))
 
     def test_abort_code_stops_the_batch(self):
-        refused = jj.JudgeError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
+        refused = jj.ClientError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
         line, calls = self.run_job(Err(refused))
         self.assertEqual((line["error"]["code"], calls), ("AUTH.CREDENTIALS", 1))
 
+    def test_batch_preserves_wheel_message_and_action(self):
+        message = "Rust error " + "x" * 5000
+        error = jj.ClientError("JEV.NETWORK", message, action="Rust recovery", attempts=2)
+        line, calls = self.run_job(Err(error))
+        self.assertEqual(calls, 1)
+        self.assertEqual(line["error"]["message"], message)
+        self.assertEqual(line["error"]["suggested_action"], "Rust recovery")
+
+    def test_stream_summary_preserves_wheel_message_and_action(self):
+        failed = [{"request_id": "r1", "error": {"code": "JEV.NETWORK", "message": "Rust failure",
+                                                   "recoverable": True, "suggested_action": "Rust recovery"}}]
+        args = mock.Mock(format="json")
+        args.func.return_value = jj.Ok(jj.StreamedResult(failed))
+        parser = mock.Mock()
+        parser.parse_args.return_value = args
+        stderr = io.StringIO()
+        with mock.patch.object(jj, "build_parser", return_value=parser), contextlib.redirect_stderr(stderr):
+            self.assertEqual(jj.main([]), 2)
+        error = json.loads(stderr.getvalue())["error"]
+        self.assertIn("Rust failure", error["message"])
+        self.assertEqual(error["suggested_action"], "Rust recovery")
+
     def test_retry_count_comes_from_the_wheel_error_detail(self):
-        down = jj.JudgeError("JEV.NETWORK", "down", recoverable=True)
-        down.meta = {"attempts": 4}
+        down = jj.ClientError("JEV.NETWORK", "down", retryable=True)
+        down.attempts = 4
         line, calls = self.run_job(Err(down))
         self.assertEqual((line["ok"], line["error"]["code"], calls, line["retry_count"], line["attempts"]),
                          (False, "JEV.NETWORK", 1, 3, []))
