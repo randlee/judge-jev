@@ -34,10 +34,54 @@ class ConsumerAdoptionTests(unittest.TestCase):
             args = operation.call_args.kwargs
             self.assertEqual(args["keyring_service"], "plan-anchor")
             self.assertEqual(args["keyring_account"], "typesafe-api-key")
+            self.assertEqual(args["project"], "judge-jev")
+            self.assertEqual(args["agent_role"], "quality")
             self.assertIs(args["cancel"], cancel)
             self.assertNotIn("provider", args)
             self.assertNotIn("general_log", args)
         wheel.category.assert_not_called()
+
+    def test_auth_error_line_maps_category_and_cancels(self):
+        wheel = types.ModuleType("sc_agent")
+        wheel.SagError = type("SagError", (Exception,), {})
+        line = json.dumps({"error": {"id": "auth", "category": "auth"}})
+        wheel.send = mock.Mock(return_value=line)
+        wheel.category = mock.Mock(return_value="auth")
+        cancel = mock.Mock()
+        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+            result = decidr_client.call("one", model="jev", project="judge-jev",
+                                       agent_role="quality", abort_on=frozenset({"auth"}),
+                                       category_codes={"auth": "AUTH"}, cancel=cancel)
+        self.assertEqual(result, (line, "AUTH"))
+        cancel.cancel.assert_called_once_with()
+        self.assertEqual(json.loads(wheel.category.call_args.args[0])["category"], "auth")
+
+    def test_sag_error_category_cancels_and_propagates(self):
+        wheel = types.ModuleType("sc_agent")
+        wheel.SagError = type("SagError", (Exception,), {})
+        error = wheel.SagError("denied")
+        error.category = "auth"
+        wheel.send = mock.Mock(side_effect=error)
+        cancel = mock.Mock()
+        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+            with self.assertRaises(wheel.SagError) as caught:
+                decidr_client.call("one", model="jev", project="judge-jev",
+                                   agent_role="quality", abort_on=frozenset({"auth"}),
+                                   category_codes={}, cancel=cancel)
+        self.assertIs(caught.exception, error)
+        cancel.cancel.assert_called_once_with()
+
+    def test_keyboard_interrupt_cancels_and_propagates(self):
+        wheel = types.ModuleType("sc_agent")
+        wheel.SagError = type("SagError", (Exception,), {})
+        wheel.send = mock.Mock(side_effect=KeyboardInterrupt)
+        cancel = mock.Mock()
+        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+            with self.assertRaises(KeyboardInterrupt):
+                decidr_client.call("one", model="jev", project="judge-jev",
+                                   agent_role="quality", abort_on=frozenset(),
+                                   category_codes={}, cancel=cancel)
+        cancel.cancel.assert_called_once_with()
 
 
 if __name__ == "__main__":
