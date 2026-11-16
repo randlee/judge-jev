@@ -126,7 +126,7 @@ def render_cli(template: Path, out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
                            "--var", f"version={package.version}", "--var", f"sc_decidr_version={package.sc_decidr_version}",
-                           "--var", "sitr=true", "--var", f"sitr_version={package.sitr_version}",
+                           "--var", f"sitr_version={package.sitr_version}",
                            "--file", str(template), "--output", str(out)],
                           text=True, encoding="utf-8", errors="replace", check=False)
     if proc.returncode != 0:
