@@ -1631,7 +1631,11 @@ def run_low_layer(args, lines: list) -> Result[Any, JudgeError]:
     log = open_run_log(run_dir, run_name)
     if isinstance(log, Err):
         return log
-    pumped = pump_batch(lines, settings, fixture, log.value, echo=True)
+    try:
+        pumped = pump_batch(lines, settings, fixture, log.value, echo=True)
+    except KeyboardInterrupt:
+        log.value.close()
+        raise
     closed = log.value.close()
     if isinstance(pumped, Err):
         return pumped
@@ -2133,9 +2137,13 @@ def cmd_quality(args) -> Result[Any, JudgeError]:
         return _with_refs(log, run_refs)
     results, failed = [], None
     for tree, record, refs, _job, carried in prepared:
-        walked = walk_tree(tree, record, settings, fixture, log.value,
-                           quality_fields(tree, record["id"], refs["record"]["kind"], carried,
-                                         index_record_iri(args.index, record["id"])), carried)
+        try:
+            walked = walk_tree(tree, record, settings, fixture, log.value,
+                               quality_fields(tree, record["id"], refs["record"]["kind"], carried,
+                                             index_record_iri(args.index, record["id"])), carried)
+        except KeyboardInterrupt:
+            log.value.close()
+            raise
         if isinstance(walked, Err):
             failed = _with_refs(walked, {**refs, "results": results})
             break
@@ -2447,8 +2455,12 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
         log = open_run_log(quality_log_root(args), runs[arm])
         if isinstance(log, Err):
             return _with_refs(log, head)
-        walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
-                           {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
+        try:
+            walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
+                               {**quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location)
+        except KeyboardInterrupt:
+            log.value.close()
+            raise
         closed = log.value.close()
         if isinstance(walked, Err):
             return _with_refs(walked, {**head, "arm": arm})
@@ -2459,8 +2471,12 @@ def cmd_compare_definition(args) -> Result[Any, JudgeError]:
     log = open_run_log(quality_log_root(args), run_name)
     if isinstance(log, Err):
         return _with_refs(log, head)
-    logged = log.value.event("compare", {"tree_id": prepared["with"][0].id,
-                                         **compare_event_fields(rid, candidates, location, threshold, answers, runs)})
+    try:
+        logged = log.value.event("compare", {"tree_id": prepared["with"][0].id,
+                                             **compare_event_fields(rid, candidates, location, threshold, answers, runs)})
+    except KeyboardInterrupt:
+        log.value.close()
+        raise
     closed = log.value.close()
     for failed in (logged, closed):
         if isinstance(failed, Err):  # the answers were paid for: report them with the log error
