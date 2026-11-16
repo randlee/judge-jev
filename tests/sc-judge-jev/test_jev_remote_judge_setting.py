@@ -270,9 +270,9 @@ class SetCommandTests(unittest.TestCase):
 
     def test_the_script_runs_end_to_end(self):
         repo = Repo(self)
-        run_child(["git", "init", "-q", str(repo.root)], check=True, capture_output=True)
+        run_child(["git", "init", "-q", str(repo.root)], check=True)
         proc = run_child([sys.executable, str(SETTINGS_SCRIPT), "set", "allow_remote_judge", "true",
-                               "--repository-root", str(repo.root)], capture_output=True, text=True, encoding="utf-8",
+                               "--repository-root", str(repo.root)], text=True, encoding="utf-8",
                               env={k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"})
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertTrue(json.loads(proc.stdout)["data"]["written"])

@@ -77,14 +77,14 @@ class LiveBatchWithoutAnswers(unittest.TestCase):
         self.d = Path(td.name).resolve()
         run_child(["git", "init", "-q", str(self.d)], check=True)
         proc = run_child([sys.executable, str(SCRIPTS / "judge_jev_settings.py"), "set", "allow_remote_judge", "true"],
-                              cwd=str(self.d), env=child_env(), capture_output=True, text=True, encoding="utf-8")
+                              cwd=str(self.d), env=child_env(), text=True, encoding="utf-8")
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
     def test_refused_connection_is_exit_2_with_every_line_and_the_envelope_on_stderr(self):
         (self.d / "in.jsonl").write_text(jsonl([request_line("s1"), request_line("s2")]), encoding="utf-8")
         proc = run_child([sys.executable, "-c", REFUSED_RUNNER, str(SCRIPTS), "batch", "--input", "in.jsonl",
                                "--run-dir", "runs", "--run-name", "r1"],
-                              cwd=str(self.d), env=child_env(TYPESAFE_API_KEY=DUMMY_KEY), capture_output=True, text=True,
+                              cwd=str(self.d), env=child_env(TYPESAFE_API_KEY=DUMMY_KEY), text=True,
                               encoding="utf-8")
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         lines = [json.loads(x) for x in proc.stdout.splitlines()]
@@ -124,7 +124,7 @@ class Interrupts(unittest.TestCase):
             script, *rest = argv
             rest = [str(a).replace("{INPUT}", str(target)) for a in rest]
             proc = run_child([sys.executable, "-c", INTERRUPT_RUNNER, str(script), str(target), *rest], cwd=str(d),
-                                  env=child_env(**(env or {})), preexec_fn=_default_sigint, capture_output=True,
+                                  env=child_env(**(env or {})), preexec_fn=_default_sigint,
                                   text=True, encoding="utf-8")  # a hang guard only
         out, err = proc.stdout, proc.stderr
         self.assertEqual(proc.returncode, 130, out + err)

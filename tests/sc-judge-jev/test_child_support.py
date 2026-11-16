@@ -17,7 +17,6 @@ class ChildSupport(unittest.TestCase):
 
     def test_timeout_failure_contains_both_captured_streams(self):
         def timeout(args, **options):
-            self.assertEqual(options["timeout"], 120)
             self.assertEqual(options["timeout"], CHILD_HANG_GUARD_SECONDS)
             self.assertEqual(options["stdin"], subprocess.DEVNULL)
             self.assertTrue(options["capture_output"])
@@ -29,6 +28,13 @@ class ChildSupport(unittest.TestCase):
         self.assertIn("partial stderr", str(caught.exception))
         self.assertIn("controlled-child", str(caught.exception))
         self.assertIsInstance(caught.exception.__cause__, subprocess.TimeoutExpired)
+
+    def test_reserved_options_are_rejected_before_running_a_child(self):
+        for name, value in (("timeout", 300), ("capture_output", True), ("capture_output", False)):
+            with self.subTest(name=name, value=value), mock.patch("child_support.subprocess.run") as run:
+                with self.assertRaisesRegex(TypeError, name):
+                    run_child(["controlled-child"], **{name: value})
+                run.assert_not_called()
 
 
 if __name__ == "__main__":
