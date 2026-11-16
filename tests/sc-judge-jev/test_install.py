@@ -176,8 +176,14 @@ class RenderingTests(unittest.TestCase):
 
     def test_sitr_pin_matches_sc_decidr_pin(self):
         runtime = (SKILL_SRC / "scripts" / "jev_judge.py.j2").read_text(encoding="utf-8")
-        self.assertIn('"sc-decidr==0.2.4"', runtime)
-        self.assertIn('"sitr==0.2.4"', runtime)
+        metadata = runtime.split("# /// script\n", 1)[1].split("# ///", 1)[0]
+        dependencies = tomllib.loads("\n".join(line.removeprefix("# ") for line in metadata.splitlines()))["dependencies"]
+        pins = {name: [item.removeprefix(name + "==") for item in dependencies if item.startswith(name + "==")]
+                for name in ("sc-decidr", "sitr")}
+        self.assertEqual(len(pins["sc-decidr"]), 1)
+        self.assertEqual(len(pins["sitr"]), 1)
+        self.assertEqual((self.package.sc_decidr_version, self.package.sitr_version),
+                         (pins["sc-decidr"][0], pins["sitr"][0]))
         self.assertEqual(self.package.sc_decidr_version, self.package.sitr_version)
 
     def test_disabled_sitr_render_has_no_extraction_api(self):
@@ -249,6 +255,32 @@ class RenderingTests(unittest.TestCase):
 
 
 class TemplatePinTests(unittest.TestCase):
+    def test_cli_renderer_uses_both_package_versions(self):
+        import layout_support
+        package = mock.Mock(version="1.0.0", sc_decidr_version="7.0.0", sitr_version="8.0.0")
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(layout_support, "installer", return_value=inst), \
+                mock.patch.object(inst, "load_package", return_value=inst.Ok(package)):
+            output = Path(tmp) / "client.py"
+            layout_support.render_cli(SKILL_SRC / "scripts" / "decidr_client.py.j2", output)
+            text = output.read_text(encoding="utf-8")
+        self.assertIn('SC_DECIDR_VERSION = "7.0.0"', text)
+        self.assertIn("Optional sitr 8.0.0", text)
+
+    def test_installer_rejects_a_drifting_sitr_pin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            plugin = Path(tmp) / "plugin"
+            shutil.copytree(PLUGIN, plugin, ignore=shutil.ignore_patterns("__pycache__"))
+            runtime = plugin / "install/templates/skills/judge-jev/scripts/jev_judge.py.j2"
+            text = runtime.read_text(encoding="utf-8")
+            metadata = text.split("# /// script\n", 1)[1].split("# ///", 1)[0]
+            dependencies = tomllib.loads("\n".join(line.removeprefix("# ") for line in metadata.splitlines()))["dependencies"]
+            pin = next(item for item in dependencies if item.startswith("sitr=="))
+            runtime.write_text(text.replace(f'"{pin}"', '"sitr==999.0.0"'), encoding="utf-8")
+            package = inst.load_package(plugin)
+            self.assertIsInstance(package, inst.Err)
+            self.assertIn("must pin sitr to the sc-decidr version", package.error.message)
+
     def test_installer_reads_the_real_script_metadata_pin(self):
         template = SKILL_SRC / "scripts" / "jev_judge.py.j2"
         text = template.read_text(encoding="utf-8")

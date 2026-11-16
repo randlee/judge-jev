@@ -26,7 +26,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 from child_support import run_child
 import sys
@@ -119,15 +118,15 @@ def render_cli(template: Path, out: Path) -> None:
     if binary is None:
         raise RuntimeError("the script tests need a rendered install: the sc-compose wheel or the sc-compose CLI "
                            "(scripts/install_sc_compose_ci.py) must be available")
-    version = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8"))["version"]
-    runtime = (SKILL_SRC / "scripts" / "jev_judge.py.j2").read_text(encoding="utf-8")
-    match = re.search(r'^\s*#\s*"sc-decidr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', runtime, re.M)
-    if match is None:
-        raise RuntimeError("jev_judge.py.j2 must pin sc-decidr to an exact X.Y.Z version")
+    inst = installer()
+    package = inst.load_package()
+    if isinstance(package, inst.Err):
+        raise AssertionError(package.error.message)
+    package = package.value
     out.parent.mkdir(parents=True, exist_ok=True)
     proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
-                           "--var", f"version={version}", "--var", f"sc_decidr_version={match.group(1)}",
-                           "--var", "sitr=true", "--var", f"sitr_version={match.group(1)}",
+                           "--var", f"version={package.version}", "--var", f"sc_decidr_version={package.sc_decidr_version}",
+                           "--var", "sitr=true", "--var", f"sitr_version={package.sitr_version}",
                            "--file", str(template), "--output", str(out)],
                           text=True, encoding="utf-8", errors="replace", check=False)
     if proc.returncode != 0:

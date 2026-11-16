@@ -20,6 +20,15 @@ import jev_judge
 
 
 class ConsumerAdoptionTests(unittest.TestCase):
+    def test_script_render_uses_the_sitr_pin_independently(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(jev_support, "SC_DECIDR_VERSION", "7.0.0"), \
+                mock.patch.object(jev_support, "SITR_VERSION", "8.0.0"):
+            rendered = jev_support._render(Path(tmp)) / "decidr_client.py"
+            text = rendered.read_text(encoding="utf-8")
+        self.assertIn('SC_DECIDR_VERSION = "7.0.0"', text)
+        self.assertIn("Optional sitr 8.0.0", text)
+
     def test_judge_imports_rendered_client(self):
         self.assertIs(jev_judge.decidr_client, decidr_client)
         try:
@@ -29,7 +38,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
             installed_version = jev_support.SC_DECIDR_VERSION
         self.assertEqual(decidr_client.SC_DECIDR_VERSION, installed_version)
         self.assertTrue(callable(decidr_client.extract))
-        self.assertIn("Optional sitr 0.2.4", Path(decidr_client.__file__).read_text(encoding="utf-8"))
+        self.assertIn(f"Optional sitr {jev_support.SITR_VERSION}", Path(decidr_client.__file__).read_text(encoding="utf-8"))
 
     def test_importing_rendered_client_does_not_import_sitr(self):
         path = Path(decidr_client.__file__)

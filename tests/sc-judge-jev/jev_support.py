@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import atexit
 from pathlib import Path
-import re
 import shutil
 from child_support import run_child
+from layout_support import installer
 import sys
 import tempfile
 
@@ -21,11 +21,12 @@ PLUGIN = ROOT / "plugins" / "sc-judge-jev"
 SKILL_SRC = PLUGIN / "install" / "templates" / "skills" / "judge-jev"
 SCRIPT_TEMPLATES = SKILL_SRC / "scripts"
 RENDER_VERSION = "0.0.0-test"
-_runtime = (SKILL_SRC / "scripts" / "jev_judge.py.j2").read_text(encoding="utf-8")
-_match = re.search(r'^\s*#\s*"sc-decidr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', _runtime, re.M)
-if _match is None:
-    raise RuntimeError("jev_judge.py.j2 must pin sc-decidr to an exact X.Y.Z version")
-SC_DECIDR_VERSION = _match.group(1)
+_installer = installer()
+_package = _installer.load_package()
+if isinstance(_package, _installer.Err):
+    raise RuntimeError(_package.error.message)
+SC_DECIDR_VERSION = _package.value.sc_decidr_version
+SITR_VERSION = _package.value.sitr_version
 
 
 def _render(dest: Path) -> Path:
@@ -44,7 +45,7 @@ def _render(dest: Path) -> Path:
         proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
                                "--var", f"version={RENDER_VERSION}",
                                "--var", f"sc_decidr_version={SC_DECIDR_VERSION}",
-                               "--var", "sitr=true", "--var", f"sitr_version={SC_DECIDR_VERSION}",
+                               "--var", "sitr=true", "--var", f"sitr_version={SITR_VERSION}",
                                "--file", str(template), "--output", str(out)],
                               text=True, encoding="utf-8", errors="replace", check=False)
         if proc.returncode != 0:
