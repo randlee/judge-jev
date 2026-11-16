@@ -357,8 +357,7 @@ class Renderer:
             out = render_template(self.sc_compose, template, self.package.version,
                                   {"sc_decidr_version": self.package.sc_decidr_version,
                                    "sitr": "true",
-                                   "sitr_version": self.package.sitr_version,
-                                   "general_log": "true"})
+                                   "sitr_version": self.package.sitr_version})
             if isinstance(out, Err):
                 return out
             self._cache[key] = out.value

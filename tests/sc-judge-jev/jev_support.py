@@ -45,7 +45,6 @@ def _render(dest: Path) -> Path:
                                "--var", f"version={RENDER_VERSION}",
                                "--var", f"sc_decidr_version={SC_DECIDR_VERSION}",
                                "--var", "sitr=true", "--var", f"sitr_version={SC_DECIDR_VERSION}",
-                               "--var", "general_log=true",
                                "--file", str(template), "--output", str(out)],
                               text=True, encoding="utf-8", errors="replace", check=False)
         if proc.returncode != 0:
