@@ -16,7 +16,7 @@ required_variables:
 #   "pyoxigraph>=0.5,<0.6",
 #   "pyshacl>=0.30,<1",
 #   "sc-observability==1.5.0",
-#   "sc-decidr==0.2.2",
+#   "sc-decidr==0.2.3",
 # ]
 # ///
 """jev_judge.py
@@ -764,146 +764,41 @@ def encode_body(body: dict) -> bytes:
     return json.dumps(body, allow_nan=False).encode("utf-8")
 
 
-DECIDR_CATEGORY_CODES = {
-    "auth": "AUTH.CREDENTIALS", "quota": "JEV.RATE_LIMITED", "busy": "JEV.OVERLOADED",
-    "network": "JEV.NETWORK", "response_invalid": "JEV.RESPONSE_INVALID",
-    "validation": "JEV.VALIDATION", "cancelled": "CANCELED",
-}
-DECIDR_ERROR_CODES = {
-    "decision.context_exceeded": "JEV.CONTEXT_EXCEEDED",
-    "decision.api_bad_request": "JEV.VALIDATION",
-    "decision.api_validation": "JEV.VALIDATION",
-    "decision.response_parse": "JEV.RESPONSE_INVALID",
-}
-DECIDR_ERROR_ACTIONS = {
-    "AUTH.CREDENTIALS": "Check TYPESAFE_API_KEY or the documented platform credential.",
-    "JEV.CONTEXT_EXCEEDED": "Shorten the evidence for this item.",
-    "JEV.VALIDATION": "Fix the request or question field named by Jev.",
-    "JEV.RATE_LIMITED": "Retry the command later, after the rate limit clears.",
-    "JEV.OVERLOADED": "Retry the command later, after the provider is available.",
-    "JEV.NETWORK": "Check network access and retry.",
-    "JEV.RESPONSE_INVALID": "Check the model and question ids, then retry.",
-    "JEV.HTTP": "Check the request and the provider error details.",
-    "CANCELED": "Retry the command when ready.",
-}
-
-
-def _new_cancel_token():
-    """Load the optional wheel only when an opted-in live call is about to be made."""
-    try:
-        import sc_agent
-    except ImportError as exc:
-        raise decidr_client.ClientError("DEPENDENCY.SC_DECIDR", f"sc-decidr {{ sc_decidr_version }} is required for live calls: {exc}") from exc
-    return sc_agent.CancelToken()
-
-
-def _error_metadata(detail: dict) -> dict:
-    attempts = detail.get("attempts")
-    meta = {"attempts": attempts if isinstance(attempts, int) and not isinstance(attempts, bool) and attempts >= 0 else 1}
-    if isinstance(detail.get("retry_after_ms"), int):
-        meta["retry_after_ms"] = detail["retry_after_ms"]
-    return meta
-
-
-def _wheel_error(code: Optional[str], error: dict) -> JudgeError:
-    """Translate structured sc-decidr fields; never infer a category from provider message text."""
-    identifier = error.get("id") if isinstance(error.get("id"), str) else ""
-    category = error.get("category") if isinstance(error.get("category"), str) else None
-    resolved_code = DECIDR_ERROR_CODES.get(identifier) or code or DECIDR_CATEGORY_CODES.get(category) or "JEV.HTTP"
-    message = ("Jev authentication failed; response body withheld" if resolved_code == "AUTH.CREDENTIALS" else
-               error.get("message") if isinstance(error.get("message"), str) else "sc-decidr returned an error")
-    meta = _error_metadata(error)
-    retry_after_ms = meta.get("retry_after_ms")
-    out = JudgeError(resolved_code, message,
-                     recoverable=(resolved_code == "JEV.CONTEXT_EXCEEDED" or
-                                  category in ("quota", "busy", "network", "response_invalid")),
-                     action=DECIDR_ERROR_ACTIONS.get(resolved_code, "Inspect the typed error and correct its cause."),
-                     status=error.get("status") if isinstance(error.get("status"), int) else None,
-                     retry_after=(retry_after_ms / 1000 if retry_after_ms is not None else None))
-    out.meta = meta
-    out.data = {key: error[key] for key in ("id", "category", "attempts", "retry_after_ms", "cause") if key in error}
-    return out
-
-
-def _decode_wheel_result(line: str, mapped_code: Optional[str]) -> Result[dict, JudgeError]:
-    try:
-        parsed = json.loads(line)
-    except (TypeError, ValueError) as exc:
-        return fail("JEV.RESPONSE_INVALID", f"sc-decidr returned invalid JSON: {exc}", recoverable=True,
-                    action=DECIDR_ERROR_ACTIONS["JEV.RESPONSE_INVALID"])
-    if not isinstance(parsed, dict):
-        return fail("JEV.RESPONSE_INVALID", "sc-decidr returned a non-object result", recoverable=True,
-                    action=DECIDR_ERROR_ACTIONS["JEV.RESPONSE_INVALID"])
-    error = parsed.get("error")
-    if isinstance(error, dict):
-        return Err(_wheel_error(mapped_code, error))
-    response = parsed.get("response")
-    if not isinstance(response, dict):
-        return fail("JEV.RESPONSE_INVALID", "sc-decidr result has neither a response nor a typed error",
-                    recoverable=True, action=DECIDR_ERROR_ACTIONS["JEV.RESPONSE_INVALID"])
-    return Ok(response)
-
-
-def _wheel_error_attempts(error: JudgeError, sends: int) -> list:
-    """Record the send count from sc-agent without inventing details for earlier failures."""
-    if sends < 1:
-        return []
-    preceding = [{"attempt": attempt, "ok": False} for attempt in range(1, sends)]
-    final = {"attempt": sends, "ok": False,
-             "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
-                       "recoverable": error.recoverable}}
-    return [*preceding, final]
-
-
-def _sag_error(exc: Exception) -> JudgeError:
-    detail = getattr(exc, "detail", {})
-    if isinstance(detail, str):
-        try:
-            detail = json.loads(detail)
-        except ValueError:
-            detail = {}
-    if not isinstance(detail, dict):
-        detail = {}
-    category = getattr(exc, "category", None) or detail.get("category")
-    identifier = getattr(exc, "id", None) or detail.get("id")
-    code = DECIDR_ERROR_CODES.get(identifier) or DECIDR_CATEGORY_CODES.get(category) or "JEV.HTTP"
-    return _wheel_error(code, dict(detail, id=identifier, category=category,
-                                  message=getattr(exc, "message", str(exc))))
+DECIDR_CATEGORY_OVERRIDES = {"context_exceeded": "JEV.CONTEXT_EXCEEDED"}
 
 
 class _JevResponse(dict):
-    """A normal response mapping with the send count observed in sc-agent's session row."""
+    """A normal response mapping with the send count returned by the wheel."""
 
-    def __init__(self, response: dict, sends: int):
+    def __init__(self, response: dict, sends: Optional[int]):
         super().__init__(response)
         self.sc_agent_sends = sends
 
 
+def _judge_result(record: dict) -> Result[dict, JudgeError]:
+    """Convert the shared client's typed result record to judge-jev's Result once."""
+    if record["ok"]:
+        return Ok(_JevResponse(record["value"], record["attempts"]))
+    detail = record["error"]
+    retry_after_ms = detail["retry_after_ms"]
+    message = ("Jev authentication failed; response body withheld"
+               if detail["code"] == "AUTH.CREDENTIALS" else detail["message"])
+    error = JudgeError(detail["code"], message, recoverable=detail["retryable"],
+                       action=detail["action"], status=detail["status"],
+                       retry_after=retry_after_ms / 1000 if retry_after_ms is not None else None)
+    error.meta = {"attempts": record["attempts"], "retry_after_ms": retry_after_ms}
+    error.data = detail["data"]
+    return Err(error)
+
+
 def call_jev(body: dict, timeout: float) -> Result[dict, JudgeError]:
-    """Call the shared transport once; credentials and provider retries belong to sc-decidr."""
-    sends = {}
-
-    def record_session(row):
-        fields = row.get("fields") if isinstance(row, dict) else None
-        if isinstance(fields, dict) and fields.get("position") == 0 and isinstance(fields.get("sends"), int):
-            sends[0] = fields["sends"]
-
-    try:
-        line, mapped_code = decidr_client.call(
-            encode_body(body).decode("utf-8"), model=body["model"], project="judge-jev", agent_role="judge",
-            abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_CODES, cancel=_new_cancel_token(),
-            timeout_secs=timeout, session_log=record_session,
-        )
-    except decidr_client.ClientError as exc:
-        return fail(exc.code, str(exc), action="Run with the jev_judge.py inline dependencies in the active Python environment.")
-    except Exception as exc:
-        if getattr(exc, "id", None) is not None or getattr(exc, "category", None) is not None:
-            return Err(_sag_error(exc))
-        raise
-    decoded = _decode_wheel_result(line, mapped_code)
-    if isinstance(decoded, Ok):
-        return Ok(_JevResponse(decoded.value, sends.get(0, 1)))
-    return decoded
+    """Call the shared client; credentials and provider retries belong to sc-decidr."""
+    record = decidr_client.call_result(
+        encode_body(body).decode("utf-8"), model=body["model"], project="judge-jev", agent_role="judge",
+        abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_OVERRIDES,
+        timeout_secs=timeout,
+    )
+    return _judge_result(record)
 
 
 
@@ -1282,19 +1177,29 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
     if settings.dry_run:
         return _line(job, settings, None, [], None, True)
     if fixture is None:
-        wheel_attempts = 1
+        wheel_attempts = None
         got = call_jev(job.body, settings.timeout)
         if isinstance(got, Ok):
-            wheel_attempts = getattr(got.value, "sc_agent_sends", 1)
+            wheel_attempts = getattr(got.value, "sc_agent_sends", None)
             got = validate_response(got.value, job.questions)
         if isinstance(got, Ok):
             attempts = ([{"attempt": attempt, "ok": False} for attempt in range(1, wheel_attempts)] +
-                        [{"attempt": wheel_attempts, "ok": True}])
-            return _line(job, settings, got.value, attempts, None, False, wheel_attempts)
+                        [{"attempt": wheel_attempts, "ok": True}]) if type(wheel_attempts) is int and wheel_attempts > 0 else []
+            return _line(job, settings, got.value, attempts, None, False,
+                         wheel_attempts if type(wheel_attempts) is int and wheel_attempts > 0 else 0)
         error = got.error
-        wheel_attempts = (error.meta or {}).get("attempts", wheel_attempts)
-        attempts = _wheel_error_attempts(error, wheel_attempts)
-        return _line(job, settings, None, attempts, error, False, wheel_attempts)
+        observed_attempts = (error.meta or {}).get("attempts")
+        if type(observed_attempts) is int:
+            wheel_attempts = observed_attempts
+        if type(wheel_attempts) is int and wheel_attempts > 0:
+            attempts = [{"attempt": attempt, "ok": False} for attempt in range(1, wheel_attempts)]
+            attempts.append({"attempt": wheel_attempts, "ok": False,
+                             "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
+                                       "recoverable": error.recoverable}})
+        else:
+            attempts = []
+        return _line(job, settings, None, attempts, error, False,
+                     wheel_attempts if type(wheel_attempts) is int and wheel_attempts > 0 else 0)
 
     attempts, raw, error = [], None, None
     for attempt in range(1, BATCH_FIXTURE_RETRY_LIMIT + 2):
@@ -1615,75 +1520,64 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
         if isinstance(built, Err):
             return built
         jobs.extend(built.value)
-    session_sends = {}
     general_log_errors = []
-
-    def record_session(row):
-        fields = row.get("fields") if isinstance(row, dict) else None
-        if isinstance(fields, dict) and isinstance(fields.get("position"), int) and isinstance(fields.get("sends"), int):
-            session_sends[fields["position"]] = fields["sends"]
+    result_lines = {}
 
     def record_general(event):
         if not isinstance(event, dict):
             return
-        fields = event.get("fields")
-        if not isinstance(fields, dict):
-            fields = {}
+        event_fields = event.get("fields")
+        if not isinstance(event_fields, dict):
+            event_fields = {}
         logged = log.event(str(event.get("action") or "sc_agent.event"),
-                           {"sc_agent_target": event.get("target"), **fields},
+                           {"sc_agent_target": event.get("target"), **event_fields},
                            correlation_id=event.get("correlation_id"))
         if isinstance(logged, Err):
             general_log_errors.append(logged.error)
 
-    try:
-        results = decidr_client.call_batch(
-            [encode_body(job.body).decode("utf-8") for job in jobs],
-            model=settings.model, project="judge-jev", agent_role="quality",
-            abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_CODES,
-            cancel=_new_cancel_token(),
-            general_log=record_general, session_log=record_session,
-            timeout_secs=settings.timeout, workers=settings.max_workers,
-        )
-    except decidr_client.ClientError as exc:
-        return fail(exc.code, str(exc), action="Run with the jev_judge.py inline dependencies in the active Python environment.")
-    except Exception as exc:
-        if getattr(exc, "id", None) is not None or getattr(exc, "category", None) is not None:
-            return Err(_sag_error(exc))
-        raise
-    if general_log_errors:
-        return Err(general_log_errors[0])
-    if len(results) != len(jobs):
-        return fail("JEV.RESPONSE_INVALID", f"sc-decidr returned {len(results)} results for {len(jobs)} batch requests",
-                    recoverable=True, action=DECIDR_ERROR_ACTIONS["JEV.RESPONSE_INVALID"])
-    result_lines = []
-    for position, (job, (wire_line, mapped_code)) in enumerate(zip(jobs, results)):
-        wheel_attempts = session_sends.get(position, 1)
-        decoded = _decode_wheel_result(wire_line, mapped_code)
-        if isinstance(decoded, Ok):
-            checked = validate_response(decoded.value, job.questions)
+    def persist(record):
+        position = record["position"]
+        job = jobs[position]
+        got = _judge_result(record)
+        attempts_count = record["attempts"]
+        if isinstance(got, Ok):
+            checked = validate_response(got.value, job.questions)
             if isinstance(checked, Ok):
-                attempts = ([{"attempt": attempt, "ok": False} for attempt in range(1, wheel_attempts)] +
-                            [{"attempt": wheel_attempts, "ok": True}])
-                result_line = _line(job, settings, checked.value, attempts, None, False, wheel_attempts)
+                raw, error = checked.value, None
             else:
-                error = checked.error
-                attempts = ([{"attempt": attempt, "ok": False} for attempt in range(1, wheel_attempts)] +
-                            [{"attempt": wheel_attempts, "ok": False,
-                              "error": {"code": error.code, "message": error.message,
-                                        "recoverable": error.recoverable}}])
-                result_line = _line(job, settings, None, attempts, error, False, wheel_attempts)
+                raw, error = None, checked.error
         else:
-            error = decoded.error
-            wheel_attempts = (error.meta or {}).get("attempts", wheel_attempts)
-            attempts = _wheel_error_attempts(error, wheel_attempts)
-            result_line = _line(job, settings, None, attempts, error, False, wheel_attempts)
+            raw, error = None, got.error
+        if type(attempts_count) is int and attempts_count > 0:
+            attempts = [{"attempt": attempt, "ok": False} for attempt in range(1, attempts_count)]
+            attempts.append({"attempt": attempts_count, "ok": error is None})
+            if error is not None:
+                attempts[-1]["error"] = {"code": error.code,
+                                          "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
+                                          "recoverable": error.recoverable}
+        else:
+            attempts = []
+        result_line = _line(job, settings, raw, attempts, error, False,
+                            attempts_count if type(attempts_count) is int and attempts_count > 0 else 0)
         logged = log_result_line(log, result_line, fields or {})
         if isinstance(logged, Err):
-            return logged
-        if echo:
+            general_log_errors.append(logged.error)
+        elif echo:
             write_stdout_line(encode_result_line(result_line))
-        result_lines.append(result_line)
-    return Ok(result_lines)
+        result_lines[position] = result_line
+
+    batch = decidr_client.call_batch_results(
+        [encode_body(job.body).decode("utf-8") for job in jobs],
+        model=settings.model, project="judge-jev", agent_role="quality",
+        abort_on=frozenset({"auth"}), category_codes=DECIDR_CATEGORY_OVERRIDES,
+        general_log=record_general, timeout_secs=settings.timeout,
+        workers=settings.max_workers, on_result=persist,
+    )
+    if general_log_errors:
+        return Err(general_log_errors[0])
+    if not batch["ok"]:
+        return _judge_result(batch)
+    return Ok([result_lines[position] for position in range(len(jobs))])
 
 
 def pump_batch(lines: list, settings: BatchSettings, fixture, log: RunLog, echo: bool,
