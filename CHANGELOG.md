@@ -2,6 +2,18 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.3.1 — 2026-11-16
+
+- New command `drift`: compares records between two Raptor indexes and reports, per
+  record, whether the rewrite still requires exactly what the original required
+  (`keep_<n>` per obligation not kept verbatim, `material`, `adds`, `verification`), with identity and
+  removed-obligation controls that invalidate the run when Jev misreads them.
+  `--form diff` (default) sends the original plus a unified diff; `--form full`
+  sends both texts. `--question-set orthogonal` (default) groups narrow yes/no
+  questions by feature and decides per group; `brief` and `sixteen` are kept
+  for comparison. A review aid: it flags records for a human drift review and
+  never accepts or rejects one. Tests: `tests/sc-judge-jev/test_drift.py`.
+
 ## 0.3.0 — 2026-11-13
 
 A second way to make a failing record pass: have it written from a list of what it requires, in place of editing its text. Reinstall with the `judge-jev-installer` skill.
