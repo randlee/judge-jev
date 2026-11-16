@@ -15,12 +15,13 @@ required_variables:
 #   "pyoxigraph>=0.5,<0.6",
 #   "pyshacl>=0.30,<1",
 #   "sc-observability==1.5.0",
+#   "sc-decidr==0.2.0",
 # ]
 # ///
 """jev_judge.py
 
 Run it with ``uv run --script jev_judge.py ...``: the inline metadata above
-supplies its five dependencies. pydantic (v2) defines the model of every JSON
+supplies its dependencies. pydantic (v2) defines the model of every JSON
 input (ADR-JEV-0005) and is imported at the top (DEPENDENCY.PYDANTIC when it
 does not import); the others are imported lazily where they are needed (pyoxigraph and pyshacl only when a definitions file is read). The
 run log goes through the sc-observability logger (``sc-observability==1.5.0``,
@@ -108,6 +109,7 @@ from jev_errors import BEARER_RE, JudgeError, redact_sensitive, _redact_text  # 
 import jev_definitions  # noqa: E402  (standard library only)
 import jev_runs  # noqa: E402  (standard library at import)
 import judge_jev_paths  # noqa: E402  (standard library only)
+import decidr_client  # noqa: E402  (wheel is loaded only for live calls)
 
 try:
     from pydantic import (AfterValidator, BaseModel, ConfigDict, Discriminator, Field, PrivateAttr, RootModel, Tag,

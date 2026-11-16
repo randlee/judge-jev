@@ -3,6 +3,9 @@ import datetime
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+from clock_support import FIXED_UTC, utc_clock
 
 from jev_support import SCRIPTS  # noqa: F401 - puts the installed scripts on sys.path
 import judge_jev_paths as paths  # noqa: E402
@@ -50,8 +53,11 @@ class CentralLogRootTests(RepositoryNameTests):
         self.assertEqual(paths.central_log_root(repo, self.home, day), self.home / ".judge-jev" / "sc-runtime" / "2026-11-13")
 
     def test_the_default_date_is_today_in_utc(self):
-        root = paths.central_log_root(self.d, self.home)
-        self.assertEqual(root.name, datetime.datetime.now(datetime.timezone.utc).date().isoformat())
+        clock = utc_clock()
+        with mock.patch.object(paths, "_dt", clock):
+            root = paths.central_log_root(self.d, self.home)
+        self.assertEqual(root.name, FIXED_UTC.date().isoformat())
+        clock.datetime.now.assert_called_once_with(datetime.timezone.utc)
 
 
 if __name__ == "__main__":
