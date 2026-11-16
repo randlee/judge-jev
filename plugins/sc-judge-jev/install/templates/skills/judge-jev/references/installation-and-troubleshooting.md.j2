@@ -19,10 +19,16 @@ description: Installing judge-jev into a repository or a parent folder with the 
 ```bash
 which python3 && python3 --version
 python3 -c 'import yaml; print("PyYAML", yaml.__version__)'
-test -f .env && echo "repository .env present" || test -n "$TYPESAFE_API_KEY" && echo "process key set" || echo "sc-agent will also check the platform credential store"
+if [ -f .env ]; then
+  echo "repository .env present (key not verified)"
+elif [ -n "${TYPESAFE_API_KEY:-}" ]; then
+  echo "process key set"
+else
+  echo "sc-agent may use the platform credential store"
+fi
 ```
 
-The environment-key message is informational: a documented local platform credential can also satisfy live Jev authentication.
+These messages are informational: an existing `.env` does not prove it contains a key, and a documented local platform credential can also satisfy live Jev authentication.
 
 ## Install judge-jev into a folder
 

@@ -26,7 +26,13 @@ which uv && uv --version
 which jq && jq --version
 J="<this skill's directory>/scripts/jev_judge.py"
 uv run --script "$J" --help >/dev/null && echo "judge-jev ok"
-test -f .env || test -n "$TYPESAFE_API_KEY" || echo "No .env or TYPESAFE_API_KEY; sc-agent may use the platform credential store"
+if [ -f .env ]; then
+  echo "repository .env present (key not verified)"
+elif [ -n "${TYPESAFE_API_KEY:-}" ]; then
+  echo "process key set"
+else
+  echo "sc-agent may use the platform credential store"
+fi
 uv run -q --no-project --with pyyaml python "<this skill's directory>/scripts/judge_jev_settings.py" show | jq '.data.allow_remote_judge'   # true, false, or null
 ```
 

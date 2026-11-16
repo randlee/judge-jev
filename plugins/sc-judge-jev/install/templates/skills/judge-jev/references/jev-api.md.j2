@@ -142,6 +142,6 @@ TypeSafe prices input tokens only (output is free) at a fraction of a cent per m
 | --- | --- | --- |
 | `TYPESAFE_API_KEY` | none | Process-environment input consumed by sc-agent after `.env` and before the platform credential store |
 
-It is the only environment variable the plugin reads. Model, threshold, size limits and near-threshold confirmation are the flags above, with checked-in defaults. The installed troubleshooting reference specifies the Keychain, Credential Manager, and Secret Service fallback entries.
+This is one credential input; sc-agent also reads configuration overrides and other provider credentials from the environment. Model, threshold, size limits and near-threshold confirmation are the flags above, with checked-in defaults. The installed troubleshooting reference specifies the Keychain, Credential Manager, and Secret Service fallback entries.
 
 Codex environment policy for `TYPESAFE_API_KEY`: `installation-and-troubleshooting.md`.
