@@ -217,11 +217,11 @@ class BatchTests(BatchCase):
         self.assertFalse((self.d / "runs").exists())
 
     def test_live_auth_failure_is_reported_from_the_typed_wheel_error(self):
-        error = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable", "attempts": 1}
+        error = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable", "sends": 1}
         transport = BatchTransport((json.dumps({"error": error}), "AUTH.CREDENTIALS"))
         src = self.put("in.jsonl", jsonl([request_line("s1", "text", ("cur", PLAN_QS["questions"]))]))
         stdout, stderr = io.StringIO(), io.StringIO()
-        with consented(), mock.patch.object(jj.decidr_client, "call_batch", transport), \
+        with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = jj.main(["batch", "--input", src, "--run-dir", str(self.d / "runs")])
         line, = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
@@ -236,7 +236,7 @@ class BatchRetryPolicyTests(BatchCase):
 
     def live_batch(self, result):
         stdout, stderr = io.StringIO(), io.StringIO()
-        with consented(), mock.patch.object(jj.decidr_client, "call_batch", return_value=[result]), \
+        with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", BatchTransport(result)), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = jj.main(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])),
                             "--run-dir", str(self.d / "runs"), "--run-name", "r1", "--max-workers", "1"])
@@ -245,15 +245,15 @@ class BatchRetryPolicyTests(BatchCase):
         return code, lines, envelope
 
     def test_retry_count_comes_from_wheel_error_attempts(self):
-        detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "attempts": 4}
-        code, lines, envelope = self.live_batch((json.dumps({"error": detail}), "JEV.OVERLOADED"))
+        detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
+        code, lines, envelope = self.live_batch((json.dumps({"error": detail, "sends": 4}), "JEV.OVERLOADED"))
         line, = lines
         self.assertEqual((code, line["ok"], line["retry_count"], line["attempts"][-1]["attempt"]), (2, False, 3, 4))
         self.assertEqual(envelope["error"]["code"], "JEV.OVERLOADED")
 
     def test_success_is_not_retried_by_judge_jev(self):
         response = {"model": "jev-x", "answers": plan_answers()}
-        code, lines, envelope = self.live_batch((json.dumps({"response": response}), None))
+        code, lines, envelope = self.live_batch((json.dumps({"response": response, "sends": 1}), None))
         line, = lines
         self.assertEqual((code, envelope, line["ok"], line["retry_count"], line["verdict"]), (0, None, True, 0, "satisfied"))
 

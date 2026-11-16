@@ -92,7 +92,7 @@ class QualityCase(unittest.TestCase):
 
     def quality(self, *argv, answers=None):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
-        with env(), mock.patch.object(jj.decidr_client, "call_batch", never_called):
+        with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
             return run_cli(["quality", *argv, "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", "q1", *extra])
 
 
@@ -196,7 +196,7 @@ class WaveReasons(QualityCase):
         answers = {"*": tree_answers("quality-req.json")}
         logs = []
         for name in ("a", "b"):
-            with env(), mock.patch.object(jj.decidr_client, "call_batch", never_called):
+            with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
                 code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / name),
                                      "--answers-file", write(self.d, "answers.json", answers)])
             self.assertEqual(code, 0, out)
@@ -228,10 +228,12 @@ class WaveReasons(QualityCase):
         self.assertEqual(out["data"]["tree"]["id"], "quality-adr")
 
     def test_live_client_auth_error_is_typed_and_writes_no_result_event(self):
-        auth_error = jj.decidr_client.ClientError("AUTH.CREDENTIALS", "no test credential")
+        auth_record = {"ok": False, "position": None, "line": None, "attempts": None,
+                       "error": {"code": "AUTH.CREDENTIALS", "message": "no test credential",
+                                 "retryable": False, "action": "Check credentials.", "status": 401,
+                                 "retry_after_ms": None, "attempts": None, "data": {}}}
         with env(), mock.patch.object(jj, "remote_preflight", return_value=jj.Ok(None)), \
-                mock.patch.object(jj, "_new_cancel_token", return_value=object()), \
-                mock.patch.object(jj.decidr_client, "call_batch", side_effect=auth_error):
+                mock.patch.object(jj.decidr_client, "call_batch_results", return_value=auth_record):
             code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs")])
         self.assertEqual((code, out["error"]["code"]), (2, "AUTH.CREDENTIALS"))
         self.assertEqual(read_log(self.d / "logs"), [])
@@ -244,7 +246,7 @@ class LogPath(QualityCase):
         self.addCleanup(os.chdir, before)
         os.chdir(cwd)
         clock = utc_clock()
-        with env(), mock.patch.object(jj.decidr_client, "call_batch", never_called), \
+        with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called), \
                 mock.patch.object(jj, "_dt", clock), mock.patch.object(jj.judge_jev_paths, "_dt", clock), \
                 mock.patch.object(jj.judge_jev_paths, "home_dir", lambda: home):
             return run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", answers])

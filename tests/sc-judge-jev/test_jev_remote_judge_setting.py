@@ -69,8 +69,7 @@ class Batched:
         err = io.StringIO()
         argv = ["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", str(repo.root), *extra]
         with env(**(dict(KEY) if env_values is None else env_values)), \
-                mock.patch.object(jj, "_new_cancel_token", return_value=object()), \
-                mock.patch.object(jj.decidr_client, "call_batch", self.transport), contextlib.redirect_stderr(err):
+                mock.patch.object(jj.decidr_client, "call_batch_results", self.transport), contextlib.redirect_stderr(err):
             self.code, self.out = run_cli(argv)
         test.assertEqual(err.getvalue(), "")  # every case here either answers or fails before the first line
 
@@ -185,7 +184,7 @@ class LiveCallConsentTests(unittest.TestCase):
                 self.skipTest("the temporary directory is inside a repository here")
             t = BatchTransport()
             src = write(d, "in.jsonl", jsonl([request_line()]))
-            with env(**KEY), mock.patch.object(jj.decidr_client, "call_batch", t), \
+            with env(**KEY), mock.patch.object(jj.decidr_client, "call_batch_results", t), \
                     mock.patch.object(settings_mod, "_git_toplevel", lambda start: None):
                 code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", d])
             self.assertEqual((code, out["error"]["code"], t.bodies), (2, "REPO.NOT_FOUND", []))
@@ -198,7 +197,7 @@ class LiveCallConsentTests(unittest.TestCase):
             for extra in (["--dry-run"], ["--answers-file", fixture]):
                 with self.subTest(extra=extra):
                     t = BatchTransport()
-                    with env(), mock.patch.object(jj.decidr_client, "call_batch", t), mock.patch.dict(sys.modules, {"yaml": None}):
+                    with env(), mock.patch.object(jj.decidr_client, "call_batch_results", t), mock.patch.dict(sys.modules, {"yaml": None}):
                         code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), *extra,
                                              "--repository-root", missing])
                     self.assertEqual((code, t.bodies), (0, []), out)

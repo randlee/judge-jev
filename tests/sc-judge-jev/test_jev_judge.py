@@ -71,7 +71,6 @@ def consented():
     """The repository's allow_remote_judge is true (the real lookup is tested in test_jev_remote_judge_setting)."""
     stack = contextlib.ExitStack()
     stack.enter_context(mock.patch.object(jj, "remote_judge_consent", return_value=jj.Ok(None)))
-    stack.enter_context(mock.patch.object(jj, "_new_cancel_token", return_value=object()))
     return stack
 
 
@@ -110,8 +109,55 @@ class Transport:
         return {"model": "jev-1.13.0", "answers": dev_answers() if self.gate == "dev" else plan_answers()}
 
 
+def wheel_record(result, position=0, mapped_code=None):
+    """Build one controlled generated-client result record from a wheel-shaped wire result."""
+    line, mapped = result
+    parsed = json.loads(line)
+    attempts = parsed.get("sends")
+    error = parsed.get("error")
+    if isinstance(error, dict):
+        category = error.get("category")
+        code = mapped_code or mapped or {
+            "auth": "AUTH.CREDENTIALS", "quota": "JEV.RATE_LIMITED", "busy": "JEV.OVERLOADED",
+            "network": "JEV.NETWORK", "response_invalid": "JEV.RESPONSE_INVALID",
+            "validation": "JEV.VALIDATION", "cancelled": "CANCELED",
+        }.get(category, "DECIDR.ERROR")
+        if error.get("id") == "decision.context_exceeded":
+            code = "JEV.CONTEXT_EXCEEDED"
+        record_error = {"code": code, "message": error.get("message", "sc-decidr returned an error"),
+                        "retryable": (error.get("id") == "decision.context_exceeded" or
+                              category in ("quota", "busy", "network", "response_invalid")),
+                        "action": "Inspect the typed error and correct its cause.",
+                        "status": error.get("status"), "retry_after_ms": error.get("retry_after_ms"), "attempts": attempts,
+                        "data": error}
+        return {"ok": False, "error": record_error, "position": position, "line": line, "attempts": attempts}
+    return {"ok": True, "value": parsed["response"], "position": position, "line": line, "attempts": attempts}
+
+
+def wheel_record(result, position=0):
+    """Build a controlled generated-client record from a wheel-shaped wire result."""
+    line, mapped = result
+    parsed = json.loads(line)
+    attempts = parsed.get("sends")
+    error = parsed.get("error")
+    if isinstance(error, dict):
+        category = error.get("category")
+        code = mapped or {"auth": "AUTH.CREDENTIALS", "quota": "JEV.RATE_LIMITED", "busy": "JEV.OVERLOADED",
+                          "network": "JEV.NETWORK", "response_invalid": "JEV.RESPONSE_INVALID",
+                          "validation": "JEV.VALIDATION", "cancelled": "CANCELED"}.get(category, "DECIDR.ERROR")
+        if error.get("id") == "decision.context_exceeded":
+            code = "JEV.CONTEXT_EXCEEDED"
+        return {"ok": False, "error": {"code": code, "message": error.get("message", "wheel error"),
+                "retryable": (error.get("id") == "decision.context_exceeded" or
+                              category in ("quota", "busy", "network", "response_invalid")),
+                "action": "Inspect the typed error and correct its cause.", "status": error.get("status"),
+                "retry_after_ms": error.get("retry_after_ms"), "attempts": attempts, "data": error},
+                "position": position, "line": line, "attempts": attempts}
+    return {"ok": True, "value": parsed["response"], "position": position, "line": line, "attempts": attempts}
+
+
 class BatchTransport:
-    """Stub sc-agent's public batch result tuples without bypassing judge-jev's decoder."""
+    """Stub sc-agent's wire results as generated-client records and invoke completion callbacks."""
 
     def __init__(self, *results):
         self.results = list(results)
@@ -119,14 +165,15 @@ class BatchTransport:
 
     def __call__(self, requests, **kwargs):
         self.bodies.extend(json.loads(request) for request in requests)
-        out = []
-        for _request in requests:
-            if self.results:
-                out.append(self.results.pop(0))
-            else:
-                response = {"model": "jev-1.13.0", "answers": plan_answers()}
-                out.append((json.dumps({"response": response}), None))
-        return out
+        records = []
+        for position, _request in enumerate(requests):
+            result = self.results.pop(0) if self.results else (json.dumps({"response": {
+                "model": "jev-1.13.0", "answers": plan_answers()}, "sends": 1}), None)
+            records.append(wheel_record(result, position))
+        for record in records:
+            if kwargs.get("on_result") is not None:
+                kwargs["on_result"](record)
+        return {"ok": True, "value": records, "position": None, "line": None, "attempts": None}
 
 
 def request_line(item_id="ex-42", text="Sprint 2 copies the legacy runtime crates.", candidate="cur", questions=None):
@@ -255,24 +302,28 @@ class ResponseValidationTests(unittest.TestCase):
 
 
 class WheelErrorMappingTests(unittest.TestCase):
-    def test_context_error_uses_typed_identifier_and_preserves_attempt_metadata(self):
-        error = jj._wheel_error("JEV.VALIDATION", {
-            "id": "decision.context_exceeded", "category": "validation", "message": "context exceeded",
-            "attempts": 3, "retry_after_ms": 1200,
-        })
+    def test_context_error_uses_shared_record_and_preserves_attempt_metadata(self):
+        detail = {"code": "JEV.CONTEXT_EXCEEDED", "message": "context exceeded", "retryable": True,
+                  "action": "Shorten the evidence for this item.", "status": None,
+                  "retry_after_ms": 1200, "attempts": 3, "data": {"id": "decision.context_exceeded"}}
+        error = jj._judge_result({"ok": False, "error": detail, "attempts": 3, "position": None, "line": None}).error
         self.assertEqual((error.code, error.recoverable, error.meta, error.retry_after),
                          ("JEV.CONTEXT_EXCEEDED", True, {"attempts": 3, "retry_after_ms": 1200}, 1.2))
 
     def test_auth_error_withholds_provider_message(self):
-        error = jj._wheel_error("AUTH.CREDENTIALS", {
-            "id": "auth.credentials", "category": "auth", "message": "token secret", "attempts": 1,
-        })
+        detail = {"code": "AUTH.CREDENTIALS", "message": "token secret", "retryable": False,
+                  "action": "Check credentials.", "status": 401, "retry_after_ms": None,
+                  "attempts": 1, "data": {"message": "token secret"}}
+        error = jj._judge_result({"ok": False, "error": detail, "attempts": 1, "position": None, "line": None}).error
         self.assertEqual(error.code, "AUTH.CREDENTIALS")
         self.assertNotIn("secret", error.message)
 
-    def test_malformed_wheel_result_is_a_typed_refusal(self):
-        error = failure(jj._decode_wheel_result("not json", None))
-        self.assertEqual(error.code, "JEV.RESPONSE_INVALID")
+    def test_shared_invalid_result_is_a_typed_refusal(self):
+        detail = {"code": "DECIDR.INVALID_RESULT", "message": "invalid JSON", "retryable": False,
+                  "action": "Inspect the invalid result.", "status": None, "retry_after_ms": None,
+                  "attempts": None, "data": {}}
+        error = jj._judge_result({"ok": False, "error": detail, "attempts": None, "position": None, "line": None}).error
+        self.assertEqual(error.code, "DECIDR.INVALID_RESULT")
 
 
 class RedactionTests(unittest.TestCase):

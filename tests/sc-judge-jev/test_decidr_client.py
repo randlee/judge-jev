@@ -22,7 +22,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
         self.assertEqual(decidr_client.SC_DECIDR_VERSION, installed_version)
         self.assertFalse(hasattr(decidr_client, "extract"))
 
-    def test_single_and_batch_use_public_wheel_api_with_keyring_overrides(self):
+    def test_public_client_forwards_explicit_keyring_values_when_requested(self):
         wheel = types.ModuleType("sc_agent")
         wheel.SagError = type("SagError", (Exception,), {})
         line = json.dumps({"response": {"answers": {}}})
@@ -44,7 +44,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
             self.assertEqual(args["agent_role"], "quality")
             self.assertIs(args["cancel"], cancel)
             self.assertNotIn("provider", args)
-            self.assertNotIn("general_log", args)
+            self.assertIsNone(args["general_log"])
         wheel.category.assert_not_called()
 
     def test_auth_error_line_maps_category_and_cancels(self):

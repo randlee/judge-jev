@@ -64,9 +64,11 @@ class ScriptErrValueTests(unittest.TestCase):
     def test_jev_judge(self):
         missing = jj.load_json("/nonexistent/x.json", "thing")
         self.assertEqual((missing.error.code, missing.error.message), ("INPUT.MISSING", "thing not found: '/nonexistent/x.json'"))
-        mapped = jj._wheel_error("JEV.VALIDATION", {"id": "decision.context_exceeded", "category": "validation",
-                                                    "message": "large", "attempts": 2})
-        self.assertEqual((mapped.code, mapped.meta["attempts"]), ("JEV.CONTEXT_EXCEEDED", 2))
+        mapped = jj._judge_result({"ok": False, "position": None, "line": None, "attempts": 2,
+                                   "error": {"code": "JEV.CONTEXT_EXCEEDED", "message": "large", "retryable": True,
+                                             "action": "Shorten evidence.", "status": None, "retry_after_ms": None,
+                                             "attempts": 2, "data": {"id": "decision.context_exceeded"}}})
+        self.assertEqual((mapped.error.code, mapped.error.meta["attempts"]), ("JEV.CONTEXT_EXCEEDED", 2))
 
     def test_judge_error_is_a_value_not_an_exception(self):
         self.assertFalse(issubclass(jj.JudgeError, BaseException))

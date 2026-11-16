@@ -8,30 +8,27 @@ import jev_judge as jj  # noqa: E402
 import decidr_client  # noqa: E402
 
 
-class SagErrorCompatibility(unittest.TestCase):
-    def call_with(self, exc):
-        with mock.patch.object(jj, "_new_cancel_token", return_value=mock.Mock()), \
-                mock.patch.object(decidr_client, "call", side_effect=exc):
+class SharedClientFailureCompatibility(unittest.TestCase):
+    def call_with(self, record):
+        with mock.patch.object(decidr_client, "call_result", return_value=record):
             return jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
 
-    def test_auth_sag_error_is_typed_and_redacted(self):
-        exc = RuntimeError("provider failure")
-        exc.id = "auth.credentials"
-        exc.category = "auth"
-        exc.message = "Bearer secret-token"
-        exc.detail = json.dumps({"id": exc.id, "category": exc.category, "attempts": 1})
-        got = self.call_with(exc)
+    def test_auth_result_is_typed_and_redacted(self):
+        record = {"ok": False, "position": None, "line": None, "attempts": 1,
+                  "error": {"code": "AUTH.CREDENTIALS", "message": "Bearer secret-token", "retryable": False,
+                            "action": "Check credentials.", "status": 401, "retry_after_ms": None,
+                            "attempts": 1, "data": {"id": "auth.credentials"}}}
+        got = self.call_with(record)
         self.assertIsInstance(got, jj.Err)
         self.assertEqual(got.error.code, "AUTH.CREDENTIALS")
         self.assertNotIn("secret-token", got.error.message)
 
-    def test_context_sag_error_maps_from_decision_identifier(self):
-        exc = RuntimeError("request too large")
-        exc.id = "decision.context_exceeded"
-        exc.category = "validation"
-        exc.message = "request too large"
-        exc.detail = json.dumps({"id": exc.id, "category": exc.category, "attempts": 2})
-        got = self.call_with(exc)
+    def test_context_result_uses_shared_category_code(self):
+        record = {"ok": False, "position": None, "line": None, "attempts": 2,
+                  "error": {"code": "JEV.CONTEXT_EXCEEDED", "message": "request too large", "retryable": True,
+                            "action": "Shorten evidence.", "status": None, "retry_after_ms": None,
+                            "attempts": 2, "data": {"id": "decision.context_exceeded"}}}
+        got = self.call_with(record)
         self.assertIsInstance(got, jj.Err)
         self.assertEqual((got.error.code, got.error.recoverable, got.error.meta["attempts"]),
                          ("JEV.CONTEXT_EXCEEDED", True, 2))
