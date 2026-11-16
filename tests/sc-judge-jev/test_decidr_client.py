@@ -52,6 +52,8 @@ class ConsumerAdoptionTests(unittest.TestCase):
         if importlib.util.find_spec("sc_treesitter") is None:
             self.skipTest("sitr wheel is not installed in this test environment")
 
+        # Stub send to check extraction-to-request wiring without a provider call;
+        # skip when the optional sitr wheel is absent.
         source = Path(__file__).parent / "fixtures" / "sitr_match.rs"
         captures = decidr_client.extract("rust", "(match_expression) @match", source.read_text(encoding="utf-8"))
         self.assertTrue(captures)
