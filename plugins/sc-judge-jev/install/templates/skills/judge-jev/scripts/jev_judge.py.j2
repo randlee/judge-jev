@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_judge
-version: 0.3.0
+version: 0.3.1
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -1170,23 +1170,21 @@ def _line(job: BatchJob, settings: BatchSettings, raw, attempts: list, error, dr
     })
 
 
+def _batch_result_line(job: BatchJob, settings: BatchSettings, got, attempts_count) -> dict:
+    checked = validate_response(got.value, job.questions) if isinstance(got, Ok) else got
+    return _line(job, settings, checked.value if isinstance(checked, Ok) else None, [],
+                 checked.error if isinstance(checked, Err) else None, False, attempts_count)
+
+
 def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
     """Run one shared-client call, or advance a controlled fixture's explicit attempt sequence."""
     if settings.dry_run:
         return _line(job, settings, None, [], None, True)
     if fixture is None:
-        wheel_attempts = None
         got = call_jev(job.body, settings.timeout)
-        if isinstance(got, Ok):
-            wheel_attempts = getattr(got.value, "sc_agent_sends", None)
-            got = validate_response(got.value, job.questions)
-        if isinstance(got, Ok):
-            return _line(job, settings, got.value, [], None, False, wheel_attempts)
-        error = got.error
-        observed_attempts = (error.meta or {}).get("attempts")
-        if type(observed_attempts) is int:
-            wheel_attempts = observed_attempts
-        return _line(job, settings, None, [], error, False, wheel_attempts)
+        count = (getattr(got.value, "sc_agent_sends", None) if isinstance(got, Ok)
+                 else (got.error.meta or {}).get("attempts"))
+        return _batch_result_line(job, settings, got, count)
 
     attempts, raw, error = [], None, None
     for attempt in range(1, BATCH_FIXTURE_RETRY_LIMIT + 2):
@@ -1527,17 +1525,7 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
         job = jobs[position]
         got = _judge_result(record)
         wheel_error = isinstance(got, Err)
-        attempts_count = record["attempts"]
-        if isinstance(got, Ok):
-            checked = validate_response(got.value, job.questions)
-            if isinstance(checked, Ok):
-                raw, error = checked.value, None
-            else:
-                raw, error = None, checked.error
-        else:
-            raw, error = None, got.error
-        attempts = []
-        result_line = _line(job, settings, raw, attempts, error, False, attempts_count)
+        result_line = _batch_result_line(job, settings, got, record["attempts"])
         if not wheel_error:
             logged = log_result_line(log, result_line, fields or {})
             if isinstance(logged, Err):

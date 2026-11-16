@@ -2,6 +2,10 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.3.1
+
+- Share live batch-result validation and line construction between single-job and streamed batch paths.
+
 ## 0.3.0 — 2026-11-13
 
 A second way to make a failing record pass: have it written from a list of what it requires, in place of editing its text. Reinstall with the `judge-jev-installer` skill.
