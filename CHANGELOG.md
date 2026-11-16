@@ -2,6 +2,10 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.3.4
+
+- Remove the last obsolete render-variable argument from CLI test support.
+
 ## 0.3.3
 
 - Remove the unused install-time general_log input from the client template; runtime logger forwarding is unchanged.

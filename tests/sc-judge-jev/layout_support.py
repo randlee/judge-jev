@@ -128,7 +128,6 @@ def render_cli(template: Path, out: Path) -> None:
     proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
                            "--var", f"version={version}", "--var", f"sc_decidr_version={match.group(1)}",
                            "--var", "sitr=true", "--var", f"sitr_version={match.group(1)}",
-                           "--var", "general_log=true",
                            "--file", str(template), "--output", str(out)],
                           text=True, encoding="utf-8", errors="replace", check=False)
     if proc.returncode != 0:
