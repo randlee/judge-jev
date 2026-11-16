@@ -5,6 +5,10 @@
 ## 0.3.3
 
 - Remove the unused install-time general_log input from the client template; runtime logger forwarding is unchanged.
+- Adopt the sc-decidr 0.2.4 shared error type. The client was generated with
+  `sc-compose render --root /tmp --file /tmp/d-owner-consumer-staged.j2 --var-file /tmp/d-owner-client-vars.json --strict --output /tmp/d-owner-client-render.py`.
+  The var-file was `{"general_log":true,"models":["jev"],"sitr":true,"sc_decidr_version":"{{ sc_decidr_version }}","sitr_version":"{{ sitr_version }}"}`.
+  The staged file wraps the wheel template's sitr blocks in Jinja raw tags to preserve them for installation. The generated client and the published wheel template produce byte-identical rendered output with sitr enabled and disabled.
 
 ## 0.3.2
 
