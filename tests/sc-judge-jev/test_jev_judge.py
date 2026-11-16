@@ -109,31 +109,6 @@ class Transport:
         return {"model": "jev-1.13.0", "answers": dev_answers() if self.gate == "dev" else plan_answers()}
 
 
-def wheel_record(result, position=0, mapped_code=None):
-    """Build one controlled generated-client result record from a wheel-shaped wire result."""
-    line, mapped = result
-    parsed = json.loads(line)
-    attempts = parsed.get("sends")
-    error = parsed.get("error")
-    if isinstance(error, dict):
-        category = error.get("category")
-        code = mapped_code or mapped or {
-            "auth": "AUTH.CREDENTIALS", "quota": "JEV.RATE_LIMITED", "busy": "JEV.OVERLOADED",
-            "network": "JEV.NETWORK", "response_invalid": "JEV.RESPONSE_INVALID",
-            "validation": "JEV.VALIDATION", "cancelled": "CANCELED",
-        }.get(category, "DECIDR.ERROR")
-        if error.get("id") == "decision.context_exceeded":
-            code = "JEV.CONTEXT_EXCEEDED"
-        record_error = {"code": code, "message": error.get("message", "sc-decidr returned an error"),
-                        "retryable": (error.get("id") == "decision.context_exceeded" or
-                              category in ("quota", "busy", "network", "response_invalid")),
-                        "action": "Inspect the typed error and correct its cause.",
-                        "status": error.get("status"), "retry_after_ms": error.get("retry_after_ms"), "attempts": attempts,
-                        "data": error}
-        return {"ok": False, "error": record_error, "position": position, "line": line, "attempts": attempts}
-    return {"ok": True, "value": parsed["response"], "position": position, "line": line, "attempts": attempts}
-
-
 def wheel_record(result, position=0):
     """Build a controlled generated-client record from a wheel-shaped wire result."""
     line, mapped = result
