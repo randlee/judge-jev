@@ -1,5 +1,6 @@
 """Exercise the installed consumer through a controlled public wheel surface."""
 import json
+from importlib import metadata
 import sys
 import types
 import unittest
@@ -13,7 +14,12 @@ import jev_judge
 class ConsumerAdoptionTests(unittest.TestCase):
     def test_judge_imports_rendered_client(self):
         self.assertIs(jev_judge.decidr_client, decidr_client)
-        self.assertEqual(decidr_client.SC_DECIDR_VERSION, "0.2.0")
+        try:
+            installed_version = metadata.version("sc-decidr")
+        except metadata.PackageNotFoundError:
+            # The wheel is an optional inline-script dependency and unit CI does not install it.
+            installed_version = jev_support.SC_DECIDR_VERSION
+        self.assertEqual(decidr_client.SC_DECIDR_VERSION, installed_version)
         self.assertFalse(hasattr(decidr_client, "extract"))
 
     def test_single_and_batch_use_public_wheel_api_with_keyring_overrides(self):

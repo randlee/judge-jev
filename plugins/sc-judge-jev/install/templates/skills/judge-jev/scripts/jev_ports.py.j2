@@ -71,17 +71,17 @@ class GraphStore(Protocol):
 class PythonCoreTransport:
     """``Transport`` over the Python core: ``pump`` is ``jev_judge.pump_batch``, injected so this module never imports it.
 
-    ``send`` runs ``pump(lines, settings, api_key, fixture, log, echo, fields)``; the settings, key, fixture (an answers
-    fixture, or None for a live call), run log and log fields are the caller's, fixed at construction.
+    ``send`` runs ``pump(lines, settings, fixture, log, echo, fields)``; the settings, fixture (an answers fixture,
+    or None for a live call), run log and log fields are the caller's, fixed at construction.
     """
 
-    def __init__(self, pump: Callable[..., Result], settings: Any, api_key: str, fixture: Any, log: Any,
+    def __init__(self, pump: Callable[..., Result], settings: Any, fixture: Any, log: Any,
                  echo: bool = False, fields: Optional[dict] = None):
-        self._pump, self._settings, self._api_key = pump, settings, api_key
+        self._pump, self._settings = pump, settings
         self._fixture, self._log, self._echo, self._fields = fixture, log, echo, fields
 
     def send(self, lines: list[dict]) -> Result[list[dict], Any]:
-        return self._pump(lines, self._settings, self._api_key, self._fixture, self._log, self._echo, self._fields)
+        return self._pump(lines, self._settings, self._fixture, self._log, self._echo, self._fields)
 
 
 class FixtureTransport:

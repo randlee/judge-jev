@@ -26,6 +26,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -119,9 +120,15 @@ def render_cli(template: Path, out: Path) -> None:
         raise RuntimeError("the script tests need a rendered install: the sc-compose wheel or the sc-compose CLI "
                            "(scripts/install_sc_compose_ci.py) must be available")
     version = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8"))["version"]
+    runtime = (SKILL_SRC / "scripts" / "jev_judge.py.j2").read_text(encoding="utf-8")
+    match = re.search(r'^\s*#\s*"sc-decidr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', runtime, re.M)
+    if match is None:
+        raise RuntimeError("jev_judge.py.j2 must pin sc-decidr to an exact X.Y.Z version")
     out.parent.mkdir(parents=True, exist_ok=True)
     proc = subprocess.run([binary, "render", "--root", str(template.parent), "--strict",
-                           "--var", f"version={version}", "--file", str(template), "--output", str(out)],
+                           "--var", f"version={version}", "--var", f"sc_decidr_version={match.group(1)}",
+                           "--var", "general_log=true",
+                           "--file", str(template), "--output", str(out)],
                           capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
     if proc.returncode != 0:
         raise RuntimeError(f"sc-compose render {template.name} failed: {proc.stderr[-2000:]}")

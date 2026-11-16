@@ -19,7 +19,7 @@ description: Installing judge-jev into a repository or a parent folder with the 
 ```bash
 which python3 && python3 --version
 python3 -c 'import yaml; print("PyYAML", yaml.__version__)'
-test -n "$TYPESAFE_API_KEY" && echo "environment key set (preferred)" || echo "environment key absent; check the documented platform credential store"
+test -f .env && echo "repository .env present" || test -n "$TYPESAFE_API_KEY" && echo "process key set" || echo "sc-agent will also check the platform credential store"
 ```
 
 The environment-key message is informational: a documented local platform credential can also satisfy live Jev authentication.
@@ -74,7 +74,7 @@ allow_remote_judge: true
 
 **TypeSafe API key**
 
-The live judge looks for the key in this order: `TYPESAFE_API_KEY` in the process environment, then the platform credential store. An invalid environment value fails closed; it does not silently select another credential. The platform entry is local-interactive convenience only—cloud, CI, and remote agents should use their platform secret injection.
+sc-agent resolves the key in this order: the repository `.env` file, `TYPESAFE_API_KEY` in the process environment, then the platform credential store. judge-jev does not read, validate, or retry credentials itself. An invalid higher-priority value fails closed. Cloud, CI, and remote agents should use their platform secret injection.
 
 - macOS: Keychain generic-password item with service `plan-anchor` and account `typesafe-api-key`.
 - Windows: Credential Manager generic credential with target `plan-anchor:typesafe-api-key`.
@@ -91,7 +91,7 @@ The live judge looks for the key in this order: `TYPESAFE_API_KEY` in the proces
   echo '[ -r "$HOME/.config/typesafe/env" ] && . "$HOME/.config/typesafe/env"' >> ~/.zshenv   # and ~/.bash_profile for bash
   ```
   GUI-launched apps do not read shell files; use `launchctl setenv TYPESAFE_API_KEY "$TYPESAFE_API_KEY"` (macOS, until reboot). Never commit or echo the key.
-- Under Codex, `TYPESAFE_API_KEY` matches the default `*KEY*` exclusion for command environments. If you restrict `[shell_environment_policy]` in `config.toml`, keep `ignore_default_excludes = true`, and with an allowlist under `[shell_environment_policy.filters]` add `"TYPESAFE_API_KEY" = "include"`.
+- Under Codex, `TYPESAFE_API_KEY` matches the default `*KEY*` exclusion for command environments. If you restrict `[shell_environment_policy]` in `config.toml`, keep `ignore_default_excludes = true`, and with an allowlist under `[shell_environment_policy.filters]` add `"TYPESAFE_API_KEY" = "include"`. A repository `.env` is read by sc-agent.
 - Cursor's agent shell uses the environment of the Cursor app. A GUI launch does not read shell rc files, so set `TYPESAFE_API_KEY` with `launchctl setenv` (macOS, until reboot) before starting Cursor. A plugin variable does not export into `python3 jev_judge.py`.
 - Live Jev calls also need the user's committed answer `allow_remote_judge: true` in `.sc/judge-jev/settings.yaml`. Record it once, at install time with `--allow-remote-judge` (or `--no-remote-judge`), or later with `python3 <skill>/scripts/judge_jev_settings.py set allow_remote_judge true|false`, and commit the file.
 

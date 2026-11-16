@@ -19,7 +19,7 @@ from child_support import run_child
 from jev_support import SCRIPTS, SKILL, log_lines, read_log
 import jev_judge as jj  # noqa: E402
 
-from test_jev_judge import STATEMENT, Transport, answer, consented, env, http, plan_answers, run_cli, write  # noqa: E402
+from test_jev_judge import BatchTransport, STATEMENT, answer, consented, env, plan_answers, run_cli, write  # noqa: E402
 
 PLAN_QS = json.loads((SKILL / "assets" / "questions" / "plan.json").read_text(encoding="utf-8"))
 ROLES = ("addressed", "contradicted", "relevant")
@@ -156,12 +156,12 @@ class BatchTests(BatchCase):
         completed, waits = [], []
         real = jj.run_batch_job
 
-        def controlled(job, settings, api_key, fixture, abort):
+        def controlled(job, settings, fixture):
             if job.candidate_id == "c1":
                 waits.append(c3_done.wait(timeout=30))  # a guard against a deadlocked implementation, not a timing input
             if job.candidate_id == "c2":
                 waits.append(release_c2.wait(timeout=30))
-            result = real(job, settings, api_key, fixture, abort)
+            result = real(job, settings, fixture)
             completed.append(job.candidate_id)
             if job.candidate_id == "c3":
                 c3_done.set()
@@ -171,7 +171,7 @@ class BatchTests(BatchCase):
 
         async def consume():
             got = []
-            async for result in jj.stream_batch([line], settings, "", {"*": plan_answers()}):
+            async for result in jj.stream_batch([line], settings, {"*": plan_answers()}):
                 got.append((result["candidate_id"], list(completed)))
                 release_c2.set()
             return got
@@ -216,68 +216,46 @@ class BatchTests(BatchCase):
         self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
         self.assertFalse((self.d / "runs").exists())
 
-    def test_live_run_fails_closed_before_any_line(self):
-        with mock.patch.dict(os.environ, {"TYPESAFE_API_KEY": ""}), mock.patch.object(jj, "credential_store_api_key", return_value=""):
-            code, out = run_cli(["batch", "--input", self.put("in.jsonl", jsonl(self.LINES)), "--run-dir", str(self.d / "runs")])
-        self.assertEqual((code, out["error"]["code"]), (2, "AUTH.CREDENTIALS"))
-        self.assertFalse((self.d / "runs").exists())
+    def test_live_auth_failure_is_reported_from_the_typed_wheel_error(self):
+        error = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable", "attempts": 1}
+        transport = BatchTransport((json.dumps({"error": error}), "AUTH.CREDENTIALS"))
+        src = self.put("in.jsonl", jsonl([request_line("s1", "text", ("cur", PLAN_QS["questions"]))]))
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with consented(), mock.patch.object(jj.decidr_client, "call_batch", transport), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = jj.main(["batch", "--input", src, "--run-dir", str(self.d / "runs")])
+        line, = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
+        self.assertEqual((code, line["error"]["code"], json.loads(stderr.getvalue())["error"]["code"]),
+                         (2, "AUTH.CREDENTIALS", "AUTH.CREDENTIALS"))
 
 
 class BatchRetryPolicyTests(BatchCase):
-    """One retry per failed call (Retry-After first), AUTH.CREDENTIALS stops the remaining calls; the transport is stubbed."""
+    """The shared wheel owns retries; judge-jev records the wheel's typed attempt count."""
 
     LINE = request_line("s1", "We copy the legacy crates.", ("cur", PLAN_QS["questions"]))
 
-    def live_batch(self, transport, *extra):
-        """Runs batch in-process; stderr (the error envelope when a line has no answer) is checked, never dropped."""
-        sleeps, err = [], io.StringIO()
-        with env(TYPESAFE_API_KEY="sk-test-0001"), consented(), mock.patch.object(jj, "call_jev", transport), \
-                mock.patch.object(jj, "_sleep", sleeps.append), contextlib.redirect_stderr(err):
-            code, out = run_cli(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])), "--run-dir", str(self.d / "runs"),
-                                 "--run-name", "r1", "--max-workers", "1", *extra])
-        if code == 0:
-            self.assertEqual(err.getvalue(), "")
-        else:
-            envelope = json.loads(err.getvalue())
-            self.assertEqual((envelope["success"], envelope["data"]), (False, None))
-            self.assertEqual(envelope["error"]["suggested_action"],
-                             "Read each failed line's error field; rerun only those requests once the cause is fixed.")
-            self.stderr_code = envelope["error"]["code"]
-        return code, out, sleeps
+    def live_batch(self, result):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with consented(), mock.patch.object(jj.decidr_client, "call_batch", return_value=[result]), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = jj.main(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])),
+                            "--run-dir", str(self.d / "runs"), "--run-name", "r1", "--max-workers", "1"])
+        lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
+        envelope = json.loads(stderr.getvalue()) if stderr.getvalue() else None
+        return code, lines, envelope
 
-    def test_transient_failure_then_success_is_one_retry(self):
-        t = Transport(http(429, retry_after=7.0))
-        code, out, sleeps = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["verdict"], len(t.bodies), sleeps), (0, True, 1, "satisfied", 2, [7.0]))
-        self.assertEqual([a["ok"] for a in out["attempts"]], [False, True])
-        self.assertEqual(out["attempts"][0]["error"]["code"], "JEV.RATE_LIMITED")
+    def test_retry_count_comes_from_wheel_error_attempts(self):
+        detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "attempts": 4}
+        code, lines, envelope = self.live_batch((json.dumps({"error": detail}), "JEV.OVERLOADED"))
+        line, = lines
+        self.assertEqual((code, line["ok"], line["retry_count"], line["attempts"][-1]["attempt"]), (2, False, 3, 4))
+        self.assertEqual(envelope["error"]["code"], "JEV.OVERLOADED")
 
-    def test_two_transient_failures_leave_the_line_without_an_answer(self):
-        t = Transport(http(503), http(503))
-        code, out, sleeps = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["error"]["code"], len(t.bodies), sleeps), (2, False, 1, "JEV.HTTP", 2, [1.0]))
-        self.assertEqual(self.stderr_code, "JEV.HTTP")
-
-    def test_non_transient_failure_is_not_retried(self):
-        t = Transport(http(422, "questions.addressed is invalid"))
-        code, out, sleeps = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["error"]["code"], len(t.bodies), sleeps), (2, False, 0, "JEV.VALIDATION", 1, []))
-        self.assertEqual(self.stderr_code, "JEV.VALIDATION")
-
-    def test_invalid_response_is_retried_as_transient(self):
-        t = Transport({"model": "x", "answers": {}})
-        code, out, _ = self.live_batch(t)
-        self.assertEqual((code, out["ok"], out["retry_count"], out["verdict"]), (0, True, 1, "satisfied"))
-        self.assertEqual(out["attempts"][0]["error"]["code"], "JEV.RESPONSE_INVALID")
-
-    def test_credentials_rejected_by_jev_stop_the_remaining_calls(self):
-        t = Transport(http(401, "Bearer sk-test-0001 is wrong"))
-        code, out, sleeps = self.live_batch(t, "--repeat", "3")
-        lines = log_lines(self.d / "runs")
-        self.assertEqual((code, len(t.bodies), sleeps, self.stderr_code), (2, 1, [], "AUTH.CREDENTIALS"))
-        self.assertEqual([x["error"]["code"] for x in lines], ["AUTH.CREDENTIALS"] * 3)
-        self.assertEqual([x["attempts"][0]["error"]["message"] for x in lines[1:]], ["not sent: the batch aborted"] * 2)
-        self.assertNotIn("sk-test-0001", json.dumps(read_log(self.d / "runs")))
+    def test_success_is_not_retried_by_judge_jev(self):
+        response = {"model": "jev-x", "answers": plan_answers()}
+        code, lines, envelope = self.live_batch((json.dumps({"response": response}), None))
+        line, = lines
+        self.assertEqual((code, envelope, line["ok"], line["retry_count"], line["verdict"]), (0, None, True, 0, "satisfied"))
 
 
 if __name__ == "__main__":

@@ -152,8 +152,7 @@
     },
     "retry_count": {
       "type": "integer",
-      "minimum": 0,
-      "maximum": 1
+      "minimum": 0
     },
     "attempts": {
       "type": "array",

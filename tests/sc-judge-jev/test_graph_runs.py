@@ -393,7 +393,7 @@ class RebuildMismatch(unittest.TestCase):
 class Ports(unittest.TestCase):
     def test_transports_satisfy_the_port(self):
         self.assertIsInstance(jev_ports.FixtureTransport({}), jev_ports.Transport)
-        self.assertIsInstance(jev_ports.PythonCoreTransport(jj.pump_batch, None, "", None, None), jev_ports.Transport)
+        self.assertIsInstance(jev_ports.PythonCoreTransport(jj.pump_batch, None, None, None), jev_ports.Transport)
         self.assertNotIsInstance(object(), jev_ports.Transport)
 
     def test_fixture_transport_returns_its_lines_in_request_order_and_records_calls(self):
@@ -412,9 +412,9 @@ class Ports(unittest.TestCase):
             seen.append(args)
             return jj.Ok(["line"])
 
-        transport = jev_ports.PythonCoreTransport(pump, "settings", "key", "fixture", "log", True, {"f": 1})
+        transport = jev_ports.PythonCoreTransport(pump, "settings", "fixture", "log", True, {"f": 1})
         self.assertEqual(transport.send([{"a": 1}]).value, ["line"])
-        self.assertEqual(seen, [([{"a": 1}], "settings", "key", "fixture", "log", True, {"f": 1})])
+        self.assertEqual(seen, [([{"a": 1}], "settings", "fixture", "log", True, {"f": 1})])
 
     def test_oxigraph_store_round_trips_record_run_and_query(self):
         store = jev_ports.OxigraphGraphStore()

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import atexit
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,11 @@ PLUGIN = ROOT / "plugins" / "sc-judge-jev"
 SKILL_SRC = PLUGIN / "install" / "templates" / "skills" / "judge-jev"
 SCRIPT_TEMPLATES = SKILL_SRC / "scripts"
 RENDER_VERSION = "0.0.0-test"
+_runtime = (SKILL_SRC / "scripts" / "jev_judge.py.j2").read_text(encoding="utf-8")
+_match = re.search(r'^\s*#\s*"sc-decidr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', _runtime, re.M)
+if _match is None:
+    raise RuntimeError("jev_judge.py.j2 must pin sc-decidr to an exact X.Y.Z version")
+SC_DECIDR_VERSION = _match.group(1)
 
 
 def _render(dest: Path) -> Path:
@@ -36,7 +42,10 @@ def _render(dest: Path) -> Path:
     for template, target in templates:
         out = target / template.name[:-len(".j2")]
         proc = subprocess.run([binary, "render", "--root", str(template.parent), "--strict",
-                               "--var", f"version={RENDER_VERSION}", "--file", str(template), "--output", str(out)],
+                               "--var", f"version={RENDER_VERSION}",
+                               "--var", f"sc_decidr_version={SC_DECIDR_VERSION}",
+                               "--var", "general_log=true",
+                               "--file", str(template), "--output", str(out)],
                               capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
         if proc.returncode != 0:
             raise RuntimeError(f"sc-compose render {template.name} failed: {proc.stderr[-2000:]}")
