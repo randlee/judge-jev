@@ -228,6 +228,32 @@ class BatchTests(BatchCase):
         self.assertEqual((code, line["error"]["code"], json.loads(stderr.getvalue())["error"]["code"]),
                          (2, "AUTH.CREDENTIALS", "AUTH.CREDENTIALS"))
 
+    def test_batch_summary_keeps_auth_cause_after_other_requests_are_canceled(self):
+        auth = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable",
+                "recovery": "Set TYPESAFE_API_KEY or store it in the default credential entry."}
+        canceled = {"id": "decision.cancelled", "category": "cancelled", "message": "the request was cancelled"}
+        src = self.put("in.jsonl", jsonl([request_line("s1", "text", *[
+            (f"c{i}", PLAN_QS["questions"]) for i in range(4)])]))
+        for auth_position in (0, 1, 2, 3, None):
+            with self.subTest(auth_position=auth_position):
+                transport = BatchTransport(*[
+                    (json.dumps({"error": auth if i == auth_position else canceled, "sends": 1}), None)
+                    for i in range(4)])
+                stdout, stderr = io.StringIO(), io.StringIO()
+                with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
+                        contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    code = jj.main(["batch", "--input", src, "--run-dir", str(self.d / f"runs-{auth_position}")])
+                lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
+                summary = json.loads(stderr.getvalue())
+                cause = lines[auth_position if auth_position is not None else 0]
+                self.assertEqual((code, len(lines), summary["unanswered"]), (2, 4, 4))
+                self.assertEqual(summary["request_id"], cause["request_id"])
+                self.assertEqual(summary["error"], cause["error"])
+                self.assertEqual(summary["error"]["code"], "AUTH.CREDENTIALS" if auth_position is not None else "CANCELED")
+                if auth_position is not None:
+                    self.assertEqual(summary["error"]["message"], auth["message"])
+                    self.assertEqual(summary["error"]["suggested_action"], auth["recovery"])
+
 
 class BatchRetryPolicyTests(BatchCase):
     """The shared wheel owns retries; judge-jev records the wheel's typed attempt count."""
