@@ -1,146 +1,128 @@
-"""A Jev call that got no answer is a tool failure, never a negative result; an interrupt is CANCELED and exit 130.
-
-Ported from plan-anchor's tests/sc-plan-anchor/test_jev_failures.py. Every case runs a real process.
-Live failures use a refused connection (``urlopen`` patched to raise it; ``JEV_URL`` still points at the
-closed local port 127.0.0.1:9) with a dummy key in the child only, and consent recorded in a scratch
-repository. Jev is never called.
-"""
-
+"""Typed sc-agent exceptions stay inside judge-jev's error contract; no provider transport is implemented here."""
 import json
-import os
-from pathlib import Path
-import signal
-import sys
+import contextlib
+import io
 import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
 
-from child_support import run_child
-from jev_support import SCRIPTS, log_lines
-from test_jev_judge import jsonl, request_line
-
-JJ = SCRIPTS / "jev_judge.py"
-ERROR_KEYS = {"code", "message", "recoverable", "suggested_action"}
-DUMMY_KEY = "sk-test-closed-port-0000"  # never a real key: nothing is ever sent with it
-# jev_judge.main with every Jev call refused and no back-off sleep; the retries themselves still run. urlopen
-# raises the refusal itself, so the result never depends on what listens on port 9 or how a firewall answers;
-# JEV_URL still names a closed local port, so even an unpatched call could not leave the host.
-# argv[1] is the scripts directory, the rest is the command line.
-REFUSED_RUNNER = (
-    "import errno, sys, urllib.error, urllib.request\n"
-    "sys.path.insert(0, sys.argv[1])\n"
-    "import jev_judge\n"
-    "def refused(*args, **kwargs):\n"
-    "    raise urllib.error.URLError(ConnectionRefusedError(errno.ECONNREFUSED, 'Connection refused'))\n"
-    "urllib.request.urlopen = refused\n"
-    "jev_judge.JEV_URL = 'http://127.0.0.1:9/v1/systemone'\n"
-    "jev_judge._sleep = lambda seconds: None\n"
-    "raise SystemExit(jev_judge.main(sys.argv[2:]))\n"
-)
-# Runs a CLI as __main__ and interrupts it exactly where it reads one input file: the first Path.read_text of
-# argv[2] sends SIGINT to the process itself. kill() to the calling single-threaded process delivers the
-# signal before it returns, so Python's SIGINT handler raises KeyboardInterrupt at the next bytecode, inside
-# that read. If the signal is ignored or lost, the runner exits 3 instead, and the test fails on the exit code.
-# argv[1] is the CLI script, argv[2] the input file, the rest is the CLI's command line.
-INTERRUPT_RUNNER = (
-    "import os, pathlib, runpy, signal, sys\n"
-    "script, target = sys.argv[1], os.path.realpath(sys.argv[2])\n"
-    "real_read_text = pathlib.Path.read_text\n"
-    "def read_text(self, *args, **kwargs):\n"
-    "    if os.path.realpath(self) == target:\n"
-    "        os.kill(os.getpid(), signal.SIGINT)\n"
-    "        sys.stderr.write('SIGINT was not delivered\\n')\n"
-    "        os._exit(3)\n"
-    "    return real_read_text(self, *args, **kwargs)\n"
-    "pathlib.Path.read_text = read_text\n"
-    "sys.argv = [script, *sys.argv[3:]]\n"
-    "sys.path.insert(0, os.path.dirname(script))\n"
-    "runpy.run_path(script, run_name='__main__')\n"
-)
-try:
-    import yaml  # noqa: F401 - consent lives in settings.yaml, which the settings module reads with PyYAML
-    HAVE_YAML = True
-except ImportError:
-    HAVE_YAML = False
+from jev_support import SCRIPTS  # noqa: F401
+import jev_judge as jj  # noqa: E402
+import decidr_client  # noqa: E402
+import judge_jev_settings as settings  # noqa: E402
+from result import run_main  # noqa: E402
+from test_jev_judge import run_cli, write  # noqa: E402
+import test_jev_batch as batch_helpers  # noqa: E402
+from test_quality import INDEX  # noqa: E402
+from test_definitions import ADR, definition, iri, ttl  # noqa: E402
 
 
-def child_env(**extra):
-    environment = {k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"}
-    environment.update(extra)
-    return environment
+class SharedClientFailureCompatibility(unittest.TestCase):
+    def call_with(self, record):
+        with mock.patch.object(decidr_client, "call_result", return_value=record):
+            return jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
+
+    def test_auth_result_is_typed_and_redacted(self):
+        error = jj.ClientError("AUTH.CREDENTIALS", "Bearer secret-token", action="Check credentials.", status=401, attempts=1)
+        record = {"ok": False, "position": None, "line": None, "attempts": 1, "error": error}
+        got = self.call_with(record)
+        self.assertIsInstance(got, jj.Err)
+        self.assertEqual(got.error.code, "AUTH.CREDENTIALS")
+        self.assertIs(got.error, error)
+        self.assertEqual(got.error.message, "Bearer secret-token")
+        self.assertNotIn("secret-token", json.dumps(jj.redact_sensitive(got.error.to_json())))
+
+    def test_context_result_uses_shared_category_code(self):
+        error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "request too large", True, "Shorten evidence.", attempts=2)
+        record = {"ok": False, "position": None, "line": None, "attempts": 2, "error": error}
+        got = self.call_with(record)
+        self.assertIsInstance(got, jj.Err)
+        self.assertEqual((got.error.code, got.error.retryable, got.error.attempts),
+                         ("DECIDR.CONTEXT_EXCEEDED", True, 2))
 
 
-@unittest.skipUnless(HAVE_YAML, "live-path cases read allow_remote_judge from settings.yaml (PyYAML)")
-class LiveBatchWithoutAnswers(unittest.TestCase):
-    def setUp(self):
-        td = tempfile.TemporaryDirectory()
-        self.addCleanup(td.cleanup)
-        self.d = Path(td.name).resolve()
-        run_child(["git", "init", "-q", str(self.d)], check=True)
-        proc = run_child([sys.executable, str(SCRIPTS / "judge_jev_settings.py"), "set", "allow_remote_judge", "true"],
-                              cwd=str(self.d), env=child_env(), text=True, encoding="utf-8")
-        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-
-    def test_refused_connection_is_exit_2_with_every_line_and_the_envelope_on_stderr(self):
-        (self.d / "in.jsonl").write_text(jsonl([request_line("s1"), request_line("s2")]), encoding="utf-8")
-        proc = run_child([sys.executable, "-c", REFUSED_RUNNER, str(SCRIPTS), "batch", "--input", "in.jsonl",
-                               "--run-dir", "runs", "--run-name", "r1"],
-                              cwd=str(self.d), env=child_env(TYPESAFE_API_KEY=DUMMY_KEY), text=True,
-                              encoding="utf-8")
-        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
-        lines = [json.loads(x) for x in proc.stdout.splitlines()]
-        self.assertEqual([x["item_id"] for x in lines], ["s1", "s2"])
-        for line in lines:
-            self.assertEqual((line["ok"], line["verdict"], line["retry_count"], line["error"]["code"]), (False, None, 1, "JEV.NETWORK"))
-            self.assertTrue(line["error"]["message"].startswith("Could not reach Jev: "), line["error"])
-            self.assertIn("Connection refused", line["error"]["message"])
-        envelope = json.loads(proc.stderr)
-        self.assertEqual((envelope["success"], set(envelope["error"]), envelope["error"]["code"]), (False, ERROR_KEYS, "JEV.NETWORK"))
-        self.assertTrue(envelope["error"]["message"].startswith("2 request(s) got no answer; first batch/s1/ANC-001/cur/r1"))
-        self.assertEqual(log_lines(self.d / "runs"), lines)
-        self.assertNotIn(DUMMY_KEY, proc.stdout + proc.stderr)
-
-
-def _default_sigint():
-    """In the child before exec: a parent that ignores SIGINT (a background ``&`` job) would pass the ignore on,
-    and Python then installs no KeyboardInterrupt handler."""
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-
-@unittest.skipUnless(os.name == "posix", "the runner signals itself with os.kill and the child resets SIGINT (POSIX)")
 class Interrupts(unittest.TestCase):
-    """SIGINT while a command reads its input: the CANCELED envelope on stdout and exit 130, from each CLI.
+    def assert_canceled(self, result):
+        code, output = result
+        self.assertEqual(code, 130)
+        self.assertEqual((output["success"], output["data"], output["error"]["code"]),
+                         (False, None, "CANCELED"))
 
-    Each CLI runs under INTERRUPT_RUNNER, which raises SIGINT inside the read of ``input_rel``; nothing is timed.
-    """
+    def test_judge_input_interrupt_returns_canceled(self):
+        with mock.patch.object(jj, "read_request_lines", side_effect=KeyboardInterrupt):
+            self.assert_canceled(run_cli(["batch", "--input", "input.jsonl", "--run-dir", "runs", "--dry-run"]))
 
-    def interrupt(self, argv, input_rel, env=None, git=False):
-        with tempfile.TemporaryDirectory() as td:
-            d = Path(td).resolve()
-            if git:
-                run_child(["git", "init", "-q", str(d)], check=True)
-            target = d / input_rel
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text("{}\n", encoding="utf-8")
-            script, *rest = argv
-            rest = [str(a).replace("{INPUT}", str(target)) for a in rest]
-            proc = run_child([sys.executable, "-c", INTERRUPT_RUNNER, str(script), str(target), *rest], cwd=str(d),
-                                  env=child_env(**(env or {})), preexec_fn=_default_sigint,
-                                  text=True, encoding="utf-8")  # a hang guard only
-        out, err = proc.stdout, proc.stderr
-        self.assertEqual(proc.returncode, 130, out + err)
-        envelope = json.loads(out)
-        self.assertEqual((envelope["success"], envelope["data"]), (False, None))
-        self.assertEqual((envelope["error"]["code"], envelope["error"]["recoverable"]), ("CANCELED", True))
-        self.assertEqual(set(envelope["error"]), ERROR_KEYS)
-        self.assertNotIn("Traceback", err)
+    def test_settings_input_interrupt_returns_canceled(self):
+        output = io.StringIO()
+        with mock.patch.object(settings, "show", side_effect=KeyboardInterrupt), contextlib.redirect_stdout(output):
+            code = run_main(lambda: settings.main(["show"]))
+        envelope = json.loads(output.getvalue())
+        self.assertEqual((code, envelope["success"], envelope["data"], envelope["error"]["code"]),
+                         (130, False, None, "CANCELED"))
 
-    def test_jev_judge(self):
-        # a dry-run batch is interrupted reading its request stream: no settings file, no PyYAML, no request is ever built
-        self.interrupt([JJ, "batch", "--input", "{INPUT}", "--run-dir", "runs", "--dry-run"], "in.jsonl", git=True)
+    def test_batch_interrupt_closes_owned_log_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = write(root, "input.jsonl", batch_helpers.jsonl(batch_helpers.BatchTests.LINES))
+            answers = write(root, "answers.json", batch_helpers.BatchTests.FIXTURE)
+            log = mock.Mock()
+            with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)), \
+                    mock.patch.object(jj, "pump_batch", side_effect=KeyboardInterrupt):
+                self.assert_canceled(run_cli(["batch", "--input", source, "--run-dir", str(root / "logs"),
+                                               "--answers-file", answers]))
+            log.close.assert_called_once_with()
 
-    @unittest.skipUnless(HAVE_YAML, "the settings file is read with PyYAML")
-    def test_judge_jev_settings(self):
-        self.interrupt([SCRIPTS / "judge_jev_settings.py", "show"], ".sc/judge-jev/settings.yaml", git=True)
+    def test_quality_interrupt_closes_owned_log_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            index = write(root, "index.json", INDEX)
+            answers = write(root, "answers.json", {"*": {}})
+            log = mock.Mock()
+            with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)), \
+                    mock.patch.object(jj, "walk_tree", side_effect=KeyboardInterrupt):
+                self.assert_canceled(run_cli(["quality", "--adr", "ADR-T-0001", "--index", index,
+                                               "--run-dir", str(root / "logs"), "--answers-file", answers]))
+            log.close.assert_called_once_with()
+
+    def test_compare_interrupt_closes_each_open_arm_log_once(self):
+        for interrupted_arm in (0, 1):
+            with self.subTest(arm=interrupted_arm), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                index = write(root, "index.json", INDEX)
+                defs = write(root, "defs.ttl", ttl(definition("fast", "fast", "Under 5 s.", "docs/r.md", (ADR, None))))
+                answers = write(root, "answers.json", {"*": {}})
+                logs = [mock.Mock(), mock.Mock()]
+                for log in logs:
+                    log.close.return_value = jj.Ok(None)
+                walks = [jj.Ok(("yes", [], []))] * interrupted_arm + [KeyboardInterrupt()]
+                with mock.patch.object(jj, "open_run_log", side_effect=[jj.Ok(log) for log in logs]), \
+                        mock.patch.object(jj, "walk_tree", side_effect=walks):
+                    self.assert_canceled(run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", index,
+                                                   "--definitions", defs, "--definition", iri("fast"),
+                                                   "--run-dir", str(root / "logs"), "--answers-file", answers]))
+                for log in logs[:interrupted_arm + 1]:
+                    log.close.assert_called_once_with()
+                if interrupted_arm == 0:
+                    logs[1].close.assert_not_called()
+
+    def test_compare_final_event_interrupt_closes_final_log_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            index = write(root, "index.json", INDEX)
+            defs = write(root, "defs.ttl", ttl(definition("fast", "fast", "Under 5 s.", "docs/r.md", (ADR, None))))
+            answers = write(root, "answers.json", {"*": {}})
+            logs = [mock.Mock() for _ in range(3)]
+            for log in logs:
+                log.close.return_value = jj.Ok(None)
+            logs[2].event.side_effect = KeyboardInterrupt
+            with mock.patch.object(jj, "open_run_log", side_effect=[jj.Ok(log) for log in logs]), \
+                    mock.patch.object(jj, "walk_tree", return_value=jj.Ok(("yes", [], []))):
+                self.assert_canceled(run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", index,
+                                               "--definitions", defs, "--definition", iri("fast"),
+                                               "--run-dir", str(root / "logs"), "--answers-file", answers]))
+            for log in logs:
+                log.close.assert_called_once_with()
 
 
 if __name__ == "__main__":

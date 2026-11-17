@@ -2,6 +2,35 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.3.6 — 2026-11-16
+
+- Document the matched sc-decidr and sitr release versions without enforcing equality in the installer.
+
+## 0.3.5
+
+- Make judge-jev's sitr-enabled client explicit and remove the unused install-time switch; wheel pins and lazy imports are unchanged.
+
+
+## 0.3.4
+
+- Remove the last obsolete render-variable argument from CLI test support.
+
+## 0.3.3
+
+- Remove the unused install-time general_log input from the client template; runtime logger forwarding is unchanged.
+- Adopt the sc-decidr 0.2.4 shared error type. The client was generated with
+  `sc-compose render --root /tmp --file /tmp/d-owner-consumer-staged.j2 --var-file /tmp/d-owner-client-vars.json --strict --output /tmp/d-owner-client-render.py`.
+  The var-file was `{"general_log":true,"models":["jev"],"sitr":true,"sc_decidr_version":"{{ sc_decidr_version }}","sitr_version":"{{ sitr_version }}"}`.
+  The staged file wraps the wheel template's sitr blocks in Jinja raw tags to preserve them for installation. The generated client and the published wheel template produce byte-identical rendered output with sitr enabled and disabled.
+
+## 0.3.2
+
+- Restore two blank lines between top-level judge script definitions; executable Python is unchanged.
+
+## 0.3.1
+
+- Share live batch-result validation and line construction between single-job and streamed batch paths.
+
 ## 0.3.0 — 2026-11-13
 
 A second way to make a failing record pass: have it written from a list of what it requires, in place of editing its text. Reinstall with the `judge-jev-installer` skill.

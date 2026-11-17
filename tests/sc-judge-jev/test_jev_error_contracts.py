@@ -1,136 +1,108 @@
-"""call_jev's error envelopes, driven through urllib so the internal error channel is not assumed.
-
-Ported from plan-anchor's tests/sc-plan-anchor/test_error_contracts.py (JevTransportErrorContracts),
-run through `batch` instead of `judge`: every transport failure keeps its exact code, message and
-recoverable flag on the result line. No network is touched.
-"""
-import contextlib
-import io
+"""Consumer boundary tests for shared result records and as-arrived batch persistence."""
 import json
-import os
-from pathlib import Path
-import subprocess
-import sys
-import tempfile
 import unittest
 from unittest import mock
-import urllib.error
 
-from jev_support import SCRIPTS  # noqa: F401 - renders the scripts and puts them on sys.path
+from jev_support import SCRIPTS  # noqa: F401
 import jev_judge as jj  # noqa: E402
-
-from test_jev_judge import jsonl, plan_answers, request_line  # noqa: E402
-
-LIVE = {"TYPESAFE_API_KEY": "sk-test-0001"}
+import decidr_client  # noqa: E402
+from test_jev_judge import plan_answers, request_line, wheel_record  # noqa: E402
 
 
-class FakeResponse:
-    def __init__(self, raw: bytes):
-        self.raw = raw
+class ConsumerErrorContracts(unittest.TestCase):
+    def test_single_call_uses_result_api_and_default_credentials(self):
+        response = {"model": "jev-x", "answers": plan_answers()}
+        record = wheel_record((json.dumps({"response": response, "sends": 1}), None))
+        with mock.patch.object(decidr_client, "call_result", return_value=record) as call:
+            got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 12.5)
+        self.assertIsInstance(got, jj.Ok)
+        self.assertEqual(got.value, response)
+        self.assertEqual(call.call_args.args[0], json.dumps({"model": "jev-latest", "state": {}, "questions": {}}))
+        self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
+        self.assertEqual(call.call_args.kwargs["agent_role"], "judge")
+        self.assertEqual(call.call_args.kwargs["abort_on"], frozenset({"auth"}))
+        self.assertEqual(call.call_args.kwargs["timeout_secs"], 12.5)
+        self.assertNotIn("category_codes", call.call_args.kwargs)
+        for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
+            self.assertNotIn(name, call.call_args.kwargs)
 
-    def __enter__(self):
-        return self
+    def test_single_call_attempt_count_comes_from_record(self):
+        response = {"model": "jev-x", "answers": plan_answers()}
+        record = wheel_record((json.dumps({"response": response, "sends": 3}), None))
+        with mock.patch.object(decidr_client, "call_result", return_value=record):
+            got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 12.5)
+        self.assertEqual(got.value.sc_agent_sends, 3)
 
-    def __exit__(self, *exc):
-        return False
+    def test_context_error_preserves_retryability_and_metadata(self):
+        detail = {"id": "decision.context_exceeded", "category": "validation", "message": "oversized",
+                  "sends": 3, "retry_after_ms": 500}
+        record = wheel_record((json.dumps({"error": detail, "sends": 3}), "DECIDR.VALIDATION"))
+        with mock.patch.object(decidr_client, "call_result", return_value=record):
+            got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
+        self.assertEqual((got.error.code, got.error.retryable, got.error.attempts, got.error.retry_after_ms),
+                         ("DECIDR.CONTEXT_EXCEEDED", True, 3, 500))
 
-    def read(self, n=-1):
-        return self.raw[:n] if n >= 0 else self.raw
+    def test_batch_uses_records_default_credentials_and_attempt_count(self):
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
+        detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
+        record = wheel_record((json.dumps({"error": detail, "sends": 4}), "DECIDR.OVERLOADED"))
+        log = mock.Mock()
+        log.event.return_value = jj.Ok(None)
 
+        def batch_result(_requests, **kwargs):
+            kwargs["general_log"]({"action": "sc_decidr.error", "target": "sc_decidr",
+                                   "correlation_id": "request-1",
+                                   "fields": {"code": "DECIDR.OVERLOADED", "message": "busy"}})
+            kwargs["on_result"](record)
+            return {"ok": True, "value": [record], "position": None, "line": None, "attempts": None}
 
-def http_error(status, body=b"", headers=None):
-    return urllib.error.HTTPError("http://jev", status, "x", headers or {}, io.BytesIO(body))
+        with mock.patch.object(jj, "check_log_events", return_value=jj.Ok(None)), \
+                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)) as log_line, \
+                mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result) as call:
+            got = jj._live_batch_results([request_line()], settings, log, False)
+        self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
+                          got.value[0]["attempts"]), ("DECIDR.OVERLOADED", 3, []))
+        log_line.assert_not_called()
+        log.event.assert_called_once_with("sc_decidr.error",
+                                          {"sc_agent_target": "sc_decidr", "code": "DECIDR.OVERLOADED", "message": "busy"},
+                                          correlation_id="request-1")
+        self.assertNotIn("category_codes", call.call_args.kwargs)
+        self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
+        self.assertEqual(call.call_args.kwargs["agent_role"], "quality")
+        self.assertEqual(call.call_args.kwargs["timeout_secs"], 42.0)
+        self.assertEqual(call.call_args.kwargs["workers"], 2)
+        self.assertTrue(call.call_args.kwargs["general_log"])
+        self.assertTrue(call.call_args.kwargs["on_result"])
+        for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
+            self.assertNotIn(name, call.call_args.kwargs)
 
+    def test_callback_persists_completion_order_and_returns_input_order(self):
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
+        records = [wheel_record((json.dumps({"response": {"model": model, "answers": plan_answers()},
+                                             "position": pos, "sends": 1}), None), pos)
+                   for pos, model in enumerate(("first", "second"))]
+        logged = []
 
-class JevTransportErrorContracts(unittest.TestCase):
-    def batch(self, responses):
-        responses = list(responses)
-        for response in responses:
-            if isinstance(response, urllib.error.HTTPError):
-                self.addCleanup(response.close)
-        sleeps, out, err = [], io.StringIO(), io.StringIO()
-        with tempfile.TemporaryDirectory() as d:
-            src = Path(d) / "in.jsonl"
-            src.write_text(jsonl([request_line()]), encoding="utf-8")
-            with mock.patch.dict(os.environ, {"PATH": os.environ.get("PATH", ""), **LIVE}, clear=True), \
-                    mock.patch.object(jj, "credential_store_api_key", return_value=""), \
-                    mock.patch.object(jj.urllib.request, "urlopen", side_effect=responses) as opened, \
-                    mock.patch.object(jj, "_sleep", sleeps.append), \
-                    mock.patch.object(jj, "remote_judge_consent", return_value=jj.Ok(None)), \
-                    contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-                code = jj.main(["batch", "--input", str(src), "--run-dir", str(Path(d) / "runs"), "--max-workers", "1"])
-        line = json.loads(out.getvalue())
-        envelope = json.loads(err.getvalue()) if code == 2 else None
-        if code == 0:
-            self.assertEqual(err.getvalue(), "")
-        return code, line, envelope, opened, sleeps
+        def batch_result(_requests, **kwargs):
+            for record in reversed(records):
+                kwargs["on_result"](record)
+            return {"ok": True, "value": records, "position": None, "line": None, "attempts": None}
 
-    def test_request_shape_and_auth_header(self):
-        code, line, _, opened, _ = self.batch([FakeResponse(json.dumps({"model": "jev-x", "answers": plan_answers()}).encode("utf-8"))])
-        self.assertEqual((code, line["verdict"], line["model_answered"]), (0, "satisfied", "jev-x"))
-        request = opened.call_args.args[0]
-        self.assertEqual((request.full_url, request.get_method()), ("https://api.typesafe.ai/v1/systemone", "POST"))
-        self.assertEqual((request.get_header("Authorization"), request.get_header("Content-type"), request.get_header("User-agent")),
-                         ("Bearer sk-test-0001", "application/json", "judge-jev/jev_judge"))
-        self.assertEqual(json.loads(request.data), line["request"])
-        self.assertEqual(sorted(line["request"]), ["model", "questions", "state"])
-        self.assertEqual(line["request"]["model"], "jev-latest")
-        self.assertEqual(opened.call_args.kwargs, {"timeout": 30.0})
+        def log_line(_log, line, _fields):
+            logged.append(line["model_answered"])
+            return jj.Ok(None)
 
-    def test_401_aborts_with_body_withheld(self):
-        code, line, envelope, opened, sleeps = self.batch([http_error(401, b"Bearer sk-test-0001 is wrong")])
-        self.assertEqual((code, opened.call_count, sleeps), (2, 1, []))
-        self.assertEqual(line["error"], {"code": "AUTH.CREDENTIALS", "message": "Jev HTTP 401; response body withheld", "recoverable": False})
-        self.assertEqual(envelope["error"]["code"], "AUTH.CREDENTIALS")
-        self.assertNotIn("sk-test-0001", json.dumps(line))
+        with mock.patch.object(jj, "check_log_events", return_value=jj.Ok(None)), \
+                mock.patch.object(jj, "log_result_line", side_effect=log_line), \
+                mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result):
+            got = jj._live_batch_results([request_line("one"), request_line("two")], settings, mock.Mock(), False)
+        self.assertEqual(logged, ["second", "first"])
+        self.assertEqual([line["model_answered"] for line in got.value], ["first", "second"])
 
-    def test_transient_codes_retry_once_then_leave_the_line_without_an_answer(self):
-        cases = (
-            (http_error(429, headers={"Retry-After": "7"}), "JEV.RATE_LIMITED", "Jev HTTP 429; response body withheld", [7.0]),
-            (http_error(529), "JEV.OVERLOADED", "Jev HTTP 529; response body withheld", [1.0]),
-            (http_error(503), "JEV.HTTP", "Jev HTTP 503; response body withheld", [1.0]),
-            (urllib.error.URLError("refused"), "JEV.NETWORK", "Could not reach Jev: refused", [1.0]),
-            (ConnectionResetError("reset"), "JEV.NETWORK", "Jev connection failed: ConnectionResetError: reset", [1.0]),
-            (FakeResponse(b"not json"), "JEV.RESPONSE_INVALID", "Jev response was not JSON", [1.0]),
-            (FakeResponse(b"[1]"), "JEV.RESPONSE_INVALID", "Jev response was not a JSON object", [1.0]),
-            (FakeResponse(b"x" * (jj.MAX_RESPONSE_BYTES + 1)), "JEV.RESPONSE_INVALID", "Jev response exceeded the size limit", [1.0]),
-            (FakeResponse(b'{"answers": {}}'), "JEV.RESPONSE_INVALID",
-             "Jev answer ids differ from the questions (missing ['addressed', 'contradicted', 'relevant'], unexpected [])", [1.0]),
-        )
-        for failure, error_code, message, delays in cases:
-            with self.subTest(error_code=error_code, message=message):
-                code, line, envelope, opened, sleeps = self.batch([failure, failure])
-                self.assertEqual((code, envelope["error"]["code"]), (2, error_code))
-                self.assertEqual((line["ok"], line["verdict"], opened.call_count, sleeps, line["retry_count"]), (False, None, 2, delays, 1))
-                self.assertEqual(line["error"], {"code": error_code, "message": message, "recoverable": True})
-
-    def test_transient_failure_then_success_passes(self):
-        ok = FakeResponse(json.dumps({"model": "jev-x", "answers": plan_answers()}).encode("utf-8"))
-        code, line, _, opened, sleeps = self.batch([http_error(500), ok])
-        self.assertEqual((code, opened.call_count, sleeps, line["verdict"], line["retry_count"]), (0, 2, [1.0], "satisfied", 1))
-
-    def test_non_transient_http_errors_are_recorded_without_retry(self):
-        code, line, envelope, opened, _ = self.batch([http_error(422, b"questions.addressed is invalid")])
-        self.assertEqual((code, opened.call_count, envelope["error"]["code"]), (2, 1, "JEV.VALIDATION"))
-        self.assertEqual(line["error"], {"code": "JEV.VALIDATION", "message": "Jev HTTP 422: questions.addressed is invalid", "recoverable": False})
-        code, line, envelope, opened, _ = self.batch([http_error(418, b"teapot")])
-        self.assertEqual((code, opened.call_count, envelope["error"]["code"]), (2, 1, "JEV.HTTP"))
-        self.assertEqual(line["error"], {"code": "JEV.HTTP", "message": "Jev HTTP 418; response body withheld", "recoverable": False})
-
-    def test_context_overflow_is_recoverable_and_retried_once(self):
-        code, line, envelope, opened, sleeps = self.batch([http_error(400, b"max_tokens exceeded"), http_error(400, b"max_tokens exceeded")])
-        self.assertEqual((code, opened.call_count, sleeps, envelope["error"]["code"]), (2, 2, [1.0], "JEV.CONTEXT_EXCEEDED"))
-        self.assertEqual(line["error"], {"code": "JEV.CONTEXT_EXCEEDED", "message": "Jev HTTP 400: request exceeds the model's context window",
-                                         "recoverable": True})
-
-    def test_non_numeric_flag_exits_two_with_json(self):
-        for flag, value, kind in (("--max-workers", "lots", "int"), ("--repeat", "1.5", "int"), ("--threshold", "high", "float")):
-            proc = subprocess.run([sys.executable, str(SCRIPTS / "jev_judge.py"), "batch", "--input", "x", "--dry-run", flag, value],
-                                  capture_output=True, text=True, encoding="utf-8")
-            self.assertEqual((proc.returncode, proc.stderr), (2, ""), flag)
-            self.assertEqual(json.loads(proc.stdout), {"success": False, "data": None, "error": {
-                "code": "VALIDATION.INPUT", "message": f"jev_judge.py batch: argument {flag}: invalid {kind} value: {value!r}",
-                "recoverable": False, "suggested_action": "Run 'jev_judge.py <subcommand> --help' for the accepted arguments."}})
+    def test_shared_invalid_result_is_typed(self):
+        detail = jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON", action="Inspect the invalid result.")
+        got = jj._judge_result({"ok": False, "error": detail, "attempts": None, "position": None, "line": None})
+        self.assertEqual((got.error.code, got.error.retryable), ("DECIDR.INVALID_RESULT", False))
 
 
 if __name__ == "__main__":

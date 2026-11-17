@@ -92,7 +92,7 @@ class QualityCase(unittest.TestCase):
 
     def quality(self, *argv, answers=None):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
-        with env(), mock.patch.object(jj, "call_jev", never_called):
+        with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
             return run_cli(["quality", *argv, "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", "q1", *extra])
 
 
@@ -196,7 +196,7 @@ class WaveReasons(QualityCase):
         answers = {"*": tree_answers("quality-req.json")}
         logs = []
         for name in ("a", "b"):
-            with env(), mock.patch.object(jj, "call_jev", never_called):
+            with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
                 code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / name),
                                      "--answers-file", write(self.d, "answers.json", answers)])
             self.assertEqual(code, 0, out)
@@ -227,11 +227,15 @@ class WaveReasons(QualityCase):
         self.assertEqual((out["data"]["path"], out["data"]["results"]), (["wave-1"], []))
         self.assertEqual(out["data"]["tree"]["id"], "quality-adr")
 
-    def test_a_live_run_needs_a_key_before_anything_is_logged(self):
-        with env(), mock.patch.object(jj, "call_jev", never_called):
+    def test_live_client_auth_error_is_typed_and_writes_no_result_event(self):
+        auth = jj.ClientError("AUTH.CREDENTIALS", "no test credential", action="Check credentials.", status=401)
+        auth_record = {"ok": False, "position": None, "line": None, "attempts": None, "error": auth}
+        with env(), mock.patch.object(jj, "remote_preflight", return_value=jj.Ok(None)), \
+                mock.patch.object(jj.decidr_client, "call_batch_results", return_value=auth_record):
             code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs")])
-        self.assertEqual((code, out["error"]["code"]), (2, "AUTH.CREDENTIALS"))
-        self.assertFalse((self.d / "logs").exists())
+        self.assertEqual((code, out["error"]["code"], out["error"]["message"], out["error"]["suggested_action"]),
+                         (2, "AUTH.CREDENTIALS", "no test credential", "Check credentials."))
+        self.assertEqual(read_log(self.d / "logs"), [])
 
 
 class LogPath(QualityCase):
@@ -241,7 +245,7 @@ class LogPath(QualityCase):
         self.addCleanup(os.chdir, before)
         os.chdir(cwd)
         clock = utc_clock()
-        with env(), mock.patch.object(jj, "call_jev", never_called), \
+        with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called), \
                 mock.patch.object(jj, "_dt", clock), mock.patch.object(jj.judge_jev_paths, "_dt", clock), \
                 mock.patch.object(jj.judge_jev_paths, "home_dir", lambda: home):
             return run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", answers])
@@ -568,7 +572,7 @@ class ShippedTrees(unittest.TestCase):
         line = jj.wave_line(record, "wave-1", node, JUDGED[1])  # a per-statement line is a plain anchorless batch line
         settings = jj.quality_settings(False)
         job = jj.batch_jobs(line, 1, settings, {}).value[0]
-        result = jj.run_batch_job(job, settings, "", {"*": tree_answers("quality-req.json")}, jj._AbortFlag())
+        result = jj.run_batch_job(job, settings, {"*": tree_answers("quality-req.json")})
         self.assertEqual((result["request_id"], result["anchor_id"], result["verdict"]), ("quality/REQ-T-0001.s3/wave-1/r1", None, None))
         schemas = SKILL / "assets" / "schemas"
         for name, value in (("jev-batch-request", line), ("jev-batch-result", result)):

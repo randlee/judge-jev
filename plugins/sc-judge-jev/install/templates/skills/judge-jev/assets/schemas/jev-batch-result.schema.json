@@ -151,9 +151,8 @@
       ]
     },
     "retry_count": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 1
+      "type": ["integer", "null"],
+      "minimum": 0
     },
     "attempts": {
       "type": "array",
@@ -217,6 +216,9 @@
             },
             "recoverable": {
               "type": "boolean"
+            },
+            "suggested_action": {
+              "type": "string"
             }
           }
         }

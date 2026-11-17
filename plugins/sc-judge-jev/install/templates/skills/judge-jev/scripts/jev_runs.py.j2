@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_runs
-version: 0.3.0
+version: 0.3.6
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -296,8 +296,8 @@ def read_run_events(log_root, run_name: str) -> Result[dict, Any]:
 
 
 def _log_error(message: str) -> Err:
-    from jev_judge import JudgeError
-    return Err(JudgeError("LOG.READ", message, action="Pass the --run-dir of a finished quality run."))
+    from decidr_client import ClientError
+    return Err(ClientError("LOG.READ", message, action="Pass the --run-dir of a finished quality run."))
 
 
 def rebuild_from_log(log_root, run_name: str, tree: Any, repository: Optional[str] = None) -> Result[list, Any]:

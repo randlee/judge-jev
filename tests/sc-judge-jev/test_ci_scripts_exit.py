@@ -13,6 +13,7 @@ import io
 from pathlib import Path
 import shutil
 import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -37,8 +38,8 @@ def repo_copy(dest: Path) -> Path:
 
 class CheckVersionSync(unittest.TestCase):
     def run_check(self, root: Path, *argv):
-        proc = subprocess.run([sys.executable, str(root / "scripts" / "check_version_sync.py"), *argv], cwd=str(root),
-                              capture_output=True, text=True, encoding="utf-8")
+        proc = run_child([sys.executable, str(root / "scripts" / "check_version_sync.py"), *argv], cwd=str(root),
+                              text=True, encoding="utf-8")
         self.assertNotIn("Traceback", proc.stderr)
         return proc
 

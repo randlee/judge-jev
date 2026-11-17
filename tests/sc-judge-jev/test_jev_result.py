@@ -64,18 +64,20 @@ class ScriptErrValueTests(unittest.TestCase):
     def test_jev_judge(self):
         missing = jj.load_json("/nonexistent/x.json", "thing")
         self.assertEqual((missing.error.code, missing.error.message), ("INPUT.MISSING", "thing not found: '/nonexistent/x.json'"))
-        self.assertEqual(jj.check_api_key("").error.code, "AUTH.CREDENTIALS")
-        self.assertEqual(jj.check_api_key("k"), Ok(None))
+        error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "large", True, "Shorten evidence.", attempts=2)
+        mapped = jj._judge_result({"ok": False, "error": error, "attempts": 2})
+        self.assertIs(mapped.error, error)
+        self.assertEqual((mapped.error.code, mapped.error.attempts), ("DECIDR.CONTEXT_EXCEEDED", 2))
 
-    def test_judge_error_is_a_value_not_an_exception(self):
-        self.assertFalse(issubclass(jj.JudgeError, BaseException))
-        e = jj.JudgeError("C.X", "msg", recoverable=True, action="act")
+    def test_shared_error_is_carried_in_result_and_can_be_raised(self):
+        self.assertTrue(issubclass(jj.ClientError, BaseException))
+        e = jj.ClientError("C.X", "msg", retryable=True, action="act")
         self.assertEqual(str(e), "msg")
         self.assertEqual(jj.fail("C.X", "msg").error.to_json()["error"]["message"], "msg")
 
 
 class JevPropagationTests(unittest.TestCase):
-    """An Err from the transport travels into the batch line unchanged, with its attempt bookkeeping, and becomes one envelope in main."""
+    """A single client result travels into the batch line with retry counts from typed wheel detail."""
 
     def job(self):
         settings = jj.BatchSettings("plan", "m", 1, "p", 0.6, 1.0, 1, 24000, False)
@@ -83,38 +85,77 @@ class JevPropagationTests(unittest.TestCase):
         line = {"item": {"id": "ex-42", "title": "", "text": "Sprint 2 copies the legacy runtime crates."},
                 "anchor": {"id": "ANC-001", "statement": STATEMENT},
                 "questions": [{"candidate_id": "cur", "questions": base.questions}]}
-        return jj.batch_jobs(line, 1, settings, base.roles).value[0], settings
+        with mock.patch.object(jj, "check_log_events", return_value=jj.Ok(None)):
+            return jj.batch_jobs(line, 1, settings, base.roles).value[0], settings
 
     def run_job(self, transport_result):
         job, settings = self.job()
-        abort = jj._AbortFlag()
-        sleeps = []
-        with mock.patch.object(jj, "call_jev", return_value=transport_result) as called, mock.patch.object(jj, "_sleep", sleeps.append):
-            line = jj.run_batch_job(job, settings, "k", None, abort)
-        return line, called.call_count, sleeps, abort
+        with mock.patch.object(jj, "call_jev", return_value=transport_result) as called:
+            line = jj.run_batch_job(job, settings, None)
+        return line, called.call_count
 
     def test_non_transient_err_is_recorded_once(self):
-        line, calls, sleeps, abort = self.run_job(Err(jj.JudgeError("JEV.VALIDATION", "Jev HTTP 422: bad", status=422)))
-        self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], calls, sleeps, abort.is_set()),
-                         (False, "JEV.VALIDATION", 0, 1, [], False))
+        line, calls = self.run_job(Err(jj.ClientError("DECIDR.VALIDATION", "typed validation error")))
+        self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], line["attempts"], calls),
+                         (False, "DECIDR.VALIDATION", None, [], 1))
 
     def test_abort_code_stops_the_batch(self):
-        refused = jj.JudgeError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
-        line, calls, _, abort = self.run_job(Err(refused))
-        self.assertEqual((line["error"]["code"], calls, abort.is_set(), abort.error), ("AUTH.CREDENTIALS", 1, True, refused))
+        refused = jj.ClientError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
+        line, calls = self.run_job(Err(refused))
+        self.assertEqual((line["error"]["code"], calls), ("AUTH.CREDENTIALS", 1))
 
-    def test_transient_err_is_retried_once_then_recorded(self):
-        down = jj.JudgeError("JEV.NETWORK", "down", recoverable=True)
-        line, calls, sleeps, _ = self.run_job(Err(down))
-        self.assertEqual((line["ok"], line["error"]["code"], calls, line["retry_count"], sleeps),
-                         (False, "JEV.NETWORK", jj.BATCH_RETRIES + 1, jj.BATCH_RETRIES, [jj.RETRY_DELAYS[0]]))
+    def test_batch_preserves_wheel_message_and_action(self):
+        message = "Rust error " + "x" * 5000
+        error = jj.ClientError("DECIDR.NETWORK", message, action="Rust recovery", attempts=2)
+        line, calls = self.run_job(Err(error))
+        self.assertEqual(calls, 1)
+        self.assertEqual(line["error"]["message"], message)
+        self.assertEqual(line["error"]["suggested_action"], "Rust recovery")
+
+    def test_stream_summary_preserves_wheel_message_and_action(self):
+        failed = [{"request_id": "r1", "error": {"code": "DECIDR.NETWORK", "message": "Rust failure",
+                                                   "recoverable": True, "suggested_action": "Rust recovery"}}]
+        args = mock.Mock(format="json")
+        args.func.return_value = jj.Ok(jj.StreamedResult(failed))
+        parser = mock.Mock()
+        parser.parse_args.return_value = args
+        stderr = io.StringIO()
+        with mock.patch.object(jj, "build_parser", return_value=parser), contextlib.redirect_stderr(stderr):
+            self.assertEqual(jj.main([]), 2)
+        error = json.loads(stderr.getvalue())["error"]
+        self.assertIn("Rust failure", error["message"])
+        self.assertEqual(error["suggested_action"], "Rust recovery")
+
+    def test_retry_count_comes_from_the_wheel_error_detail(self):
+        down = jj.ClientError("DECIDR.NETWORK", "down", retryable=True)
+        down.attempts = 4
+        line, calls = self.run_job(Err(down))
+        self.assertEqual((line["ok"], line["error"]["code"], calls, line["retry_count"], line["attempts"]),
+                         (False, "DECIDR.NETWORK", 1, 3, []))
+
+    def test_controlled_fixture_sequence_records_failure_then_fallback(self):
+        job, settings = self.job()
+        line = jj.run_batch_job(job, settings,
+                                {"cur": [{"__error__": "JEV.NETWORK"}, plan_answers()]})
+        self.assertEqual((line["ok"], line["retry_count"], line["attempts"]),
+                         (True, 1, [{"attempt": 1, "ok": False,
+                                    "error": {"code": "JEV.NETWORK", "message": "fixture failure JEV.NETWORK",
+                                              "recoverable": True}},
+                                   {"attempt": 2, "ok": True}]))
+
+    def test_controlled_fixture_accepts_shared_transient_codes(self):
+        job, settings = self.job()
+        line = jj.run_batch_job(job, settings, {"cur": [{"__error__": "DECIDR.NETWORK"}, plan_answers()]})
+        self.assertTrue(line["ok"])
+        self.assertEqual(line["retry_count"], 1)
+        self.assertEqual(line["attempts"][0]["error"]["code"], "DECIDR.NETWORK")
 
     def test_invalid_ok_response_becomes_err(self):
-        line, calls, _, _ = self.run_job(Ok({"answers": []}))
-        self.assertEqual((line["ok"], line["error"]["code"], calls), (False, "JEV.RESPONSE_INVALID", 2))
+        line, calls = self.run_job(Ok({"answers": []}))
+        self.assertEqual((line["ok"], line["error"]["code"], calls), (False, "JEV.RESPONSE_INVALID", 1))
 
     def test_valid_ok_response_is_the_line_answer(self):
-        line, calls, _, _ = self.run_job(Ok({"model": "jev-x", "answers": plan_answers()}))
+        line, calls = self.run_job(Ok({"model": "jev-x", "answers": plan_answers()}))
         self.assertEqual((line["ok"], line["verdict"], line["leaning"], line["model_answered"], calls), (True, "satisfied", "satisfied", "jev-x", 1))
 
     def run_main(self, argv):

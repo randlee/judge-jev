@@ -4,7 +4,7 @@ import copy
 import hashlib
 import io
 import json
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -20,10 +20,10 @@ SHIPPED_TREES = ("quality-req.json", "quality-adr.json", "quality-nfr.json")
 
 
 def validate(*argv):
-    """Run `validate` in-process with no key, no consent and Jev, the run log and the key lookup all forbidden."""
+    """Run `validate` in-process with Jev, the run log and remote-consent gate all forbidden."""
     with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
             mock.patch.object(jj, "open_run_log", side_effect=AssertionError("validate wrote a log")), \
-            mock.patch.object(jj, "resolved_api_key", side_effect=AssertionError("validate read the key")):
+            mock.patch.object(jj, "remote_preflight", side_effect=AssertionError("validate checked live-call consent")):
         return run_cli(["validate", *argv])
 
 
@@ -198,7 +198,7 @@ class StdinIsNeverACrash(unittest.TestCase):
     BAD = b"\xff\xfe{"
 
     def run_script(self, *argv):
-        proc = subprocess.run([sys.executable, str(SCRIPTS / "jev_judge.py"), *argv], input=self.BAD, capture_output=True, timeout=120)
+        proc = run_child([sys.executable, str(SCRIPTS / "jev_judge.py"), *argv], input=self.BAD)
         self.assertNotIn(b"Traceback", proc.stderr)
         return proc.returncode, json.loads(proc.stdout.decode("utf-8"))
 

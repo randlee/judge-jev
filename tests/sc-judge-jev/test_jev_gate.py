@@ -1,7 +1,7 @@
 """jev_gate.py: the median confidence gate over repeated quality runs, run as installed and offline."""
 import json
 from pathlib import Path
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -39,7 +39,7 @@ class GateCase(unittest.TestCase):
         return str(path)
 
     def run_gate(self, *argv):
-        proc = subprocess.run([sys.executable, str(GATE), *argv], capture_output=True, text=True, encoding="utf-8")
+        proc = run_child([sys.executable, str(GATE), *argv], text=True, encoding="utf-8")
         return proc.returncode, json.loads(proc.stdout), proc.stderr
 
     def gate(self, *argv):

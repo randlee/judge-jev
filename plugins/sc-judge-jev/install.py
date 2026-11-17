@@ -194,6 +194,8 @@ def version_tuple(version: Optional[str]) -> Optional[Tuple[int, int, int]]:
 @dataclass(frozen=True)
 class Package:
     version: str
+    sc_decidr_version: str
+    sitr_version: str
     skill: Tuple[str, ...]                    # paths under .<target>/skills/judge-jev/
     rendered: frozenset                       # skill paths rendered from <rel>.j2
     agents: Tuple[str, ...]                   # agent file names, the same for every target
@@ -237,6 +239,19 @@ def load_package(plugin_dir: Path = PLUGIN_DIR) -> Result[Package, ToolError]:
     if not isinstance(version, str) or version_tuple(version) is None:
         return err(bad, f"{plugin_dir / 'plugin.json'} declares no X.Y.Z version")
     skill_src = plugin_dir / "install" / "templates" / "skills" / SKILL_NAME
+    runtime_template = skill_src / "scripts" / "jev_judge.py.j2"
+    try:
+        runtime_text = runtime_template.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return err(bad, f"{runtime_template} could not be read: {type(exc).__name__}: {exc}")
+    decidr_match = re.search(r'^\s*#\s*"sc-decidr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', runtime_text, re.M)
+    if decidr_match is None:
+        return err(bad, f"{runtime_template} must pin sc-decidr to an exact X.Y.Z version")
+    sc_decidr_version = decidr_match.group(1)
+    sitr_match = re.search(r'^\s*#\s*"sitr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', runtime_text, re.M)
+    if sitr_match is None:
+        return err(bad, f"{runtime_template} must pin sitr to an exact X.Y.Z version")
+    sitr_version = sitr_match.group(1)
     agents_src = plugin_dir / "install" / "templates" / "agents"
     harness = plugin_dir / "install" / "harness"
     if not skill_src.is_dir():
@@ -272,7 +287,8 @@ def load_package(plugin_dir: Path = PLUGIN_DIR) -> Result[Package, ToolError]:
         legacy_agents = {t: {n: set(s) for n, s in lg["agents"].get(t, {}).items()} for t in TARGETS}
     except (KeyError, TypeError, AttributeError) as exc:
         return err(bad, f"install/legacy-owned.json is malformed ({exc})", "Regenerate it with scripts/gen_install_data.py.")
-    return Ok(Package(version, tuple(sorted(skill)), frozenset(rendered), tuple(agents), legacy_skill, legacy_agents))
+    return Ok(Package(version, sc_decidr_version, sitr_version, tuple(sorted(skill)), frozenset(rendered), tuple(agents),
+                      legacy_skill, legacy_agents))
 
 
 # ---------------------------------------------------------------- dependencies
@@ -301,12 +317,14 @@ def check_sc_compose() -> Result[Any, ToolError]:
 # ---------------------------------------------------------------- rendering
 
 
-def render_template(sc_compose: Any, template: Path, version: str) -> Result[str, ToolError]:
-    """Strict sc-compose render of one install-time template with the package ``version``."""
+def render_template(sc_compose: Any, template: Path, version: str,
+                    extra_variables: Optional[Dict[str, str]] = None) -> Result[str, ToolError]:
+    """Strict sc-compose render with package metadata and declared runtime versions."""
     template = template.resolve()
+    variables = {"version": version, **(extra_variables or {})}
     request = sc_compose.ComposeRequest(
         str(template.parent), sc_compose.ComposeMode.file(str(template)),
-        vars_input={"version": version},
+        vars_input=variables,
         policy=sc_compose.ComposePolicy(strict_undeclared_variables=True))
     try:
         text = sc_compose.compose_file(request).rendered_text
@@ -334,7 +352,9 @@ class Renderer:
     def _render(self, template: Path) -> Result[str, ToolError]:
         key = str(template)
         if key not in self._cache:
-            out = render_template(self.sc_compose, template, self.package.version)
+            out = render_template(self.sc_compose, template, self.package.version,
+                                  {"sc_decidr_version": self.package.sc_decidr_version,
+                                   "sitr_version": self.package.sitr_version})
             if isinstance(out, Err):
                 return out
             self._cache[key] = out.value

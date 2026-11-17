@@ -75,7 +75,7 @@ class RedactionIsIterative(unittest.TestCase):
                     self.assertLessEqual(depth_of(out["data"])[0], jj.EMIT_MAX_DEPTH)
 
     def test_a_judge_error_with_deep_data_serialises(self):
-        error = jj.JudgeError("PLAN.TOO_LARGE", "big")
+        error = jj.ClientError("PLAN.TOO_LARGE", "big")
         error.data = nested(5000)
         self.assertEqual(depth_of(error.to_json()["data"])[0], 5000)
 
@@ -361,6 +361,22 @@ class AnswersEnvelope(unittest.TestCase):
         code, out, sent = self.batch({"other-item/cur": plan_answers()})
         self.assertEqual((code, out["error"]["code"], sent), (2, "FIXTURE.MISSING", 0), out)
         self.assertIn("ex-42/cur/r1", out["error"]["message"])
+
+    def test_fixture_attempt_uses_the_shared_key_and_missing_helpers(self):
+        job = jj.BatchJob("item", None, "candidate", 2, "request", {}, {}, {}, "directive")
+        keys = ("delegated/r2", "delegated", "candidate", "*")
+        with mock.patch.object(jj, "_fixture_keys", return_value=keys) as get_keys:
+            result = jj._fixture_attempt(job, {"delegated/r2": {"answer": "yes"}})
+        self.assertEqual(result, jj.Ok({"model": "fixture", "answers": {"answer": "yes"}}))
+        get_keys.assert_called_once_with(job)
+
+        missing = jj.fail("TEST.MISSING", "shared helper result")
+        with mock.patch.object(jj, "_fixture_keys", return_value=keys) as get_keys, \
+                mock.patch.object(jj, "_fixture_missing", return_value=missing) as get_missing:
+            result = jj._fixture_attempt(job, {})
+        self.assertIs(result, missing)
+        get_keys.assert_called_once_with(job)
+        get_missing.assert_called_once_with(keys)
 
     def test_batch_checks_every_line_of_the_stream_before_sending_the_first(self):
         sent = []

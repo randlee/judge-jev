@@ -36,6 +36,14 @@ class ChildSupport(unittest.TestCase):
                     run_child(["controlled-child"], **{name: value})
                 run.assert_not_called()
 
+    def test_shorter_guard_is_preserved_and_longer_guard_refused(self):
+        with mock.patch("child_support.subprocess.run") as run:
+            run_child(["controlled-child"], hang_guard=30)
+            self.assertEqual(run.call_args.kwargs["timeout"], 30)
+            with self.assertRaises(ValueError):
+                run_child(["controlled-child"], hang_guard=CHILD_HANG_GUARD_SECONDS + 1)
+            run.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
