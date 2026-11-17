@@ -34,16 +34,16 @@
     &lt;dt&gt;judge-jev commit&lt;/dt&gt;&lt;dd&gt;fe06cc183e1944cc8691f38425f76c3ba3be3a5d (sprint/d-2-feature-parity)&lt;/dd&gt;
     &lt;dt&gt;sc-agent version&lt;/dt&gt;&lt;dd&gt;sc-decidr 0.2.2 prerelease wheel, prerelease/v0.2.2 @ 2dab15d9bcd91d6cffc4c49b9560ece22e88e759, cp311-abi3-macosx_11_0_arm64, sha256 verified against checksums.txt (not yet on PyPI; resolved with UV_FIND_LINKS)&lt;/dd&gt;
     &lt;dt&gt;Python version&lt;/dt&gt;&lt;dd&gt;3.14.7 (uv-managed, from the jev_judge.py inline metadata)&lt;/dd&gt;
-    &lt;dt&gt;Command and selected cases&lt;/dt&gt;&lt;dd&gt;&lt;pre&gt;Installed with: uv run plugins/sc-judge-jev/install.py --dest &amp;amp;lt;checkout&amp;amp;gt; --allow-remote-judge --target claude
+    &lt;dt&gt;Command and selected cases&lt;/dt&gt;&lt;dd&gt;&lt;pre&gt;Installed with: uv run plugins/sc-judge-jev/install.py --dest &amp;lt;checkout&amp;gt; --allow-remote-judge --target claude
 Index: raptor integration/judge-jev @ 8ce2be8, scripts/extract.py (33 records, 1 diagnostic on REQ-JEV-0003)
-J=.claude/skills/judge-jev/scripts/jev_judge.py; UV_FIND_LINKS=&amp;amp;lt;verified wheel dir&amp;amp;gt;
+J=.claude/skills/judge-jev/scripts/jev_judge.py; UV_FIND_LINKS=&amp;lt;verified wheel dir&amp;gt;
 
 1. quality (single record, the test_jev_judge path without --answers-file):
-   uv run --script $J quality --req REQ-JEV-0101 --index index.json --run-dir &amp;amp;lt;dir&amp;amp;gt;
+   uv run --script $J quality --req REQ-JEV-0101 --index index.json --run-dir &amp;lt;dir&amp;gt;
 2. batch (test_jev_batch BatchTests.LINES plus one line: 3 items, 4 requests):
-   uv run --script $J batch --run-dir &amp;amp;lt;dir&amp;amp;gt; &amp;amp;lt; batch.jsonl
+   uv run --script $J batch --run-dir &amp;lt;dir&amp;gt; &amp;lt; batch.jsonl
 3. invalid key (test_live_auth_failure_is_reported_from_the_typed_wheel_error, live):
-   TYPESAFE_API_KEY=&amp;amp;lt;invalid&amp;amp;gt; uv run --script $J batch --run-dir &amp;amp;lt;dir&amp;amp;gt; &amp;amp;lt; batch.jsonl   (4 runs)
+   TYPESAFE_API_KEY=&amp;lt;invalid&amp;gt; uv run --script $J batch --run-dir &amp;lt;dir&amp;gt; &amp;lt; batch.jsonl   (4 runs)
 
 Credentials: cases 1-2 first with sc-agent&amp;#x27;s default lookup (no env, no .env, platform keychain),
 then with TYPESAFE_API_KEY in the process environment (lookup step 2).&lt;/pre&gt;&lt;/dd&gt;
@@ -56,10 +56,10 @@ FAIL  1 and 2, default keychain lookup: exit 2, AUTH.CREDENTIALS &amp;quot;Jev a
         SagError id=decidr.secrets category=auth &amp;quot;secrets.keyring_timeout&amp;quot; (15 s): macOS prompts per new
         interpreter and the read timed out. judge-jev reports the credential-resolution failure as a provider
         auth failure. Filed agt-phase-b-review-2-f2 (sc-agent).
-PASS  3 invalid key, per line: one HTTP 401 -&amp;amp;gt; AUTH.CREDENTIALS per run, other requests CANCELED by abort_on=auth;
+PASS  3 invalid key, per line: one HTTP 401 -&amp;gt; AUTH.CREDENTIALS per run, other requests CANCELED by abort_on=auth;
         the key appears in no stdout, stderr or run-log line.
-FAIL  3 invalid key, process: exit 139 (SIGSEGV) in 2 of 4 runs. Crash stack: sc_observability writer_worker -&amp;amp;gt;
-        flush_batch -&amp;amp;gt; sc_agent PyLogSink::write -&amp;amp;gt; PyGILState_Ensure during interpreter finalization.
+FAIL  3 invalid key, process: exit 139 (SIGSEGV) in 2 of 4 runs. Crash stack: sc_observability writer_worker -&amp;gt;
+        flush_batch -&amp;gt; sc_agent PyLogSink::write -&amp;gt; PyGILState_Ensure during interpreter finalization.
         Filed agt-phase-b-review-2-f1 (blocking, sc-agent wheel).
 NOTE  3 invalid key, summary: the envelope names the first failed line, CANCELED in 3 of 4 runs rather than the
         AUTH.CREDENTIALS that caused the abort.
