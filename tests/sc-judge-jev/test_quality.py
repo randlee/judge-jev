@@ -221,9 +221,9 @@ class WaveReasons(QualityCase):
         self.assertEqual((events[-1]["fields"]["verdict"], events[-1]["fields"]["path"]), ("no", ["wave-1"]))
 
     def test_a_wave_without_an_answer_is_exit_2_with_the_path_so_far(self):
-        answers = {"ADR-T-0001/wave-1": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}]}
+        answers = {"ADR-T-0001/wave-1": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}]}
         code, out = self.quality("--adr", "ADR-T-0001", answers=answers)
-        self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "JEV.OVERLOADED"))
+        self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "DECIDR.OVERLOADED"))
         self.assertEqual((out["data"]["path"], out["data"]["results"]), (["wave-1"], []))
         self.assertEqual(out["data"]["tree"]["id"], "quality-adr")
 
@@ -512,9 +512,9 @@ class PerStatement(QualityCase):
 
     def test_a_statement_without_an_answer_names_the_statement(self):
         answers = {"REQ-T-0001.s1/wave-1": tree_answers("quality-req.json"),
-                   "REQ-T-0001.s3/wave-1": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}]}
+                   "REQ-T-0001.s3/wave-1": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}]}
         code, out = self.quality("--req", "REQ-T-0001", answers=answers)
-        self.assertEqual((code, out["error"]["code"]), (2, "JEV.OVERLOADED"))
+        self.assertEqual((code, out["error"]["code"]), (2, "DECIDR.OVERLOADED"))
         self.assertIn("statement 3", out["error"]["message"])
         self.assertEqual((out["data"]["statement"], out["data"]["path"]), (JUDGED[1], ["wave-1"]))
 

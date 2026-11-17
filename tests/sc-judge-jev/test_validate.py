@@ -53,7 +53,7 @@ class ValidateKinds(unittest.TestCase):
     def test_index_answers_and_requests_pass(self):
         self.accepted("--index", write(self.d, "index.json", tq.INDEX), "index")
         self.accepted("--answers", write(self.d, "answers.json", {"ADR-T-0001/wave-1": tq.tree_answers("quality-adr.json"), "*": {}}), "answers")
-        fixture = {"a/c/r1": [{"__error__": "JEV.NETWORK"}, tq.tree_answers("quality-adr.json")], "n": {"q": {"noul": 0.3}}}
+        fixture = {"a/c/r1": [{"__error__": "DECIDR.NETWORK"}, tq.tree_answers("quality-adr.json")], "n": {"q": {"noul": 0.3}}}
         self.accepted("--answers", write(self.d, "fixture.json", fixture), "answers")
         self.accepted("--requests", write(self.d, "requests.jsonl", jsonl([request_line(), request_line("ex-43")])), "requests")
 

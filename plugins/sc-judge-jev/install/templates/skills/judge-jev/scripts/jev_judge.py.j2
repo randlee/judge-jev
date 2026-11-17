@@ -1000,8 +1000,8 @@ BATCH_RESULT_SCHEMA = "judge-jev/jev-batch-result/1"
 BATCH_MAX_WORKERS = 4              # parallel Jev evaluators; the anchor-tuning protocol's cap
 BATCH_FIXTURE_RETRY_LIMIT = 1       # advances only an explicit controlled fixture sequence; live retries belong to sc-agent
 BATCH_FIXTURE_ERROR = "__error__"  # an answers-file attempt {"__error__": "<code>"} simulates a failed call
-FIXTURE_RETRYABLE_CODES = frozenset(("JEV.RATE_LIMITED", "JEV.OVERLOADED", "JEV.NETWORK", "JEV.RESPONSE_INVALID",
-                                     "DECIDR.RATE_LIMITED", "DECIDR.OVERLOADED", "DECIDR.NETWORK", "DECIDR.RESPONSE_INVALID"))
+FIXTURE_RETRYABLE_CODES = frozenset(("JEV.RESPONSE_INVALID", "DECIDR.RATE_LIMITED", "DECIDR.OVERLOADED",
+                                     "DECIDR.NETWORK", "DECIDR.RESPONSE_INVALID"))
 
 
 class BatchSettings(NamedTuple):

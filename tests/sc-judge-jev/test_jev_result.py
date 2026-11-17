@@ -136,19 +136,19 @@ class JevPropagationTests(unittest.TestCase):
     def test_controlled_fixture_sequence_records_failure_then_fallback(self):
         job, settings = self.job()
         line = jj.run_batch_job(job, settings,
-                                {"cur": [{"__error__": "JEV.NETWORK"}, plan_answers()]})
+                                {"cur": [{"__error__": "DECIDR.NETWORK"}, plan_answers()]})
         self.assertEqual((line["ok"], line["retry_count"], line["attempts"]),
                          (True, 1, [{"attempt": 1, "ok": False,
-                                    "error": {"code": "JEV.NETWORK", "message": "fixture failure JEV.NETWORK",
+                                    "error": {"code": "DECIDR.NETWORK", "message": "fixture failure DECIDR.NETWORK",
                                               "recoverable": True}},
                                    {"attempt": 2, "ok": True}]))
 
     def test_controlled_fixture_accepts_shared_transient_codes(self):
         job, settings = self.job()
-        line = jj.run_batch_job(job, settings, {"cur": [{"__error__": "DECIDR.NETWORK"}, plan_answers()]})
+        line = jj.run_batch_job(job, settings, {"cur": [{"__error__": "DECIDR.OVERLOADED"}, plan_answers()]})
         self.assertTrue(line["ok"])
         self.assertEqual(line["retry_count"], 1)
-        self.assertEqual(line["attempts"][0]["error"]["code"], "DECIDR.NETWORK")
+        self.assertEqual(line["attempts"][0]["error"]["code"], "DECIDR.OVERLOADED")
 
     def test_invalid_ok_response_becomes_err(self):
         line, calls = self.run_job(Ok({"answers": []}))

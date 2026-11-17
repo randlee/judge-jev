@@ -288,21 +288,21 @@ class AnswersEnvelope(unittest.TestCase):
         "error code far over the bound": {"*": {"__error__": "J" * 70000}},
         "error with another field": {"*": {"__error__": "X", "why": 1}},
         "error code is empty": {"*": {"__error__": ""}},
-        "empty error code in a list": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": ""}]},
+        "empty error code in a list": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": ""}]},
         "entry is a string": {"*": "x"},
         "entry is a number": {"*": 3},
         "entry is null": {"*": None},
         "list of strings": {"*": ["x"]},
         "list holding a list": {"*": [[]]},
         "empty list": {"*": []},
-        "list with a bad error entry": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": 7}]},
+        "list with a bad error entry": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": 7}]},
     }
     ENVELOPE_ACCEPTED = {
         "error at the bound": {"*": {"__error__": "J" * jj.FIXTURE_CODE_LIMIT}},
         "error of one character": {"*": {"__error__": "J"}},
-        "short error": {"*": {"__error__": "JEV.NETWORK"}},
+        "short error": {"*": {"__error__": "DECIDR.NETWORK"}},
         "empty answers object": {"*": {}},
-        "list of errors": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": "JEV.OVERLOADED"}]},
+        "list of errors": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": "DECIDR.OVERLOADED"}]},
     }
 
     def test_validate_quality_and_batch_refuse_the_same_envelopes_before_any_send(self):
