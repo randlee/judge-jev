@@ -17,7 +17,7 @@ import judge_jev_settings as settings_mod  # noqa: E402
 import result  # noqa: E402
 from result import Err, Ok, ToolError, err  # noqa: E402
 
-from test_jev_judge import STATEMENT, plan_answers  # noqa: E402
+from test_jev_judge import STATEMENT, plan_answers, wheel_record  # noqa: E402
 
 
 class ResultHelperTests(unittest.TestCase):
@@ -56,6 +56,11 @@ class ResultHelperTests(unittest.TestCase):
             code = result.run_main(mock.Mock(side_effect=KeyboardInterrupt))
         self.assertEqual(code, result.CANCELED_EXIT)
         self.assertEqual(json.loads(buf.getvalue()), result.canceled_envelope())
+        self.assertEqual(json.loads(buf.getvalue()), jj.canceled_envelope())
+        buf = io.StringIO()
+        with mock.patch.object(jj, "_main", side_effect=KeyboardInterrupt), contextlib.redirect_stdout(buf):
+            self.assertEqual(jj.main([]), result.CANCELED_EXIT)
+        self.assertEqual(json.loads(buf.getvalue()), result.canceled_envelope())
 
 
 class ScriptErrValueTests(unittest.TestCase):
@@ -65,9 +70,12 @@ class ScriptErrValueTests(unittest.TestCase):
         missing = jj.load_json("/nonexistent/x.json", "thing")
         self.assertEqual((missing.error.code, missing.error.message), ("INPUT.MISSING", "thing not found: '/nonexistent/x.json'"))
         error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "large", True, "Shorten evidence.", attempts=2)
-        mapped = jj._judge_result({"ok": False, "error": error, "attempts": 2})
-        self.assertIs(mapped.error, error)
-        self.assertEqual((mapped.error.code, mapped.error.attempts), ("DECIDR.CONTEXT_EXCEEDED", 2))
+        record = {"ok": False, "error": error, "attempts": 2}
+        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
+            mapped = jj.call_jev({"model": "jev", "questions": {}}, 30)
+        self.assertIs(mapped, record)
+        self.assertIs(mapped["error"], error)
+        self.assertEqual((mapped["error"].code, mapped["error"].attempts), ("DECIDR.CONTEXT_EXCEEDED", 2))
 
     def test_shared_error_is_carried_in_result_and_can_be_raised(self):
         self.assertTrue(issubclass(jj.ClientError, BaseException))
@@ -90,14 +98,17 @@ class JevPropagationTests(unittest.TestCase):
 
     def run_job(self, transport_result):
         job, settings = self.job()
-        with mock.patch.object(jj, "call_jev", return_value=transport_result) as called:
+        record = ({"ok": False, "error": transport_result.error, "attempts": transport_result.error.attempts}
+                  if isinstance(transport_result, Err) else
+                  wheel_record((json.dumps({"response": transport_result.value}), None)))
+        with mock.patch.object(jj, "call_jev", return_value=record) as called:
             line = jj.run_batch_job(job, settings, None)
         return line, called.call_count
 
     def test_non_transient_err_is_recorded_once(self):
         line, calls = self.run_job(Err(jj.ClientError("DECIDR.VALIDATION", "typed validation error")))
         self.assertEqual((line["ok"], line["error"]["code"], line["retry_count"], line["attempts"], calls),
-                         (False, "DECIDR.VALIDATION", None, [], 1))
+                         (False, "DECIDR.VALIDATION", 0, [], 1))
 
     def test_abort_code_stops_the_batch(self):
         refused = jj.ClientError("AUTH.CREDENTIALS", "Jev HTTP 401", status=401)
@@ -116,7 +127,7 @@ class JevPropagationTests(unittest.TestCase):
         failed = [{"request_id": "r1", "error": {"code": "DECIDR.NETWORK", "message": "Rust failure",
                                                    "recoverable": True, "suggested_action": "Rust recovery"}}]
         args = mock.Mock(format="json")
-        args.func.return_value = jj.Ok(jj.StreamedResult(failed))
+        args.func.return_value = jj.Ok(jj.StreamedResult(failed, 0))
         parser = mock.Mock()
         parser.parse_args.return_value = args
         stderr = io.StringIO()
@@ -150,9 +161,9 @@ class JevPropagationTests(unittest.TestCase):
         self.assertEqual(line["retry_count"], 1)
         self.assertEqual(line["attempts"][0]["error"]["code"], "DECIDR.OVERLOADED")
 
-    def test_invalid_ok_response_becomes_err(self):
-        line, calls = self.run_job(Ok({"answers": []}))
-        self.assertEqual((line["ok"], line["error"]["code"], calls), (False, "JEV.RESPONSE_INVALID", 1))
+    def test_shared_invalid_response_record_is_preserved(self):
+        line, calls = self.run_job(Err(jj.ClientError("DECIDR.RESPONSE_INVALID", "Rust rejected the response", True)))
+        self.assertEqual((line["ok"], line["error"]["code"], calls), (False, "DECIDR.RESPONSE_INVALID", 1))
 
     def test_valid_ok_response_is_the_line_answer(self):
         line, calls = self.run_job(Ok({"model": "jev-x", "answers": plan_answers()}))

@@ -36,6 +36,11 @@ def plan_answers(rel="yes", comp="yes", conf="no", p=0.9, rel_p=None, comp_p=Non
             "contradicted": answer(conf, conf_p if conf_p is not None else p)}
 
 
+def typed_answers(answers):
+    """Use the shared fixture answer form without importing the optional wheel."""
+    return {key: jj.decidr_client._typed_answer(value) for key, value in answers.items()}
+
+
 def dev_answers(rel="yes", comp="yes", conf="no", evid="yes", p=0.9, evid_p=None):
     return {"relevant": answer(rel, p), "implemented": answer(comp, p), "violated": answer(conf, p),
             "evidenced": answer(evid, evid_p if evid_p is not None else p)}
@@ -70,7 +75,7 @@ def env(**values):
 def consented():
     """The repository's allow_remote_judge is true (the real lookup is tested in test_jev_remote_judge_setting)."""
     stack = contextlib.ExitStack()
-    stack.enter_context(mock.patch.object(jj, "remote_judge_consent", return_value=jj.Ok(None)))
+    stack.enter_context(mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value=None))
     return stack
 
 
@@ -100,10 +105,10 @@ class Transport:
         self.bodies.append(json.loads(json.dumps(body)))
         step = self.script.pop(0) if self.script else self.default()
         if isinstance(step, jj.ClientError):
-            return jj.Err(step)
+            return {"ok": False, "error": step, "attempts": step.attempts, "position": 0, "line": None}
         if isinstance(step, Exception):
             raise step
-        return jj.Ok(step)
+        return wheel_record((json.dumps({"response": step}), None))
 
     def default(self):
         return {"model": "jev-1.13.0", "answers": dev_answers() if self.gate == "dev" else plan_answers()}
@@ -128,7 +133,9 @@ def wheel_record(result, position=0):
                                 action=error.get("recovery"), status=error.get("status"),
                                 retry_after_ms=error.get("retry_after_ms"), attempts=attempts, data=error)
         return {"ok": False, "error": detail, "position": position, "line": line, "attempts": attempts}
-    return {"ok": True, "value": parsed["response"], "position": position, "line": line, "attempts": attempts}
+    return {"ok": True, "value": typed_answers(parsed["response"]["answers"]),
+            "model_answered": parsed["response"].get("model"), "usage": parsed["response"].get("usage", {}),
+            "position": position, "line": line, "attempts": attempts}
 
 
 class BatchTransport:
@@ -139,7 +146,7 @@ class BatchTransport:
         self.bodies = []
 
     def __call__(self, requests, **kwargs):
-        self.bodies.extend(json.loads(request) for request in requests)
+        self.bodies.extend(request if isinstance(request, dict) else json.loads(request) for request in requests)
         records = []
         for position, _request in enumerate(requests):
             result = self.results.pop(0) if self.results else (json.dumps({"response": {
@@ -169,21 +176,23 @@ def result_lines(text):
 
 
 class ConsentBoundaryTests(unittest.TestCase):
-    def test_remote_preflight_checks_consent_without_resolving_credentials(self):
-        with mock.patch.object(jj, "remote_judge_consent", return_value=jj.Ok(None)) as consent:
-            self.assertEqual(jj.remote_preflight(mock.Mock(), "record text"), jj.Ok(None))
-        consent.assert_called_once_with(mock.ANY, "record text")
+    def test_remote_preflight_uses_the_shared_consent_gate(self):
+        with mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value=None) as consent:
+            self.assertIsNone(jj.decidr_client.remote_preflight("controlled-repository", "record text"))
+        consent.assert_called_once_with("controlled-repository", "record text")
+        self.assertFalse(hasattr(jj, "remote_judge_consent"))
 
-    def test_remote_preflight_propagates_refusal_before_transport(self):
-        refused = jj.fail("POLICY.REMOTE_JUDGE_DISABLED", "consent is absent")
-        with mock.patch.object(jj, "remote_judge_consent", return_value=refused):
-            got = jj.remote_preflight(mock.Mock(), "record text")
-        self.assertIs(got, refused)
+    def test_remote_preflight_propagates_the_shared_refusal(self):
+        refused = jj.ClientError("POLICY.REMOTE_JUDGE_DISABLED", "consent is absent")
+        with mock.patch.object(jj.decidr_client, "remote_judge_consent", side_effect=refused):
+            with self.assertRaises(jj.ClientError) as caught:
+                jj.decidr_client.remote_preflight("controlled-repository", "record text")
+        self.assertIs(caught.exception, refused)
 
 
 class DecideTests(unittest.TestCase):
     def decide(self, answers, roles=PLAN_ROLES, t=0.6):
-        return jj.decide(answers, roles, t)
+        return jj.decide(typed_answers(answers), roles, t)
 
     def test_row1_not_applicable(self):
         self.assertEqual(self.decide(plan_answers(rel="no", comp="no", conf="no"))[0], "not_applicable")
@@ -231,68 +240,43 @@ class DecideTests(unittest.TestCase):
         self.assertEqual(self.decide(plan_answers(p=0.6), t=0.61)[0], "underspecified")
         self.assertEqual(self.decide(plan_answers(rel="no", p=0.1), t=0.0)[0], "not_applicable")
 
-    def test_noul_fallback(self):
-        self.assertEqual(jj.answer_choice({"type": "noul", "noul": 0.8}), ("yes", 0.6000000000000001))
-        self.assertEqual(jj.answer_choice({"type": "noul", "probability": 0.2}), ("no", 0.6))
-        self.assertEqual(jj.answer_choice({"noul": 0.5}), ("yes", 0.0))
+    def test_typed_noul_answers(self):
+        self.assertEqual(jj.answer_choice(jj.decidr_client.NoulAnswer(0.8)), ("yes", 0.6000000000000001))
+        self.assertEqual(jj.answer_choice(jj.decidr_client.NoulAnswer(0.2)), ("no", 0.6))
+        self.assertEqual(jj.answer_choice(jj.decidr_client.NoulAnswer(0.5)), ("yes", 0.0))
         answers = plan_answers()
         answers["contradicted"] = {"type": "noul", "noul": 0.9}
         self.assertEqual(self.decide(answers)[0], "contradicted")
-        self.assertIsNone(jj.answer_problem({"type": "noul", "noul": 0.3}, {"criteria": {}}))
-        self.assertIsNotNone(jj.answer_problem({"type": "noul"}, {"criteria": {}}))
 
-
-class ResponseValidationTests(unittest.TestCase):
-    question = {"type": "choice", "criteria": {"yes": "", "no": "", "unclear": ""}}
-
-    def test_good_answer_passes_and_rounding_is_tolerated(self):
-        self.assertIsNone(jj.answer_problem(answer("yes"), self.question))
-        good = answer("yes")
-        good["probabilities"] = {"yes": 0.94, "no": 0.05, "unclear": 0.0}
-        self.assertIsNone(jj.answer_problem(good, self.question))
-
-    def test_problems_named(self):
-        bad = answer("yes")
-        bad["probabilities"]["yes"] = 0.5
-        self.assertRegex(jj.answer_problem(bad, self.question), "sum to")
-        self.assertRegex(jj.answer_problem(answer("maybe"), self.question), "not one of")
-        self.assertRegex(jj.answer_problem({"type": "choice", "choice": "yes", "confidence": "0.9", "probabilities": {}}, self.question), "confidence")
-        self.assertRegex(jj.answer_problem({"type": "choice", "choice": "yes", "confidence": True, "probabilities": {}}, self.question), "confidence")
-        extra = answer("yes")
-        extra["probabilities"]["other"] = 0.0
-        self.assertRegex(jj.answer_problem(extra, self.question), "keys differ")
-        self.assertRegex(jj.answer_problem({"type": "score", "choice": "yes"}, self.question), "not choice or noul")
-        self.assertRegex(jj.answer_problem("yes", self.question), "not an object")
-
-    def test_validate_response_requires_exact_answer_ids(self):
-        questions = {"relevant": self.question, "addressed": self.question, "contradicted": self.question}
-        error = failure(jj.validate_response({"answers": {"relevant": answer("yes")}}, questions))
-        self.assertEqual(error.code, "JEV.RESPONSE_INVALID")
-        self.assertTrue(error.retryable)
-        extra = dict(plan_answers(), bonus=answer("yes"))
-        failure(jj.validate_response({"answers": extra}, questions))
-        failure(jj.validate_response({"answers": []}, questions))
-        failure(jj.validate_response(["not", "a", "dict"], questions))
-        self.assertIs(ok(jj.validate_response({"model": "x", "answers": plan_answers()}, questions))["answers"]["relevant"]["choice"], "yes")
+    def test_raw_answer_dicts_are_not_a_second_consumer_surface(self):
+        for value in ({"type": "noul", "noul": 0.8}, {"probability": 0.2}, {"p": 0.5}, answer("yes")):
+            with self.subTest(answer=value), self.assertRaises(AttributeError):
+                jj.answer_choice(value)
 
 
 class WheelErrorMappingTests(unittest.TestCase):
     def test_context_error_uses_shared_record_and_preserves_attempt_metadata(self):
         detail = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "context exceeded", True, "Shorten the evidence for this item.", retry_after_ms=1200, attempts=3, data={"id": "decision.context_exceeded"})
-        error = jj._judge_result({"ok": False, "error": detail, "attempts": 3, "position": None, "line": None}).error
+        record = {"ok": False, "error": detail, "attempts": 3, "position": None, "line": None}
+        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
+            error = jj.call_jev({"model": "jev", "questions": {}}, 30)["error"]
         self.assertEqual((error.code, error.retryable, error.attempts, error.retry_after_ms),
                          ("DECIDR.CONTEXT_EXCEEDED", True, 3, 1200))
 
     def test_auth_error_withholds_provider_message(self):
         detail = jj.ClientError("AUTH.CREDENTIALS", "Rust authentication failure", action="Check credentials.", status=401, attempts=1)
-        error = jj._judge_result({"ok": False, "error": detail, "attempts": 1, "position": None, "line": None}).error
+        record = {"ok": False, "error": detail, "attempts": 1, "position": None, "line": None}
+        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
+            error = jj.call_jev({"model": "jev", "questions": {}}, 30)["error"]
         self.assertEqual(error.code, "AUTH.CREDENTIALS")
         self.assertIs(error, detail)
         self.assertEqual(error.message, "Rust authentication failure")
 
     def test_shared_invalid_result_is_a_typed_refusal(self):
         detail = jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON", action="Inspect the invalid result.")
-        error = jj._judge_result({"ok": False, "error": detail, "attempts": None, "position": None, "line": None}).error
+        record = {"ok": False, "error": detail, "attempts": None, "position": None, "line": None}
+        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
+            error = jj.call_jev({"model": "jev", "questions": {}}, 30)["error"]
         self.assertEqual(error.code, "DECIDR.INVALID_RESULT")
 
 

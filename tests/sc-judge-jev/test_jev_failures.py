@@ -27,18 +27,18 @@ class SharedClientFailureCompatibility(unittest.TestCase):
         error = jj.ClientError("AUTH.CREDENTIALS", "Bearer secret-token", action="Check credentials.", status=401, attempts=1)
         record = {"ok": False, "position": None, "line": None, "attempts": 1, "error": error}
         got = self.call_with(record)
-        self.assertIsInstance(got, jj.Err)
-        self.assertEqual(got.error.code, "AUTH.CREDENTIALS")
-        self.assertIs(got.error, error)
-        self.assertEqual(got.error.message, "Bearer secret-token")
-        self.assertNotIn("secret-token", json.dumps(jj.redact_sensitive(got.error.to_json())))
+        self.assertFalse(got["ok"])
+        self.assertEqual(got["error"].code, "AUTH.CREDENTIALS")
+        self.assertIs(got["error"], error)
+        self.assertEqual(got["error"].message, "Bearer secret-token")
+        self.assertNotIn("secret-token", json.dumps(jj.redact_sensitive(got["error"].to_json())))
 
     def test_context_result_uses_shared_category_code(self):
         error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "request too large", True, "Shorten evidence.", attempts=2)
         record = {"ok": False, "position": None, "line": None, "attempts": 2, "error": error}
         got = self.call_with(record)
-        self.assertIsInstance(got, jj.Err)
-        self.assertEqual((got.error.code, got.error.retryable, got.error.attempts),
+        self.assertFalse(got["ok"])
+        self.assertEqual((got["error"].code, got["error"].retryable, got["error"].attempts),
                          ("DECIDR.CONTEXT_EXCEEDED", True, 2))
 
 
@@ -68,7 +68,7 @@ class Interrupts(unittest.TestCase):
             answers = write(root, "answers.json", batch_helpers.BatchTests.FIXTURE)
             log = mock.Mock()
             with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)), \
-                    mock.patch.object(jj, "pump_batch", side_effect=KeyboardInterrupt):
+                    mock.patch.object(jj, "judge_batch", side_effect=KeyboardInterrupt):
                 self.assert_canceled(run_cli(["batch", "--input", source, "--run-dir", str(root / "logs"),
                                                "--answers-file", answers]))
             log.close.assert_called_once_with()

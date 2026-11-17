@@ -76,14 +76,14 @@ class RunCase(QualityCase):
     def run_quality(self, flag, record_id, answers):
         """Run ``quality`` once; (the results[] entry, the result lines pump_batch returned, the run dict)."""
         pumped = []
-        real = jj.pump_batch
+        real = jj.judge_batch
 
         def spy(*args, **kwargs):
             got = real(*args, **kwargs)
             pumped.extend(got.value)
             return got
 
-        with mock.patch.object(jj, "pump_batch", spy):
+        with mock.patch.object(jj, "judge_batch", spy):
             code, out = self.quality(flag, record_id, answers=answers)
         self.assertEqual(code, 0, out)
         (result,) = out["data"]["results"]
@@ -393,7 +393,7 @@ class RebuildMismatch(unittest.TestCase):
 class Ports(unittest.TestCase):
     def test_transports_satisfy_the_port(self):
         self.assertIsInstance(jev_ports.FixtureTransport({}), jev_ports.Transport)
-        self.assertIsInstance(jev_ports.PythonCoreTransport(jj.pump_batch, None, None, None), jev_ports.Transport)
+        self.assertIsInstance(jev_ports.PythonCoreTransport(jj.judge_batch, None, None, None), jev_ports.Transport)
         self.assertNotIsInstance(object(), jev_ports.Transport)
 
     def test_fixture_transport_returns_its_lines_in_request_order_and_records_calls(self):

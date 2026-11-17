@@ -112,7 +112,7 @@ class DryRun(QualityCase):
         self.assertEqual(wave["request"]["questions"], tree_node("quality-adr.json")["questions"])
         self.assertEqual(wave["request"]["state"], {"item": {"id": "ADR-T-0001", "title": "Use SQLite",
                                                              "text": json.dumps(INDEX["decisions"][0], indent=2, ensure_ascii=False)}})
-        self.assertEqual((wave["request_bytes"], wave["max_request_bytes"]), (len(jj.encode_body(wave["request"])), 24000))
+        self.assertEqual((wave["request_bytes"], wave["max_request_bytes"]), (len(jj.decidr_client._encode_request(wave["request"]).encode("utf-8")), 24000))
         self.assertFalse((self.d / "logs").exists())
 
     def test_dry_run_of_a_per_statement_wave_shows_every_statements_request(self):
@@ -128,7 +128,7 @@ class DryRun(QualityCase):
             self.assertEqual(req["request"]["state"], {"item": {
                 "id": f"REQ-T-0001.s{st['index']}", "title": "Title of REQ-T-0001",
                 "text": json.dumps({"statement": st, "record": record}, indent=2, ensure_ascii=False)}})
-            self.assertEqual(req["request_bytes"], len(jj.encode_body(req["request"])))
+            self.assertEqual(req["request_bytes"], len(jj.decidr_client._encode_request(req["request"]).encode("utf-8")))
         self.assertFalse((self.d / "logs").exists())
 
     def test_each_kind_uses_its_own_tree_and_table(self):
@@ -230,7 +230,7 @@ class WaveReasons(QualityCase):
     def test_live_client_auth_error_is_typed_and_writes_no_result_event(self):
         auth = jj.ClientError("AUTH.CREDENTIALS", "no test credential", action="Check credentials.", status=401)
         auth_record = {"ok": False, "position": None, "line": None, "attempts": None, "error": auth}
-        with env(), mock.patch.object(jj, "remote_preflight", return_value=jj.Ok(None)), \
+        with env(), mock.patch.object(jj.decidr_client, "remote_preflight", return_value=None), \
                 mock.patch.object(jj.decidr_client, "call_batch_results", return_value=auth_record):
             code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs")])
         self.assertEqual((code, out["error"]["code"], out["error"]["message"], out["error"]["suggested_action"]),

@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-jev-api
-version: 0.3.8
+version: 0.4.0
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -65,7 +65,7 @@ The answer is recorded once per repository, never per session: ask the user, the
 }
 ```
 
-`probabilities` says which option; `confidence` says whether to trust the call. The script validates every response before gating: answer IDs equal the question IDs, each `choice` is a criteria option, `confidence` and every probability lie in [0, 1], and probabilities sum to 1 within rounding. Anything else is `JEV.RESPONSE_INVALID`. Request retries, when applicable, are performed by sc-agent; judge-jev records the attempt count supplied by the client. The run file stores the full answers so thresholds can be re-tuned without re-judging.
+`probabilities` says which option; `confidence` says whether to trust the call. sc-agent validates replies against their requests and supplies typed answers; judge-jev reads their fields for verdicts. Missing or extra answer IDs, mismatched answer types, and non-finite or out-of-range probabilities/confidence are typed response errors from the wheel. Request retries belong to sc-agent; judge-jev records its observed sends. The run file stores the full answers so thresholds can be re-tuned without re-judging.
 
 ## Size, context window, and shortening
 
@@ -83,7 +83,7 @@ The answer is recorded once per repository, never per session: ask the user, the
 | `POLICY.REMOTE_JUDGE_DISABLED` | pre-flight | `allow_remote_judge` is `false` or absent. Absent: ask the user once, record it with `judge_jev_settings.py set`, commit. `false`: only the user changes it. `--dry-run` works either way |
 | `DEPENDENCY.PYYAML`, `SETTINGS.*`, `REPO.NOT_FOUND` | pre-flight | The settings file could not be read; fix what the error names. Never a silent default |
 | `DECIDR.RATE_LIMITED`, `DECIDR.OVERLOADED`, `DECIDR.NETWORK` | sc-agent | Typed transport errors. See `attempts` for sends made; judge-jev does not resend requests. |
-| `DECIDR.RESPONSE_INVALID`, `JEV.RESPONSE_INVALID` | client or response validation | Malformed provider result or answer. The judge validates the response and does not resend it. |
+| `DECIDR.RESPONSE_INVALID` | shared response validation | The wheel rejected a provider reply or the shared client rejected a malformed controlled fixture. judge-jev adds no reply validator or resend loop. |
 | `DECIDR.CONTEXT_EXCEEDED` | `decision.context_exceeded` | The provider rejected the request for context size; shorten the evidence. |
 | `DECIDR.VALIDATION` | typed request validation | Request rejected; usually a malformed override |
 | `VALIDATION.ANCHORS`, `VALIDATION.INPUT` | record / arguments | Fix `anchors.json` (`validate`) or the flags |
@@ -110,7 +110,7 @@ Two layers and a logged stream. Nothing in them writes to the tracker: reading t
 | --- | --- | --- |
 | `batch` (low layer, tracker-neutral) | JSONL request lines on stdin or `--input <file>` (one parser for both), each `{"item": {id, title, text}, "anchor": {id, statement, scope, kind}, "questions": [{candidate_id, questions, roles?}, ...]}` (`assets/schemas/jev-batch-request.schema.json`) | One JSONL result line per (item, candidate, repeat) on stdout, written as soon as that line and every line before it have an answer, never held for the end; each carries `request_id` (`<prefix>/<item>/<anchor>/<candidate>/r<n>`), `run_id`, `request_sha256`, `answers` with probabilities, `verdict` at `--threshold`, `leaning` at 0, `retry_count` and `attempts` (`assets/schemas/jev-batch-result.schema.json`) |
 
-Every result line is logged through the sc-observability run logger, flushed after every line, as `request`, `answer`, and `result` events. sc-agent's general and session records are sent through the same central log root; the session row supplies the number of sends used for `retry_count` and `attempts`. A missing logger package is `DEPENDENCY.SC_OBSERVABILITY` and a refused event is `LOG.WRITE` (exit 2); run the script with `uv run --script`, whose inline metadata pins `sc-observability==1.5.0`. At most 4 calls run at once (`--max-workers`, 1 to 4). judge-jev validates every request line and request size before the first call. Request retry policy belongs to sc-agent; judge-jev never resends a failed call. Authentication errors and `POLICY.*` stop remaining requests. A live run needs sc-agent credentials and `allow_remote_judge: true` (`--repository-root`); `--dry-run` and `--answers-file` (keys `<item>/<candidate>/r<n>`, `<item>/<candidate>`, `<candidate>`, `*`; a list gives successive fixture attempts; `{"__error__": "<code>"}` simulates a controlled fixture failure) never contact Jev. The answer fixture envelope is checked before the first request, and fixture answers are validated after loading as `JEV.RESPONSE_INVALID`.
+Every result line is logged through the sc-observability run logger, flushed after every line, as `request`, `answer`, and `result` events. sc-agent's general and session records are sent through the same central log root; the session row supplies the number of sends used for `retry_count` and `attempts`. A missing logger package is `DEPENDENCY.SC_OBSERVABILITY` and a refused event is `LOG.WRITE` (exit 2); run the script with `uv run --script`, whose inline metadata pins `sc-observability==1.5.0`. At most 4 calls run at once (`--max-workers`, 1 to 4). judge-jev validates every request line and request size before the first call. Request retry policy belongs to sc-agent; judge-jev never resends a failed call. Authentication errors and `POLICY.*` stop remaining requests. A live run needs sc-agent credentials and `allow_remote_judge: true` (`--repository-root`); `--dry-run` and `--answers-file` (keys `<item>/<candidate>/r<n>`, `<item>/<candidate>`, `<candidate>`, `*`; a list gives successive fixture attempts; `{"__error__": "<code>"}` simulates a controlled fixture failure) never contact Jev. The answer fixture envelope is checked before the first request; the shared template supplies typed fixture answers without importing the wheel and rejects malformed answers as `DECIDR.RESPONSE_INVALID`.
 
 ## Record quality
 
@@ -126,7 +126,7 @@ A definition (ADR-JEV-0008) is data in the request state, never in a question: `
 
 ## Input models and `validate`
 
-Every JSON input is parsed by `strict_loads`, then into a strict pydantic v2 model (the quality tree, the question set, the answers file and each Jev answer, the Raptor index, the batch request line). Unknown fields, wrong types and every cross-field rule are refused with the command's usual code (`QUALITY.TREE`, `VALIDATION.INPUT`, `QUESTIONS.ROLES`, `INPUT.MALFORMED`, `JEV.RESPONSE_INVALID`) and a message of the form `path: rule` (up to 5 problems), e.g. `nodes.wave-1.questions.context.criteria: Dictionary should have at least 2 items`. Raptor records stay open (extra fields are kept) but need a string `id`.
+Every JSON input is parsed by `strict_loads`, then into a strict pydantic v2 model (the quality tree, the question set, the answers-file envelope, the Raptor index, the batch request line). Unknown fields, wrong types and every cross-field rule are refused with the command's usual code (`QUALITY.TREE`, `VALIDATION.INPUT`, `QUESTIONS.ROLES`, `INPUT.MALFORMED`) and a message of the form `path: rule` (up to 5 problems), e.g. `nodes.wave-1.questions.context.criteria: Dictionary should have at least 2 items`. Raptor records stay open (extra fields are kept) but need a string `id`.
 
 `validate (--tree|--questions|--answers|--index|--requests) <file>` (`-` reads stdin; exactly one kind) runs that model and the checks the other commands apply before their first request. `validate --answers` checks the answers-file envelope only (the check `--answers-file` makes before the first request), not the answers inside it. It never calls Jev, needs no API key and writes no log. On success `data` is `{kind, path, sha256}`; on failure the typed error carries the field path, with the same code `quality` or `batch --dry-run` would give. `--requests` also accepts `--gate` and `--max-request-bytes`. `validate --tree` does not check the parts that depend on a record (statements, request size, log events).
 

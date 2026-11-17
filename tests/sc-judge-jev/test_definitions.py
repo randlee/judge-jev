@@ -199,7 +199,7 @@ class Composition(DefinitionCase):
                            ("only at a location", definition("l", "x", "t", "docs/r.md", (ADR, "docs/r.md")))):
             with self.subTest(name):
                 request, result = self.adr_state("--definitions", self.definitions(text))
-                self.assertEqual(jj.encode_body(request), jj.encode_body(plain))
+                self.assertEqual(jj.decidr_client._encode_request(request).encode("utf-8"), jj.decidr_client._encode_request(plain).encode("utf-8"))
                 self.assertNotIn("definitions", request["state"])
                 self.assertNotIn("definitions", result)
         self.assertNotIn("definitions", plain["state"])
