@@ -155,9 +155,9 @@ class ErrorTests(GateCase):
         return out["error"]
 
     def test_a_failed_run_is_an_error_not_a_verdict(self):
-        bad = self.write("bad.json", None, success=False, error={"code": "JEV.TIMEOUT", "message": "x"})
+        bad = self.write("bad.json", None, success=False, error={"code": "DECIDR.NETWORK", "message": "x"})
         error = self.failed("INPUT.RUN_FAILED", *self.three("REQ-A-0001", (0.9, 0.9, 0.9))[:2], bad)
-        self.assertIn("JEV.TIMEOUT", error["message"])
+        self.assertIn("DECIDR.NETWORK", error["message"])
 
     def test_unreadable_not_json_and_empty_run_files(self):
         self.failed("INPUT.RUN_UNREADABLE", str(self.d / "missing.json"))

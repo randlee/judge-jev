@@ -184,14 +184,14 @@ class BatchTests(BatchCase):
         self.assertEqual(completed, ["c3", "c1", "c2"])
 
     def test_failed_call_is_a_line_and_exit_2_with_the_error_on_stderr(self):
-        self.FIXTURE = {"s1/cur": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}], "*": plan_answers()}
+        self.FIXTURE = {"s1/cur": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}], "*": plan_answers()}
         proc = self.subprocess_batch("runs", "--repeat", "1", stdin=jsonl(self.LINES[:1]).encode("utf-8"))
         self.assertEqual(proc.returncode, 2)
         lines = [json.loads(x) for x in proc.stdout.decode("utf-8").splitlines()]
         failed = next(x for x in lines if x["candidate_id"] == "cur")
-        self.assertEqual((failed["ok"], failed["retry_count"], failed["error"]["code"], failed["verdict"]), (False, 1, "JEV.OVERLOADED", None))
+        self.assertEqual((failed["ok"], failed["retry_count"], failed["error"]["code"], failed["verdict"]), (False, 1, "DECIDR.OVERLOADED", None))
         self.assertTrue(next(x for x in lines if x["candidate_id"] == "alt")["ok"])
-        self.assertEqual(json.loads(proc.stderr)["error"]["code"], "JEV.OVERLOADED")
+        self.assertEqual(json.loads(proc.stderr)["error"]["code"], "DECIDR.OVERLOADED")
         self.assertEqual(self.log("runs"), lines)
 
     def test_wheel_failure_is_flushed_to_run_log_during_result_callback(self):
