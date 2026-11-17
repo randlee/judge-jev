@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_judge
-version: 0.3.7
+version: 0.3.8
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -1520,12 +1520,10 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
         position = record["position"]
         job = jobs[position]
         got = _judge_result(record)
-        wheel_error = isinstance(got, Err)
         result_line = _batch_result_line(job, settings, got, record["attempts"])
-        if not wheel_error:
-            logged = log_result_line(log, result_line, fields or {})
-            if isinstance(logged, Err):
-                general_log_errors.append(logged.error)
+        logged = log_result_line(log, result_line, fields or {})
+        if isinstance(logged, Err):
+            general_log_errors.append(logged.error)
         if echo:
             write_stdout_line(encode_result_line(result_line))
         result_lines[position] = result_line

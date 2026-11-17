@@ -62,7 +62,7 @@ class ConsumerErrorContracts(unittest.TestCase):
             got = jj._live_batch_results([request_line()], settings, log, False)
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
                           got.value[0]["attempts"]), ("DECIDR.OVERLOADED", 3, []))
-        log_line.assert_not_called()
+        log_line.assert_called_once_with(log, got.value[0], {})
         log.event.assert_called_once_with("sc_decidr.error",
                                           {"sc_agent_target": "sc_decidr", "code": "DECIDR.OVERLOADED", "message": "busy"},
                                           correlation_id="request-1")

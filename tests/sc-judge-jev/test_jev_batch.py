@@ -194,6 +194,36 @@ class BatchTests(BatchCase):
         self.assertEqual(json.loads(proc.stderr)["error"]["code"], "JEV.OVERLOADED")
         self.assertEqual(self.log("runs"), lines)
 
+    def test_wheel_failure_is_flushed_to_run_log_during_result_callback(self):
+        detail = {"id": "http.network", "category": "network", "message": "controlled connection failure",
+                  "recovery": "Check connectivity and retry."}
+        source = self.put("in.jsonl", jsonl(self.LINES[:1]))
+        transport = BatchTransport((json.dumps({"error": detail, "sends": 1}), "DECIDR.NETWORK"))
+        observed = []
+
+        def checked_transport(requests, **kwargs):
+            persist = kwargs["on_result"]
+
+            def received(record):
+                persist(record)
+                observed.append(self.log("runs"))
+
+            kwargs["on_result"] = received
+            return transport(requests, **kwargs)
+
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", checked_transport), \
+                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = jj.main(["batch", "--input", source, "--run-dir", str(self.d / "runs")])
+        lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
+        self.assertEqual(code, 2)
+        self.assertEqual([len(snapshot) for snapshot in observed], [1, 2])
+        self.assertEqual(observed[0], lines[:1])
+        self.assertEqual(observed[1], lines)
+        self.assertFalse(observed[0][0]["ok"])
+        self.assertEqual(observed[0][0]["error"]["code"], "DECIDR.NETWORK")
+        self.assertTrue(lines[1]["ok"])
+
     def test_bad_input_is_refused_before_any_line(self):
         def refused(lines_text, *extra):
             code, out = run_cli(["batch", "--input", self.put("bad.jsonl", lines_text), "--run-dir", str(self.d / "runs"), "--dry-run", *extra])
