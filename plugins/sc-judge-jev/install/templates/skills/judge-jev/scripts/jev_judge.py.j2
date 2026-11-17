@@ -706,11 +706,6 @@ def load_question_set(gate: str, override_path: str = "") -> Result[QuestionSet,
     return parse_question_set(loaded.value, f"question set {path}")
 
 
-def questions_digest(questions: dict) -> str:
-    canonical = json.dumps(questions, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    return hashlib.sha256(canonical).hexdigest()
-
-
 def build_state(anchor: dict, item: dict) -> dict:
     return {
         "anchor": {
