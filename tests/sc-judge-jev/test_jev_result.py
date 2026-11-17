@@ -56,6 +56,11 @@ class ResultHelperTests(unittest.TestCase):
             code = result.run_main(mock.Mock(side_effect=KeyboardInterrupt))
         self.assertEqual(code, result.CANCELED_EXIT)
         self.assertEqual(json.loads(buf.getvalue()), result.canceled_envelope())
+        self.assertEqual(json.loads(buf.getvalue()), jj.canceled_envelope())
+        buf = io.StringIO()
+        with mock.patch.object(jj, "_main", side_effect=KeyboardInterrupt), contextlib.redirect_stdout(buf):
+            self.assertEqual(jj.main([]), result.CANCELED_EXIT)
+        self.assertEqual(json.loads(buf.getvalue()), result.canceled_envelope())
 
 
 class ScriptErrValueTests(unittest.TestCase):

@@ -136,6 +136,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
             self.assertIsNone(args["general_log"])
         wheel.category.assert_not_called()
 
+    @unittest.skipUnless(find_spec("yaml"), "PyYAML is required to read the loopback repository consent setting")
     @unittest.skipUnless(find_spec("sc_agent"), "sc-decidr wheel is not installed")
     def test_real_wheel_prefers_dotenv_then_environment_with_keyring_trapped(self):
         import sc_agent
