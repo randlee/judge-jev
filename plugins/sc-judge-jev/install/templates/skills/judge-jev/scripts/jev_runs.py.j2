@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_runs
-version: 0.3.8
+version: 0.4.0
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -148,7 +148,7 @@ def run_iri(run: dict) -> str:
 
 
 def _choice(ans: dict) -> tuple:
-    """(choice, confidence) of an answer, as jev_judge.answer_choice reads it (a noul answer is yes at p >= 0.5)."""
+    """Read persisted JSON records (including historical logs), not provider responses."""
     noul = ans.get("type") == "noul" or ("type" not in ans and "noul" in ans)
     if noul:
         value = next((ans[k] for k in ("noul", "probability", "p") if k in ans), None)
@@ -200,6 +200,9 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
     (``node``, ``request_id`` or, per statement, ``request_ids`` and ``reason`` = [{statement, ...}]).
     """
     import pyoxigraph as ox
+    # Durable graph projection reads the shared JSON record form, including historical logs.
+    import decidr_client
+    result_lines = decidr_client._json_answers(result_lines)
     quality = _quality_json(tree)
     iris = _iris(tree, quality)
     ranks = _rule_ranks(tree)

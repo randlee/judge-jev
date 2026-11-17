@@ -15,9 +15,9 @@ class ConsumerErrorContracts(unittest.TestCase):
         record = wheel_record((json.dumps({"response": response, "sends": 1}), None))
         with mock.patch.object(decidr_client, "call_result", return_value=record) as call:
             got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 12.5)
-        self.assertIsInstance(got, jj.Ok)
-        self.assertEqual(got.value, response)
-        self.assertEqual(call.call_args.args[0], json.dumps({"model": "jev-latest", "state": {}, "questions": {}}))
+        self.assertIs(got, record)
+        self.assertEqual(got["value"]["relevant"].choice, "yes")
+        self.assertEqual(call.call_args.args[0], {"model": "jev-latest", "state": {}, "questions": {}})
         self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
         self.assertEqual(call.call_args.kwargs["agent_role"], "judge")
         self.assertEqual(call.call_args.kwargs["abort_on"], frozenset({"auth"}))
@@ -31,7 +31,7 @@ class ConsumerErrorContracts(unittest.TestCase):
         record = wheel_record((json.dumps({"response": response, "sends": 3}), None))
         with mock.patch.object(decidr_client, "call_result", return_value=record):
             got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 12.5)
-        self.assertEqual(got.value.sc_agent_sends, 3)
+        self.assertEqual(got["attempts"], 3)
 
     def test_context_error_preserves_retryability_and_metadata(self):
         detail = {"id": "decision.context_exceeded", "category": "validation", "message": "oversized",
@@ -39,7 +39,7 @@ class ConsumerErrorContracts(unittest.TestCase):
         record = wheel_record((json.dumps({"error": detail, "sends": 3}), "DECIDR.VALIDATION"))
         with mock.patch.object(decidr_client, "call_result", return_value=record):
             got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
-        self.assertEqual((got.error.code, got.error.retryable, got.error.attempts, got.error.retry_after_ms),
+        self.assertEqual((got["error"].code, got["error"].retryable, got["error"].attempts, got["error"].retry_after_ms),
                          ("DECIDR.CONTEXT_EXCEEDED", True, 3, 500))
 
     def test_batch_uses_records_default_credentials_and_attempt_count(self):
@@ -101,8 +101,11 @@ class ConsumerErrorContracts(unittest.TestCase):
 
     def test_shared_invalid_result_is_typed(self):
         detail = jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON", action="Inspect the invalid result.")
-        got = jj._judge_result({"ok": False, "error": detail, "attempts": None, "position": None, "line": None})
-        self.assertEqual((got.error.code, got.error.retryable), ("DECIDR.INVALID_RESULT", False))
+        record = {"ok": False, "error": detail, "attempts": None, "position": None, "line": None}
+        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
+            got = jj.call_jev({"model": "jev", "questions": {}}, 30)
+        self.assertIs(got, record)
+        self.assertEqual((got["error"].code, got["error"].retryable), ("DECIDR.INVALID_RESULT", False))
 
 
 if __name__ == "__main__":

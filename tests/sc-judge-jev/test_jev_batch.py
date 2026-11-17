@@ -4,6 +4,7 @@ Ported from plan-anchor's tests/sc-plan-anchor/test_tournament.py (BatchTests). 
 answers files or a stubbed transport; Jev is never called. Ordering is driven by events, not sleeps.
 """
 import contextlib
+import asyncio
 import hashlib
 import io
 import json
@@ -89,7 +90,7 @@ class BatchTests(BatchCase):
         line = by_key[("s1", "alt", 2)]
         self.assertEqual(line["answers"]["addressed"]["probabilities"], answer("no")["probabilities"])
         self.assertEqual((line["run_id"], line["ok"], line["retry_count"], line["schema"]),
-                         (hashlib.sha256(b"run-7/s1/ANC-001/alt/r2").hexdigest()[:16], True, 0, "judge-jev/jev-batch-result/1"))
+                         (hashlib.sha256(b"run-7/s1/ANC-001/alt/r2").hexdigest()[:16], True, 0, "jev-batch-result/1"))
         self.assertEqual(line["request"]["questions"], alt_set(1))
         self.assertEqual(line["request"]["state"]["item"], {"id": "s1", "title": "Sprint 1", "text": "We copy the legacy crates."})
         self.assertEqual(by_key[("s1", "cur", 1)]["request_sha256"], by_key[("s1", "cur", 2)]["request_sha256"])
@@ -171,13 +172,13 @@ class BatchTests(BatchCase):
 
         async def consume():
             got = []
-            async for result in jj.stream_batch([line], settings, {"*": plan_answers()}):
+            async for result in jj.judge_stream([line], settings, {"*": plan_answers()}):
                 got.append((result["candidate_id"], list(completed)))
                 release_c2.set()
             return got
 
         with mock.patch.object(jj, "run_batch_job", controlled):
-            got = jj.asyncio.run(consume())
+            got = asyncio.run(consume())
         self.assertEqual(waits, [True, True])
         self.assertEqual([cid for cid, _ in got], ["c1", "c2", "c3"])
         self.assertEqual(got[0][1], ["c3", "c1"])  # c1 was yielded before c2 had an answer

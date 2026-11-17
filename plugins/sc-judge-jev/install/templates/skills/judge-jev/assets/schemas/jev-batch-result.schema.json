@@ -33,7 +33,7 @@
   ],
   "properties": {
     "schema": {
-      "const": "judge-jev/jev-batch-result/1"
+      "const": "jev-batch-result/1"
     },
     "request_id": {
       "type": "string",
@@ -151,7 +151,10 @@
       ]
     },
     "retry_count": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 0
     },
     "attempts": {
@@ -223,6 +226,14 @@
           }
         }
       ]
+    },
+    "sends": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Observed wheel sends, or null when unknown (including controlled fixture records)."
     }
   }
 }

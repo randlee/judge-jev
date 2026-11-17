@@ -17,6 +17,13 @@ import jev_support  # noqa: F401  (render and install the scripts on sys.path)
 from child_support import run_child
 import decidr_client
 import jev_judge
+from test_jev_judge import consented
+
+
+def parsed_result(*, answers=None, position=0, error=None):
+    """Controlled output at the public wheel parse_result boundary."""
+    return dict(session_id="controlled", position=position, sends=1, digests={}, error=error,
+                answers=answers or {}, usage={})
 
 
 class ConsumerAdoptionTests(unittest.TestCase):
@@ -32,7 +39,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
                                                    "message": "Rust message", "recovery": "Rust recovery"})
                 self.assertEqual((error.code, error.message, error.action),
                                  (expected, "Rust message", "Rust recovery"))
-        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+        with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             error = decidr_client.wheel_error({"id": "decision.context_exceeded", "category": "validation",
                                                "message": "context too large"})
         self.assertEqual(error.code, "DECIDR.CONTEXT_EXCEEDED")
@@ -93,7 +100,8 @@ class ConsumerAdoptionTests(unittest.TestCase):
             return '{"response": {"dry_run": true}}'
 
         wheel.send = dry_run
-        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+        wheel.parse_result = lambda _: parsed_result(answers={"q": decidr_client.NoulAnswer(0.5)})
+        with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             request = json.dumps({"model": "jev", "state": prompt, "questions": {"q": {"type": "noul"}}})
             result = decidr_client.call_result(request, model="jev", project="judge-jev", agent_role="quality",
                                                 abort_on=frozenset(), category_codes={},
@@ -109,11 +117,12 @@ class ConsumerAdoptionTests(unittest.TestCase):
         wheel.send = mock.Mock(return_value=line)
         wheel.send_batch = mock.Mock(return_value=[json.dumps({"response": {"answers": {}}, "position": i}) for i in range(2)])
         wheel.category = mock.Mock()
+        wheel.parse_result = lambda line: parsed_result(position=json.loads(line).get("position", 0))
         cancel = mock.Mock()
         options = dict(model="jev", project="judge-jev", agent_role="quality",
                        abort_on=frozenset(), category_codes={}, cancel=cancel,
                        keyring_service="plan-anchor", keyring_account="typesafe-api-key")
-        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+        with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             self.assertTrue(decidr_client.call_result("one", **options)["ok"])
             self.assertTrue(decidr_client.call_batch_results(["one", "two"], **options)["ok"])
         for operation in (wheel.send, wheel.send_batch):
@@ -166,6 +175,9 @@ class ConsumerAdoptionTests(unittest.TestCase):
             run_child(["git", "init", "-q", str(root)], check=True)
             config = root / "config"
             config.mkdir()
+            settings = root / ".sc/judge-jev/settings.yaml"
+            settings.parent.mkdir(parents=True)
+            settings.write_text("schema_version: 1\nallow_remote_judge: true\n")
             (config / "default.json").write_text(json.dumps({
                 "log_root": str(root / "logs"),
                 "local_runners": {"dec": {"kind": "mapika", "host": "127.0.0.1", "port": server.server_port,
@@ -177,6 +189,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
             try:
                 os.chdir(root)
                 with mock.patch.dict(os.environ, environment, clear=True):
+                    decidr_client.remote_preflight(str(root), "controlled loopback requests")
                     options = dict(model="dec", project="test", agent_role="test", abort_on=frozenset(),
                                    category_codes={}, cancel=sc_agent.CancelToken(), config_dir=str(config))
                     dotenv = root / ".env"
@@ -199,8 +212,12 @@ class ConsumerAdoptionTests(unittest.TestCase):
         wheel.send = mock.Mock(return_value=line)
         wheel.category = mock.Mock(return_value="auth")
         wheel.retryable = mock.Mock(return_value=False)
+        typed_error = wheel.SagError("Rust auth failure")
+        typed_error.detail = json.loads(line)["error"]
+        typed_error.category = "auth"
+        wheel.parse_result = lambda _: parsed_result(error=typed_error)
         cancel = mock.Mock()
-        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+        with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             result = decidr_client.call_result("one", model="jev", project="judge-jev",
                                        agent_role="quality", abort_on=frozenset({"auth"}),
                                        category_codes={"auth": "AUTH"}, cancel=cancel)
@@ -218,7 +235,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
         wheel.retryable = mock.Mock(return_value=False)
         wheel.send = mock.Mock(side_effect=error)
         cancel = mock.Mock()
-        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+        with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             result = decidr_client.call_result("one", model="jev", project="judge-jev",
                                                agent_role="quality", abort_on=frozenset({"auth"}),
                                                category_codes={}, cancel=cancel)
@@ -231,7 +248,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
         wheel.SagError = type("SagError", (Exception,), {})
         wheel.send = mock.Mock(side_effect=KeyboardInterrupt)
         cancel = mock.Mock()
-        with mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+        with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             with self.assertRaises(KeyboardInterrupt):
                 decidr_client.call_result("one", model="jev", project="judge-jev",
                                    agent_role="quality", abort_on=frozenset(),

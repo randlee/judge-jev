@@ -120,7 +120,7 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
   string code of at most 64 characters and nothing else (`INPUT.MALFORMED`
   otherwise). An answer's own body (its choice, probabilities, extra keys) is
   Jev's response stand-in and is checked after the send
-  (`JEV.RESPONSE_INVALID`), so a test can feed an invalid answer on purpose.
+  (`DECIDR.RESPONSE_INVALID` from the shared client), so a test can feed an invalid answer on purpose.
 - Never calls Jev, needs no key, writes no log.
 - Output: one JSON object. Success names the kind, the path and the file's
   sha256.

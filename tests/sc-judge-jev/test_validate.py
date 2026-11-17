@@ -23,7 +23,7 @@ def validate(*argv):
     """Run `validate` in-process with Jev, the run log and remote-consent gate all forbidden."""
     with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
             mock.patch.object(jj, "open_run_log", side_effect=AssertionError("validate wrote a log")), \
-            mock.patch.object(jj, "remote_preflight", side_effect=AssertionError("validate checked live-call consent")):
+            mock.patch.object(jj.decidr_client, "remote_preflight", side_effect=AssertionError("validate checked live-call consent")):
         return run_cli(["validate", *argv])
 
 
@@ -163,7 +163,7 @@ class FieldPaths(unittest.TestCase):
         del index["decisions"][0]["id"]
         self.assertIn("decisions.0: needs a string id", self.message("--index", index, "INPUT.MALFORMED"))
         answers = {"ADR/wave-1": {"context": {"type": "choice", "choice": "a", "confidence": 2, "probabilities": {"a": 1}}}}
-        self.assertEqual(validate("--answers", write(self.d, "body.json", answers))[0], 0)  # a bad answer body is JEV.RESPONSE_INVALID after the send
+        self.assertEqual(validate("--answers", write(self.d, "body.json", answers))[0], 0)  # a bad answer body is DECIDR.RESPONSE_INVALID after the send
         listed = {"k": [{"__error__": "X"}, {"__error__": 7}]}
         self.assertIn("k.1: __error__: Input should be a valid string", self.message("--answers", listed, "INPUT.MALFORMED"))
         line = request_line()
@@ -280,7 +280,7 @@ class LogEventLimit(unittest.TestCase):
         index = write(self.d, "index.json", tq.INDEX)
         sent = []
         with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
-                mock.patch.object(jj, "pump_batch", side_effect=lambda *a, **k: sent.append(a) or AssertionError("sent")):
+                mock.patch.object(jj, "judge_batch", side_effect=lambda *a, **k: sent.append(a) or AssertionError("sent")):
             code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--questions", write(self.d, "tree.json", tree),
                                  "--run-dir", str(self.d / "logs"), "--run-name", "c2", *mode])
         self.assertEqual(sent, [], "a request was sent")
@@ -290,7 +290,7 @@ class LogEventLimit(unittest.TestCase):
     def test_c2_a_tree_whose_request_fits_but_whose_log_events_do_not_is_refused_before_any_call(self):
         tree = self.adr_with_questions(7, 255)
         line = jj.wave_line(tq.INDEX["decisions"][0], "wave-1", jj.parse_quality_tree(json.dumps(tree), "t").value.nodes["wave-1"])
-        size = len(jj.encode_body({"model": jj.DEFAULT_MODEL, "state": {"item": line["item"]}, "questions": line["questions"][0]["questions"]}))
+        size = len(jj.decidr_client._encode_request({"model": jj.DEFAULT_MODEL, "state": {"item": line["item"]}, "questions": line["questions"][0]["questions"]}).encode("utf-8"))
         self.assertLessEqual(size, jj.DEFAULT_MAX_REQUEST_BYTES, "the request itself must fit --max-request-bytes")
         answers = write(self.d, "answers.json", {"*": {}})
         for mode in (["--dry-run"], ["--answers-file", answers]):
@@ -316,7 +316,8 @@ class LogEventLimit(unittest.TestCase):
     def test_worst_answers_are_answers_the_validator_accepts(self):
         questions = {qid: q.model_dump() for qid, q in jj.load_quality_tree("req").value.nodes["wave-1"].questions.items()}
         answers = jj.worst_answers(questions)
-        self.assertIsInstance(jj.validate_response({"answers": answers}, questions), jj.Ok)
+        self.assertEqual(set(answers), set(questions))
+        self.assertTrue(all(isinstance(answer, jj.decidr_client.ChoiceAnswer) for answer in answers.values()))
 
     def test_the_batch_command_refuses_the_same_way(self):
         big = {f"q{i}": {"type": "choice", "instructions": "Q", "criteria": {f"o{j}": "d" for j in range(255)}} for i in range(7)}

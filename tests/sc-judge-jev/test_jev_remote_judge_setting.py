@@ -28,9 +28,9 @@ HEADER = ("# .sc/judge-jev/settings.yaml\n"
           "# Repository settings for the sc-judge-jev plugin; commit this file, never put secrets in it.\n"
           "schema_version: 1\n")
 REMOTE_COMMENT = "# allow_remote_judge: may record text be sent to TypeSafe (Jev) for judging? Only the user decides it.\n"
-ABSENT_ACTION = ("Ask the user once whether record text may be sent to TypeSafe (Jev) for judging, record the answer with "
+ABSENT_ACTION = ("Ask the user once whether this text may be sent to TypeSafe (Jev), record the answer with "
                  "`python3 scripts/judge_jev_settings.py set allow_remote_judge true|false`, and commit "
-                 ".sc/judge-jev/settings.yaml. Never infer consent from existing run files or past runs. "
+                 ".sc/judge-jev/settings.yaml. Never infer consent from prior runs. "
                  "Use --dry-run to inspect the request instead.")
 WHAT = "The anchor statements, scopes and item texts in the request stream"
 
@@ -69,9 +69,12 @@ class Batched:
         err = io.StringIO()
         argv = ["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", str(repo.root), *extra]
         with env(**(dict(KEY) if env_values is None else env_values)), \
-                mock.patch.object(jj.decidr_client, "call_batch_results", self.transport), contextlib.redirect_stderr(err):
+                mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=self.transport) as call, contextlib.redirect_stderr(err):
             self.code, self.out = run_cli(argv)
         test.assertEqual(err.getvalue(), "")  # every case here either answers or fails before the first line
+        if call.called:
+            selected = [value for flag, value in zip(argv, argv[1:]) if flag == "--repository-root"][-1]
+            test.assertEqual(call.call_args.kwargs["repository_root"], selected)
 
 
 def yaml_test(fn):
@@ -99,14 +102,14 @@ class LiveCallConsentTests(unittest.TestCase):
         b = Batched(self, Repo(self).answer("false"))
         self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "POLICY.REMOTE_JUDGE_DISABLED", []))
         self.assertIn("sets allow_remote_judge: false", b.out["error"]["message"])
-        self.assertIn("only the user changes it", b.out["error"]["suggested_action"])
+        self.assertIn("only the user changes this setting", b.out["error"]["suggested_action"])
 
     def test_absent_file_is_refused_with_the_ask_once_action(self):
         b = Batched(self, Repo(self))
         self.assertEqual(b.code, 2)
         self.assertEqual(b.out, {"success": False, "data": None, "error": {
             "code": "POLICY.REMOTE_JUDGE_DISABLED",
-            "message": f"Sending record text to TypeSafe is disabled. {WHAT} would leave this "
+            "message": f"Sending text to TypeSafe is disabled. {WHAT} would leave this "
                        "machine. .sc/judge-jev/settings.yaml does not set allow_remote_judge.",
             "recoverable": False, "suggested_action": ABSENT_ACTION}})
         self.assertEqual(b.transport.bodies, [])

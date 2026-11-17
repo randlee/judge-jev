@@ -97,14 +97,14 @@ class TreeSweep(unittest.TestCase):
                 outcomes = []
                 for mode in (["--dry-run"], ["--answers-file", answers]):
                     sent = []
-                    real = jj.pump_batch
+                    real = jj.judge_batch
 
                     def counting(lines, *args, **kwargs):
                         sent.extend(lines)
                         return real(lines, *args, **kwargs)
 
                     with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
-                            mock.patch.object(jj, "pump_batch", counting):
+                            mock.patch.object(jj, "judge_batch", counting):
                         code, out = run_cli(["quality", flag, record_id, "--index", index, "--questions", tree_file,
                                              "--run-dir", str(d / "logs"), "--run-name", "sweep", *mode])
                     where = f"{path} = {'<deleted>' if value is DELETED else repr(value)} ({mode[0]})"
@@ -131,13 +131,13 @@ class TreeSweep(unittest.TestCase):
         """``answer_side``: the mutation is in Jev's answers (the answers file stands in for the response), so it can only
         be refused after the request; the check is then only that nothing crashes."""
         sent = []
-        real = jj.pump_batch
+        real = jj.judge_batch
 
         def counting(lines, *args, **kwargs):
             sent.extend(lines)
             return real(lines, *args, **kwargs)
 
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting):
+        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "judge_batch", counting):
             code, out = run_cli([*argv, "--run-dir", str(d / "logs"), "--run-name", "sweep"])
         self.assertIsInstance(out, dict, argv)
         error = out.get("error") or {}
@@ -187,7 +187,7 @@ class TreeSweep(unittest.TestCase):
             answers = write(d, "answers.json", {"ADR-T-0001/wave-1": tq.tree_answers("quality-adr.json")})
             not_a_dir = write(d, "file", "x")
             with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
-                    mock.patch.object(jj, "pump_batch", side_effect=AssertionError("sent before the log was checked")):
+                    mock.patch.object(jj, "judge_batch", side_effect=AssertionError("sent before the log was checked")):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--answers-file", answers,
                                      "--run-dir", not_a_dir])
             self.assertEqual((code, out["error"]["code"]), (2, "LOG.WRITE"), out)
