@@ -59,8 +59,8 @@ batch`: it reads request lines (one JSON request per line), sends each through
 the adopted sc-agent client to Jev and writes a result line. A result envelope is the JSON result line for
 one request, holding its answers or its error
 (`assets/schemas/jev-batch-result.schema.json`). A typed error code is a
-stable dotted code naming a failure, such as `JEV.NETWORK` or
-`JEV.RATE_LIMITED`. The retry policy belongs to the adopted sc-agent client;
+stable dotted code naming a failure, such as `DECIDR.NETWORK` or
+`DECIDR.RATE_LIMITED`. The retry policy belongs to the adopted sc-agent client;
 judge-jev does not resend requests and records the send count reported by the
 client. The request size limit is the `--max-request-bytes` value, at most
 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
