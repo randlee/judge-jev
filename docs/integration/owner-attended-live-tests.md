@@ -17,10 +17,30 @@ in CI or in the unit-test suite.
 4. Run the existing cases selected by the owner as real requests. Record the
    exact command, platform, runtime versions, commit and outcome. Do not
    substitute a fixture result for a live result.
-5. Render one XHTML report from
-   `templates/integration-report/report.xhtml.j2` for each platform actually
-   tested. Include failures and partial runs. Commit the report with the code
-   that produced the run and push it with the branch.
+5. Render one XHTML panel from `templates/integration-report/report.xhtml.j2`
+   for each platform actually tested. Include failures and partial runs. Use a
+   JSON var file containing the template's required fields (`platform`,
+   `run_utc`, `owner`, `judge_jev_commit`, `sc_agent_version`,
+   `python_version`, `command_and_cases`, `outcome`, and
+   `evidence_and_failures`), then render and publish it from the judge-jev
+   checkout:
+
+   ```sh
+   PANEL="site/reports/integration/${PLATFORM}.xhtml"
+   sc-compose render --root . \
+     --file templates/integration-report/report.xhtml.j2 \
+     --var-file "$REPORT_VARS" --strict --output "$PANEL"
+   python "$SC_AGENT_CHECKOUT/templates/integration-report/render.py" \
+     --panel "$PANEL" --reports-dir site/reports \
+     --title "judge-jev live integration report: $PLATFORM"
+   ```
+
+   `SC_AGENT_CHECKOUT` must point to a sc-agent checkout containing the shared
+   integration report generator (merged from `integrate/phase-b`). The shared
+   generator copies the panel into a new run directory, renders the run's HTML
+   page, and rebuilds `site/reports/index.html` newest first. Do not hand edit
+   those generated files. Commit the panel, generated report tree, and the code
+   that produced the run together, then push the branch.
 
 The template's consumer is the owner reviewing live compatibility before
 phase completion. It gates the real-provider integration feature and captures
