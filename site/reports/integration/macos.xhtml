@@ -10,41 +10,26 @@
   <p>This report records an owner-attended run against the real Jev provider.</p>
   <dl>
     <dt>Platform</dt><dd>macos (Darwin 25.5.0, arm64)</dd>
-    <dt>Run date and time (UTC)</dt><dd>2026-11-16T15:15Z to 15:30Z</dd>
-    <dt>Owner present</dt><dd>yes: the repository owner attended, authorized the run and answered the keychain prompts</dd>
-    <dt>judge-jev commit</dt><dd>fe06cc183e1944cc8691f38425f76c3ba3be3a5d (sprint/d-2-feature-parity)</dd>
-    <dt>sc-agent version</dt><dd>sc-decidr 0.2.2 prerelease wheel, prerelease/v0.2.2 @ 2dab15d9bcd91d6cffc4c49b9560ece22e88e759, cp311-abi3-macosx_11_0_arm64, sha256 verified against checksums.txt (not yet on PyPI; resolved with UV_FIND_LINKS)</dd>
-    <dt>Python version</dt><dd>3.14.7 (uv-managed, from the jev_judge.py inline metadata)</dd>
+    <dt>Run date and time (UTC)</dt><dd>2026-11-17T01:50:56Z to 2026-11-17T01:53:23Z</dd>
+    <dt>Owner present</dt><dd>yes: the repository owner attended, authorized the run (&quot;go ahead and proceed w/ the live runs on both plan-anchor and judge-jev&quot;) and approved the keychain prompts</dd>
+    <dt>judge-jev commit</dt><dd>4f19d339 (integrate/phase-d, after stack 77 landed); invalid-key case re-run at 0c1ba03 (integrate/phase-d with #102)</dd>
+    <dt>sc-agent version</dt><dd>sc-decidr 0.2.5 and sitr 0.2.5 prerelease wheels, prerelease/v0.2.5 @ 9977683fbac00e48d442601fe39e9e98c9fe52af, cp311-abi3-macosx_11_0_arm64, sha256 verified against checksums.txt (not on PyPI; resolved with UV_FIND_LINKS)</dd>
+    <dt>Python version</dt><dd>3.14 (uv-managed, from the jev_judge.py inline metadata; requires-python &gt;=3.11)</dd>
     <dt>Command and selected cases</dt><dd><pre>Installed with: uv run plugins/sc-judge-jev/install.py --dest &lt;checkout&gt; --allow-remote-judge --target claude
 Index: raptor integration/judge-jev @ 8ce2be8, scripts/extract.py (33 records, 1 diagnostic on REQ-JEV-0003)
 J=.claude/skills/judge-jev/scripts/jev_judge.py; UV_FIND_LINKS=&lt;verified wheel dir&gt;
-
-1. quality (single record, the test_jev_judge path without --answers-file):
-   uv run --script $J quality --req REQ-JEV-0101 --index index.json --run-dir &lt;dir&gt;
-2. batch (test_jev_batch BatchTests.LINES plus one line: 3 items, 4 requests):
-   uv run --script $J batch --run-dir &lt;dir&gt; &lt; batch.jsonl
-3. invalid key (test_live_auth_failure_is_reported_from_the_typed_wheel_error, live):
-   TYPESAFE_API_KEY=&lt;invalid&gt; uv run --script $J batch --run-dir &lt;dir&gt; &lt; batch.jsonl   (4 runs)
-
-Credentials: cases 1-2 first with sc-agent&#x27;s default lookup (no env, no .env, platform keychain),
-then with TYPESAFE_API_KEY in the process environment (lookup step 2).</pre></dd>
-    <dt>Outcome</dt><dd>PARTIAL. PASS: live quality and live batch with the key in the process environment. FAIL: the same cases with the default platform-keychain lookup; invalid-key runs segfault (exit 139) in 2 of 4 runs.</dd>
-    <dt>Evidence and failures</dt><dd><pre>PASS  1 quality, env credential: exit 0, success true, REQ-JEV-0101 verdict yes; run log shows http.send then http.response 200.
-PASS  2 batch, env credential: exit 0, 4 result lines in input order:
-        s1/cur satisfied, s1/alt underspecified, s3/cur satisfied, s2/cur underspecified.
-FAIL  1 and 2, default keychain lookup: exit 2, AUTH.CREDENTIALS &quot;Jev authentication failed; response body withheld&quot;.
-        No http.send in the run log: no request was sent. A direct sc_agent.send probe raises
-        SagError id=decidr.secrets category=auth &quot;secrets.keyring_timeout&quot; (15 s): macOS prompts per new
-        interpreter and the read timed out. judge-jev reports the credential-resolution failure as a provider
-        auth failure. Filed agt-phase-b-review-2-f2 (sc-agent).
-PASS  3 invalid key, per line: one HTTP 401 -&gt; AUTH.CREDENTIALS per run, other requests CANCELED by abort_on=auth;
-        the key appears in no stdout, stderr or run-log line.
-FAIL  3 invalid key, process: exit 139 (SIGSEGV) in 2 of 4 runs. Crash stack: sc_observability writer_worker -&gt;
-        flush_batch -&gt; sc_agent PyLogSink::write -&gt; PyGILState_Ensure during interpreter finalization.
-        Filed agt-phase-b-review-2-f1 (blocking, sc-agent wheel).
-NOTE  3 invalid key, summary: the envelope names the first failed line, CANCELED in 3 of 4 runs rather than the
-        AUTH.CREDENTIALS that caused the abort.
-Colima/Linux: not run.</pre></dd>
+1. quality: uv run --script $J quality --req REQ-JEV-0101 --index index.json --run-dir &lt;dir&gt;
+2. batch (test_jev_batch BatchTests.LINES plus one line: 3 items, 4 requests): uv run --script $J batch --run-dir &lt;dir&gt; &lt; batch.jsonl
+3. invalid key: TYPESAFE_API_KEY=&lt;invalid&gt; uv run --script $J batch --run-dir &lt;dir&gt; &lt; batch.jsonl (4 runs)
+Credentials: cases 1-3 with TYPESAFE_API_KEY in the process environment, read from the owner export (scripts/integration.py --export-env), SC_AGENT_TEST_TRAP_PLATFORM_KEYRING=1 set; then cases 1-2 again with sc-agent default lookup (no env, no .env, platform keychain entry TYPESAFE_API_KEY / OS user).</pre></dd>
+    <dt>Outcome</dt><dd>PASS. Live quality and live batch pass with both credential paths, including the default platform-keychain lookup that failed on 0.2.2; invalid-key runs exit 2 with no crash in 8 of 8 runs (0.2.2 segfaulted in 2 of 4). The one defect found at 4f19d33 (the invalid-key summary named a cancelled request, CANCELED, instead of AUTH.CREDENTIALS in 3 of 4 runs) was fixed by #102 and re-run live at 0c1ba03: AUTH.CREDENTIALS in 4 of 4 runs.</dd>
+    <dt>Evidence and failures</dt><dd><pre>PASS 1 quality, env credential: exit 0, success true, REQ-JEV-0101 verdict yes.
+PASS 1 quality, default keychain lookup: exit 0, success true, REQ-JEV-0101 verdict yes.
+PASS 2 batch, both credential paths: exit 0, 4 answered result lines, ok true each (written in completion order; order is not required).
+PASS 3 invalid key: exit 2 in 4 of 4 runs, no segfault; every run has an AUTH.CREDENTIALS result line and the remaining lines CANCELED (abort_on auth).
+FAIL 3 summary: the stderr error is CANCELED in runs 1, 3, 4 and AUTH.CREDENTIALS in run 2; main() reports failed[0] by position, so the auth cause is hidden when the auth failure is not the first request.
+Key redacted in every output; the export file was deleted after the runs.
+PASS 3 re-run at 0c1ba03 after #102: 4 invalid-key runs, exit 2 each, stderr summary AUTH.CREDENTIALS in 4 of 4.</pre></dd>
   </dl>
 </body>
 </html>
