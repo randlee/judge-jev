@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>judge-jev live integration report: macos, sc-decidr and sitr 0.2.7</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 16px system-ui, sans-serif; line-height: 1.5; max-width: 72rem; margin: 2rem auto; padding: 0 1rem; }
+    iframe { width: 100%; height: 36rem; border: 1px solid #94a3b8; background: white; }
+    section { margin: 2rem 0; }
+  </style>
+</head>
+<body>
+  <nav><a href="index.html">Back</a></nav>
+  <main>
+    <h1>judge-jev live integration report: macos, sc-decidr and sitr 0.2.7</h1>
+    <section>
+      <h2><a href="20261118-1-integration/macos.xhtml">macos.xhtml</a></h2>
+      <iframe title="macos.xhtml" srcdoc="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE html PUBLIC &quot;-//W3C//DTD XHTML 1.0 Strict//EN&quot; &quot;http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd&quot;&gt;
+&lt;html xmlns=&quot;http://www.w3.org/1999/xhtml&quot; xml:lang=&quot;en&quot; lang=&quot;en&quot;&gt;
+&lt;head&gt;
+  &lt;title&gt;judge-jev live integration report: macos (Darwin 25.5.0, macOS 26.5.1, arm64)&lt;/title&gt;
+  &lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;application/xhtml+xml; charset=utf-8&quot; /&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;judge-jev live integration report&lt;/h1&gt;
+  &lt;p&gt;This report records an owner-attended run against the real Jev provider.&lt;/p&gt;
+  &lt;dl&gt;
+    &lt;dt&gt;Platform&lt;/dt&gt;&lt;dd&gt;macos (Darwin 25.5.0, macOS 26.5.1, arm64)&lt;/dd&gt;
+    &lt;dt&gt;Run date and time (UTC)&lt;/dt&gt;&lt;dd&gt;2026-11-18T00:19:43Z to 2026-11-18T00:20:58Z&lt;/dd&gt;
+    &lt;dt&gt;Owner present&lt;/dt&gt;&lt;dd&gt;yes: the repository owner attended, authorized the live runs (&amp;quot;proceed w/ 1, 2 (fix any issues), 3&amp;quot;; &amp;quot;you can run your own scripts. I will authorize ui dialog if necessary&amp;quot;) and was present for the keychain prompts&lt;/dd&gt;
+    &lt;dt&gt;judge-jev commit&lt;/dt&gt;&lt;dd&gt;0d55a246 (integrate/phase-d after #111, develop merged forward; version 0.4.1)&lt;/dd&gt;
+    &lt;dt&gt;sc-agent version&lt;/dt&gt;&lt;dd&gt;sc-decidr 0.2.7 and sitr 0.2.7 prerelease wheels, prerelease/v0.2.7 @ 1235568, cp311-abi3-macosx_11_0_arm64, sha256 verified against the release checksums.txt (not on PyPI; resolved with UV_FIND_LINKS)&lt;/dd&gt;
+    &lt;dt&gt;Python version&lt;/dt&gt;&lt;dd&gt;3.14.9 (uv-managed, from the jev_judge.py inline metadata; requires-python &amp;gt;=3.11) for the CLI cases; 3.11.16 for the sitr pytest case&lt;/dd&gt;
+    &lt;dt&gt;Command and selected cases&lt;/dt&gt;&lt;dd&gt;&lt;pre&gt;Installed into a scratch copy of the checkout with: uv run plugins/sc-judge-jev/install.py --dest &amp;lt;copy&amp;gt; --allow-remote-judge --target claude. Index: raptor integration/judge-jev @ 8ce2be8, scripts/extract.py (1 diagnostic, REQ-JEV-0003 MODAL_MISMATCH, as before). J=.claude/skills/judge-jev/scripts/jev_judge.py; UV_FIND_LINKS=&amp;lt;verified wheel dir&amp;gt;. 1. quality: uv run --script $J quality --req REQ-JEV-0101 --index index.json --run-dir &amp;lt;dir&amp;gt;. 2. batch (test_jev_batch BatchTests.LINES plus one line: 3 items, 4 requests): uv run --script $J batch --run-dir &amp;lt;dir&amp;gt; &amp;lt; batch.jsonl. 3. invalid key: TYPESAFE_API_KEY=&amp;lt;invalid&amp;gt; uv run --script $J batch --run-dir &amp;lt;dir&amp;gt; &amp;lt; batch.jsonl (4 runs). 4. d-3 sitr: pytest tests/sc-judge-jev/test_decidr_client.py -k sitr with the published sc-decidr/sitr 0.2.7 wheels installed, plus decidr_client.extract(&amp;#x27;rust&amp;#x27;, &amp;#x27;(match_expression) @match&amp;#x27;, fixtures/sitr_match.rs) through the installed client. Credentials: cases 1-3 with TYPESAFE_API_KEY in the process environment, read from the owner export (sc-agent scripts/integration.py --export-env), SC_AGENT_TEST_TRAP_PLATFORM_KEYRING=1 set; then cases 1-2 again with sc-agent default lookup (no env, no .env, platform keychain entry TYPESAFE_API_KEY / OS user).&lt;/pre&gt;&lt;/dd&gt;
+    &lt;dt&gt;Outcome&lt;/dt&gt;&lt;dd&gt;PASS. Live quality and live batch pass with both credential paths on the 0.2.7 wheels; invalid-key runs exit 2 with an AUTH.CREDENTIALS summary (HTTP 401, provider body withheld) in 4 of 4 runs; sitr extraction reaches a dry run with the published sitr wheel.&lt;/dd&gt;
+    &lt;dt&gt;Evidence and failures&lt;/dt&gt;&lt;dd&gt;&lt;pre&gt;PASS 1 quality, env credential: exit 0, success true, REQ-JEV-0101 verdict yes. PASS 1 quality, default keychain lookup: exit 0, success true, REQ-JEV-0101 verdict yes. PASS 2 batch, env credential: exit 0, 4 result lines, ok true each (verdicts satisfied, underspecified, satisfied, underspecified; completion order, order not required). PASS 2 batch, default keychain lookup: exit 0, 4 result lines, ok true each. PASS 3 invalid key: exit 2 in 4 of 4 runs, no crash; each run has one AUTH.CREDENTIALS result line and three CANCELED (abort_on auth); stderr summary AUTH.CREDENTIALS &amp;#x27;authentication failed (HTTP 401); provider response body withheld&amp;#x27; in 4 of 4 runs. PASS 4 sitr: 4 of 4 sitr tests pass (including test_optional_sitr_is_lazy_and_extraction_reaches_a_dry_run, skipped in CI where the sitr wheel is absent); direct extraction through the installed client returned 1 match_expression capture. Key redacted: neither the real key nor the invalid keys appear in any output or run directory; the credential export copies were deleted after use.&lt;/pre&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+&lt;/body&gt;
+&lt;/html&gt;"></iframe>
+    </section>
+  </main>
+</body>
+</html>
