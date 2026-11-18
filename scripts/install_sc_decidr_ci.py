@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Install the exact published sc-decidr runtime pins from PyPI on a GitHub runner."""
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -23,6 +24,13 @@ for package in ("sc-decidr", "sitr"):
     if len(matches) != 1:
         raise SystemExit(f"Expected exactly one {package} runtime pin")
     pins[package] = matches[0]
+platforms = {("Linux", "X64"): "manylinux_2_28_x86_64", ("Linux", "ARM64"): "manylinux_2_28_aarch64",
+             ("macOS", "X64"): "macosx_11_0_x86_64", ("macOS", "ARM64"): "macosx_11_0_arm64",
+             ("Windows", "X64"): "win_amd64", ("Windows", "ARM64"): "win_arm64"}
+runner = (os.environ.get("RUNNER_OS"), os.environ.get("RUNNER_ARCH"))
+if runner not in platforms:
+    raise SystemExit(f"No sc-decidr wheel for {runner}")
 for package, version in pins.items():
     run_child([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-input",
+               "--only-binary=:all:",
                "--index-url", "https://pypi.org/simple", f"{package}=={version}"])
