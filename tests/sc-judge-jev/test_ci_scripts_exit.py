@@ -92,6 +92,26 @@ class GenInstallData(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("exited 128: fatal: bad object", err)
 
+    def test_git_children_have_closed_stdin_and_bounded_timeouts(self):
+        completed = subprocess.CompletedProcess(["git"], 0, stdout=b"value")
+        with mock.patch.object(self.gen.subprocess, "run", return_value=completed) as run:
+            self.assertEqual(self.gen._git("show"), b"value")
+            self.assertIs(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+            self.assertEqual(run.call_args.kwargs["timeout"], self.gen.GIT_TIMEOUT_SECONDS)
+            self.gen._git("cat-file", stdin=b"payload")
+            self.assertEqual(run.call_args.kwargs["input"], b"payload")
+            self.assertNotIn("stdin", run.call_args.kwargs)
+        with mock.patch.object(self.gen.subprocess, "run", return_value=subprocess.CompletedProcess(["git"], 0, stdout="revision\n")) as run:
+            self.assertEqual(self.gen._has_commit("HEAD"), "revision")
+            self.assertIs(run.call_args.kwargs["stdin"], subprocess.DEVNULL)
+            self.assertEqual(run.call_args.kwargs["timeout"], self.gen.GIT_TIMEOUT_SECONDS)
+
+    def test_git_timeouts_fail_with_typed_message(self):
+        for method in (lambda: self.gen._git("show"), lambda: self.gen._has_commit("HEAD")):
+            with self.subTest(method=method), mock.patch.object(self.gen.subprocess, "run", side_effect=subprocess.TimeoutExpired(["git"], 60)):
+                with self.assertRaisesRegex(self.gen.Failure, "timed out after 60s"):
+                    method()
+
     def test_a_corrupt_legacy_owned_json_exits_2(self):
         with tempfile.TemporaryDirectory() as td:
             corrupt = Path(td) / "legacy-owned.json"
@@ -122,8 +142,57 @@ class InstallMatchedWheels(unittest.TestCase):
         self.assertEqual(commands[1][-1], commands[0][-1])
         self.assertEqual(commands[3][-1], commands[2][-1])
 
+    def test_each_download_or_install_timeout_exits_with_message(self):
+        source = '#   "sc-decidr==7.1.2",\n#   "sitr==8.3.4",\n'
+        for failing_call in range(4):
+            errors = [None] * failing_call + [subprocess.TimeoutExpired(["child"], 300)]
+            with self.subTest(failing_call=failing_call), \
+                    mock.patch.dict(os.environ, {"RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"}), \
+                    mock.patch.object(Path, "read_text", return_value=source), \
+                    mock.patch.object(subprocess, "run", side_effect=errors) as run, \
+                    contextlib.redirect_stderr(io.StringIO()) as stderr:
+                with self.assertRaises(SystemExit) as caught:
+                    runpy.run_path(str(SCRIPTS_DIR / "install_sc_decidr_ci.py"))
+            self.assertEqual(caught.exception.code, 2)
+            self.assertIn("install_sc_decidr_ci: subprocess timed out after 300s", stderr.getvalue())
+            for call in run.call_args_list:
+                self.assertIs(call.kwargs["stdin"], subprocess.DEVNULL)
+                self.assertEqual(call.kwargs["timeout"], 300)
+
 
 class InstallScComposeCi(unittest.TestCase):
+    def test_download_and_version_probe_timeouts_are_bounded(self):
+        import hashlib
+        ci = load("install_sc_compose_ci")
+        payload = b"controlled archive"
+        for platform in ("darwin", "win32"):
+            for fail_version in (False, True):
+                with self.subTest(platform=platform, fail_version=fail_version), tempfile.TemporaryDirectory() as td:
+                    def child(argv, **kwargs):
+                        if argv[0] == "gh":
+                            if not fail_version:
+                                raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+                            Path(argv[-1], "archive.tar.gz").write_bytes(payload)
+                            return subprocess.CompletedProcess(argv, 0)
+                        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+                    def extract(_archive, destination):
+                        (destination / ci.executable_name()).write_bytes(b"binary")
+
+                    assets = {(platform, ci.normalized_machine()): ("archive.tar.gz", hashlib.sha256(payload).hexdigest())}
+                    stderr = io.StringIO()
+                    fake_sys = mock.Mock(wraps=sys, platform=platform, stderr=stderr)
+                    with mock.patch.object(ci, "sys", fake_sys), mock.patch.dict(ci.ASSETS, assets, clear=True), \
+                            mock.patch.dict(os.environ, {"RUNNER_TEMP": td}), \
+                            mock.patch.object(ci, "extract", side_effect=extract), \
+                            mock.patch.object(subprocess, "run", side_effect=child) as run:
+                        self.assertEqual(ci.run(), 2)
+                    self.assertIn("install_sc_compose_ci: subprocess timed out", stderr.getvalue())
+                    self.assertEqual(len(run.call_args_list), 2 if fail_version else 1)
+                    for call in run.call_args_list:
+                        self.assertIs(call.kwargs["stdin"], subprocess.DEVNULL)
+                        self.assertEqual(call.kwargs["timeout"], 300 if call.args[0][0] == "gh" else 30)
+
     def test_any_failure_exits_2_with_a_message(self):
         ci = load("install_sc_compose_ci")
         for exc in (RuntimeError("unsupported CI platform"), ValueError("bad digest field"), KeyError("assets")):

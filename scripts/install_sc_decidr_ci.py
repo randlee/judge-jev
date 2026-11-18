@@ -6,6 +6,17 @@ import re
 import subprocess
 import sys
 
+TIMEOUT_SECONDS = 300
+
+
+def run_child(argv):
+    try:
+        return subprocess.run(argv, check=True, stdin=subprocess.DEVNULL, timeout=TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as exc:
+        print(f"install_sc_decidr_ci: subprocess timed out after {exc.timeout}s: {exc.cmd!r}", file=sys.stderr)
+        raise SystemExit(2) from None
+
+
 source = (Path(__file__).resolve().parent.parent / "plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2").read_text()
 pins = {}
 for package in ("sc-decidr", "sitr"):
@@ -22,5 +33,5 @@ if runner not in platforms:
 for package, version in pins.items():
     distribution = package.replace("-", "_")
     asset = f"{distribution}-{version}-cp311-abi3-{platforms[runner]}.whl"
-    subprocess.run(["gh", "release", "download", f"prerelease/v{version}", "--repo", "randlee/sc-agent", "--pattern", asset], check=True)
-    subprocess.run([sys.executable, "-m", "pip", "install", asset], check=True)
+    run_child(["gh", "release", "download", f"prerelease/v{version}", "--repo", "randlee/sc-agent", "--pattern", asset])
+    run_child([sys.executable, "-m", "pip", "install", asset])
