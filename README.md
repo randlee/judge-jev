@@ -32,14 +32,12 @@ Full definitions: [docs/cli.md](docs/cli.md); prompt
 composition diagrams: [docs/diagrams/](docs/diagrams/).
 
 ```
-judge-jev quality (--req|--adr|--nfr <id>)... [--definitions <file>]...
-judge-jev batch   [--input <file>]
-judge-jev quality (--req|--adr|--nfr <id>)...
-judge-jev validate --tree|--questions|--answers|--index|--requests <file>   # '-' = stdin
-judge-jev compare-definition (--req|--adr|--nfr <id>) --index <file> --definition <iri>...
-judge-jev drift   ...
+judge-jev batch [--input <file>] [--run-dir <dir> | --anchors <file>] [--dry-run]
+judge-jev quality --index <file> (--req|--adr|--nfr <id>)... [--questions <file>] [--dry-run]
+judge-jev validate (--tree|--questions|--answers|--index|--requests) <file>
+judge-jev compare-definition --index <file> --definition <iri>... (--req|--adr|--nfr <id>) [--dry-run]
+judge-jev drift --old-index <file> --new-index <file> (--req|--adr|--nfr <id>|--changed) [--dry-run]
 judge-jev doctor [<path>...] [--index <file>]
-# batch, quality: [--dry-run]
 ```
 
 `validate` checks a file with the model judge-jev applies to it before its
@@ -116,7 +114,7 @@ From a checkout of this repository the same command is `uv run plugins/sc-judge-
 | --- | --- | --- |
 | `uv` | the installer and every `jev_judge.py` run | `uv run --script` supplies the Python dependencies (pydantic, sc-observability, PyYAML, pyoxigraph, pyshacl) |
 | Python 3.11+ | everything | |
-| Raptor (`integration/judge-jev`, pinned at `8ce2be8363318be2f7c2e2b79d1f646399cab2fd`) and a Rust toolchain | building the record index | `git clone https://github.com/randlee/raptor && git -C raptor checkout 8ce2be8363318be2f7c2e2b79d1f646399cab2fd`, then `uv venv raptor/.venv -p 3.11 && uv pip install -p raptor/.venv/bin/python raptor markdown`; see `raptor/templates/README.md` |
+| Raptor (`integration/judge-jev`, pinned at `8ce2be8363318be2f7c2e2b79d1f646399cab2fd`) and a Rust toolchain | building the record index | `git clone https://github.com/randlee/raptor && git -C raptor checkout 8ce2be8363318be2f7c2e2b79d1f646399cab2fd`, then `uv venv raptor/.venv -p 3.11 && uv pip install -p raptor/.venv/bin/python ./raptor markdown`; see `raptor/templates/README.md` |
 | `TYPESAFE_API_KEY` | live Jev calls | sc-agent checks `.env`, then the process environment, then the platform credential store |
 | `allow_remote_judge: true` in `.sc/judge-jev/settings.yaml` | live Jev calls | The user's one-time answer, set by the installer; commit the file |
 

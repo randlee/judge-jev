@@ -1690,6 +1690,18 @@ def dry_run_wave(tree: QualityTree, jobs: list, settings: BatchSettings) -> dict
     return {**wave, "max_request_bytes": settings.max_request_bytes}
 
 
+def trusted_install_error(args) -> Optional[ClientError]:
+    """Refuse a script that is not the locked copy whenever this scope contains an install."""
+    start = pathlib.Path(getattr(args, "repository_root", ".") or ".")
+    if judge_jev_paths.find_installs(start) is None:
+        return None
+    trusted, why = judge_jev_paths.trusted_script(pathlib.Path(__file__), start)
+    if trusted:
+        return None
+    return ClientError("VALIDATION.PATH", f"this judge-jev script is not trusted: {why}",
+                       action="Run the jev_judge.py copy named in the nearest install-lock.json, or rerun the installer.")
+
+
 def cmd_quality(args) -> Result[Any, ClientError]:
     """Every record named by a repeated --req/--adr/--nfr (REQs, then ADRs, then NFRs, each in the order given), under one
     run name and one run log. Every record is
@@ -1697,12 +1709,9 @@ def cmd_quality(args) -> Result[Any, ClientError]:
     wanted = [(kind, rid) for kind in ("req", "adr", "nfr") for rid in (getattr(args, kind) or [])]
     if not wanted or any(not rid for _, rid in wanted):
         return fail("VALIDATION.INPUT", "a record id is missing or empty: pass one or more non-empty --req, --adr or --nfr ids")
-    start = pathlib.Path(getattr(args, "repository_root", ".") or ".")
-    if judge_jev_paths.find_installs(start) is not None:
-        trusted, why = judge_jev_paths.trusted_script(pathlib.Path(__file__), start)
-        if not trusted:
-            return fail("VALIDATION.PATH", f"this judge-jev script is not trusted: {why}",
-                        action="Run the jev_judge.py copy named in the nearest install-lock.json, or rerun the installer.")
+    path_error = trusted_install_error(args)
+    if path_error is not None:
+        return Err(path_error)
     settings = quality_settings(args.dry_run)
     loaded_definitions = definitions_for_args(args)
     if isinstance(loaded_definitions, Err):
@@ -1997,6 +2006,9 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
     arms. Each arm walks the record's tree and is logged under its own run name ``<run>.without`` and ``<run>.with``; the
     summary is a ``compare`` event under ``<run>``. The candidates are material when an answer's choice flips or its
     confidence crosses ``--threshold`` (REQ-JEV-0213); the threshold applied is in the output and the log."""
+    path_error = trusted_install_error(args)
+    if path_error is not None:
+        return Err(path_error)
     threshold = check_threshold(args.threshold)
     if isinstance(threshold, Err):
         return threshold
@@ -2345,6 +2357,9 @@ def cmd_drift(args) -> Result[Any, ClientError]:
     unchanged, and whether the candidate adds a requirement or changes verification. Controls (the original against itself
     must be no-drift; the original with one obligation removed must be drift) check that Jev reads the comparison correctly;
     a failed control makes the run invalid. Record ids only in the old index are reported deleted, only in the new added."""
+    path_error = trusted_install_error(args)
+    if path_error is not None:
+        return Err(path_error)
     threshold = check_threshold(args.threshold)
     if isinstance(threshold, Err):
         return threshold

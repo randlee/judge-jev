@@ -59,6 +59,20 @@ class DriftCase(unittest.TestCase):
             return run_cli(["drift", "--old-index", self.old, "--new-index", self.new, *argv,
                             "--run-dir", str(self.d / "logs"), "--run-name", "d1", *extra])
 
+class DriftTrust(DriftCase):
+    def test_dry_run_rejects_a_corrupt_nearest_install_lock(self):
+        repo = self.d / "installed"
+        script = repo / ".claude" / "skills" / "judge-jev" / "scripts" / "jev_judge.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("untrusted copy\n", encoding="utf-8")
+        lock = repo / ".sc" / "judge-jev" / "install-lock.json"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("{corrupt", encoding="utf-8")
+        code, out = run_cli(["drift", "--old-index", self.old, "--new-index", self.new,
+                             "--req", "REQ-T-0001", "--dry-run", "--repository-root", str(repo)])
+        self.assertEqual((code, out["success"], (out.get("error") or {}).get("code")),
+                         (2, False, "VALIDATION.PATH"), out)
+
 
 class LiveDrift(DriftCase):
     def test_consent_and_live_batch_return_drift_verdict(self):

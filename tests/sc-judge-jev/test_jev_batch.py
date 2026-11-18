@@ -56,6 +56,8 @@ class BatchCase(unittest.TestCase):
 
 
 class BatchTests(BatchCase):
+    """The low layer: JSONL request lines in, JSONL result lines out on stdout and in the sc-observability run log."""
+
     def test_batch_without_run_dir_or_anchors_suggests_run_dir_first(self):
         stdout = io.StringIO()
         source = self.put("one.jsonl", jsonl(self.LINES[:1]))
@@ -65,8 +67,6 @@ class BatchTests(BatchCase):
         self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
         self.assertIn("--run-dir <directory>", out["error"]["suggested_action"])
         self.assertIn("for an anchor run", out["error"]["suggested_action"])
-
-    """The low layer: JSONL request lines in, JSONL result lines out on stdout and in the sc-observability run log."""
 
     LINES = [request_line("s1", "We copy the legacy crates.", ("cur", PLAN_QS["questions"]), ("alt", alt_set(1)), title="Sprint 1"),
              request_line("s3", "# Sprint 3\n\nCopy the legacy runtime crates.\n", ("cur", PLAN_QS["questions"]))]

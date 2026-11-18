@@ -107,7 +107,8 @@ class DryRun(QualityCase):
         lock.write_text("{corrupt", encoding="utf-8")
         code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index,
                              "--dry-run", "--repository-root", str(repo)])
-        self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "VALIDATION.PATH"), out)
+        self.assertEqual((code, out["success"], (out.get("error") or {}).get("code")),
+                         (2, False, "VALIDATION.PATH"), out)
 
     def test_dry_run_reports_the_tree_record_and_wave_1_request_and_writes_nothing(self):
         code, out = self.quality("--adr", "ADR-T-0001", "--dry-run")

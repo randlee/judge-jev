@@ -4,6 +4,14 @@
 
 ## 0.5.2 — 2026-11-18
 
+- Document how to uninstall an installed copy and clean up generated folders.
+- Correct the README command list and state that compliance checking is not available in this release.
+- Pin the Raptor checkout used to build record indexes.
+- Document the per-user quality log location, daily folders, contents and safe pruning.
+- Suggest `--run-dir` first when a batch run has no log directory.
+- Report a fresh install as a non-migration; set migration only when legacy files are found.
+- Reject quality, drift and definition-comparison dry runs when their script copy is not trusted by the nearest install lock.
+- Pin sc-decidr and sitr in the contributor test command.
 - Pin installed jev_judge.py to published sc-decidr and sitr 0.2.9 from PyPI, and install them from PyPI in CI.
 - Bound CI helper subprocesses, report timeouts, and remove an unused settings import.
 

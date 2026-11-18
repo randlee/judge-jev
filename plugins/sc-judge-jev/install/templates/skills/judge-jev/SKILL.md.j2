@@ -40,12 +40,12 @@ Run `jev_judge.py` only with `uv run --script "$J"`: its inline metadata supplie
 
 `allow_remote_judge` in the committed `.sc/judge-jev/settings.yaml` is the user's answer to whether record text may be sent to TypeSafe (Jev). `true`: continue. `false`: live calls are refused with `POLICY.REMOTE_JUDGE_DISABLED`; tell the user and work offline only (`--dry-run`, `validate`, `doctor`). `null`: ask the user once, record the answer with the same command and `set allow_remote_judge true|false`, and commit the file. Never infer consent from run files or other repositories.
 
-Raptor, once per machine (needs a Rust toolchain; it builds the `raptor_schema` PyO3 module):
+Raptor, once per machine (needs a Rust toolchain; it builds the `raptor_schema` PyO3 module). Set `RAPTOR` to a relative path for the checkout (for example `raptor`); the install command uses `./$RAPTOR` so uv installs this checkout, not the unrelated PyPI package named `raptor`:
 
 ```bash
 git clone https://github.com/randlee/raptor "$RAPTOR"
 git -C "$RAPTOR" checkout 8ce2be8363318be2f7c2e2b79d1f646399cab2fd
-uv venv "$RAPTOR/.venv" -p 3.11 && uv pip install -p "$RAPTOR/.venv/bin/python" "$RAPTOR" markdown
+uv venv "$RAPTOR/.venv" -p 3.11 && uv pip install -p "$RAPTOR/.venv/bin/python" "./$RAPTOR" markdown
 ```
 
 The repository needs a `.raptor/` inventory naming its record files (Raptor's README). New records are written from Raptor's templates (`$RAPTOR/templates/README.md`).
