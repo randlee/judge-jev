@@ -2,6 +2,10 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.5.1 — 2026-11-18
+
+- Render the shared client from sc-decidr 0.2.8 and update the matched sitr pin.
+
 ## 0.5.0 — 2026-11-18
 
 - Complete drift integration and guard interruption, offline tests, and matched sitr CI coverage.
