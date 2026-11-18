@@ -2,7 +2,7 @@
 
 Ported from plan-anchor's tests/sc-plan-anchor/test_jev_judge.py: the credential lookup, the gating
 table (decide), response validation, HTTP error mapping, redaction and CLI error handling. The Jev
-transport (`jev_judge.call_jev`) is replaced with a stub where a call would happen.
+transport (`decidr_client.call_batch_results`) is replaced with a stub where a call would happen.
 """
 import contextlib
 import io
@@ -87,31 +87,10 @@ def ok(result):
 
 
 def failure(result):
-    """The JudgeError of an Err result; an Ok fails the test."""
+    """The ClientError of an Err result; an Ok fails the test."""
     if not isinstance(result, jj.Err) or not isinstance(result.error, jj.ClientError):
-        raise AssertionError(f"expected Err(JudgeError), got {result!r}")
+        raise AssertionError(f"expected Err(ClientError), got {result!r}")
     return result.error
-
-
-class Transport:
-    """Stub for jev_judge.call_jev: a queue of responses (dicts, returned as Ok) or JudgeErrors (returned as Err), recorded per call."""
-
-    def __init__(self, *script, gate="plan"):
-        self.script = list(script)
-        self.bodies = []
-        self.gate = gate
-
-    def __call__(self, body, timeout):
-        self.bodies.append(json.loads(json.dumps(body)))
-        step = self.script.pop(0) if self.script else self.default()
-        if isinstance(step, jj.ClientError):
-            return {"ok": False, "error": step, "attempts": step.attempts, "position": 0, "line": None}
-        if isinstance(step, Exception):
-            raise step
-        return wheel_record((json.dumps({"response": step}), None))
-
-    def default(self):
-        return {"model": "jev-1.13.0", "answers": dev_answers() if self.gate == "dev" else plan_answers()}
 
 
 def wheel_record(result, position=0):
@@ -254,32 +233,6 @@ class DecideTests(unittest.TestCase):
                 jj.answer_choice(value)
 
 
-class WheelErrorMappingTests(unittest.TestCase):
-    def test_context_error_uses_shared_record_and_preserves_attempt_metadata(self):
-        detail = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "context exceeded", True, "Shorten the evidence for this item.", retry_after_ms=1200, attempts=3, data={"id": "decision.context_exceeded"})
-        record = {"ok": False, "error": detail, "attempts": 3, "position": None, "line": None}
-        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
-            error = jj.call_jev({"model": "jev", "questions": {}}, 30)["error"]
-        self.assertEqual((error.code, error.retryable, error.attempts, error.retry_after_ms),
-                         ("DECIDR.CONTEXT_EXCEEDED", True, 3, 1200))
-
-    def test_auth_error_withholds_provider_message(self):
-        detail = jj.ClientError("AUTH.CREDENTIALS", "Rust authentication failure", action="Check credentials.", status=401, attempts=1)
-        record = {"ok": False, "error": detail, "attempts": 1, "position": None, "line": None}
-        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
-            error = jj.call_jev({"model": "jev", "questions": {}}, 30)["error"]
-        self.assertEqual(error.code, "AUTH.CREDENTIALS")
-        self.assertIs(error, detail)
-        self.assertEqual(error.message, "Rust authentication failure")
-
-    def test_shared_invalid_result_is_a_typed_refusal(self):
-        detail = jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON", action="Inspect the invalid result.")
-        record = {"ok": False, "error": detail, "attempts": None, "position": None, "line": None}
-        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
-            error = jj.call_jev({"model": "jev", "questions": {}}, 30)["error"]
-        self.assertEqual(error.code, "DECIDR.INVALID_RESULT")
-
-
 class RedactionTests(unittest.TestCase):
     def test_every_emitted_value_redacts_the_live_key_and_bearer_tokens(self):
         buf = io.StringIO()
@@ -364,8 +317,8 @@ class ErrorHandlingTests(unittest.TestCase):
     def test_request_over_the_cap_is_refused_before_any_call(self):
         with tempfile.TemporaryDirectory() as d:
             src = write(d, "in.jsonl", jsonl([request_line(text="x" * 30000)]))
-            t = Transport()
-            with env(**LIVE_ENV), consented(), mock.patch.object(jj, "call_jev", t):
+            t = BatchTransport()
+            with env(**LIVE_ENV), consented(), mock.patch.object(jj.decidr_client, "call_batch_results", t):
                 code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs")])
                 self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"))
                 self.assertIn("over --max-request-bytes 24000", out["error"]["message"])

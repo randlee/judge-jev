@@ -21,7 +21,7 @@ SHIPPED_TREES = ("quality-req.json", "quality-adr.json", "quality-nfr.json")
 
 def validate(*argv):
     """Run `validate` in-process with Jev, the run log and remote-consent gate all forbidden."""
-    with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
+    with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), \
             mock.patch.object(jj, "open_run_log", side_effect=AssertionError("validate wrote a log")), \
             mock.patch.object(jj.decidr_client, "remote_preflight", side_effect=AssertionError("validate checked live-call consent")):
         return run_cli(["validate", *argv])
@@ -178,7 +178,7 @@ class FieldPaths(unittest.TestCase):
         path = write(self.d, "t.json", tree)
         _code, said = validate("--tree", path)
         index = write(self.d, "index.json", tq.INDEX)
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called):
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
             _code, ran = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--questions", path, "--dry-run"])
         self.assertEqual((ran["error"]["code"], ran["error"]["message"]), (said["error"]["code"], said["error"]["message"]))
 
@@ -279,7 +279,7 @@ class LogEventLimit(unittest.TestCase):
     def quality(self, tree, *mode):
         index = write(self.d, "index.json", tq.INDEX)
         sent = []
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), \
                 mock.patch.object(jj, "judge_batch", side_effect=lambda *a, **k: sent.append(a) or AssertionError("sent")):
             code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--questions", write(self.d, "tree.json", tree),
                                  "--run-dir", str(self.d / "logs"), "--run-name", "c2", *mode])
@@ -309,7 +309,7 @@ class LogEventLimit(unittest.TestCase):
     def test_a_tree_within_the_limit_still_runs(self):
         tree = self.adr_with_questions(3, 20)
         index = write(self.d, "index.json", tq.INDEX)
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called):
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
             code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--questions", write(self.d, "tree.json", tree), "--dry-run"])
         self.assertEqual((code, out["success"]), (0, True), out)
 
@@ -324,7 +324,7 @@ class LogEventLimit(unittest.TestCase):
         line = request_line(questions=big)
         del line["anchor"]  # an anchorless line needs no roles
         src = write(self.d, "in.jsonl", jsonl([line]))
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called):
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
             code, out = run_cli(["batch", "--input", src, "--run-dir", str(self.d / "runs"), "--dry-run"])
         self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"), out)
         self.assertFalse((self.d / "runs").exists())

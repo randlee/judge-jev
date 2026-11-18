@@ -10,38 +10,6 @@ from test_jev_judge import plan_answers, request_line, wheel_record  # noqa: E40
 
 
 class ConsumerErrorContracts(unittest.TestCase):
-    def test_single_call_uses_result_api_and_default_credentials(self):
-        response = {"model": "jev-x", "answers": plan_answers()}
-        record = wheel_record((json.dumps({"response": response, "sends": 1}), None))
-        with mock.patch.object(decidr_client, "call_result", return_value=record) as call:
-            got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 12.5)
-        self.assertIs(got, record)
-        self.assertEqual(got["value"]["relevant"].choice, "yes")
-        self.assertEqual(call.call_args.args[0], {"model": "jev-latest", "state": {}, "questions": {}})
-        self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
-        self.assertEqual(call.call_args.kwargs["agent_role"], "judge")
-        self.assertEqual(call.call_args.kwargs["abort_on"], frozenset({"auth"}))
-        self.assertEqual(call.call_args.kwargs["timeout_secs"], 12.5)
-        self.assertNotIn("category_codes", call.call_args.kwargs)
-        for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
-            self.assertNotIn(name, call.call_args.kwargs)
-
-    def test_single_call_attempt_count_comes_from_record(self):
-        response = {"model": "jev-x", "answers": plan_answers()}
-        record = wheel_record((json.dumps({"response": response, "sends": 3}), None))
-        with mock.patch.object(decidr_client, "call_result", return_value=record):
-            got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 12.5)
-        self.assertEqual(got["attempts"], 3)
-
-    def test_context_error_preserves_retryability_and_metadata(self):
-        detail = {"id": "decision.context_exceeded", "category": "validation", "message": "oversized",
-                  "sends": 3, "retry_after_ms": 500}
-        record = wheel_record((json.dumps({"error": detail, "sends": 3}), "DECIDR.VALIDATION"))
-        with mock.patch.object(decidr_client, "call_result", return_value=record):
-            got = jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
-        self.assertEqual((got["error"].code, got["error"].retryable, got["error"].attempts, got["error"].retry_after_ms),
-                         ("DECIDR.CONTEXT_EXCEEDED", True, 3, 500))
-
     def test_batch_uses_records_default_credentials_and_attempt_count(self):
         settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
         detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
@@ -99,13 +67,6 @@ class ConsumerErrorContracts(unittest.TestCase):
         self.assertEqual(logged, ["second", "first"])
         self.assertEqual([line["model_answered"] for line in got.value], ["first", "second"])
 
-    def test_shared_invalid_result_is_typed(self):
-        detail = jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON", action="Inspect the invalid result.")
-        record = {"ok": False, "error": detail, "attempts": None, "position": None, "line": None}
-        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
-            got = jj.call_jev({"model": "jev", "questions": {}}, 30)
-        self.assertIs(got, record)
-        self.assertEqual((got["error"].code, got["error"].retryable), ("DECIDR.INVALID_RESULT", False))
 
 
 if __name__ == "__main__":

@@ -16,30 +16,7 @@ from test_jev_judge import run_cli, write  # noqa: E402
 import test_jev_batch as batch_helpers  # noqa: E402
 from test_quality import INDEX  # noqa: E402
 from test_definitions import ADR, definition, iri, ttl  # noqa: E402
-
-
-class SharedClientFailureCompatibility(unittest.TestCase):
-    def call_with(self, record):
-        with mock.patch.object(decidr_client, "call_result", return_value=record):
-            return jj.call_jev({"model": "jev-latest", "state": {}, "questions": {}}, 30)
-
-    def test_auth_result_is_typed_and_redacted(self):
-        error = jj.ClientError("AUTH.CREDENTIALS", "Bearer secret-token", action="Check credentials.", status=401, attempts=1)
-        record = {"ok": False, "position": None, "line": None, "attempts": 1, "error": error}
-        got = self.call_with(record)
-        self.assertFalse(got["ok"])
-        self.assertEqual(got["error"].code, "AUTH.CREDENTIALS")
-        self.assertIs(got["error"], error)
-        self.assertEqual(got["error"].message, "Bearer secret-token")
-        self.assertNotIn("secret-token", json.dumps(jj.redact_sensitive(got["error"].to_json())))
-
-    def test_context_result_uses_shared_category_code(self):
-        error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "request too large", True, "Shorten evidence.", attempts=2)
-        record = {"ok": False, "position": None, "line": None, "attempts": 2, "error": error}
-        got = self.call_with(record)
-        self.assertFalse(got["ok"])
-        self.assertEqual((got["error"].code, got["error"].retryable, got["error"].attempts),
-                         ("DECIDR.CONTEXT_EXCEEDED", True, 2))
+from test_drift import OLD, NEW  # noqa: E402
 
 
 class Interrupts(unittest.TestCase):
@@ -71,6 +48,20 @@ class Interrupts(unittest.TestCase):
                     mock.patch.object(jj, "judge_batch", side_effect=KeyboardInterrupt):
                 self.assert_canceled(run_cli(["batch", "--input", source, "--run-dir", str(root / "logs"),
                                                "--answers-file", answers]))
+            log.close.assert_called_once_with()
+
+    def test_drift_interrupt_closes_owned_log_once(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            old = write(root, "old.json", OLD)
+            new = write(root, "new.json", NEW)
+            answers = write(root, "answers.json", {"*": {}})
+            log = mock.Mock()
+            with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)), \
+                    mock.patch.object(jj, "judge_batch", side_effect=KeyboardInterrupt):
+                self.assert_canceled(run_cli(["drift", "--old-index", old, "--new-index", new,
+                                               "--req", "REQ-T-0001", "--controls", "0",
+                                               "--run-dir", str(root / "logs"), "--answers-file", answers]))
             log.close.assert_called_once_with()
 
     def test_quality_interrupt_closes_owned_log_once(self):
