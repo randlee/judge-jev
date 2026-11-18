@@ -134,17 +134,21 @@ class InstallMatchedWheels(unittest.TestCase):
                 mock.patch.object(subprocess, "run") as run:
             runpy.run_path(str(SCRIPTS_DIR / "install_sc_decidr_ci.py"))
         commands = [call.args[0] for call in run.call_args_list]
-        self.assertEqual(len(commands), 4)
-        self.assertIn("prerelease/v7.1.2", commands[0])
-        self.assertIn("sc_decidr-7.1.2-cp311-abi3-manylinux_2_28_x86_64.whl", commands[0])
-        self.assertIn("prerelease/v8.3.4", commands[2])
-        self.assertIn("sitr-8.3.4-cp311-abi3-manylinux_2_28_x86_64.whl", commands[2])
-        self.assertEqual(commands[1][-1], commands[0][-1])
-        self.assertEqual(commands[3][-1], commands[2][-1])
+        self.assertEqual(commands, [
+            [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-input",
+             "--only-binary=:all:", "--index-url", "https://pypi.org/simple", "sc-decidr==7.1.2"],
+            [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-input",
+             "--only-binary=:all:", "--index-url", "https://pypi.org/simple", "sitr==8.3.4"],
+        ])
+        with self.subTest(unsupported_runner=True), \
+                mock.patch.dict(os.environ, {"RUNNER_OS": "Plan9", "RUNNER_ARCH": "RISC-V"}), \
+                mock.patch.object(Path, "read_text", return_value=source):
+            with self.assertRaisesRegex(SystemExit, "No sc-decidr wheel for"):
+                runpy.run_path(str(SCRIPTS_DIR / "install_sc_decidr_ci.py"))
 
     def test_each_download_or_install_timeout_exits_with_message(self):
         source = '#   "sc-decidr==7.1.2",\n#   "sitr==8.3.4",\n'
-        for failing_call in range(4):
+        for failing_call in range(2):
             errors = [None] * failing_call + [subprocess.TimeoutExpired(["child"], 300)]
             with self.subTest(failing_call=failing_call), \
                     mock.patch.dict(os.environ, {"RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"}), \

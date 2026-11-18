@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install the runtime-pinned sc-decidr prerelease on a GitHub runner."""
+"""Install the exact published sc-decidr runtime pins from PyPI on a GitHub runner."""
 import os
 from pathlib import Path
 import re
@@ -31,7 +31,6 @@ runner = (os.environ.get("RUNNER_OS"), os.environ.get("RUNNER_ARCH"))
 if runner not in platforms:
     raise SystemExit(f"No sc-decidr wheel for {runner}")
 for package, version in pins.items():
-    distribution = package.replace("-", "_")
-    asset = f"{distribution}-{version}-cp311-abi3-{platforms[runner]}.whl"
-    run_child(["gh", "release", "download", f"prerelease/v{version}", "--repo", "randlee/sc-agent", "--pattern", asset])
-    run_child([sys.executable, "-m", "pip", "install", asset])
+    run_child([sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-input",
+               "--only-binary=:all:",
+               "--index-url", "https://pypi.org/simple", f"{package}=={version}"])

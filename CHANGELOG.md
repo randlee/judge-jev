@@ -4,6 +4,7 @@
 
 ## 0.5.2 — 2026-11-18
 
+- Pin installed jev_judge.py to published sc-decidr and sitr 0.2.9 from PyPI, and install them from PyPI in CI.
 - Bound CI helper subprocesses, report timeouts, and remove an unused settings import.
 
 ## 0.5.1 — 2026-11-18
