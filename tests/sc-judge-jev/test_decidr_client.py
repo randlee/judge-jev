@@ -82,6 +82,8 @@ class ConsumerAdoptionTests(unittest.TestCase):
 
     def test_optional_sitr_is_lazy_and_extraction_reaches_a_dry_run(self):
         if importlib.util.find_spec("sc_treesitter") is None:
+            if os.environ.get("JUDGE_JEV_REQUIRE_SITR") == "1":
+                self.fail("JUDGE_JEV_REQUIRE_SITR=1 but the sitr wheel is not installed")
             self.skipTest("sitr wheel is not installed in this test environment")
 
         # Stub send to check extraction-to-request wiring without a provider call;

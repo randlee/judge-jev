@@ -1,7 +1,7 @@
 """`jev_judge.py quality`: one record from a Raptor import index, its kind's decision tree, one batch request per wave
 (one per MUST / MUST NOT statement for a per-statement wave).
 
-Answers come from answers files (keyed '<record>/<node>'); Jev is never called (call_jev is replaced with a stub that
+Answers come from answers files (keyed '<record>/<node>'); Jev is never called (the client calls are replaced with stubs that
 fails the test). The run log is read back through sc-observability's query API.
 """
 import hashlib

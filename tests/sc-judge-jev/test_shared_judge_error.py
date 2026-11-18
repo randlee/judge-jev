@@ -1,4 +1,4 @@
-"""One JudgeError, defined in jev_errors: a graph-layer error reaches the CLI envelope as it was built."""
+"""One ClientError, defined in the shared client: a graph-layer error reaches the CLI envelope as it was built."""
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,7 +12,7 @@ from test_graph_tree import BRANCH_TTL  # noqa: E402
 from test_jev_judge import run_cli  # noqa: E402
 
 
-class SharedJudgeError(unittest.TestCase):
+class SharedClientError(unittest.TestCase):
     def test_the_scripts_share_one_class(self):
         self.assertIs(jj.ClientError, decidr_client.ClientError)
         self.assertIs(jev_graph.ClientError, decidr_client.ClientError)

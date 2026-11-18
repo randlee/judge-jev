@@ -10,6 +10,8 @@ broken clone or a network.
 import contextlib
 import importlib.util
 import io
+import os
+import runpy
 from pathlib import Path
 import shutil
 import subprocess
@@ -102,6 +104,23 @@ class GenInstallData(unittest.TestCase):
                         code, err = self.main("--check")
                     self.assertEqual(code, 2)
                     self.assertIn(says, err)
+
+
+class InstallMatchedWheels(unittest.TestCase):
+    def test_each_wheel_uses_its_own_runtime_pin(self):
+        source = '#   "sc-decidr==7.1.2",\n#   "sitr==8.3.4",\n'
+        with mock.patch.dict(os.environ, {"RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"}), \
+                mock.patch.object(Path, "read_text", return_value=source), \
+                mock.patch.object(subprocess, "run") as run:
+            runpy.run_path(str(SCRIPTS_DIR / "install_sc_decidr_ci.py"))
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(len(commands), 4)
+        self.assertIn("prerelease/v7.1.2", commands[0])
+        self.assertIn("sc_decidr-7.1.2-cp311-abi3-manylinux_2_28_x86_64.whl", commands[0])
+        self.assertIn("prerelease/v8.3.4", commands[2])
+        self.assertIn("sitr-8.3.4-cp311-abi3-manylinux_2_28_x86_64.whl", commands[2])
+        self.assertEqual(commands[1][-1], commands[0][-1])
+        self.assertEqual(commands[3][-1], commands[2][-1])
 
 
 class InstallScComposeCi(unittest.TestCase):

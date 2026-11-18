@@ -69,14 +69,6 @@ class ScriptErrValueTests(unittest.TestCase):
     def test_jev_judge(self):
         missing = jj.load_json("/nonexistent/x.json", "thing")
         self.assertEqual((missing.error.code, missing.error.message), ("INPUT.MISSING", "thing not found: '/nonexistent/x.json'"))
-        error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "large", True, "Shorten evidence.", attempts=2)
-        record = {"ok": False, "error": error, "attempts": 2}
-        with mock.patch.object(jj.decidr_client, "call_result", return_value=record):
-            mapped = jj.call_jev({"model": "jev", "questions": {}}, 30)
-        self.assertIs(mapped, record)
-        self.assertIs(mapped["error"], error)
-        self.assertEqual((mapped["error"].code, mapped["error"].attempts), ("DECIDR.CONTEXT_EXCEEDED", 2))
-
     def test_shared_error_is_carried_in_result_and_can_be_raised(self):
         self.assertTrue(issubclass(jj.ClientError, BaseException))
         e = jj.ClientError("C.X", "msg", retryable=True, action="act")
@@ -98,11 +90,19 @@ class JevPropagationTests(unittest.TestCase):
 
     def run_job(self, transport_result):
         job, settings = self.job()
-        record = ({"ok": False, "error": transport_result.error, "attempts": transport_result.error.attempts}
+        record = ({"ok": False, "error": transport_result.error, "attempts": transport_result.error.attempts,
+                   "position": 0, "line": None}
                   if isinstance(transport_result, Err) else
                   wheel_record((json.dumps({"response": transport_result.value}), None)))
-        with mock.patch.object(jj, "call_jev", return_value=record) as called:
-            line = jj.run_batch_job(job, settings, None)
+        def send(_requests, **kwargs):
+            kwargs["on_result"](record)
+            return {"ok": True, "value": [record]}
+        with mock.patch.object(jj, "batch_jobs", return_value=jj.Ok([job])), \
+                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)), \
+                mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=send) as called:
+            log = mock.Mock()
+            log.event.return_value = jj.Ok(None)
+            line = jj._live_batch_results([{}], settings, log, False).value[0]
         return line, called.call_count
 
     def test_non_transient_err_is_recorded_once(self):
@@ -160,6 +160,24 @@ class JevPropagationTests(unittest.TestCase):
         self.assertTrue(line["ok"])
         self.assertEqual(line["retry_count"], 1)
         self.assertEqual(line["attempts"][0]["error"]["code"], "DECIDR.OVERLOADED")
+
+    def test_context_error_metadata_reaches_the_batch_result(self):
+        error = jj.ClientError("DECIDR.CONTEXT_EXCEEDED", "context exceeded", True,
+                               "Shorten the evidence.", retry_after_ms=1200, attempts=3)
+        line, calls = self.run_job(Err(error))
+        self.assertEqual((line["error"]["code"], line["error"]["recoverable"], line["retry_count"], calls),
+                         ("DECIDR.CONTEXT_EXCEEDED", True, 2, 1))
+        self.assertEqual(line["error"]["suggested_action"], "Shorten the evidence.")
+
+    def test_auth_error_redaction_applies_to_batch_result(self):
+        error = jj.ClientError("AUTH.CREDENTIALS", "Bearer secret-token", action="Check credentials.", attempts=1)
+        line, calls = self.run_job(Err(error))
+        self.assertEqual((line["error"]["code"], calls), ("AUTH.CREDENTIALS", 1))
+        self.assertNotIn("secret-token", json.dumps(jj.redact_sensitive(line)))
+
+    def test_invalid_result_remains_typed_in_batch(self):
+        line, calls = self.run_job(Err(jj.ClientError("DECIDR.INVALID_RESULT", "invalid JSON")))
+        self.assertEqual((line["error"]["code"], calls), ("DECIDR.INVALID_RESULT", 1))
 
     def test_shared_invalid_response_record_is_preserved(self):
         line, calls = self.run_job(Err(jj.ClientError("DECIDR.RESPONSE_INVALID", "Rust rejected the response", True)))

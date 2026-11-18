@@ -40,7 +40,7 @@ class DoctorCase(unittest.TestCase):
 
     def doctor(self, *argv, root=True):
         before = self.files()
-        with env(), mock.patch.object(jj, "call_jev", never_called):
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=never_called, call_batch_results=never_called):
             code, out = run_cli(["doctor", *argv, *(["--repository-root", str(self.root)] if root else [])])
         self.assertEqual(self.files(), before, "doctor writes nothing")
         return code, out
@@ -307,7 +307,7 @@ class Errors(DoctorCase):
 
 class NoJev(DoctorCase):
     def test_doctor_needs_no_key_and_never_calls_jev(self):
-        # env() clears the environment (no key) and call_jev is a stub that fails the test; doctor still reports
+        # env() clears the environment (no key) and the client calls are stubs that fails the test; doctor still reports
         path = self.defs(definition("x", "fast", "t", "docs/r.md", (ADR, None)))
         for argv in ((), (path,), (path, "--index", self.index)):
             code, out = self.doctor(*argv)

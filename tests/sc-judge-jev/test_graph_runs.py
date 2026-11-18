@@ -1,6 +1,6 @@
 """A quality run as triples (ADR-JEV-0006 run vocabulary) and the Transport / GraphStore ports (ADR-JEV-0007).
 
-Jev is never called: ``call_jev`` is replaced with a stub that fails the test and every answer comes from an answers
+Jev is never called: the client calls are replaced with stubs that fail the test and every answer comes from an answers
 fixture. The tree graph comes from the shipped JSON tree through ``tree_fixture`` (its triples minted with
 ``jev_runs.JsonIris``); once ``jev_graph.load_tree`` and the shipped TTL tree exist it loads that instead.
 """

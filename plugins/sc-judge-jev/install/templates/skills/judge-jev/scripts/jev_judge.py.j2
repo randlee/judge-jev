@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_judge
-version: 0.4.1
+version: 0.5.0
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -101,10 +101,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, utf8_stdio  # noqa: E402
 from jev_errors import redact_sensitive
 from decidr_client import (ClientError, BatchSettings, BatchJob, BatchInputError, StreamedResult,
-                           BATCH_RESULT_SCHEMA, BATCH_MAX_WORKERS, BATCH_FIXTURE_ERROR, BATCH_ID_RE,
+                           BATCH_MAX_WORKERS, BATCH_FIXTURE_ERROR, BATCH_ID_RE,
                            BATCH_RETRIES as BATCH_FIXTURE_RETRY_LIMIT,
-                           REPO_ROOT_HELP, REMOTE_JUDGE_SETTING, REMOTE_JUDGE_SET, CANCELED_EXIT, canceled_envelope,
-                           batch_request_id, batch_run_id, _safe_id, encode_result_line, write_stdout_line)
+                           REPO_ROOT_HELP, CANCELED_EXIT, canceled_envelope,
+                           batch_request_id, _safe_id)
 import jev_definitions  # noqa: E402  (standard library only)
 import jev_runs  # noqa: E402  (standard library at import)
 import judge_jev_paths  # noqa: E402  (standard library only)
@@ -722,12 +722,6 @@ def build_state(anchor: dict, item: dict) -> dict:
     }
 
 
-def call_jev(body: dict, timeout: float) -> dict:
-    """Pass this consumer's prompt and session tags to the generated client."""
-    return decidr_client.call_result(body, model=body["model"], project="judge-jev", agent_role="judge",
-                                     abort_on=frozenset({"auth"}), timeout_secs=timeout)
-
-
 def answer_choice(ans) -> tuple:
     """Interpret the wheel's typed choice or noul answer for the verdict rules."""
     if hasattr(ans, "noul"):
@@ -890,8 +884,6 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
     """Supply this consumer's verdict callback to the shared result record builder."""
     if settings.dry_run:
         return decidr_client._line(job, settings, None, [], None, True)
-    if fixture is None:
-        return _batch_result_line(job, settings, call_jev(job.body, settings.timeout))
     attempts, raw, error = [], None, None
     for attempt in range(1, BATCH_FIXTURE_RETRY_LIMIT + 2):
         try:
@@ -2325,7 +2317,7 @@ def drift_assess(answers: dict, obligations: list, threshold: float, qset: str =
             "undecided_groups": undecided, "low_share": round(low / judged, 3) if judged else 0.0}
 
 
-def _index_tables(path: str) -> Result[dict, JudgeError]:
+def _index_tables(path: str) -> Result[dict, ClientError]:
     loaded = load_json(path, "Raptor import index")
     if isinstance(loaded, Err):
         return loaded
@@ -2341,7 +2333,7 @@ def _index_tables(path: str) -> Result[dict, JudgeError]:
     return Ok(out)
 
 
-def cmd_drift(args) -> Result[Any, JudgeError]:
+def cmd_drift(args) -> Result[Any, ClientError]:
     """Compare each named record (or, with ``--changed``, every record whose normative text differs) between two Raptor
     indexes: one Jev request per record asks, for each obligation of the original, whether the candidate still requires it
     unchanged, and whether the candidate adds a requirement or changes verification. Controls (the original against itself
@@ -2367,7 +2359,8 @@ def cmd_drift(args) -> Result[Any, JudgeError]:
     ids = sorted(r for r in (old if args.changed else named) if r in old and r in new)
     lines, meta, unchanged, blocked = [], {}, [], []
     for rid in ids:
-        (table, o, ob), (_t, n, nb) = old[rid], new[rid]
+        table, o, ob = old[rid]
+        _, n, nb = new[rid]
         if ob or nb:
             blocked.append(rid)
             continue
@@ -2396,7 +2389,7 @@ def cmd_drift(args) -> Result[Any, JudgeError]:
             lines.append(drift_line(f"{rid}.ctl-drop-{k}", "", m["original"], cand, questions, args.form))
             controls.append({"item": f"{rid}.ctl-drop-{k}", "record": rid, "expect": "drift", "drops": k, "obligations": m["obligations"]})
     settings = BatchSettings("plan", DEFAULT_MODEL, 1, DRIFT_PREFIX, threshold, 60.0, BATCH_MAX_WORKERS, DRIFT_MAX_REQUEST_BYTES, args.dry_run)
-    total, keys = 0, set()
+    total = 0
     for number, line in enumerate(lines, 1):
         jobs = batch_jobs(line, number, settings, {}, {"old_index": args.old_index, "new_index": args.new_index})
         if isinstance(jobs, Err):
@@ -2422,9 +2415,13 @@ def cmd_drift(args) -> Result[Any, JudgeError]:
     log = open_run_log(args.run_dir, run_name)
     if isinstance(log, Err):
         return log
-    pumped = judge_batch(lines, settings, fixture, log.value, echo=False,
-                         fields={"old_index": args.old_index, "new_index": args.new_index},
-                         repository_root=args.repository_root) if lines else Ok([])
+    try:
+        pumped = judge_batch(lines, settings, fixture, log.value, echo=False,
+                             fields={"old_index": args.old_index, "new_index": args.new_index},
+                             repository_root=args.repository_root) if lines else Ok([])
+    except KeyboardInterrupt:
+        log.value.close()
+        raise
     if isinstance(pumped, Err):
         log.value.close()
         return pumped
