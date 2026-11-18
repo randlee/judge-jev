@@ -1,5 +1,5 @@
 """Definitions (ADR-JEV-0008; REQ-JEV-0212, REQ-JEV-0213): a definition is data attached to a record, or to a record and a
-location, carried in the request state of every request it reaches. Jev is never called (call_jev fails the test); answers
+location, carried in the request state of every request it reaches. Jev is never called (the client calls fail the test); answers
 come from fixture files; the run log is read back through sc-observability.
 """
 import hashlib
@@ -199,7 +199,7 @@ class Composition(DefinitionCase):
                            ("only at a location", definition("l", "x", "t", "docs/r.md", (ADR, "docs/r.md")))):
             with self.subTest(name):
                 request, result = self.adr_state("--definitions", self.definitions(text))
-                self.assertEqual(jj.encode_body(request), jj.encode_body(plain))
+                self.assertEqual(jj.decidr_client._encode_request(request).encode("utf-8"), jj.decidr_client._encode_request(plain).encode("utf-8"))
                 self.assertNotIn("definitions", request["state"])
                 self.assertNotIn("definitions", result)
         self.assertNotIn("definitions", plain["state"])
@@ -308,7 +308,7 @@ class Composition(DefinitionCase):
 class Compare(DefinitionCase):
     def compare(self, *argv, answers=None, run="c1"):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
-        with env(), mock.patch.object(jj, "call_jev", never_called):  # no real key, no real settings, no live Jev
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=never_called, call_batch_results=never_called):  # no real key, no real settings, no live Jev
             return run_cli(["compare-definition", "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", run,
                             *argv, *extra])
 
@@ -463,8 +463,11 @@ class Compare(DefinitionCase):
         self.assertEqual((got, out["error"]["code"]), (2, "DEFINITIONS.NOT_FOUND"), out)
 
     def test_a_live_comparison_without_an_answers_file_needs_consent_before_any_call(self):
-        got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"))
-        self.assertEqual((got, out["success"], out["error"]["code"]), (2, False, "AUTH.CREDENTIALS"), out)  # no key: stopped before any call
+        (self.d / ".git").mkdir()
+        got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"),
+                            "--repository-root", str(self.d))
+        self.assertEqual((got, out["success"], out["error"]["code"]),
+                         (2, False, "POLICY.REMOTE_JUDGE_DISABLED"), out)  # consent is checked before sc-agent resolves credentials
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-SKILL
-version: 0.3.1
+version: 0.5.2
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -26,7 +26,13 @@ which uv && uv --version
 which jq && jq --version
 J="<this skill's directory>/scripts/jev_judge.py"
 uv run --script "$J" --help >/dev/null && echo "judge-jev ok"
-test -n "$TYPESAFE_API_KEY" && echo "TYPESAFE_API_KEY set" || echo "TYPESAFE_API_KEY missing"
+if [ -f .env ]; then
+  echo "repository .env present (key not verified)"
+elif [ -n "${TYPESAFE_API_KEY:-}" ]; then
+  echo "process key set"
+else
+  echo "sc-agent may use the platform credential store"
+fi
 uv run -q --no-project --with pyyaml python "<this skill's directory>/scripts/judge_jev_settings.py" show | jq '.data.allow_remote_judge'   # true, false, or null
 ```
 

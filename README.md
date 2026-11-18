@@ -115,7 +115,7 @@ From a checkout of this repository the same command is `uv run plugins/sc-judge-
 | `uv` | the installer and every `jev_judge.py` run | `uv run --script` supplies the Python dependencies (pydantic, sc-observability, PyYAML, pyoxigraph, pyshacl) |
 | Python 3.11+ | everything | |
 | Raptor (`integration/judge-jev`) and a Rust toolchain | building the record index | `git clone -b integration/judge-jev https://github.com/randlee/raptor`, then `uv venv .venv -p 3.11 && uv pip install -p .venv/bin/python . markdown` in the clone; see its `templates/README.md` |
-| `TYPESAFE_API_KEY` | live Jev calls | Get a key at typesafe.ai; export it in the shell that launches the harness |
+| `TYPESAFE_API_KEY` | live Jev calls | sc-agent checks `.env`, then the process environment, then the platform credential store |
 | `allow_remote_judge: true` in `.sc/judge-jev/settings.yaml` | live Jev calls | The user's one-time answer, set by the installer; commit the file |
 
 `--dry-run`, `validate` and `doctor` need neither the key nor the setting.

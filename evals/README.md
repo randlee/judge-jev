@@ -9,7 +9,7 @@ result. There is no framework: one runner, one folder per case.
 
 ```bash
 export RAPTOR=<Raptor checkout>   # has .venv/bin/python and scripts/extract.py
-export TYPESAFE_API_KEY=...       # Jev; the agent and the scorer call it
+# sc-agent resolves credentials from the scratch repository .env, process environment, then platform credential store.
 uv run evals/run.py --harness claude --model sonnet               # every case
 uv run evals/run.py --harness codex --model luna --case 'fix-*'   # a glob over case names
 uv run evals/run.py --harness codex --model luna --dry-run        # print commands and prompts, launch nothing

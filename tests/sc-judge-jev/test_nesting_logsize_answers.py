@@ -75,7 +75,7 @@ class RedactionIsIterative(unittest.TestCase):
                     self.assertLessEqual(depth_of(out["data"])[0], jj.EMIT_MAX_DEPTH)
 
     def test_a_judge_error_with_deep_data_serialises(self):
-        error = jj.JudgeError("PLAN.TOO_LARGE", "big")
+        error = jj.ClientError("PLAN.TOO_LARGE", "big")
         error.data = nested(5000)
         self.assertEqual(depth_of(error.to_json()["data"])[0], 5000)
 
@@ -101,7 +101,7 @@ class DeepInputIsATypedError(unittest.TestCase):
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
                 self.assertIn("maximum container depth is 32" if expected == "VALIDATION.INPUT" else str(jj.JSON_MAX_DEPTH),
                               out["error"]["message"])
-            with self.subTest(command="batch", depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
+            with self.subTest(command="batch", depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
                 code, out = run_cli(["batch", "--input", src, "--dry-run", "--run-dir", str(self.d / "logs")])
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
 
@@ -110,7 +110,7 @@ class DeepInputIsATypedError(unittest.TestCase):
         for depth, expected in ((300, "RECORD.DIAGNOSTICS"), (450, "RECORD.DIAGNOSTICS"), (600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
             index = copy.deepcopy(tq.INDEX)
             index["diagnostics"]["issues"].append({"id": "ADR-T-0001", "rule": "X", "extra": nested(depth)})
-            with self.subTest(depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
+            with self.subTest(depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
@@ -119,7 +119,7 @@ class DeepInputIsATypedError(unittest.TestCase):
         for depth in (300, 900):
             index = copy.deepcopy(tq.INDEX)
             index["decisions"][0]["x"] = nested(depth)
-            with self.subTest(depth=depth), env(), mock.patch.object(jj, "call_jev", tq.never_called):
+            with self.subTest(depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
                 self.assertEqual(code, 2)
@@ -127,7 +127,7 @@ class DeepInputIsATypedError(unittest.TestCase):
 
 
 def counting_pump(sent):
-    real = jj.pump_batch
+    real = jj.judge_batch
 
     def counting(lines, *args, **kwargs):
         sent.extend(lines)
@@ -174,16 +174,23 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
     def batch(self, per, answers):
         sent = []
         src = write(self.d, f"r{per}.jsonl", json.dumps(self.batch_line(per)))
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), self.transient_once(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
             code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, f"a{per}.json", answers),
                                  "--run-dir", str(self.d / f"l{per}"), "--run-name", "p"])
         return code, out, len(sent)
 
-    def bad_then_worst(self, per):
-        worst = jj.worst_answers(self.questions(per))
-        bad = copy.deepcopy(worst)
-        bad["q0"]["choice"] = ASTRAL * 400  # not an option: JEV.RESPONSE_INVALID, whose 500-character message is all astral
-        return {"it/c": [bad, worst]}
+    def worst_fixture(self, per):
+        return {"it/c": jj.decidr_client._json_answers(jj.worst_answers(self.questions(per)))}
+
+    def transient_once(self):
+        # Drive the long error explicitly; malformed reply validation belongs to the shared client.
+        real = jj.decidr_client._fixture_attempt
+
+        def attempt(job, fixture, number, **kwargs):
+            if number == 1:
+                raise jj.ClientError("DECIDR.OVERLOADED", ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT, True)
+            return real(job, fixture, number, **kwargs)
+        return mock.patch.object(jj.decidr_client, "_fixture_attempt", side_effect=attempt)
 
     def refused_before_send(self, per):
         line = self.batch_line(per)
@@ -211,15 +218,16 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
 
     def test_a_batch_the_check_admits_logs_an_astral_failure_then_an_answer(self):
         edge = self.boundary(self.refused_before_send)
-        code, out, sent = self.batch(edge - 1, self.bad_then_worst(edge - 1))
+        code, out, sent = self.batch(edge - 1, self.worst_fixture(edge - 1))
         self.assertEqual((code, sent), (0, 1), out if isinstance(out, dict) else out[:300])
         results = [out] if isinstance(out, dict) else [json.loads(x) for x in out.splitlines() if x.strip()]  # run_cli parses one line whole
         self.assertEqual([(r["ok"], r["retry_count"]) for r in results], [(True, 1)])
-        self.assertEqual(results[0]["attempts"][0]["error"]["code"], "JEV.RESPONSE_INVALID")
+        self.assertEqual(results[0]["attempts"][0]["error"]["code"], "DECIDR.OVERLOADED")
+        self.assertEqual(results[0]["attempts"][0]["error"]["message"], ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT)
 
     def test_a_batch_over_the_boundary_is_refused_with_nothing_sent(self):
         edge = self.boundary(self.refused_before_send)
-        code, out, sent = self.batch(edge, self.bad_then_worst(edge))
+        code, out, sent = self.batch(edge, self.worst_fixture(edge))
         self.assertEqual((code, out["error"]["code"], sent), (2, "JEV.CONTEXT_EXCEEDED", 0), out)
 
     def quality_tree(self, per):
@@ -232,19 +240,17 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
         sent = []
         argv = ["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "index.json", tq.INDEX),
                 "--questions", write(self.d, f"t{per}.json", self.quality_tree(per)), "--run-dir", str(self.d / f"q{per}"), "--run-name", "p", *mode]
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), self.transient_once(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
             code, out = run_cli(argv)
         return code, out, len(sent)
 
     def test_a_quality_wave_the_check_admits_logs_an_astral_failure_then_an_answer(self):
         edge = self.boundary(lambda per: (self.quality(per, "--dry-run")[1].get("error") or {}).get("code") == "JEV.CONTEXT_EXCEEDED")
-        worst = jj.worst_answers(self.questions(edge - 1))
-        bad = copy.deepcopy(worst)
-        bad["q0"]["choice"] = ASTRAL * 400
-        code, out, sent = self.quality(edge - 1, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": [bad, worst]}))
+        worst = jj.decidr_client._json_answers(jj.worst_answers(self.questions(edge - 1)))
+        code, out, sent = self.quality(edge - 1, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": worst}))
         self.assertEqual((code, sent), (0, 1), out)
         self.assertEqual(out["data"]["results"][0]["verdict"], "yes")
-        over, refused, sent_over = self.quality(edge, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": [bad, worst]}))
+        over, refused, sent_over = self.quality(edge, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": worst}))
         self.assertEqual((over, refused["error"]["code"], sent_over), (2, "JEV.CONTEXT_EXCEEDED", 0), refused)
 
 
@@ -269,14 +275,14 @@ class AnswersEnvelope(unittest.TestCase):
         argv = ["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "index.json", tq.INDEX),
                 "--questions", write(self.d, "tree.json", self.tree), "--run-dir", str(self.d / "logs"), "--run-name", "p",
                 "--answers-file", write(self.d, "a.json", fixture)]
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
             code, out = run_cli(argv)
         return code, out, len(sent)
 
     def batch(self, fixture):
         sent = []
         src = write(self.d, "r.jsonl", jsonl([request_line()]))
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
             code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, "b.json", fixture), "--run-dir", str(self.d / "blogs")])
         return code, out, len(sent)
 
@@ -288,21 +294,21 @@ class AnswersEnvelope(unittest.TestCase):
         "error code far over the bound": {"*": {"__error__": "J" * 70000}},
         "error with another field": {"*": {"__error__": "X", "why": 1}},
         "error code is empty": {"*": {"__error__": ""}},
-        "empty error code in a list": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": ""}]},
+        "empty error code in a list": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": ""}]},
         "entry is a string": {"*": "x"},
         "entry is a number": {"*": 3},
         "entry is null": {"*": None},
         "list of strings": {"*": ["x"]},
         "list holding a list": {"*": [[]]},
         "empty list": {"*": []},
-        "list with a bad error entry": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": 7}]},
+        "list with a bad error entry": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": 7}]},
     }
     ENVELOPE_ACCEPTED = {
         "error at the bound": {"*": {"__error__": "J" * jj.FIXTURE_CODE_LIMIT}},
         "error of one character": {"*": {"__error__": "J"}},
-        "short error": {"*": {"__error__": "JEV.NETWORK"}},
+        "short error": {"*": {"__error__": "DECIDR.NETWORK"}},
         "empty answers object": {"*": {}},
-        "list of errors": {"*": [{"__error__": "JEV.NETWORK"}, {"__error__": "JEV.OVERLOADED"}]},
+        "list of errors": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": "DECIDR.OVERLOADED"}]},
     }
 
     def test_validate_quality_and_batch_refuse_the_same_envelopes_before_any_send(self):
@@ -333,14 +339,14 @@ class AnswersEnvelope(unittest.TestCase):
 
     def test_an_invalid_answer_body_passes_the_envelope_and_fails_after_the_send(self):
         bodies = {"choice is a list": self.with_context(choice=["x"]),
-                  "extra key in an answer": self.with_context(why="x"),
+                  "wrong answer type": self.with_context(type="score"),
                   "choice is not an option": self.with_context(choice="nope"),
                   "confidence out of range": self.with_context(confidence=2)}
         for name, fixture in bodies.items():
             with self.subTest(name):
                 self.assertEqual(validate("--answers", write(self.d, "v.json", fixture))[0], 0, name)
                 code, out, sent = self.quality(fixture)
-                self.assertEqual((code, out["error"]["code"], sent), (2, "JEV.RESPONSE_INVALID", 1), out)
+                self.assertEqual((code, out["error"]["code"], sent), (2, "DECIDR.RESPONSE_INVALID", 1), out)
 
     def test_a_noul_probability_above_one_passes_the_envelope_and_fails_after_the_send(self):
         for key, value in (("noul", 1.5), ("probability", 1.5), ("noul", 1.0000001)):
@@ -350,8 +356,8 @@ class AnswersEnvelope(unittest.TestCase):
                 fixture = {"ADR-T-0001/wave-1": answers}
                 self.assertEqual(validate("--answers", write(self.d, "v.json", fixture))[0], 0)
                 code, out, sent = self.quality(fixture)
-                self.assertEqual((code, out["error"]["code"], sent), (2, "JEV.RESPONSE_INVALID", 1), out)
-                self.assertIn(f"invalid answer for context: {key}: Input should be less than or equal to 1", out["error"]["message"])
+                self.assertEqual((code, out["error"]["code"], sent), (2, "DECIDR.RESPONSE_INVALID", 1), out)
+                self.assertIn("context", out["error"]["message"])
 
     def test_a_fixture_without_an_entry_for_a_request_is_fixture_missing_before_any_send(self):
         elsewhere = {"OTHER-0001/wave-1": self.good}  # no entry for ADR-T-0001/wave-1 and no '*'
@@ -362,12 +368,29 @@ class AnswersEnvelope(unittest.TestCase):
         self.assertEqual((code, out["error"]["code"], sent), (2, "FIXTURE.MISSING", 0), out)
         self.assertIn("ex-42/cur/r1", out["error"]["message"])
 
+    def test_fixture_attempt_uses_the_shared_key_and_missing_helpers(self):
+        job = jj.BatchJob("item", None, "candidate", 2, "request", {}, {"answer": {"type": "noul"}}, {}, "directive")
+        keys = ("delegated/r2", "delegated", "candidate", "*")
+        with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys:
+            result = jj.decidr_client._fixture_attempt(job,
+                {"delegated/r2": {"answer": {"type": "noul", "noul": 0.75}}}, 1)
+        self.assertEqual(result["answers"]["answer"].noul, 0.75)
+        get_keys.assert_called_once_with(job)
+        missing = jj.ClientError("TEST.MISSING", "shared helper result")
+        with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys, \
+                mock.patch.object(jj.decidr_client, "_fixture_missing", return_value=missing) as get_missing:
+            with self.assertRaises(jj.ClientError) as caught:
+                jj.decidr_client._fixture_attempt(job, {}, 1)
+        self.assertIs(caught.exception, missing)
+        get_keys.assert_called_once_with(job)
+        get_missing.assert_called_once_with(keys)
+
     def test_batch_checks_every_line_of_the_stream_before_sending_the_first(self):
         sent = []
         lines = [request_line("covered"), request_line("uncovered")]
         src = write(self.d, "r2.jsonl", jsonl(lines))
         fixture = write(self.d, "b2.json", {"covered/cur": plan_answers()})
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting_pump(sent)):
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
             code, out = run_cli(["batch", "--input", src, "--answers-file", fixture, "--run-dir", str(self.d / "blogs2")])
         self.assertEqual((code, out["error"]["code"], len(sent)), (2, "FIXTURE.MISSING", 0), out)
         self.assertFalse((self.d / "blogs2").exists())

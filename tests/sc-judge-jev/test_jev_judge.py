@@ -2,14 +2,13 @@
 
 Ported from plan-anchor's tests/sc-plan-anchor/test_jev_judge.py: the credential lookup, the gating
 table (decide), response validation, HTTP error mapping, redaction and CLI error handling. The Jev
-transport (`jev_judge.call_jev`) is replaced with a stub where a call would happen.
+transport (`decidr_client.call_batch_results`) is replaced with a stub where a call would happen.
 """
 import contextlib
 import io
 import json
 import os
 from pathlib import Path
-import re
 import sys
 import tempfile
 import unittest
@@ -35,6 +34,11 @@ def plan_answers(rel="yes", comp="yes", conf="no", p=0.9, rel_p=None, comp_p=Non
     return {"relevant": answer(rel, rel_p if rel_p is not None else p),
             "addressed": answer(comp, comp_p if comp_p is not None else p),
             "contradicted": answer(conf, conf_p if conf_p is not None else p)}
+
+
+def typed_answers(answers):
+    """Use the shared fixture answer form without importing the optional wheel."""
+    return {key: jj.decidr_client._typed_answer(value) for key, value in answers.items()}
 
 
 def dev_answers(rel="yes", comp="yes", conf="no", evid="yes", p=0.9, evid_p=None):
@@ -63,15 +67,16 @@ def run_cli(argv):
 
 @contextlib.contextmanager
 def env(**values):
-    # Unit fixtures control both credential sources; never consult a developer's store.
-    with mock.patch.dict(os.environ, values, clear=True), \
-            mock.patch.object(jj, "credential_store_api_key", return_value=""):
+    # Unit fixtures control the environment; sc-agent owns credential resolution.
+    with mock.patch.dict(os.environ, values, clear=True):
         yield
 
 
 def consented():
     """The repository's allow_remote_judge is true (the real lookup is tested in test_jev_remote_judge_setting)."""
-    return mock.patch.object(jj, "remote_judge_consent", return_value=jj.Ok(None))
+    stack = contextlib.ExitStack()
+    stack.enter_context(mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value=None))
+    return stack
 
 
 def ok(result):
@@ -82,35 +87,54 @@ def ok(result):
 
 
 def failure(result):
-    """The JudgeError of an Err result; an Ok fails the test."""
-    if not isinstance(result, jj.Err) or not isinstance(result.error, jj.JudgeError):
-        raise AssertionError(f"expected Err(JudgeError), got {result!r}")
+    """The ClientError of an Err result; an Ok fails the test."""
+    if not isinstance(result, jj.Err) or not isinstance(result.error, jj.ClientError):
+        raise AssertionError(f"expected Err(ClientError), got {result!r}")
     return result.error
 
 
-class Transport:
-    """Stub for jev_judge.call_jev: a queue of responses (dicts, returned as Ok) or JudgeErrors (returned as Err), recorded per call."""
+def wheel_record(result, position=0):
+    """Build a controlled generated-client record from a wheel-shaped wire result."""
+    line, mapped = result
+    parsed = json.loads(line)
+    attempts = parsed.get("sends")
+    error = parsed.get("error")
+    if isinstance(error, dict):
+        category = error.get("category")
+        code = mapped or {"auth": "AUTH.CREDENTIALS", "quota": "DECIDR.RATE_LIMITED", "busy": "DECIDR.OVERLOADED",
+                          "network": "DECIDR.NETWORK", "response_invalid": "DECIDR.RESPONSE_INVALID",
+                          "validation": "DECIDR.VALIDATION", "cancelled": "CANCELED"}.get(category, "DECIDR.ERROR")
+        if error.get("id") == "decision.context_exceeded":
+            code = "DECIDR.CONTEXT_EXCEEDED"
+        detail = jj.ClientError(code, error.get("message", "wheel error"),
+                                retryable=(error.get("id") == "decision.context_exceeded" or
+                                           category in ("quota", "busy", "network", "response_invalid")),
+                                action=error.get("recovery"), status=error.get("status"),
+                                retry_after_ms=error.get("retry_after_ms"), attempts=attempts, data=error)
+        return {"ok": False, "error": detail, "position": position, "line": line, "attempts": attempts}
+    return {"ok": True, "value": typed_answers(parsed["response"]["answers"]),
+            "model_answered": parsed["response"].get("model"), "usage": parsed["response"].get("usage", {}),
+            "position": position, "line": line, "attempts": attempts}
 
-    def __init__(self, *script, gate="plan"):
-        self.script = list(script)
+
+class BatchTransport:
+    """Stub sc-agent's wire results as generated-client records and invoke completion callbacks."""
+
+    def __init__(self, *results):
+        self.results = list(results)
         self.bodies = []
-        self.gate = gate
 
-    def __call__(self, body, api_key, timeout):
-        self.bodies.append(json.loads(json.dumps(body)))
-        step = self.script.pop(0) if self.script else self.default()
-        if isinstance(step, jj.JudgeError):
-            return jj.Err(step)
-        if isinstance(step, Exception):
-            raise step
-        return jj.Ok(step)
-
-    def default(self):
-        return {"model": "jev-1.13.0", "answers": dev_answers() if self.gate == "dev" else plan_answers()}
-
-
-def http(status, text="", retry_after=None):
-    return jj.http_error(status, text, retry_after)
+    def __call__(self, requests, **kwargs):
+        self.bodies.extend(request if isinstance(request, dict) else json.loads(request) for request in requests)
+        records = []
+        for position, _request in enumerate(requests):
+            result = self.results.pop(0) if self.results else (json.dumps({"response": {
+                "model": "jev-1.13.0", "answers": plan_answers()}, "sends": 1}), None)
+            records.append(wheel_record(result, position))
+        for record in records:
+            if kwargs.get("on_result") is not None:
+                kwargs["on_result"](record)
+        return {"ok": True, "value": records, "position": None, "line": None, "attempts": None}
 
 
 def request_line(item_id="ex-42", text="Sprint 2 copies the legacy runtime crates.", candidate="cur", questions=None):
@@ -130,93 +154,24 @@ def result_lines(text):
     return [json.loads(x) for x in text.splitlines() if x.strip()]
 
 
-# The credential entry plan-anchor reads (randlee/plan-anchor@d104c2d, scripts/jev_judge.py.j2). judge-jev must read
-# the same entry so one stored key serves both. With PLAN_ANCHOR_ROOT set to a plan-anchor checkout the constants are
-# parsed from that source instead of these recorded values.
-PLAN_ANCHOR_JEV_JUDGE = "plugins/sc-plan-anchor/install/templates/skills/plan-anchoring/scripts/jev_judge.py.j2"
-PLAN_ANCHOR_CREDENTIAL_CONSTANTS = {"TYPESAFE_KEY_ENV": "TYPESAFE_API_KEY", "CREDENTIAL_SERVICE": "plan-anchor",
-                                    "CREDENTIAL_ACCOUNT": "typesafe-api-key"}
+class ConsentBoundaryTests(unittest.TestCase):
+    def test_remote_preflight_uses_the_shared_consent_gate(self):
+        with mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value=None) as consent:
+            self.assertIsNone(jj.decidr_client.remote_preflight("controlled-repository", "record text"))
+        consent.assert_called_once_with("controlled-repository", "record text")
+        self.assertFalse(hasattr(jj, "remote_judge_consent"))
 
-
-def plan_anchor_credential_constants():
-    root = os.environ.get("PLAN_ANCHOR_ROOT")
-    if not root:
-        return dict(PLAN_ANCHOR_CREDENTIAL_CONSTANTS), "recorded from plan-anchor@d104c2d"
-    source = Path(root, PLAN_ANCHOR_JEV_JUDGE).read_text(encoding="utf-8")
-    found = {}
-    for name in PLAN_ANCHOR_CREDENTIAL_CONSTANTS:
-        match = re.search(rf'^{name} = "([^"]*)"$', source, re.MULTILINE)
-        if match is None:
-            raise AssertionError(f"{name} not found in {root}/{PLAN_ANCHOR_JEV_JUDGE}")
-        found[name] = match.group(1)
-    return found, f"parsed from {root}/{PLAN_ANCHOR_JEV_JUDGE}"
-
-
-class CredentialLookupTests(unittest.TestCase):
-    def test_reads_the_same_entry_as_plan_anchor(self):
-        expected, where = plan_anchor_credential_constants()
-        actual = {name: getattr(jj, name) for name in expected}
-        self.assertEqual(actual, expected, where)
-        self.assertEqual(jj.WINDOWS_CREDENTIAL_TARGET, f"{expected['CREDENTIAL_SERVICE']}:{expected['CREDENTIAL_ACCOUNT']}")
-
-    def test_absent_environment_and_empty_store_have_no_key(self):
-        with env(), mock.patch.object(jj, "credential_store_api_key", return_value="") as store:
-            self.assertEqual(jj.resolved_api_key(), "")
-        store.assert_called_once_with()
-
-    def test_environment_key_wins_without_consulting_the_platform_store(self):
-        with env(TYPESAFE_API_KEY="env-key"), mock.patch.object(jj, "credential_store_api_key", return_value="store-key") as store:
-            self.assertEqual(jj.resolved_api_key(), "env-key")
-        store.assert_not_called()
-
-    def test_present_but_invalid_environment_key_fails_closed_without_consulting_store(self):
-        with env(TYPESAFE_API_KEY="  "), mock.patch.object(jj, "credential_store_api_key", return_value="store-key") as store:
-            self.assertEqual(jj.resolved_api_key(), "")
-        store.assert_not_called()
-
-    def test_macos_uses_the_documented_keychain_item(self):
-        completed = mock.Mock(returncode=0, stdout="mac-key\n")
-        with mock.patch.object(jj.sys, "platform", "darwin"), mock.patch.object(jj.subprocess, "run", return_value=completed) as run:
-            self.assertEqual(jj.credential_store_api_key(), "mac-key")
-        run.assert_called_once_with(
-            ["security", "find-generic-password", "-s", jj.CREDENTIAL_SERVICE, "-a", jj.CREDENTIAL_ACCOUNT, "-w"],
-            stdin=jj.subprocess.DEVNULL, stdout=jj.subprocess.PIPE, stderr=jj.subprocess.DEVNULL,
-            text=True, encoding="utf-8", timeout=5, check=False,
-        )
-
-    def test_linux_uses_the_documented_secret_service_item(self):
-        completed = mock.Mock(returncode=0, stdout="linux-key\n")
-        with mock.patch.object(jj.sys, "platform", "linux"), mock.patch.object(jj.subprocess, "run", return_value=completed) as run:
-            self.assertEqual(jj.credential_store_api_key(), "linux-key")
-        run.assert_called_once_with(
-            ["secret-tool", "lookup", "service", jj.CREDENTIAL_SERVICE, "account", jj.CREDENTIAL_ACCOUNT],
-            stdin=jj.subprocess.DEVNULL, stdout=jj.subprocess.PIPE, stderr=jj.subprocess.DEVNULL,
-            text=True, encoding="utf-8", timeout=5, check=False,
-        )
-
-    def test_windows_uses_credential_manager(self):
-        self.assertEqual(jj.WINDOWS_CREDENTIAL_TARGET, f"{jj.CREDENTIAL_SERVICE}:{jj.CREDENTIAL_ACCOUNT}")
-        with mock.patch.object(jj.sys, "platform", "win32"), mock.patch.object(jj, "_windows_credential", return_value="windows-key") as credential:
-            self.assertEqual(jj.credential_store_api_key(), "windows-key")
-        credential.assert_called_once_with()
-
-    def test_failed_store_command_yields_no_key(self):
-        completed = mock.Mock(returncode=44, stdout="partial\n")
-        with mock.patch.object(jj.sys, "platform", "darwin"), mock.patch.object(jj.subprocess, "run", return_value=completed):
-            self.assertEqual(jj.credential_store_api_key(), "")
-        with mock.patch.object(jj.sys, "platform", "sunos5"):
-            self.assertEqual(jj.credential_store_api_key(), "")
-
-    def test_missing_or_invalid_store_key_fails_closed_without_contacting_jev(self):
-        with env(), mock.patch.object(jj, "credential_store_api_key", return_value="bad key"), consented():
-            error = failure(jj.remote_preflight(mock.Mock(), "anchor text"))
-        self.assertEqual(error.code, "AUTH.CREDENTIALS")
-        self.assertNotIn("bad key", error.message)
+    def test_remote_preflight_propagates_the_shared_refusal(self):
+        refused = jj.ClientError("POLICY.REMOTE_JUDGE_DISABLED", "consent is absent")
+        with mock.patch.object(jj.decidr_client, "remote_judge_consent", side_effect=refused):
+            with self.assertRaises(jj.ClientError) as caught:
+                jj.decidr_client.remote_preflight("controlled-repository", "record text")
+        self.assertIs(caught.exception, refused)
 
 
 class DecideTests(unittest.TestCase):
     def decide(self, answers, roles=PLAN_ROLES, t=0.6):
-        return jj.decide(answers, roles, t)
+        return jj.decide(typed_answers(answers), roles, t)
 
     def test_row1_not_applicable(self):
         self.assertEqual(self.decide(plan_answers(rel="no", comp="no", conf="no"))[0], "not_applicable")
@@ -264,79 +219,18 @@ class DecideTests(unittest.TestCase):
         self.assertEqual(self.decide(plan_answers(p=0.6), t=0.61)[0], "underspecified")
         self.assertEqual(self.decide(plan_answers(rel="no", p=0.1), t=0.0)[0], "not_applicable")
 
-    def test_noul_fallback(self):
-        self.assertEqual(jj.answer_choice({"type": "noul", "noul": 0.8}), ("yes", 0.6000000000000001))
-        self.assertEqual(jj.answer_choice({"type": "noul", "probability": 0.2}), ("no", 0.6))
-        self.assertEqual(jj.answer_choice({"noul": 0.5}), ("yes", 0.0))
+    def test_typed_noul_answers(self):
+        self.assertEqual(jj.answer_choice(jj.decidr_client.NoulAnswer(0.8)), ("yes", 0.6000000000000001))
+        self.assertEqual(jj.answer_choice(jj.decidr_client.NoulAnswer(0.2)), ("no", 0.6))
+        self.assertEqual(jj.answer_choice(jj.decidr_client.NoulAnswer(0.5)), ("yes", 0.0))
         answers = plan_answers()
         answers["contradicted"] = {"type": "noul", "noul": 0.9}
         self.assertEqual(self.decide(answers)[0], "contradicted")
-        self.assertIsNone(jj.answer_problem({"type": "noul", "noul": 0.3}, {"criteria": {}}))
-        self.assertIsNotNone(jj.answer_problem({"type": "noul"}, {"criteria": {}}))
 
-
-class ResponseValidationTests(unittest.TestCase):
-    question = {"type": "choice", "criteria": {"yes": "", "no": "", "unclear": ""}}
-
-    def test_good_answer_passes_and_rounding_is_tolerated(self):
-        self.assertIsNone(jj.answer_problem(answer("yes"), self.question))
-        good = answer("yes")
-        good["probabilities"] = {"yes": 0.94, "no": 0.05, "unclear": 0.0}
-        self.assertIsNone(jj.answer_problem(good, self.question))
-
-    def test_problems_named(self):
-        bad = answer("yes")
-        bad["probabilities"]["yes"] = 0.5
-        self.assertRegex(jj.answer_problem(bad, self.question), "sum to")
-        self.assertRegex(jj.answer_problem(answer("maybe"), self.question), "not one of")
-        self.assertRegex(jj.answer_problem({"type": "choice", "choice": "yes", "confidence": "0.9", "probabilities": {}}, self.question), "confidence")
-        self.assertRegex(jj.answer_problem({"type": "choice", "choice": "yes", "confidence": True, "probabilities": {}}, self.question), "confidence")
-        extra = answer("yes")
-        extra["probabilities"]["other"] = 0.0
-        self.assertRegex(jj.answer_problem(extra, self.question), "keys differ")
-        self.assertRegex(jj.answer_problem({"type": "score", "choice": "yes"}, self.question), "not choice or noul")
-        self.assertRegex(jj.answer_problem("yes", self.question), "not an object")
-
-    def test_validate_response_requires_exact_answer_ids(self):
-        questions = {"relevant": self.question, "addressed": self.question, "contradicted": self.question}
-        error = failure(jj.validate_response({"answers": {"relevant": answer("yes")}}, questions))
-        self.assertEqual(error.code, "JEV.RESPONSE_INVALID")
-        self.assertTrue(error.recoverable)
-        extra = dict(plan_answers(), bonus=answer("yes"))
-        failure(jj.validate_response({"answers": extra}, questions))
-        failure(jj.validate_response({"answers": []}, questions))
-        failure(jj.validate_response(["not", "a", "dict"], questions))
-        self.assertIs(ok(jj.validate_response({"model": "x", "answers": plan_answers()}, questions))["answers"]["relevant"]["choice"], "yes")
-
-
-class HttpErrorTests(unittest.TestCase):
-    def test_bodies_withheld_except_422(self):
-        e401 = http(401, "secret body")
-        self.assertEqual(e401.code, "AUTH.CREDENTIALS")
-        self.assertNotIn("secret", str(e401))
-        e422 = http(422, "x" * 400)
-        self.assertEqual(e422.code, "JEV.VALIDATION")
-        self.assertIn("x" * 300, str(e422))
-        self.assertNotIn("x" * 301, str(e422))
-        e500 = http(500, "stack trace")
-        self.assertEqual((e500.code, e500.recoverable, str(e500)), ("JEV.HTTP", True, "Jev HTTP 500; response body withheld"))
-        self.assertEqual((http(429).code, http(529).code, http(418).recoverable), ("JEV.RATE_LIMITED", "JEV.OVERLOADED", False))
-        self.assertTrue(jj.is_transient(e500))
-        self.assertFalse(jj.is_transient(http(418)))
-
-    def test_context_overflow_detected_by_body(self):
-        for body in ('{"error": "max_tokens_exceeded"}', "Token budget exceeded for state", "The TOKEN count EXCEEDS the limit"):
-            self.assertEqual(http(422, body).code, "JEV.CONTEXT_EXCEEDED", body)
-            self.assertEqual(http(400, body).code, "JEV.CONTEXT_EXCEEDED", body)
-        self.assertEqual(http(500, "max_tokens_exceeded").code, "JEV.HTTP")
-        self.assertEqual(http(422, "field 'questions.addressed.criteria' is invalid").code, "JEV.VALIDATION")
-
-    def test_retry_after_parsing(self):
-        self.assertEqual(jj.parse_retry_after("3"), 3.0)
-        self.assertEqual(jj.parse_retry_after("900"), jj.MAX_RETRY_AFTER)
-        self.assertIsNone(jj.parse_retry_after("Wed, 21 Oct 2026"))
-        self.assertIsNone(jj.parse_retry_after(None))
-        self.assertIsNone(jj.parse_retry_after("-1"))
+    def test_raw_answer_dicts_are_not_a_second_consumer_surface(self):
+        for value in ({"type": "noul", "noul": 0.8}, {"probability": 0.2}, {"p": 0.5}, answer("yes")):
+            with self.subTest(answer=value), self.assertRaises(AttributeError):
+                jj.answer_choice(value)
 
 
 class RedactionTests(unittest.TestCase):
@@ -352,8 +246,10 @@ class RedactionTests(unittest.TestCase):
     def test_batch_result_lines_never_carry_the_key(self):
         with tempfile.TemporaryDirectory() as d:
             src = write(d, "in.jsonl", jsonl([request_line(text="token ts-secret-123456 in the item")]))
-            with env(TYPESAFE_API_KEY="ts-secret-123456"), consented(), mock.patch.object(jj, "call_jev", Transport()):
-                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--run-name", "r1"])
+            fixture = write(d, "answers.json", {"*": plan_answers()})
+            with env(TYPESAFE_API_KEY="ts-secret-123456"):
+                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--run-name", "r1",
+                                     "--answers-file", fixture])
             log = json.dumps(read_log(Path(d) / "runs"), ensure_ascii=False)
         self.assertEqual(code, 0, out)
         self.assertNotIn("ts-secret-123456", json.dumps(out))
@@ -406,9 +302,7 @@ class ErrorHandlingTests(unittest.TestCase):
             self.assertIn(f"argument {flag}: invalid", out["error"]["message"])
         self.assertEqual((jj.DEFAULT_MODEL, jj.DEFAULT_THRESHOLD, jj.DEFAULT_MAX_REQUEST_BYTES, jj.DEFAULT_MAX_REQUEST_BYTES_DEV),
                          ("jev-latest", 0.6, 24000, 64000))
-        self.assertEqual((jj.BATCH_MAX_WORKERS, jj.BATCH_RETRIES, jj.MAX_RESPONSE_BYTES, jj.RETRY_DELAYS, jj.MAX_RETRY_AFTER),
-                         (4, 1, 1048576, (1.0, 2.0), 30.0))
-        self.assertEqual(jj.JEV_URL, "https://api.typesafe.ai/v1/systemone")
+        self.assertEqual(jj.BATCH_MAX_WORKERS, 4)
 
     def test_out_of_range_values_are_validation_input(self):
         with tempfile.TemporaryDirectory() as d:
@@ -423,8 +317,8 @@ class ErrorHandlingTests(unittest.TestCase):
     def test_request_over_the_cap_is_refused_before_any_call(self):
         with tempfile.TemporaryDirectory() as d:
             src = write(d, "in.jsonl", jsonl([request_line(text="x" * 30000)]))
-            t = Transport()
-            with env(**LIVE_ENV), consented(), mock.patch.object(jj, "call_jev", t):
+            t = BatchTransport()
+            with env(**LIVE_ENV), consented(), mock.patch.object(jj.decidr_client, "call_batch_results", t):
                 code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs")])
                 self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"))
                 self.assertIn("over --max-request-bytes 24000", out["error"]["message"])

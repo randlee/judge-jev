@@ -27,7 +27,7 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -118,11 +118,17 @@ def render_cli(template: Path, out: Path) -> None:
     if binary is None:
         raise RuntimeError("the script tests need a rendered install: the sc-compose wheel or the sc-compose CLI "
                            "(scripts/install_sc_compose_ci.py) must be available")
-    version = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8"))["version"]
+    inst = installer()
+    package = inst.load_package()
+    if isinstance(package, inst.Err):
+        raise AssertionError(package.error.message)
+    package = package.value
     out.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.run([binary, "render", "--root", str(template.parent), "--strict",
-                           "--var", f"version={version}", "--file", str(template), "--output", str(out)],
-                          capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+    proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
+                           "--var", f"version={package.version}", "--var", f"sc_decidr_version={package.sc_decidr_version}",
+                           "--var", f"sitr_version={package.sitr_version}",
+                           "--file", str(template), "--output", str(out)],
+                          text=True, encoding="utf-8", errors="replace", check=False)
     if proc.returncode != 0:
         raise RuntimeError(f"sc-compose render {template.name} failed: {proc.stderr[-2000:]}")
     data = out.read_bytes()

@@ -428,7 +428,7 @@ the refused field, such as `nodes.wave-1.questions.context.criteria`. An
 answers file is a JSON file of Jev's answers, keyed by request, that
 `--answers-file` gives judge-jev in place of a live call. Its envelope is
 its outer structure: its keys and the type of each value.
-`JEV.RESPONSE_INVALID` is the typed error code for an answer whose
+`DECIDR.RESPONSE_INVALID` is the typed error code for an answer whose
 questions, choices or probabilities do not match the request.
 
 **MUST statements:**
@@ -460,7 +460,7 @@ paid call wastes it.
 
 The answers file stands in for Jev's response, so what an answer holds
 (its questions, choices and probabilities) is not part of the envelope; it
-is checked after the send as `JEV.RESPONSE_INVALID`.
+is checked after the send as `DECIDR.RESPONSE_INVALID`.
 
 ### Success Criteria
 

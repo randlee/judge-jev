@@ -11,7 +11,8 @@ from __future__ import annotations
 import atexit
 from pathlib import Path
 import shutil
-import subprocess
+from child_support import run_child
+from layout_support import installer
 import sys
 import tempfile
 
@@ -20,6 +21,12 @@ PLUGIN = ROOT / "plugins" / "sc-judge-jev"
 SKILL_SRC = PLUGIN / "install" / "templates" / "skills" / "judge-jev"
 SCRIPT_TEMPLATES = SKILL_SRC / "scripts"
 RENDER_VERSION = "0.0.0-test"
+_installer = installer()
+_package = _installer.load_package()
+if isinstance(_package, _installer.Err):
+    raise RuntimeError(_package.error.message)
+SC_DECIDR_VERSION = _package.value.sc_decidr_version
+SITR_VERSION = _package.value.sitr_version
 
 
 def _render(dest: Path) -> Path:
@@ -35,9 +42,12 @@ def _render(dest: Path) -> Path:
     templates += [(t, skill / "references") for t in sorted((SKILL_SRC / "references").glob("*.md.j2"))]
     for template, target in templates:
         out = target / template.name[:-len(".j2")]
-        proc = subprocess.run([binary, "render", "--root", str(template.parent), "--strict",
-                               "--var", f"version={RENDER_VERSION}", "--file", str(template), "--output", str(out)],
-                              capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+        proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
+                               "--var", f"version={RENDER_VERSION}",
+                               "--var", f"sc_decidr_version={SC_DECIDR_VERSION}",
+                               "--var", f"sitr_version={SITR_VERSION}",
+                               "--file", str(template), "--output", str(out)],
+                              text=True, encoding="utf-8", errors="replace", check=False)
         if proc.returncode != 0:
             raise RuntimeError(f"sc-compose render {template.name} failed: {proc.stderr[-2000:]}")
         data = out.read_bytes()

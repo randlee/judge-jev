@@ -61,14 +61,14 @@ class NonConsecutiveRanks(RunCase):
     def run_ttl(self, ttl, flag, record_id, answers):
         path = self.d / "tree.ttl"
         path.write_bytes(ttl.encode("utf-8"))
-        pumped, real = [], jj.pump_batch
+        pumped, real = [], jj.judge_batch
 
         def spy(*args, **kwargs):
             got = real(*args, **kwargs)
             pumped.extend(got.value)
             return got
 
-        with mock.patch.object(jj, "pump_batch", spy):
+        with mock.patch.object(jj, "judge_batch", spy):
             code, out = self.quality(flag, record_id, "--questions", str(path), answers=answers)
         self.assertEqual(code, 0, out)
         (result,) = out["data"]["results"]

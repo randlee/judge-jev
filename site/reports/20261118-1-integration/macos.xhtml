@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>judge-jev live integration report: macos (Darwin 25.5.0, macOS 26.5.1, arm64)</title>
+  <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" />
+</head>
+<body>
+  <h1>judge-jev live integration report</h1>
+  <p>This report records an owner-attended run against the real Jev provider.</p>
+  <dl>
+    <dt>Platform</dt><dd>macos (Darwin 25.5.0, macOS 26.5.1, arm64)</dd>
+    <dt>Run date and time (UTC)</dt><dd>2026-11-18T00:19:43Z to 2026-11-18T00:20:58Z</dd>
+    <dt>Owner present</dt><dd>yes: the repository owner attended, authorized the live runs (&quot;proceed w/ 1, 2 (fix any issues), 3&quot;; &quot;you can run your own scripts. I will authorize ui dialog if necessary&quot;) and was present for the keychain prompts</dd>
+    <dt>judge-jev commit</dt><dd>0d55a246 (integrate/phase-d after #111, develop merged forward; version 0.4.1)</dd>
+    <dt>sc-agent version</dt><dd>sc-decidr 0.2.7 and sitr 0.2.7 prerelease wheels, prerelease/v0.2.7 @ 1235568, cp311-abi3-macosx_11_0_arm64, sha256 verified against the release checksums.txt (not on PyPI; resolved with UV_FIND_LINKS)</dd>
+    <dt>Python version</dt><dd>3.14.9 (uv-managed, from the jev_judge.py inline metadata; requires-python &gt;=3.11) for the CLI cases; 3.11.16 for the sitr pytest case</dd>
+    <dt>Command and selected cases</dt><dd><pre>Installed into a scratch copy of the checkout with: uv run plugins/sc-judge-jev/install.py --dest &lt;copy&gt; --allow-remote-judge --target claude. Index: raptor integration/judge-jev @ 8ce2be8, scripts/extract.py (1 diagnostic, REQ-JEV-0003 MODAL_MISMATCH, as before). J=.claude/skills/judge-jev/scripts/jev_judge.py; UV_FIND_LINKS=&lt;verified wheel dir&gt;. 1. quality: uv run --script $J quality --req REQ-JEV-0101 --index index.json --run-dir &lt;dir&gt;. 2. batch (test_jev_batch BatchTests.LINES plus one line: 3 items, 4 requests): uv run --script $J batch --run-dir &lt;dir&gt; &lt; batch.jsonl. 3. invalid key: TYPESAFE_API_KEY=&lt;invalid&gt; uv run --script $J batch --run-dir &lt;dir&gt; &lt; batch.jsonl (4 runs). 4. d-3 sitr: pytest tests/sc-judge-jev/test_decidr_client.py -k sitr with the published sc-decidr/sitr 0.2.7 wheels installed, plus decidr_client.extract(&#x27;rust&#x27;, &#x27;(match_expression) @match&#x27;, fixtures/sitr_match.rs) through the installed client. Credentials: cases 1-3 with TYPESAFE_API_KEY in the process environment, read from the owner export (sc-agent scripts/integration.py --export-env), SC_AGENT_TEST_TRAP_PLATFORM_KEYRING=1 set; then cases 1-2 again with sc-agent default lookup (no env, no .env, platform keychain entry TYPESAFE_API_KEY / OS user).</pre></dd>
+    <dt>Outcome</dt><dd>PASS. Live quality and live batch pass with both credential paths on the 0.2.7 wheels; invalid-key runs exit 2 with an AUTH.CREDENTIALS summary (HTTP 401, provider body withheld) in 4 of 4 runs; sitr extraction reaches a dry run with the published sitr wheel.</dd>
+    <dt>Evidence and failures</dt><dd><pre>PASS 1 quality, env credential: exit 0, success true, REQ-JEV-0101 verdict yes. PASS 1 quality, default keychain lookup: exit 0, success true, REQ-JEV-0101 verdict yes. PASS 2 batch, env credential: exit 0, 4 result lines, ok true each (verdicts satisfied, underspecified, satisfied, underspecified; completion order, order not required). PASS 2 batch, default keychain lookup: exit 0, 4 result lines, ok true each. PASS 3 invalid key: exit 2 in 4 of 4 runs, no crash; each run has one AUTH.CREDENTIALS result line and three CANCELED (abort_on auth); stderr summary AUTH.CREDENTIALS &#x27;authentication failed (HTTP 401); provider response body withheld&#x27; in 4 of 4 runs. PASS 4 sitr: 4 of 4 sitr tests pass (including test_optional_sitr_is_lazy_and_extraction_reaches_a_dry_run, skipped in CI where the sitr wheel is absent); direct extraction through the installed client returned 1 match_expression capture. Key redacted: neither the real key nor the invalid keys appear in any output or run directory; the credential export copies were deleted after use.</pre></dd>
+  </dl>
+</body>
+</html>

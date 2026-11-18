@@ -2,12 +2,12 @@
 # Paths are relative to the install root (the folder install.py --dest named).
 agents:
   jev-fix-proposer:
-    version: 0.3.1
+    version: 0.5.2
     path: .claude/agents/jev-fix-proposer.md
 
 skills:
   judge-jev:
-    version: 0.3.1
+    version: 0.5.2
     path: .claude/skills/judge-jev/SKILL.md
     depends_on:
       jev-fix-proposer: "0.x"

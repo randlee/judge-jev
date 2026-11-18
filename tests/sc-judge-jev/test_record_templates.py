@@ -2,7 +2,7 @@
 import json
 import re
 import shutil
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
@@ -152,7 +152,7 @@ class ReferenceCommands(unittest.TestCase):
                            encoding="utf-8")
         cand = self.dir / "c.md"
         cand.write_text(candidate, encoding="utf-8")
-        done = subprocess.run([sys.executable, "-c", script, str(doc), record_id, str(cand)], capture_output=True, text=True)
+        done = run_child([sys.executable, "-c", script, str(doc), record_id, str(cand)], text=True)
         return done, doc.read_text(encoding="utf-8")
 
     def test_apply_replaces_only_the_sections_written(self):
@@ -190,8 +190,8 @@ class ReferenceCommands(unittest.TestCase):
         (self.dir / "w.json").write_text(json.dumps(reply), encoding="utf-8")
 
         def check(kind):
-            done = subprocess.run(["jq", "-r", "--arg", "kind", kind, "--slurpfile", "t", str(self.dir / "tenets.json"), program,
-                                   str(self.dir / "w.json")], capture_output=True, text=True)
+            done = run_child(["jq", "-r", "--arg", "kind", kind, "--slurpfile", "t", str(self.dir / "tenets.json"), program,
+                                   str(self.dir / "w.json")], text=True)
             self.assertEqual(done.returncode, 0, done.stderr)
             return done.stdout.splitlines()
 

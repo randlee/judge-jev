@@ -7,7 +7,7 @@ copied from.
 import json
 import os
 import re
-import subprocess
+from child_support import run_child
 import sys
 import unittest
 
@@ -17,7 +17,7 @@ CLEAN_ENV = {k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"}
 
 
 def run(script, *argv):
-    proc = subprocess.run([sys.executable, str(SCRIPTS / script), *argv], capture_output=True, text=True,
+    proc = run_child([sys.executable, str(SCRIPTS / script), *argv], text=True,
                           encoding="utf-8", env=CLEAN_ENV)
     return proc.returncode, proc.stdout, proc.stderr
 
@@ -51,13 +51,15 @@ class UsageErrorEnvelopeTests(unittest.TestCase):
 class RenderedTextTests(unittest.TestCase):
     def test_rendered_scripts_hold_no_template_syntax_or_plan_anchor_names(self):
         names = sorted(p.name for p in SCRIPTS.glob("*.py"))
-        self.assertEqual(names, ["jev_definitions.py", "jev_errors.py", "jev_gate.py", "jev_graph.py", "jev_judge.py", "jev_ports.py", "jev_runs.py", "judge_jev_paths.py", "judge_jev_settings.py", "result.py"])
+        self.assertEqual(names, ["decidr_client.py", "jev_definitions.py", "jev_errors.py", "jev_gate.py", "jev_graph.py", "jev_judge.py", "jev_ports.py", "jev_runs.py", "judge_jev_paths.py", "judge_jev_settings.py", "result.py"])
         for name in names:
             text = (SCRIPTS / name).read_text(encoding="utf-8")
             with self.subTest(name=name):
                 self.assertIsNone(re.search(r"\{\{\s*\w|\{%-?\s*\w", text))
-                # the one plan-anchor name kept on purpose: the shared credential store entry
-                text = text.replace('CREDENTIAL_SERVICE = "plan-anchor"', "")
+                if name == "decidr_client.py":
+                    provenance = "# Derived from plan-anchor fff69b2, plugins/sc-plan-anchor/install/templates/skills/plan-anchoring/scripts/decidr_client.py.j2."
+                    self.assertIn(provenance, text)
+                    text = text.replace(provenance, "")
                 self.assertIsNone(re.search(r"plan[-_]anchor", text, re.IGNORECASE))
 
 

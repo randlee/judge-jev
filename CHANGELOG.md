@@ -2,6 +2,64 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.5.2 — 2026-11-18
+
+- Pin installed jev_judge.py to published sc-decidr and sitr 0.2.9 from PyPI, and install them from PyPI in CI.
+- Bound CI helper subprocesses, report timeouts, and remove an unused settings import.
+
+## 0.5.1 — 2026-11-18
+
+- Render the shared client from sc-decidr 0.2.8 and update the matched sitr pin.
+
+## 0.5.0 — 2026-11-18
+
+- Complete drift integration and guard interruption, offline tests, and matched sitr CI coverage.
+
+## 0.4.1 — 2026-11-17
+
+- Merge drift from develop into the shared-client integration.
+
+## 0.4.0
+
+- Adopt the shared typed answers, batch records, consent and error implementations; remove the consumer copies. Batch records use the common `jev-batch-result/1` schema and expose observed `sends`.
+
+## 0.3.8
+
+- Persist and flush failed batch results to the run log as their callbacks arrive, just like successful results.
+
+## 0.3.7
+
+- Report the causing batch error unchanged instead of a canceled request; stderr retains the unanswered count and request id as metadata.
+
+## 0.3.6 — 2026-11-16
+
+- Document the matched sc-decidr and sitr release versions without enforcing equality in the installer.
+
+## 0.3.5
+
+- Make judge-jev's sitr-enabled client explicit and remove the unused install-time switch; wheel pins and lazy imports are unchanged.
+
+
+## 0.3.4
+
+- Remove the last obsolete render-variable argument from CLI test support.
+
+## 0.3.3
+
+- Remove the unused install-time general_log input from the client template; runtime logger forwarding is unchanged.
+- Adopt the sc-decidr 0.2.4 shared error type. The client was generated with
+  `sc-compose render --root /tmp --file /tmp/d-owner-consumer-staged.j2 --var-file /tmp/d-owner-client-vars.json --strict --output /tmp/d-owner-client-render.py`.
+  The var-file was `{"general_log":true,"models":["jev"],"sitr":true,"sc_decidr_version":"{{ sc_decidr_version }}","sitr_version":"{{ sitr_version }}"}`.
+  The staged file wraps the wheel template's sitr blocks in Jinja raw tags to preserve them for installation. The generated client and the published wheel template produce byte-identical rendered output with sitr enabled and disabled.
+
+## 0.3.2
+
+- Restore two blank lines between top-level judge script definitions; executable Python is unchanged.
+
+## Phase-d unreleased changes based on 0.3.1
+
+- Share live batch-result validation and line construction between single-job and streamed batch paths.
+
 ## 0.3.1 — 2026-11-16
 
 - New command `drift`: compares records between two Raptor indexes and reports, per

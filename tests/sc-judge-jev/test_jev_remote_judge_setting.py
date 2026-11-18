@@ -10,14 +10,14 @@ import io
 import json
 import os
 from pathlib import Path
-import subprocess
 import sys
 import tempfile
 import unittest
 from unittest import mock
 
+from child_support import run_child
 from jev_support import SCRIPTS
-from test_jev_judge import Transport, env, jj, jsonl, plan_answers, request_line, run_cli, write  # noqa: F401
+from test_jev_judge import BatchTransport, env, jj, jsonl, plan_answers, request_line, run_cli, write  # noqa: F401
 import judge_jev_settings as settings_mod  # noqa: E402
 
 SETTINGS_SCRIPT = SCRIPTS / "judge_jev_settings.py"
@@ -28,9 +28,9 @@ HEADER = ("# .sc/judge-jev/settings.yaml\n"
           "# Repository settings for the sc-judge-jev plugin; commit this file, never put secrets in it.\n"
           "schema_version: 1\n")
 REMOTE_COMMENT = "# allow_remote_judge: may record text be sent to TypeSafe (Jev) for judging? Only the user decides it.\n"
-ABSENT_ACTION = ("Ask the user once whether record text may be sent to TypeSafe (Jev) for judging, record the answer with "
+ABSENT_ACTION = ("Ask the user once whether this text may be sent to TypeSafe (Jev), record the answer with "
                  "`python3 scripts/judge_jev_settings.py set allow_remote_judge true|false`, and commit "
-                 ".sc/judge-jev/settings.yaml. Never infer consent from existing run files or past runs. "
+                 ".sc/judge-jev/settings.yaml. Never infer consent from prior runs. "
                  "Use --dry-run to inspect the request instead.")
 WHAT = "The anchor statements, scopes and item texts in the request stream"
 
@@ -63,15 +63,18 @@ class Batched:
     """`batch` over one request line with a stubbed transport and the real consent lookup (no consent mock)."""
 
     def __init__(self, test, repo, env_values=None, transport=None, extra=()):
-        self.transport = transport if transport is not None else Transport()
+        self.transport = transport if transport is not None else BatchTransport()
         d = tempfile.mkdtemp(dir=str(repo.root))
         src = write(d, "in.jsonl", jsonl([request_line()]))
         err = io.StringIO()
         argv = ["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", str(repo.root), *extra]
         with env(**(dict(KEY) if env_values is None else env_values)), \
-                mock.patch.object(jj, "call_jev", self.transport), contextlib.redirect_stderr(err):
+                mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=self.transport) as call, contextlib.redirect_stderr(err):
             self.code, self.out = run_cli(argv)
         test.assertEqual(err.getvalue(), "")  # every case here either answers or fails before the first line
+        if call.called:
+            selected = [value for flag, value in zip(argv, argv[1:]) if flag == "--repository-root"][-1]
+            test.assertEqual(call.call_args.kwargs["repository_root"], selected)
 
 
 def yaml_test(fn):
@@ -99,14 +102,14 @@ class LiveCallConsentTests(unittest.TestCase):
         b = Batched(self, Repo(self).answer("false"))
         self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "POLICY.REMOTE_JUDGE_DISABLED", []))
         self.assertIn("sets allow_remote_judge: false", b.out["error"]["message"])
-        self.assertIn("only the user changes it", b.out["error"]["suggested_action"])
+        self.assertIn("only the user changes this setting", b.out["error"]["suggested_action"])
 
     def test_absent_file_is_refused_with_the_ask_once_action(self):
         b = Batched(self, Repo(self))
         self.assertEqual(b.code, 2)
         self.assertEqual(b.out, {"success": False, "data": None, "error": {
             "code": "POLICY.REMOTE_JUDGE_DISABLED",
-            "message": f"Sending record text to TypeSafe is disabled. {WHAT} would leave this "
+            "message": f"Sending text to TypeSafe is disabled. {WHAT} would leave this "
                        "machine. .sc/judge-jev/settings.yaml does not set allow_remote_judge.",
             "recoverable": False, "suggested_action": ABSENT_ACTION}})
         self.assertEqual(b.transport.bodies, [])
@@ -121,9 +124,10 @@ class LiveCallConsentTests(unittest.TestCase):
         b = Batched(self, Repo(self, "schema_version: 1\n"))
         self.assertEqual((b.code, b.out["error"]["suggested_action"], b.transport.bodies), (2, ABSENT_ACTION, []))
 
-    def test_missing_key_is_refused_before_consent_is_read(self):
+    @yaml_test
+    def test_malformed_consent_is_refused_before_client_is_called(self):
         b = Batched(self, Repo(self, "schema_version: [1\n"), env_values={})
-        self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "AUTH.CREDENTIALS", []))
+        self.assertEqual((b.code, b.out["error"]["code"], b.transport.bodies), (2, "SETTINGS.MALFORMED", []))
 
     def test_old_flag_is_a_usage_error(self):
         b = Batched(self, Repo(self), extra=["--allow-remote"])
@@ -181,9 +185,9 @@ class LiveCallConsentTests(unittest.TestCase):
                 outcome = settings_mod.find_repo_root(Path(d))
             if outcome.ok:
                 self.skipTest("the temporary directory is inside a repository here")
-            t = Transport()
+            t = BatchTransport()
             src = write(d, "in.jsonl", jsonl([request_line()]))
-            with env(**KEY), mock.patch.object(jj, "call_jev", t), \
+            with env(**KEY), mock.patch.object(jj.decidr_client, "call_batch_results", t), \
                     mock.patch.object(settings_mod, "_git_toplevel", lambda start: None):
                 code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", d])
             self.assertEqual((code, out["error"]["code"], t.bodies), (2, "REPO.NOT_FOUND", []))
@@ -195,8 +199,8 @@ class LiveCallConsentTests(unittest.TestCase):
             missing = str(Path(d) / "no-such-dir")
             for extra in (["--dry-run"], ["--answers-file", fixture]):
                 with self.subTest(extra=extra):
-                    t = Transport()
-                    with env(), mock.patch.object(jj, "call_jev", t), mock.patch.dict(sys.modules, {"yaml": None}):
+                    t = BatchTransport()
+                    with env(), mock.patch.object(jj.decidr_client, "call_batch_results", t), mock.patch.dict(sys.modules, {"yaml": None}):
                         code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), *extra,
                                              "--repository-root", missing])
                     self.assertEqual((code, t.bodies), (0, []), out)
@@ -270,9 +274,9 @@ class SetCommandTests(unittest.TestCase):
 
     def test_the_script_runs_end_to_end(self):
         repo = Repo(self)
-        subprocess.run(["git", "init", "-q", str(repo.root)], check=True, capture_output=True)
-        proc = subprocess.run([sys.executable, str(SETTINGS_SCRIPT), "set", "allow_remote_judge", "true",
-                               "--repository-root", str(repo.root)], capture_output=True, text=True, encoding="utf-8",
+        run_child(["git", "init", "-q", str(repo.root)], check=True)
+        proc = run_child([sys.executable, str(SETTINGS_SCRIPT), "set", "allow_remote_judge", "true",
+                               "--repository-root", str(repo.root)], text=True, encoding="utf-8",
                               env={k: v for k, v in os.environ.items() if k != "TYPESAFE_API_KEY"})
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertTrue(json.loads(proc.stdout)["data"]["written"])
