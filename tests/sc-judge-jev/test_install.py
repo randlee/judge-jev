@@ -434,7 +434,7 @@ class InstallTests(InstallCase):
         data = self.ok(run_install(repo))
         self.assert_installed(repo, ["claude"])
         self.assertEqual((data["package"], data["version"], data["previous_version"], data["migration"]),
-                         ("sc-judge-jev", VERSION, None, True))
+                         ("sc-judge-jev", VERSION, None, False))
         self.assertIn(".claude/", data["commit_paths"])
         self.assertIn(inst.LOCK_RELPATH, data["commit_paths"])
         skill = repo.path(".claude/skills/judge-jev/SKILL.md").read_text(encoding="utf-8")

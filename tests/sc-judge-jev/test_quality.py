@@ -97,6 +97,18 @@ class QualityCase(unittest.TestCase):
 
 
 class DryRun(QualityCase):
+    def test_dry_run_rejects_an_untrusted_copy_when_the_install_lock_is_corrupt(self):
+        repo = self.d / "installed"
+        script = repo / ".claude" / "skills" / "judge-jev" / "scripts" / "jev_judge.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("untrusted copy\n", encoding="utf-8")
+        lock = repo / ".sc" / "judge-jev" / "install-lock.json"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("{corrupt", encoding="utf-8")
+        code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index,
+                             "--dry-run", "--repository-root", str(repo)])
+        self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "VALIDATION.PATH"), out)
+
     def test_dry_run_reports_the_tree_record_and_wave_1_request_and_writes_nothing(self):
         code, out = self.quality("--adr", "ADR-T-0001", "--dry-run")
         self.assertEqual((code, out["success"], out["error"]), (0, True, None), out)

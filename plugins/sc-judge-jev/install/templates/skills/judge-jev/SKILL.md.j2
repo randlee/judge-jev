@@ -43,7 +43,8 @@ Run `jev_judge.py` only with `uv run --script "$J"`: its inline metadata supplie
 Raptor, once per machine (needs a Rust toolchain; it builds the `raptor_schema` PyO3 module):
 
 ```bash
-git clone -b integration/judge-jev https://github.com/randlee/raptor "$RAPTOR"
+git clone https://github.com/randlee/raptor "$RAPTOR"
+git -C "$RAPTOR" checkout 8ce2be8363318be2f7c2e2b79d1f646399cab2fd
 uv venv "$RAPTOR/.venv" -p 3.11 && uv pip install -p "$RAPTOR/.venv/bin/python" "$RAPTOR" markdown
 ```
 
@@ -86,6 +87,6 @@ You apply and measure every candidate; a proposer never edits a file or calls Je
 - Never answer for Jev. A failed call is rerun once, then reported with its code and verbatim message; it is never a verdict.
 - A record passes only on the gate: three runs of identical text, every gate answer's median at or above the threshold (`scripts/jev_gate.py`). One passing run is not a pass.
 - An accepted record is frozen: do not judge it again unless its text changes.
-- Keep the run files and `.sc/judge-jev/accepted.jsonl`. Every request and answer is logged under `~/.judge-jev/<repository name>/<UTC date>/logs/`; never delete or move it.
+- Keep the run files and `.sc/judge-jev/accepted.jsonl`. Logs are under `~/.judge-jev/<repository name>/<UTC date>/logs/` (`USERPROFILE` on Windows; `.sc/judge-jev` only when no home is known). They have no rotation, use a new folder per UTC day, and contain whole requests and record text. To prune, delete whole dated folders that no active run uses.
 
 Jev request format, limits and every error code: `references/jev-api.md`.

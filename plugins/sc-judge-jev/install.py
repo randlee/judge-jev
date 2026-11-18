@@ -1003,7 +1003,7 @@ def install(opts: Options, *, plugin_dir: Path = PLUGIN_DIR) -> Result[dict, Too
         "targets": plan.targets,
         "target_reasons": plan.target_reasons,
         "dry_run": opts.dry_run,
-        "migration": lock.value is None,
+        "migration": lock.value is None and bool(plan.replace or plan.remove),
         "plan": {
             "create": plan.create,
             "replace": plan.replace,

@@ -1212,8 +1212,8 @@ def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
         return Err(exc)
     run_dir = args.run_dir or (str(pathlib.Path(args.anchors).parent / "anchor-runs") if getattr(args, "anchors", "") else "")
     if not run_dir:
-        return fail("VALIDATION.INPUT", "the result log needs a directory: pass --anchors (log under its anchor-runs/) or --run-dir",
-                    action="Pass --anchors <plan>/anchors.json so the log lands in <plan>/anchor-runs/.")
+        return fail("VALIDATION.INPUT", "the result log needs a directory: pass --run-dir, or --anchors (log under its anchor-runs/)",
+                    action="Pass --run-dir <directory> for the result log; for an anchor run, pass --anchors <plan>/anchors.json to log under <plan>/anchor-runs/.")
     run_name = args.run_name or stamp()
     try:
         _safe_id(run_name, "--run-name")
@@ -1697,6 +1697,12 @@ def cmd_quality(args) -> Result[Any, ClientError]:
     wanted = [(kind, rid) for kind in ("req", "adr", "nfr") for rid in (getattr(args, kind) or [])]
     if not wanted or any(not rid for _, rid in wanted):
         return fail("VALIDATION.INPUT", "a record id is missing or empty: pass one or more non-empty --req, --adr or --nfr ids")
+    start = pathlib.Path(getattr(args, "repository_root", ".") or ".")
+    if judge_jev_paths.find_installs(start) is not None:
+        trusted, why = judge_jev_paths.trusted_script(pathlib.Path(__file__), start)
+        if not trusted:
+            return fail("VALIDATION.PATH", f"this judge-jev script is not trusted: {why}",
+                        action="Run the jev_judge.py copy named in the nearest install-lock.json, or rerun the installer.")
     settings = quality_settings(args.dry_run)
     loaded_definitions = definitions_for_args(args)
     if isinstance(loaded_definitions, Err):
