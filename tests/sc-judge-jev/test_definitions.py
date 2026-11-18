@@ -306,6 +306,20 @@ class Composition(DefinitionCase):
 
 
 class Compare(DefinitionCase):
+    def test_dry_run_rejects_a_corrupt_nearest_install_lock(self):
+        repo = self.d / "installed"
+        script = repo / ".claude" / "skills" / "judge-jev" / "scripts" / "jev_judge.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("untrusted copy\n", encoding="utf-8")
+        lock = repo / ".sc" / "judge-jev" / "install-lock.json"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("{corrupt", encoding="utf-8")
+        code, out = run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", self.index,
+                             "--definition", iri("fast"), "--definitions", self.defs,
+                             "--dry-run", "--repository-root", str(repo)])
+        self.assertEqual((code, out["success"], (out.get("error") or {}).get("code")),
+                         (2, False, "VALIDATION.PATH"), out)
+
     def compare(self, *argv, answers=None, run="c1"):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
         with env(), mock.patch.multiple(jj.decidr_client, call_result=never_called, call_batch_results=never_called):  # no real key, no real settings, no live Jev
