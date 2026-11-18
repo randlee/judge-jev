@@ -17,6 +17,8 @@ import zipfile
 
 
 VERSION = "1.7.0"
+DOWNLOAD_TIMEOUT_SECONDS = 300
+VERSION_TIMEOUT_SECONDS = 30
 ASSETS = {
     ("linux", "x86_64"): (
         f"sc-compose_{VERSION}_x86_64-unknown-linux-gnu.tar.gz",
@@ -84,7 +86,7 @@ def main() -> int:
                 "--pattern", asset,
                 "--dir", temporary,
             ],
-            check=True,
+            check=True, stdin=subprocess.DEVNULL, timeout=DOWNLOAD_TIMEOUT_SECONDS,
         )
         actual = hashlib.sha256(archive.read_bytes()).hexdigest()
         if actual != expected:
@@ -99,7 +101,8 @@ def main() -> int:
         target = install_dir / executable_name
         shutil.copy2(matches[0], target)
         target.chmod(target.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    version = subprocess.run([str(target), "--version"], capture_output=True, text=True, check=True).stdout.strip()
+    version = subprocess.run([str(target), "--version"], capture_output=True, text=True, check=True,
+                             stdin=subprocess.DEVNULL, timeout=VERSION_TIMEOUT_SECONDS).stdout.strip()
     if version != f"sc-compose {VERSION}":
         raise RuntimeError(f"unexpected sc-compose version: {version}")
     github_path = os.environ.get("GITHUB_PATH")
@@ -115,6 +118,9 @@ def run(entry=None) -> int:
     """main() with the judge-jev exit convention: 0 installed, 2 for any failure (never 1, never a traceback)."""
     try:
         return (entry or main)()
+    except subprocess.TimeoutExpired as exc:
+        print(f"install_sc_compose_ci: subprocess timed out after {exc.timeout}s: {exc.cmd!r}", file=sys.stderr)
+        return 2
     except (RuntimeError, OSError, subprocess.CalledProcessError, tarfile.TarError, zipfile.BadZipFile) as exc:
         # exit 2, like every judge-jev CLI: the install could not be done (there is no exit 1)
         print(f"install_sc_compose_ci: {exc}", file=sys.stderr)

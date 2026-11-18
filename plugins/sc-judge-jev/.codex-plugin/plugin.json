@@ -1,6 +1,6 @@
 {
   "name": "sc-judge-jev",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Install judge-jev into a repository or a parent folder.",
   "author": {
     "name": "randlee",
