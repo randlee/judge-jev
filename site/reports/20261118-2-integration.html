@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>judge-jev live integration report: macos, sc-decidr and sitr 0.2.8</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 16px system-ui, sans-serif; line-height: 1.5; max-width: 72rem; margin: 2rem auto; padding: 0 1rem; }
+    iframe { width: 100%; height: 36rem; border: 1px solid #94a3b8; background: white; }
+    section { margin: 2rem 0; }
+  </style>
+</head>
+<body>
+  <nav><a href="index.html">Back</a></nav>
+  <main>
+    <h1>judge-jev live integration report: macos, sc-decidr and sitr 0.2.8</h1>
+    <section>
+      <h2><a href="20261118-2-integration/macos.xhtml">macos.xhtml</a></h2>
+      <iframe title="macos.xhtml" srcdoc="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;!DOCTYPE html PUBLIC &quot;-//W3C//DTD XHTML 1.0 Strict//EN&quot; &quot;http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd&quot;&gt;
+&lt;html xmlns=&quot;http://www.w3.org/1999/xhtml&quot; xml:lang=&quot;en&quot; lang=&quot;en&quot;&gt;
+&lt;head&gt;
+  &lt;title&gt;judge-jev live integration report: macos (Darwin 25.5.0, macOS 26.5.1, arm64)&lt;/title&gt;
+  &lt;meta http-equiv=&quot;Content-Type&quot; content=&quot;application/xhtml+xml; charset=utf-8&quot; /&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;judge-jev live integration report&lt;/h1&gt;
+  &lt;p&gt;This report records an owner-attended run against the real Jev provider.&lt;/p&gt;
+  &lt;dl&gt;
+    &lt;dt&gt;Platform&lt;/dt&gt;&lt;dd&gt;macos (Darwin 25.5.0, macOS 26.5.1, arm64)&lt;/dd&gt;
+    &lt;dt&gt;Run date and time (UTC)&lt;/dt&gt;&lt;dd&gt;2026-11-18T03:37Z to 2026-11-18T03:37:47Z&lt;/dd&gt;
+    &lt;dt&gt;Owner present&lt;/dt&gt;&lt;dd&gt;yes, by the owner&amp;#x27;s own statements in the session: the owner attended, approved the dialog for the scratch install that sets allow_remote_judge, and approved the keychain prompts. These approvals are not recorded in any file&lt;/dd&gt;
+    &lt;dt&gt;judge-jev commit&lt;/dt&gt;&lt;dd&gt;2384cdb (integrate/phase-d after #115; phase-d review round 3 PASS at this commit)&lt;/dd&gt;
+    &lt;dt&gt;sc-agent version&lt;/dt&gt;&lt;dd&gt;sc-decidr 0.2.8 and sitr 0.2.8 prerelease wheels, prerelease/v0.2.8 @ f1a192d, cp311-abi3-macosx_11_0_arm64, sha256 verified against the release checksums.txt (not on PyPI; resolved with UV_FIND_LINKS)&lt;/dd&gt;
+    &lt;dt&gt;Python version&lt;/dt&gt;&lt;dd&gt;CLI cases: the Python uv selected for jev_judge.py&amp;#x27;s inline metadata (requires-python &amp;gt;=3.11); the runs did not print its version, so it is not recorded. sitr pytest case: 3.11.16 (in sitr-tests.txt)&lt;/dd&gt;
+    &lt;dt&gt;Command and selected cases&lt;/dt&gt;&lt;dd&gt;&lt;pre&gt;Installed into a scratch worktree of 2384cdb with: uv run plugins/sc-judge-jev/install.py --dest . --allow-remote-judge --target claude. J=.claude/skills/judge-jev/scripts/jev_judge.py; UV_FIND_LINKS=&amp;lt;verified wheel dir&amp;gt;. 1. quality: uv run --script $J quality --req REQ-JEV-0101 --index index.json --run-dir &amp;lt;dir&amp;gt;. 2. batch (3 items, 4 requests): uv run --script $J batch --run-dir &amp;lt;dir&amp;gt; &amp;lt; batch.jsonl. 3. invalid key: TYPESAFE_API_KEY=&amp;lt;invalid&amp;gt; uv run --script $J batch --run-dir &amp;lt;dir&amp;gt; &amp;lt; batch.jsonl (4 runs). 4. sitr: pytest tests/sc-judge-jev/test_decidr_client.py -k sitr with the 0.2.8 wheels installed. Credentials: cases 1-3 with TYPESAFE_API_KEY in the process environment from the owner export (sc-agent scripts/integration.py --export-env), SC_AGENT_TEST_TRAP_PLATFORM_KEYRING=1; then cases 1-2 again with sc-agent default lookup (no env, no .env, platform keychain). Not repeated from the 0.2.7 run: the direct decidr_client.extract call outside pytest.&lt;/pre&gt;&lt;/dd&gt;
+    &lt;dt&gt;Outcome&lt;/dt&gt;&lt;dd&gt;PASS. Live quality and live batch pass with both credential paths on the 0.2.8 wheels; invalid-key runs exit 2 with an AUTH.CREDENTIALS summary (HTTP 401, provider body withheld) in 4 of 4 runs; sitr tests 4 of 4.&lt;/dd&gt;
+    &lt;dt&gt;Evidence and failures&lt;/dt&gt;&lt;dd&gt;&lt;pre&gt;Exit codes below were echoed by the session shell and not saved to a file; the saved outputs are consistent with them. PASS 1 quality, env credential: exit 0, success true, REQ-JEV-0101 verdict yes. PASS 1 quality, default keychain lookup: exit 0, success true, verdict yes. PASS 2 batch, env credential: exit 0, 4 result lines, ok true each; verdicts by request_id: s1/ANC-001/alt/r1 underspecified, s3/ANC-001/cur/r1 satisfied, s4/ANC-001/cur/r1 underspecified, s1/ANC-001/cur/r1 satisfied. PASS 2 batch, default keychain: exit 0, 4 result lines, ok true each; same verdict for each request_id as the env run. PASS 3 invalid key: exit 2 in 4 of 4 runs; runs 1, 2 and 4 have one AUTH.CREDENTIALS line and three CANCELED lines (&amp;#x27;cancelled after 1 send(s)&amp;#x27;); run 3 has two AUTH.CREDENTIALS and two CANCELED; stderr AUTH.CREDENTIALS &amp;#x27;authentication failed (HTTP 401); provider response body withheld&amp;#x27; in 4 of 4. PASS 4 sitr: 4 of 4 (including test_optional_sitr_is_lazy_and_extraction_reaches_a_dry_run). The invalid keys appear in no output or run directory (grep). The real key was not grep-checked in the run directories before the credential copies were deleted. Credential export copies deleted after use.&lt;/pre&gt;&lt;/dd&gt;
+  &lt;/dl&gt;
+&lt;/body&gt;
+&lt;/html&gt;"></iframe>
+    </section>
+  </main>
+</body>
+</html>
