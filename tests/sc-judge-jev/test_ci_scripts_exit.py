@@ -165,29 +165,33 @@ class InstallScComposeCi(unittest.TestCase):
         import hashlib
         ci = load("install_sc_compose_ci")
         payload = b"controlled archive"
-        for fail_version in (False, True):
-            with self.subTest(fail_version=fail_version), tempfile.TemporaryDirectory() as td:
-                def child(argv, **kwargs):
-                    if argv[0] == "gh":
-                        if not fail_version:
-                            raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
-                        Path(argv[-1], "archive.tar.gz").write_bytes(payload)
-                        return subprocess.CompletedProcess(argv, 0)
-                    raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+        for platform in ("darwin", "win32"):
+            for fail_version in (False, True):
+                with self.subTest(platform=platform, fail_version=fail_version), tempfile.TemporaryDirectory() as td:
+                    def child(argv, **kwargs):
+                        if argv[0] == "gh":
+                            if not fail_version:
+                                raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+                            Path(argv[-1], "archive.tar.gz").write_bytes(payload)
+                            return subprocess.CompletedProcess(argv, 0)
+                        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
 
-                def extract(_archive, destination):
-                    (destination / "sc-compose").write_bytes(b"binary")
+                    def extract(_archive, destination):
+                        (destination / ci.executable_name()).write_bytes(b"binary")
 
-                assets = {(sys.platform, ci.normalized_machine()): ("archive.tar.gz", hashlib.sha256(payload).hexdigest())}
-                stderr = io.StringIO()
-                with mock.patch.dict(ci.ASSETS, assets, clear=True), mock.patch.dict(os.environ, {"RUNNER_TEMP": td}), \
-                        mock.patch.object(ci, "extract", side_effect=extract), \
-                        mock.patch.object(subprocess, "run", side_effect=child) as run, contextlib.redirect_stderr(stderr):
-                    self.assertEqual(ci.run(), 2)
-                self.assertIn("install_sc_compose_ci: subprocess timed out", stderr.getvalue())
-                for call in run.call_args_list:
-                    self.assertIs(call.kwargs["stdin"], subprocess.DEVNULL)
-                    self.assertEqual(call.kwargs["timeout"], 300 if call.args[0][0] == "gh" else 30)
+                    assets = {(platform, ci.normalized_machine()): ("archive.tar.gz", hashlib.sha256(payload).hexdigest())}
+                    stderr = io.StringIO()
+                    fake_sys = mock.Mock(wraps=sys, platform=platform, stderr=stderr)
+                    with mock.patch.object(ci, "sys", fake_sys), mock.patch.dict(ci.ASSETS, assets, clear=True), \
+                            mock.patch.dict(os.environ, {"RUNNER_TEMP": td}), \
+                            mock.patch.object(ci, "extract", side_effect=extract), \
+                            mock.patch.object(subprocess, "run", side_effect=child) as run:
+                        self.assertEqual(ci.run(), 2)
+                    self.assertIn("install_sc_compose_ci: subprocess timed out", stderr.getvalue())
+                    self.assertEqual(len(run.call_args_list), 2 if fail_version else 1)
+                    for call in run.call_args_list:
+                        self.assertIs(call.kwargs["stdin"], subprocess.DEVNULL)
+                        self.assertEqual(call.kwargs["timeout"], 300 if call.args[0][0] == "gh" else 30)
 
     def test_any_failure_exits_2_with_a_message(self):
         ci = load("install_sc_compose_ci")
