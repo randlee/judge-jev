@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-write-records
-version: 0.5.2
+version: 0.5.3
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -32,8 +32,8 @@ Judge the record first (`references/fix-strategy.md`, `verify base`), then choos
 | One or two weak answers, all on one statement | `references/fix-strategy.md`: edit that statement. |
 | Any statement answers `obligations` `2`, `3` or `4+` with `joined_by` `and-list`, `alternatives` or `obligation+rationale` | This page. Listing the tenets is the split. |
 | Weak answers on three or more statements | This page. Statements share the record as context, so edits to one move the others. |
-| Three fix rounds ended with the record unresolved | This page. |
-| The record does not exist yet | This page, from step 2, with tenets the owner or the PRD gives. |
+| Two consecutive fix rounds kept no candidate | This page. |
+| New record | Save a draft with its standard heading and sections in the target file; start at step 0. |
 
 Never use it on an accepted record: an accepted record is frozen.
 
@@ -150,7 +150,7 @@ Among the candidates whose `verify` printed `pass=true`, keep the one with the h
 2. Send the kept text and `$X/tenets.json` to the tenets writer once: does the text require every tenet and nothing else? `no` rejects the candidate: take the next best.
 3. Accept and freeze as in `references/fix-strategy.md` step 5, and commit.
 
-No candidate passes: start round 2 at step 2. Add to `write.json` an `avoid` list with one line for each weak answer of the best candidate, copied from `verify`: the statement text, the question, and the `nearly:` choice. Three rounds at most. After round 3 the record is unresolved: commit nothing, keep `$X`, and list the record with its best candidate and that candidate's `verify` output.
+No candidate passes: start round 2 at step 2. Add each weak answer’s statement, question and runner-up from the best candidate’s run files to `write.json` as `avoid`. Two rounds at most; then the record is unresolved: commit nothing, keep `$X`, and list the record with its best candidate and that candidate's `verify` output.
 
 ## Rules
 
@@ -174,4 +174,4 @@ Cannot: <tenet id> (<why>), ...
 
 ## Report
 
-One line per record: id, tenets, candidates returned, candidates passed, the kept candidate and its lowest median, or `unresolved` with the best lowest median. Then the records listed for the owner: conflicts, more than 8 tenets, `cannot` tenets.
+Per record: id, tenets, candidates returned/passed, kept and lowest median, or `unresolved` with best median. Diagnose failures; report reasons per SKILL.md. List conflicts, over 8 tenets, and `cannot` tenets.
