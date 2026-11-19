@@ -86,7 +86,7 @@ def runner_up(entries: list, choice: str):
     best = min(medians, key=lambda option: (-medians[option], option))
     if medians[best] <= 0:
         return None
-    criterion = next((entry["runner_up"].get("criterion", "") for entry in entries
+    criterion = next((entry["runner_up"].get("criterion") for entry in entries
                       if isinstance(entry.get("runner_up"), dict) and entry["runner_up"].get("choice") == best), None)
     return {"choice": best, "probability": medians[best], "criterion": criterion}
 
