@@ -127,7 +127,7 @@ PY
 
 For each remaining candidate `c<n>`: apply it to `$F`, `verify c<n>`, then `cp "$W/base.md" "$F"`.
 
-For each statement keep the candidate that lifts its lowest median highest without pushing any other answer in the record below `T`. Apply the kept candidates together and `verify comb`. If `comb` is worse than its parts, drop the weakest candidate and verify again. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`. If the record improved, `cp "$W/comb.md" "$W/base.md"`: the next round starts from it.
+For each statement keep the candidate that lifts that statement's weak answer highest, provided no other answer in the record drops by more than 0.05 or newly falls below `T`. Judge a candidate by its own statement, never by the record's lowest answer: the lowest can sit on another statement and hide the gain. Apply the kept candidates together and `verify comb`. If `comb` is worse than its parts, drop the weakest candidate and verify again. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`. If at least one candidate is kept and `comb` holds every kept gain, `cp "$W/comb.md" "$W/base.md"`: the next round starts from it.
 
 ## 5. Accept and freeze
 
@@ -135,7 +135,7 @@ A record is accepted when `verify` prints `pass=true`. Otherwise start the next 
 
 When a record is accepted, run the guard on `$W/original.md` against `$F` and read `diff -u "$W/original.md" "$F"` against rule 1. Then append `{"id", "sha256": "<of the record text>", "runs": [...], "lowest": x}` to `.sc/judge-jev/accepted.jsonl`. An accepted record is frozen: do not judge it again unless its text changes. Re-judging unchanged text only finds chance failures.
 
-Three rounds at most. A statement still below `T` after round 3 is unresolved: keep the best text reached and list it. An unresolved record goes to `references/write-records.md` once.
+Keep running rounds until the record passes, or until two rounds in a row keep no candidate. Then a statement still below `T` is unresolved: keep the best text reached and list it. An unresolved record goes to `references/write-records.md` once.
 
 ## Rules
 
