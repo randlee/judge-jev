@@ -12,6 +12,8 @@
 
 ## 0.5.3 — 2026-11-18
 
+- Preserve per-run gate reasons and clarify candidate selection, stopping, and reporting.
+
 - Fix loop: keep a candidate when its own statement's weak answer rises and no other answer drops more than 0.05 or newly below the threshold (not when the record's lowest answer rises); run rounds until the record passes or two rounds in a row keep nothing, instead of stopping at three.
 - Never report a judge-jev failure without Jev's reasons: for each answer below the threshold, the chosen and runner-up options with their criteria (and any `Fix:` line) and the `d_*` answers, verbatim (SKILL.md hard stops; fix-strategy.md Report).
 
