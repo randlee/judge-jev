@@ -10,6 +10,10 @@
 - Remove the Python batch executor; keep shared fixture and record helpers in the generated client.
 - Add an unattended live integration runner for the migrated consumer, including real-provider, credential-failure, keychain and sitr checks.
 
+## 0.5.3 — 2026-11-18
+
+- Never report a judge-jev failure without Jev's reasons: for each answer below the threshold, the chosen and runner-up options with their criteria (and any `Fix:` line) and the `d_*` answers, verbatim (SKILL.md hard stops; fix-strategy.md Report).
+
 ## 0.5.2 — 2026-11-18
 
 - Document how to uninstall an installed copy and clean up generated folders.

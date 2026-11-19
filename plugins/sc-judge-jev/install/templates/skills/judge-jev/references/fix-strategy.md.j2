@@ -177,6 +177,6 @@ Result: lowest <before> to <after>
 
 ## Report
 
-One table, only measured results: record, accepted or unresolved, lowest gate answer before and after, strategies that worked, statements added or removed. Then, for each unresolved statement: its text, Jev's gate and `d_*` answers verbatim, what was tried with its measured result, and the one fact needed from the owner. Then every change that rule 1 sent to the owner, with both texts.
+One table, only measured results: record, accepted or unresolved, lowest gate answer before and after, strategies that worked, statements added or removed. Then, for each answer still below `T`: its statement's text, the weak answer's choice and median, Jev's criterion for that choice, the runner-up's choice, probability and criterion (with its `Fix:` line, if any), the `d_*` answers, all verbatim, what was tried with its measured result, and the one fact needed from the owner. A failure is never reported without these reasons; if the cause is still unclear, ask the extra diagnostic questions ("If a cause is still unclear") before reporting. Then every change that rule 1 sent to the owner, with both texts.
 
 Leave `$W` and `.sc/judge-jev/accepted.jsonl` in place. Every Jev request and answer is logged under `~/.judge-jev/<repository name>/<UTC date>/logs/`, outside the repository; never delete it.
