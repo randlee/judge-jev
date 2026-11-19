@@ -45,7 +45,7 @@ for r in 1 2 3; do uv run -q --script "$J" quality --$KIND "$ID" --index "$W/ind
 python3 "$G" --threshold "$T" "$W"/<v>-r1.json "$W"/<v>-r2.json "$W"/<v>-r3.json | jq -r 'if .success | not then "ERROR \(.error.code): \(.error.message)" else .data.records[] | "\(.id) pass=\(.pass) verdicts=\(.verdicts | join(",")) lowest=\(.lowest.median // "n/a")", (.answers[] | "  s\(.statement // "-") \(.question)=\(.choice) median \(.median) runs=\(.runs | tojson)") end'
 ```
 
-It prints every gate answer's median and per-run reasons; each runner-up is `nearly:`. Only `pass=true` passes; read failing verdicts' reasons in all three run files. On `ERROR`, rerun once, then report the code and message verbatim.
+It prints each gate answer's median and per-run reasons (`runs`, with `runner_up`). Only `pass=true` passes; read failing verdicts' reasons in all three run files. On `ERROR`, rerun once, then report the code and message verbatim.
 
 `diagnose <v>`: ask Jev why, once, for the variant `verify` just snapshotted.
 
@@ -127,13 +127,13 @@ PY
 
 For each remaining candidate `c<n>`: apply it to `$F`, `verify c<n>`, then `cp "$W/base.md" "$F"`.
 
-Compare candidates with base using all `verify` medians. Reject other answers dropping over 0.05 or newly below `T`. Unchanged-choice gain is the median increase; a changed choice gains only with a present criterion lacking `Fix:` and median at least `T`, otherwise it worsens. Prefer changed-choice gains, then greatest median gain per statement. Apply kept edits; `verify comb`. While comb loses a gain, drop the smallest-gain candidate and reverify. If gains hold, copy `$W/comb.md` to `$W/base.md`; otherwise restore base to `$F`. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`.
+Compare candidates with base using all `verify` medians. Reject other answers dropping over 0.05 or newly below `T`. Gain is the median rise of the candidate's own weak answer; a changed choice gains only with a present criterion lacking `Fix:` and median at least `T`, otherwise it worsens. Prefer changed-choice gains, then greatest median gain per statement. If any are kept, apply them; `verify comb`. While comb loses a gain, drop the smallest-gain candidate and reverify. If gains hold, copy `$W/comb.md` to `$W/base.md`; otherwise restore base to `$F`. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`.
 
 ## 5. Accept and freeze
 
 A record is accepted when `verify` prints `pass=true`. Otherwise start the next round at step 1 on the current text, with the rejected edits in `blocked`.
 
-When a record is accepted, run the guard on `$W/original.md` against `$F` and read `diff -u "$W/original.md" "$F"` against rule 1. Then append `{"id", "sha256": "<of the record text>", "runs": [...], "lowest": x}` to `.sc/judge-jev/accepted.jsonl`. Re-judging unchanged text only finds chance failures.
+When a record is accepted, run the guard on `$W/original.md` against `$F` and read `diff -u "$W/original.md" "$F"` against rule 1. Then append `{"id", "sha256": "<of the record text>", "runs": [...], "lowest": x}` to `.sc/judge-jev/accepted.jsonl`.
 
 Keep running rounds until the record passes, or until two rounds in a row keep no candidate. Then the record is unresolved: keep the best text reached and list it. An unresolved record goes to `references/write-records.md` once.
 

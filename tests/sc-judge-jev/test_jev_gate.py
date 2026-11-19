@@ -97,6 +97,24 @@ class MedianGateTests(GateCase):
                              {"choice": "alternative-2", "probability": 0.4, "criterion": "alternative reason 2"})
             self.assertEqual(bool(record["low"]), rid == "REQ-A-0002")
 
+    def test_the_aggregate_runner_up_copies_a_runs_criterion_or_is_null(self):
+        for with_criterion in (True, False):
+            files = []
+            for i in range(3):
+                record = req("REQ-A-0003", "yes", [(1, "X MUST do A.", {"term": ("bad", 0.4)})])
+                answer = record["waves"][0]["reason"][0]["answers"][0]
+                answer["probabilities"] = {"bad": 0.4, "other": 0.35, "third": 0.25}
+                answer["runner_up"] = {"choice": "other", "probability": 0.35}
+                if with_criterion:
+                    answer["runner_up"]["criterion"] = f"other reason {i}"
+                files.append(self.write(f"agg-{with_criterion}-{i}.json", [record]))
+            (entry,) = self.gate(*files)["records"][0]["answers"]
+            self.assertEqual((entry["runner_up"]["choice"], entry["runner_up"]["probability"]), ("other", 0.35))
+            if with_criterion:
+                self.assertEqual(entry["runner_up"]["criterion"], "other reason 0")
+            else:
+                self.assertIsNone(entry["runner_up"]["criterion"])
+
     def test_the_threshold_is_inclusive_and_can_be_set(self):
         runs = self.three("REQ-A-0001", (0.6, 0.6, 0.7))
         self.assertTrue(self.gate(*runs)["records"][0]["pass"])

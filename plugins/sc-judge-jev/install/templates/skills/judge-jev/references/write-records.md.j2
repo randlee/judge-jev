@@ -33,7 +33,7 @@ Judge the record first (`references/fix-strategy.md`, `verify base`), then choos
 | Any statement answers `obligations` `2`, `3` or `4+` with `joined_by` `and-list`, `alternatives` or `obligation+rationale` | This page. Listing the tenets is the split. |
 | Weak answers on three or more statements | This page. Statements share the record as context, so edits to one move the others. |
 | Two consecutive fix rounds kept no candidate | This page. |
-| New record | Save a draft with a standard heading in the target file; start at step 0. |
+| New record | Save a draft with its standard heading and sections in the target file; start at step 0. |
 
 Never use it on an accepted record: an accepted record is frozen.
 
@@ -150,7 +150,7 @@ Among the candidates whose `verify` printed `pass=true`, keep the one with the h
 2. Send the kept text and `$X/tenets.json` to the tenets writer once: does the text require every tenet and nothing else? `no` rejects the candidate: take the next best.
 3. Accept and freeze as in `references/fix-strategy.md` step 5, and commit.
 
-No candidate passes: start round 2 at step 2. Add each weak answer’s statement, question and runner-up from the best candidate’s run files to `write.json` as `avoid`. Stop after two consecutive rounds keep no candidate. Then the record is unresolved: commit nothing, keep `$X`, and list the record with its best candidate and that candidate's `verify` output.
+No candidate passes: start round 2 at step 2. Add each weak answer’s statement, question and runner-up from the best candidate’s run files to `write.json` as `avoid`. Two rounds at most; then the record is unresolved: commit nothing, keep `$X`, and list the record with its best candidate and that candidate's `verify` output.
 
 ## Rules
 
