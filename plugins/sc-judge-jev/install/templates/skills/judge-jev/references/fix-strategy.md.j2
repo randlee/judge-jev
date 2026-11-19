@@ -127,7 +127,7 @@ PY
 
 For each remaining candidate `c<n>`: apply it to `$F`, `verify c<n>`, then `cp "$W/base.md" "$F"`.
 
-Compare candidates with base using all `verify` medians. Reject other answers dropping over 0.05 or newly below `T`. Unchanged-choice gain is the median increase; a changed choice gains only with a criterion lacking `Fix:` and median at least `T`, otherwise it worsens. Prefer changed-choice gains, then greatest median gain per statement. Apply kept edits; `verify comb`. While comb loses a gain, drop the smallest-gain candidate and reverify. If gains hold, copy `$W/comb.md` to `$W/base.md`; otherwise restore base to `$F`. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`.
+Compare candidates with base using all `verify` medians. Reject other answers dropping over 0.05 or newly below `T`. Unchanged-choice gain is the median increase; a changed choice gains only with a present criterion lacking `Fix:` and median at least `T`, otherwise it worsens. Prefer changed-choice gains, then greatest median gain per statement. Apply kept edits; `verify comb`. While comb loses a gain, drop the smallest-gain candidate and reverify. If gains hold, copy `$W/comb.md` to `$W/base.md`; otherwise restore base to `$F`. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`.
 
 ## 5. Accept and freeze
 
@@ -135,7 +135,7 @@ A record is accepted when `verify` prints `pass=true`. Otherwise start the next 
 
 When a record is accepted, run the guard on `$W/original.md` against `$F` and read `diff -u "$W/original.md" "$F"` against rule 1. Then append `{"id", "sha256": "<of the record text>", "runs": [...], "lowest": x}` to `.sc/judge-jev/accepted.jsonl`. Re-judging unchanged text only finds chance failures.
 
-Keep running rounds until the record passes, or until two rounds in a row keep no candidate. Then a statement still below `T` is unresolved: keep the best text reached and list it. An unresolved record goes to `references/write-records.md` once.
+Keep running rounds until the record passes, or until two rounds in a row keep no candidate. Then the record is unresolved: keep the best text reached and list it. An unresolved record goes to `references/write-records.md` once.
 
 ## Rules
 
