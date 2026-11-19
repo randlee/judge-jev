@@ -66,8 +66,36 @@ class MedianGateTests(GateCase):
         data = self.gate(*self.three("REQ-A-0001", (0.61, 0.52, 0.48)))
         record = data["records"][0]
         self.assertFalse(record["pass"])
-        self.assertEqual(record["low"], [{"statement": 1, "question": "term", "choice": "none", "median": 0.52,
-                                          "confidences": [0.61, 0.52, 0.48], "runner_up": None}])
+        (low,) = record["low"]
+        self.assertEqual((low["statement"], low["question"], low["choice"], low["median"], low["confidences"], low["runner_up"]),
+                         (1, "term", "none", 0.52, [0.61, 0.52, 0.48], None))
+
+    def test_failing_and_weak_records_preserve_each_runs_reasons(self):
+        files = []
+        for i in range(3):
+            records = []
+            for rid, verdict, confidence in (("REQ-A-0001", "no", 0.9), ("REQ-A-0002", "yes", 0.4)):
+                record = req(rid, verdict, [(1, "X MUST do A.", {"term": ("bad", confidence)})])
+                answer = record["waves"][0]["reason"][0]["answers"][0]
+                answer["criterion"] = f"Fix: reason {i}"
+                if i != 1:
+                    answer["runner_up"] = {"choice": f"alternative-{i}", "probability": 0.2 + i / 10,
+                                           "criterion": f"alternative reason {i}"}
+                records.append(record)
+            files.append(self.write(f"reasons-{i}.json", records))
+        records = {record["id"]: record for record in self.gate(*files)["records"]}
+        for rid in ("REQ-A-0001", "REQ-A-0002"):
+            record = records[rid]
+            self.assertFalse(record["pass"])
+            (entry,) = record["answers"]
+            self.assertEqual(entry["criterion"], "Fix: reason 0")
+            self.assertEqual([run["criterion"] for run in entry["runs"]], [f"Fix: reason {i}" for i in range(3)])
+            self.assertEqual([run["choice"] for run in entry["runs"]], ["bad"] * 3)
+            self.assertEqual([run["confidence"] for run in entry["runs"]], [0.9 if rid == "REQ-A-0001" else 0.4] * 3)
+            self.assertIsNone(entry["runs"][1]["runner_up"])
+            self.assertEqual(entry["runs"][2]["runner_up"],
+                             {"choice": "alternative-2", "probability": 0.4, "criterion": "alternative reason 2"})
+            self.assertEqual(bool(record["low"]), rid == "REQ-A-0002")
 
     def test_the_threshold_is_inclusive_and_can_be_set(self):
         runs = self.three("REQ-A-0001", (0.6, 0.6, 0.7))
