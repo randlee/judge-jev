@@ -18,7 +18,7 @@ what the first version leaves out.
 
 ## ADR-JEV-0001: Keep the Jev core unchanged until its Rust replacement
 
-**Status:** Draft  
+**Status:** Approved  
 
 ### Context
 
@@ -358,7 +358,7 @@ answers cannot be joined to questions without scraping logs.
 
 ## ADR-JEV-0007: The seam to sc-agent's Jev tool
 
-**Status:** Draft  
+**Status:** Approved  
 
 ### Context
 
