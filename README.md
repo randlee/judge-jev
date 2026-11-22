@@ -32,7 +32,7 @@ Full definitions: [docs/cli.md](docs/cli.md); prompt
 composition diagrams: [docs/diagrams/](docs/diagrams/).
 
 ```
-judge-jev batch [--input <file>] [--run-dir <dir> | --anchors <file>] [--dry-run]
+judge-jev batch [--input <file>] [--anchors <file>] [--dry-run]
 judge-jev quality --index <file> (--req|--adr|--nfr <id>)... [--questions <file>] [--dry-run]
 judge-jev validate (--tree|--questions|--answers|--index|--requests) <file>
 judge-jev compare-definition --index <file> --definition <iri>... (--req|--adr|--nfr <id>) [--dry-run]
