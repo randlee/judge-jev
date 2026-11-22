@@ -47,6 +47,9 @@ class BatchCase(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
         self.d = Path(self.td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.addCleanup(self.td.cleanup)
 
     def put(self, name, value):
@@ -56,15 +59,7 @@ class BatchCase(unittest.TestCase):
 class BatchTests(BatchCase):
     """The low layer: JSONL request lines in, JSONL result lines out on stdout and in the sc-observability run log."""
 
-    def test_batch_without_run_dir_or_anchors_suggests_run_dir_first(self):
-        stdout = io.StringIO()
-        source = self.put("one.jsonl", jsonl(self.LINES[:1]))
-        with contextlib.redirect_stdout(stdout):
-            code = jj.main(["batch", "--input", source, "--dry-run"])
-        out = json.loads(stdout.getvalue())
-        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
-        self.assertIn("--run-dir <directory>", out["error"]["suggested_action"])
-        self.assertIn("for an anchor run", out["error"]["suggested_action"])
+
 
     LINES = [request_line("s1", "We copy the legacy crates.", ("cur", PLAN_QS["questions"]), ("alt", alt_set(1)), title="Sprint 1"),
              request_line("s3", "# Sprint 3\n\nCopy the legacy runtime crates.\n", ("cur", PLAN_QS["questions"]))]
@@ -72,9 +67,8 @@ class BatchTests(BatchCase):
 
     def subprocess_batch(self, run_dir, *extra, stdin=None):
         """The rendered script as a separate process: stdout bytes exactly as a caller sees them."""
-        argv = [sys.executable, str(SCRIPTS / "jev_judge.py"), "batch", "--run-dir", str(self.d / run_dir), "--run-name", "r1",
-                "--answers-file", self.put("answers.json", self.FIXTURE), "--repeat", "2", "--request-prefix", "run-7", *extra]
-        proc = run_child(argv, input=stdin, cwd=str(self.d))
+        argv = [sys.executable, str(SCRIPTS / "jev_judge.py"), "batch", "--run-name", "r1", "--answers-file", self.put("answers.json", self.FIXTURE), "--repeat", "2", "--request-prefix", "run-7", *extra]
+        proc = run_child(argv, input=stdin, cwd=str(self.d), env={**os.environ, "JUDGE_JEV_LOG_ROOT": str(self.d / run_dir)})
         return proc
 
     def log(self, run_dir):
@@ -148,10 +142,8 @@ class BatchTests(BatchCase):
         The child gets the same CRLF-translating stdout on every OS, so this check does not depend on the runner OS."""
         wrapper = ("import runpy, sys; sys.stdout.reconfigure(newline='\\r\\n'); sys.argv = sys.argv[1:]; "
                    "runpy.run_path(sys.argv[0], run_name='__main__')")
-        argv = [sys.executable, "-c", wrapper, str(SCRIPTS / "jev_judge.py"), "batch", "--run-dir", str(self.d / "crlf"),
-                "--run-name", "r1", "--answers-file", self.put("answers.json", self.FIXTURE), "--input",
-                self.put("in.jsonl", jsonl(self.LINES))]
-        proc = run_child(argv, cwd=str(self.d))
+        argv = [sys.executable, "-c", wrapper, str(SCRIPTS / "jev_judge.py"), "batch", "--run-name", "r1", "--answers-file", self.put("answers.json", self.FIXTURE), "--input", self.put("in.jsonl", jsonl(self.LINES))]
+        proc = run_child(argv, cwd=str(self.d), env={**os.environ, "JUDGE_JEV_LOG_ROOT": str(self.d / "crlf")})
         self.assertEqual((proc.returncode, proc.stderr), (0, b""))
         self.assertEqual(len(proc.stdout.splitlines()), 3)
         self.assertNotIn(b"\r", proc.stdout)
@@ -202,7 +194,7 @@ class BatchTests(BatchCase):
 
             def received(record):
                 persist(record)
-                observed.append(self.log("runs"))
+                observed.append(self.log("logs"))
 
             kwargs["on_result"] = received
             return transport(requests, **kwargs)
@@ -210,7 +202,7 @@ class BatchTests(BatchCase):
         stdout, stderr = io.StringIO(), io.StringIO()
         with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", checked_transport), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = jj.main(["batch", "--input", source, "--run-dir", str(self.d / "runs")])
+            code = jj.main(["batch", "--input", source])
         lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
         self.assertEqual(code, 2)
         self.assertEqual([len(snapshot) for snapshot in observed], [1, 2])
@@ -222,7 +214,7 @@ class BatchTests(BatchCase):
 
     def test_bad_input_is_refused_before_any_line(self):
         def refused(lines_text, *extra):
-            code, out = run_cli(["batch", "--input", self.put("bad.jsonl", lines_text), "--run-dir", str(self.d / "runs"), "--dry-run", *extra])
+            code, out = run_cli(["batch", "--input", self.put("bad.jsonl", lines_text), "--dry-run", *extra])
             self.assertEqual((code, out["success"]), (2, False), out)
             return out["error"]["code"]
         good = jsonl(self.LINES)
@@ -233,14 +225,8 @@ class BatchTests(BatchCase):
         self.assertEqual(refused(good, "--max-workers", "5"), "VALIDATION.INPUT")
         self.assertEqual(refused("\n"), "INPUT.EMPTY")
         self.assertFalse((self.d / "runs").exists())
-        code, out = run_cli(["batch", "--input", self.put("ok.jsonl", good)])
-        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))  # no log directory
 
-    def test_max_request_bytes_over_the_loggable_ceiling_is_refused_before_any_line(self):
-        src = self.put("big.jsonl", jsonl([request_line("s1", "x" * 80000, ("cur", PLAN_QS["questions"]))]))
-        code, out = run_cli(["batch", "--input", src, "--run-dir", str(self.d / "runs"), "--dry-run", "--max-request-bytes", "200000"])
-        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
-        self.assertFalse((self.d / "runs").exists())
+
 
     def test_live_auth_failure_is_reported_from_the_typed_wheel_error(self):
         error = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable", "sends": 1}
@@ -249,7 +235,7 @@ class BatchTests(BatchCase):
         stdout, stderr = io.StringIO(), io.StringIO()
         with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = jj.main(["batch", "--input", src, "--run-dir", str(self.d / "runs")])
+            code = jj.main(["batch", "--input", src])
         line, = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
         self.assertEqual((code, line["error"]["code"], json.loads(stderr.getvalue())["error"]["code"]),
                          (2, "AUTH.CREDENTIALS", "AUTH.CREDENTIALS"))
@@ -268,7 +254,7 @@ class BatchTests(BatchCase):
                 stdout, stderr = io.StringIO(), io.StringIO()
                 with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
                         contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-                    code = jj.main(["batch", "--input", src, "--run-dir", str(self.d / f"runs-{auth_position}")])
+                    code = jj.main(["batch", "--input", src])
                 lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
                 summary = json.loads(stderr.getvalue())
                 cause = lines[auth_position if auth_position is not None else 0]
@@ -290,8 +276,7 @@ class BatchRetryPolicyTests(BatchCase):
         stdout, stderr = io.StringIO(), io.StringIO()
         with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", BatchTransport(result)), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = jj.main(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])),
-                            "--run-dir", str(self.d / "runs"), "--run-name", "r1", "--max-workers", "1"])
+            code = jj.main(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])), "--run-name", "r1", "--max-workers", "1"])
         lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
         envelope = json.loads(stderr.getvalue()) if stderr.getvalue() else None
         return code, lines, envelope

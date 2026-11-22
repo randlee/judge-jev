@@ -56,7 +56,15 @@ def write(d, name, value):
 def run_cli(argv):
     """Run main() in-process; returns (exit code, parsed JSON or raw text)."""
     buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
+    with contextlib.ExitStack() as controlled:
+        api = sys.modules.get("sc_agent")
+        native = getattr(api, "_native", None)
+        if native is not None:
+            for operation in ("send", "send_batch"):
+                if getattr(api, operation) is getattr(native, operation):
+                    controlled.enter_context(mock.patch.object(api, operation,
+                        side_effect=AssertionError("unit test reached an uncontrolled native decision call")))
+        controlled.enter_context(contextlib.redirect_stdout(buf))
         code = jj.main(argv)
     out = buf.getvalue()
     try:
@@ -68,6 +76,7 @@ def run_cli(argv):
 @contextlib.contextmanager
 def env(**values):
     # Unit fixtures control the environment; sc-agent owns credential resolution.
+    values.setdefault("JUDGE_JEV_LOG_ROOT", os.environ["JUDGE_JEV_LOG_ROOT"])
     with mock.patch.dict(os.environ, values, clear=True):
         yield
 
@@ -247,8 +256,7 @@ class RedactionTests(unittest.TestCase):
             src = write(d, "in.jsonl", jsonl([request_line(text="token ts-secret-123456 in the item")]))
             fixture = write(d, "answers.json", {"*": plan_answers()})
             with env(TYPESAFE_API_KEY="ts-secret-123456"):
-                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--run-name", "r1",
-                                     "--answers-file", fixture])
+                code, out = run_cli(["batch", "--input", src, "--run-name", "r1", "--answers-file", fixture])
             log = json.dumps(read_log(Path(d) / "runs"), ensure_ascii=False)
         self.assertEqual(code, 0, out)
         self.assertNotIn("ts-secret-123456", json.dumps(out))
@@ -269,20 +277,20 @@ class ErrorHandlingTests(unittest.TestCase):
     def test_every_file_argument_yields_json_errors(self):
         with tempfile.TemporaryDirectory() as d:
             missing = str(Path(d) / "none.jsonl")
-            code, out = run_cli(["batch", "--input", missing, "--run-dir", str(Path(d) / "runs"), "--dry-run"])
+            code, out = run_cli(["batch", "--input", missing, "--dry-run"])
             self.assertEqual((code, out["error"]["code"]), (2, "INPUT.MISSING"))
             src = write(d, "in.jsonl", jsonl([request_line()]))
-            code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--answers-file", missing])
+            code, out = run_cli(["batch", "--input", src, "--answers-file", missing])
             self.assertEqual((code, out["error"]["code"]), (2, "INPUT.MISSING"))
             self.assertFalse((Path(d) / "runs").exists())
 
-    def test_missing_sc_observability_is_a_typed_dependency_error(self):
+    def test_missing_sc_decidr_is_a_typed_dependency_error(self):
         with tempfile.TemporaryDirectory() as d:
             src = write(d, "in.jsonl", jsonl([request_line()]))
-            with mock.patch.dict(sys.modules, {"sc_observability": None}):
-                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--dry-run"])
-        self.assertEqual((code, out["error"]["code"]), (2, "DEPENDENCY.SC_OBSERVABILITY"))
-        self.assertIn("uv run --script", out["error"]["suggested_action"])
+            with mock.patch.dict(sys.modules, {"sc_agent": None}):
+                code, out = run_cli(["batch", "--input", src, "--dry-run"])
+        self.assertEqual((code, out["error"]["code"]), (2, "DEPENDENCY.SC_DECIDR"))
+        self.assertIn("Install sc-decidr", out["error"]["suggested_action"])
 
     def test_unexpected_exceptions_become_script_internal(self):
         with mock.patch.object(jj, "cmd_batch", side_effect=RuntimeError("boom")):
@@ -300,16 +308,16 @@ class ErrorHandlingTests(unittest.TestCase):
             self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), flag)
             self.assertIn(f"argument {flag}: invalid", out["error"]["message"])
         self.assertEqual((jj.DEFAULT_MODEL, jj.DEFAULT_THRESHOLD, jj.DEFAULT_MAX_REQUEST_BYTES, jj.DEFAULT_MAX_REQUEST_BYTES_DEV),
-                         ("jev-latest", 0.6, 24000, 64000))
+                         ("jev", 0.6, 24000, 64000))
         self.assertEqual(jj.BATCH_MAX_WORKERS, 4)
 
     def test_out_of_range_values_are_validation_input(self):
         with tempfile.TemporaryDirectory() as d:
             src = write(d, "in.jsonl", jsonl([request_line()]))
             for flag, value in (("--threshold", "1.5"), ("--max-workers", "0"), ("--repeat", "0"), ("--request-prefix", "a b")):
-                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--dry-run", flag, value])
+                code, out = run_cli(["batch", "--input", src, "--dry-run", flag, value])
                 self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), flag)
-            code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--dry-run", "--run-name", "bad name"])
+            code, out = run_cli(["batch", "--input", src, "--dry-run", "--run-name", "bad name"])
             self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))
             self.assertFalse((Path(d) / "runs").exists())
 
@@ -318,14 +326,14 @@ class ErrorHandlingTests(unittest.TestCase):
             src = write(d, "in.jsonl", jsonl([request_line(text="x" * 30000)]))
             t = BatchTransport()
             with env(**LIVE_ENV), consented(), mock.patch.object(jj.decidr_client, "call_batch_results", t):
-                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs")])
+                code, out = run_cli(["batch", "--input", src])
                 self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"))
                 self.assertIn("over --max-request-bytes 24000", out["error"]["message"])
             self.assertEqual(t.bodies, [])
             self.assertFalse((Path(d) / "runs").exists())
             # the dev gate's default cap is 64000 bytes: the same item fits there
             dev = write(d, "dev.jsonl", jsonl([request_line(text="x" * 30000, questions=ok(jj.load_question_set("dev")).questions)]))
-            code, out = run_cli(["batch", "--input", dev, "--run-dir", str(Path(d) / "runs"), "--gate", "dev", "--dry-run"])
+            code, out = run_cli(["batch", "--input", dev, "--gate", "dev", "--dry-run"])
             self.assertEqual((code, out["dry_run"]), (0, True))
 
     def test_exit_codes(self):
@@ -333,9 +341,9 @@ class ErrorHandlingTests(unittest.TestCase):
         self.assertFalse(hasattr(jj, "exit_code_for"))
         with tempfile.TemporaryDirectory() as d:
             src = write(d, "in.jsonl", jsonl([request_line()]))
-            code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--dry-run"])
+            code, out = run_cli(["batch", "--input", src, "--dry-run"])
             self.assertEqual((code, out["dry_run"], out["ok"]), (0, True, False))
-            code, out = run_cli(["batch", "--input", str(Path(d) / "missing.jsonl"), "--run-dir", str(Path(d) / "runs")])
+            code, out = run_cli(["batch", "--input", str(Path(d) / "missing.jsonl")])
             self.assertEqual((code, out["success"], out["data"]), (2, False, None))
             self.assertEqual(set(out["error"]), {"code", "message", "recoverable", "suggested_action"})
 

@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_runs
-version: 0.5.3
+version: 0.6.0
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -275,11 +275,13 @@ def _plain(value):
     return value
 
 
-def read_run_events(log_root, run_name: str) -> Result[dict, Any]:
+def read_run_events(run_name: str) -> Result[dict, Any]:
     """The run's ``result``, ``statement``, ``wave`` and ``verdict`` events, oldest first, through sc-observability's query
     API: {action: [fields]}. One query per action, matched on the run name; a query holds at most LOG_LIMIT events, so a
     run with more of one action is refused rather than silently cut."""
     import sc_observability as sco
+    import judge_jev_paths
+    log_root = judge_jev_paths.central_log_root()
     created = sco.create_logger(sco.LoggerConfig(service=LOG_SERVICE, log_root=str(log_root)))
     if isinstance(created, sco.Err):
         return _log_error(f"could not open the log under {log_root}: {created.error}")
@@ -300,14 +302,14 @@ def read_run_events(log_root, run_name: str) -> Result[dict, Any]:
 
 def _log_error(message: str) -> Err:
     from decidr_client import ClientError
-    return Err(ClientError("LOG.READ", message, action="Pass the --run-dir of a finished quality run."))
+    return Err(ClientError("LOG.READ", message, action="Pass the --run-name of a finished quality run."))
 
 
-def rebuild_from_log(log_root, run_name: str, tree: Any, repository: Optional[str] = None) -> Result[list, Any]:
+def rebuild_from_log(run_name: str, tree: Any, repository: Optional[str] = None) -> Result[list, Any]:
     """The run's triples (every record under the run name) rebuilt from the sc-observability log alone: its ``result``
     events are the result lines, its ``statement`` and ``wave`` events the walk, its ``verdict`` event the verdict.
     ``repository`` is the Raptor repository URN when the log does not carry it (it does not today)."""
-    events = read_run_events(log_root, run_name)
+    events = read_run_events(run_name)
     if isinstance(events, Err):
         return events
     records: dict = {}

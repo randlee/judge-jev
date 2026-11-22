@@ -9,12 +9,20 @@ unrendered sources. The scripts directory is put on ``sys.path``.
 from __future__ import annotations
 
 import atexit
+import os
+from unittest import mock
 from pathlib import Path
 import shutil
 from child_support import run_child
 from layout_support import installer
 import sys
 import tempfile
+
+_log_scratch = tempfile.TemporaryDirectory(prefix="judge-jev-native-logs-")
+_log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": _log_scratch.name})
+_log_environment.start()
+atexit.register(_log_scratch.cleanup)
+atexit.register(_log_environment.stop)
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "plugins" / "sc-judge-jev"

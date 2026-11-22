@@ -85,8 +85,7 @@ class JevPropagationTests(unittest.TestCase):
         line = {"item": {"id": "ex-42", "title": "", "text": "Sprint 2 copies the legacy runtime crates."},
                 "anchor": {"id": "ANC-001", "statement": STATEMENT},
                 "questions": [{"candidate_id": "cur", "questions": base.questions}]}
-        with mock.patch.object(jj, "check_log_events", return_value=jj.Ok(None)):
-            return jj.batch_jobs(line, 1, settings, base.roles).value[0], settings
+        return jj.batch_jobs(line, 1, settings, base.roles).value[0], settings
 
     def run_job(self, transport_result):
         job, settings = self.job()
@@ -194,7 +193,7 @@ class JevPropagationTests(unittest.TestCase):
         return code, json.loads(buf.getvalue())
 
     def test_main_emits_an_err_as_the_envelope_and_exits_2(self):
-        code, out = self.run_main(["batch", "--input", "/nonexistent/in.jsonl", "--run-dir", "/nonexistent/runs"])
+        code, out = self.run_main(["batch", "--input", "/nonexistent/in.jsonl"])
         self.assertEqual(code, 2)
         self.assertEqual(set(out), {"success", "data", "error"})
         self.assertEqual((out["success"], out["error"]["code"]), (False, "INPUT.MISSING"))

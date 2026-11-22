@@ -75,7 +75,7 @@ class NonConsecutiveRanks(RunCase):
         tree = jev_graph.load_tree(str(path)).value
         run = {"name": "q1", "tree_sha256": result["tree"]["sha256"], "record_id": record_id, "repository": REPOSITORY}
         built = jev_runs.run_triples(tree, run, pumped, result)
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository=REPOSITORY)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY)
         self.assertIsInstance(rebuilt, jj.Ok, rebuilt)
         self.assertEqual(built, rebuilt.value)
         store = ox.Store()

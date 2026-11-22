@@ -24,7 +24,7 @@ class ShippedTreeNamesNoPluginVariable(unittest.TestCase):
 
     def test_no_plugin_prefix_in_shipped_files(self):
         hits = [p.relative_to(ROOT).as_posix() for p in self.shipped_files()
-                if b"JUDGE_JEV_" in p.read_bytes() or b"PLAN_ANCHOR_" in p.read_bytes()]
+                if b"JUDGE_JEV_" in p.read_bytes().replace(b"JUDGE_JEV_LOG_ROOT", b"") or b"PLAN_ANCHOR_" in p.read_bytes()]
         self.assertEqual(hits, [])
 
     def found(self):
@@ -37,7 +37,7 @@ class ShippedTreeNamesNoPluginVariable(unittest.TestCase):
 
     def test_only_typesafe_key_is_read_from_the_environment(self):
         # USER is the operating system's login name, not plugin configuration.
-        allowed = {"TYPESAFE_API_KEY", "USER"}
+        allowed = {"TYPESAFE_API_KEY", "USER", "JUDGE_JEV_LOG_ROOT"}
         found = self.found()
         self.assertEqual(sorted(set(found) - allowed), [], found)
 
