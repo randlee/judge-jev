@@ -28,6 +28,13 @@ class LiveRunner(unittest.TestCase):
         self.assertFalse(accepts({}))
 
     def test_runner_separates_environment_and_keychain_and_records_timeout(self):
+        for output, code, outcome in ((json.dumps({'ok': False, 'error': {'id': 'secrets.keyring_timeout'}}), 0, 'secrets.keyring_timeout'),
+                                      (json.dumps({'ok': False, 'error': {'id': 'secrets.keyring_read'}}), 1, 'secrets.keyring_read'),
+                                      ('', 1, 'invalid result')):
+            with self.subTest(outcome=outcome):
+                self.check_runner_keychain(output, code, outcome)
+
+    def check_runner_keychain(self, probe_output, expected_exit, expected_outcome):
         runner = load_runner()
         calls = []
         def child(argv, **kwargs):
@@ -39,7 +46,7 @@ class LiveRunner(unittest.TestCase):
                 out = '\n'.join(json.dumps({'ok': not invalid, 'error': {'code': 'AUTH.CREDENTIALS'} if invalid else None}) for _ in range(3))
                 code = 2 if invalid else 0
             elif '-c' in argv and 'sc_agent.' in argv[2]:
-                out, code = json.dumps({'ok': False, 'error': {'id': 'secrets.keyring_timeout'}}), 0
+                out, code = probe_output, 0
             else:
                 out, code = '', 0
             return subprocess.CompletedProcess(argv, code, out, '')
@@ -51,10 +58,11 @@ class LiveRunner(unittest.TestCase):
                     '--key-variable', 'TEST_KEY', '--results', str(results)]
             with mock.patch.object(sys, 'argv', argv), mock.patch.object(runner.subprocess, 'run', side_effect=child), \
                     mock.patch.dict(os.environ, {'OTHER_API_KEY': 'unrelated', 'SC_AGENT_TEST_TRAP_PLATFORM_KEYRING': '1'}, clear=True):
-                self.assertEqual(runner.main(), 0)
+                self.assertEqual(runner.main(), expected_exit)
             report = json.loads(results.read_text())
             keychain = [row for row in report if row['case'].startswith('keychain-')]
-            self.assertEqual([row['keychain_outcome'] for row in keychain], ['secrets.keyring_timeout'] * 2)
+            self.assertEqual([row['keychain_outcome'] for row in keychain], [expected_outcome] * 2)
+            self.assertEqual([row['passed'] for row in keychain], [expected_exit == 0] * 2)
             probes = [env for argv, env in calls if '-c' in argv and 'sc_agent.' in argv[2]]
             self.assertEqual(len(probes), 2)
             self.assertTrue(all('TEST_KEY' not in env and 'OTHER_API_KEY' not in env
