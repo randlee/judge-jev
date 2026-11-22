@@ -212,10 +212,11 @@ class WaveReasons(QualityCase):
         answers = {"*": tree_answers("quality-req.json")}
         logs = []
         for name in ("a", "b"):
-            with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
+            with env(JUDGE_JEV_LOG_ROOT=str(self.d / name)), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
                 code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", write(self.d, "answers.json", answers)])
             self.assertEqual(code, 0, out)
             logs.append([e["fields"]["request"] for e in read_log(self.d / name, action="request")])
+            self.assertTrue(logs[-1], "quality log must contain requests before comparing them")
         self.assertEqual(logs[0], logs[1])
 
     def test_the_log_holds_the_wave_with_its_request_answers_reason_verdict_tree_id_and_digest(self):

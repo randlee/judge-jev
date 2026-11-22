@@ -256,9 +256,12 @@ class RedactionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             src = write(d, "in.jsonl", jsonl([request_line(text="token ts-secret-123456 in the item")]))
             fixture = write(d, "answers.json", {"*": plan_answers()})
-            with env(TYPESAFE_API_KEY="ts-secret-123456"):
+            log_root = Path(d) / "logs"
+            with env(TYPESAFE_API_KEY="ts-secret-123456", JUDGE_JEV_LOG_ROOT=str(log_root)):
                 code, out = run_cli(["batch", "--input", src, "--run-name", "r1", "--answers-file", fixture])
-            log = json.dumps(read_log(Path(d) / "runs"), ensure_ascii=False)
+            events = read_log(log_root)
+            self.assertTrue(events, "batch log must contain events before checking redaction")
+            log = json.dumps(events, ensure_ascii=False)
         self.assertEqual(code, 0, out)
         self.assertNotIn("ts-secret-123456", json.dumps(out))
         self.assertNotIn("ts-secret-123456", log)
