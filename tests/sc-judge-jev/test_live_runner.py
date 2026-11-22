@@ -50,14 +50,15 @@ class LiveRunner(unittest.TestCase):
             argv = ['integration.py', '--venv', str(root / 'venv'), '--env-file', str(credentials),
                     '--key-variable', 'TEST_KEY', '--results', str(results)]
             with mock.patch.object(sys, 'argv', argv), mock.patch.object(runner.subprocess, 'run', side_effect=child), \
-                    mock.patch.dict(os.environ, {'OTHER_API_KEY': 'unrelated'}, clear=True):
+                    mock.patch.dict(os.environ, {'OTHER_API_KEY': 'unrelated', 'SC_AGENT_TEST_TRAP_PLATFORM_KEYRING': '1'}, clear=True):
                 self.assertEqual(runner.main(), 0)
             report = json.loads(results.read_text())
             keychain = [row for row in report if row['case'].startswith('keychain-')]
             self.assertEqual([row['keychain_outcome'] for row in keychain], ['secrets.keyring_timeout'] * 2)
             probes = [env for argv, env in calls if '-c' in argv and 'sc_agent.' in argv[2]]
             self.assertEqual(len(probes), 2)
-            self.assertTrue(all('TEST_KEY' not in env and 'OTHER_API_KEY' not in env for env in probes))
+            self.assertTrue(all('TEST_KEY' not in env and 'OTHER_API_KEY' not in env
+                                and 'SC_AGENT_TEST_TRAP_PLATFORM_KEYRING' not in env for env in probes))
             self.assertFalse(credentials.exists())
             self.assertNotIn('controlled-secret', results.read_text())
 

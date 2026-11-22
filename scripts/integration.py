@@ -31,7 +31,8 @@ def main():
             raise ValueError('TypeSafe key is required')
         python = str(args.venv.resolve() / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python'))
         env = {k: v for k, v in os.environ.items()
-               if not k.endswith('_API_KEY') and k != args.key_variable and not k.startswith('SC_AGENT__')}
+               if not k.endswith('_API_KEY') and k not in (args.key_variable, 'SC_AGENT_TEST_TRAP_PLATFORM_KEYRING')
+               and not k.startswith('SC_AGENT__')}
         env.update(SC_PROJECT='judge-jev-integration', JUDGE_JEV_REQUIRE_SITR='1',
                    PATH=str(Path(python).parent) + os.pathsep + env.get('PATH', ''))
         cases = []
