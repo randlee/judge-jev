@@ -9,6 +9,7 @@ unrendered sources. The scripts directory is put on ``sys.path``.
 from __future__ import annotations
 
 import atexit
+import json
 import os
 from unittest import mock
 from pathlib import Path
@@ -72,34 +73,13 @@ if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 
-def _plain(value):
-    """An sc-observability stored value as plain JSON data; the binding's own ``sc_observability.*`` fields dropped."""
-    if hasattr(value, "items"):
-        return {k: _plain(v) for k, v in value.items() if not k.startswith("sc_observability.")}
-    if isinstance(value, (tuple, list)):
-        return [_plain(v) for v in value]
-    if getattr(value, "kind", None) == "null":
-        return None
-    if hasattr(value, "kind") and hasattr(value, "value"):
-        return _plain(value.value)
-    return value
-
-
 def read_log(log_root, action=None):
-    """The run log's events, oldest first, read back through sc-observability's own query API (never by parsing the
-    file): [{"action", "correlation_id", "fields"}]."""
-    import sc_observability as sco
-    created = sco.create_logger(sco.LoggerConfig(service="judge-jev", log_root=str(log_root)))
-    if isinstance(created, sco.Err):
-        raise AssertionError(f"could not open the log under {log_root}: {created.error}")
-    logger = created.value
-    try:
-        got = logger.query(sco.LogQuery(service="judge-jev", action=action, limit=1000))
-    finally:
-        logger.shutdown()
-    if isinstance(got, sco.Err):
-        raise AssertionError(f"log query failed: {got.error}")
-    return [{"action": e.action, "correlation_id": e.correlation_id, "fields": _plain(e.fields)} for e in got.value.events]
+    """Read the test's explicit native JSONL file without creating a second Logger."""
+    path = Path(log_root) / "logs/judge-jev.log.jsonl"
+    if not path.exists():
+        return []
+    events = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    return [event for event in events if event["service"] == "judge-jev" and (action is None or event["action"] == action)]
 
 
 def log_lines(log_root, extra_keys=("run",)):

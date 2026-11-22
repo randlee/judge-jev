@@ -95,7 +95,7 @@ class RunCase(QualityCase):
         result, lines, run = self.run_quality(flag, record_id, answers)
         tree, tree_quads = tree_fixture(kind)
         built = jev_runs.run_triples(tree, run, lines, result)
-        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY, log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertIsInstance(rebuilt, jj.Ok, rebuilt)
         self.assertTrue(built)
         self.assertEqual(built, rebuilt.value)
@@ -163,7 +163,7 @@ class AdrRun(RunCase):
     def test_a_rebuild_without_the_repository_uses_the_unknown_repository(self):
         _iri, _store, _result = self.check_projection("adr", "--adr", "ADR-T-0001", {"ADR-T-0001/wave-1": tree_answers("quality-adr.json")})
         tree, _ = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log("q1", tree)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         records = [q.object.value for q in rebuilt.value if q.predicate == jn("record")]
         self.assertEqual(records, ["urn:raptor:repo:unknown#ADR-T-0001"])
 
@@ -306,7 +306,7 @@ class RenamedAdrRun(RunCase):
             tree = loaded(renamed, scratch)
         result, lines, run = self.run_quality("--adr", "ADR-T-0001", {"ADR-T-0001/wave-1": tree_answers("quality-adr.json", alternatives="none")})
         built = jev_runs.run_triples(tree, run, lines, result)
-        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY, log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertEqual(rebuilt.value, built)
         store = ox.Store()
         store.extend(list(tree.store) + built)

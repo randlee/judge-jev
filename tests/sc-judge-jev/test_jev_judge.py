@@ -57,6 +57,7 @@ def run_cli(argv):
     """Run main() in-process; returns (exit code, parsed JSON or raw text)."""
     buf = io.StringIO()
     with contextlib.ExitStack() as controlled:
+        controlled.enter_context(mock.patch.object(jj.decidr_client, "_logger_handle", None))
         api = sys.modules.get("sc_agent")
         native = getattr(api, "_native", None)
         if native is not None:

@@ -37,9 +37,6 @@ from the working directory, nearest first, and stop before the home directory.
     determinable home directory only the machine-wide directories are known
     to be global, and they are still refused.
 
-  - ``central_log_root()``: ``~/.sc-agent``, or the test-only
-    ``JUDGE_JEV_LOG_ROOT`` override. Runs share the native Logger's fixed file.
-
 No lookup raises because the home directory is unknown.
 
 Standard library only; importing it has no side effects.
@@ -217,8 +214,3 @@ def lock_names(root: Path, script: Path) -> Tuple[bool, str]:
     if key not in files:
         return False, f"{lock} does not list {key}: the copy was not written by the judge-jev installer"
     return True, f"{lock} lists {key}"
-
-
-def central_log_root() -> Path:
-    """The native Logger's fixed root, with its test override."""
-    return Path(os.environ.get("JUDGE_JEV_LOG_ROOT") or Path.home() / ".sc-agent")

@@ -934,7 +934,7 @@ def open_run_log() -> Result[Any, ClientError]:
     loaded = decidr_client.load_wheel()
     if isinstance(loaded, dict):
         return Err(decidr_client.wheel_error(loaded["error"]))
-    created = loaded.logger(LOG_SERVICE)
+    created = decidr_client._logger(loaded.logger, None)
     return Ok(created["value"]) if created["ok"] else Err(decidr_client.wheel_error(created["error"]))
 
 
@@ -1556,7 +1556,7 @@ def cmd_quality(args) -> Result[Any, ClientError]:
         return failed
 
     return Ok({"success": True, "error": None, "data": {
-        "dry_run": False, "results": results, "log": {"run": run_name, "log_root": str(judge_jev_paths.central_log_root())}}})
+        "dry_run": False, "results": results, "log": {"run": run_name}}})
 
 
 def answering_models(results: list) -> list:
@@ -1904,7 +1904,7 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
         "answers_compared": len(answers), "answers_material": sum(1 for a in answers if a["material"]), "answers": answers,
         "arms": {arm: {"verdict": walks[arm][0], "path": walks[arm][1], "run": runs[arm],
                        "definitions": jev_definitions.log_entries(prepared[arm][4])} for arm in COMPARE_ARMS},
-        "log": {"run": run_name, "log_root": str(judge_jev_paths.central_log_root())}}})
+        "log": {"run": run_name}}})
 
 
 # --------------------------------------------------------------------------- #
@@ -2266,7 +2266,7 @@ def cmd_drift(args) -> Result[Any, ClientError]:
 
     return Ok({"success": True, "error": None, "data": {"dry_run": False, **summary, "records": records,
                                                          "controls": control_results, "failed_requests": failed,
-                                                         "log": {"run": run_name, "log_root": str(judge_jev_paths.central_log_root())}}})
+                                                         "log": {"run": run_name}}})
 
 
 # --------------------------------------------------------------------------- #

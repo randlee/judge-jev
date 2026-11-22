@@ -121,6 +121,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
         options = dict(model="jev", project="judge-jev",                        abort_on=frozenset(), category_codes={}, cancel=cancel,
                        general_log=None)
         with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+            self.assertIs(jev_judge.open_run_log().value, jev_judge.open_run_log().value)
             self.assertTrue(decidr_client.call_result("one", **options)["ok"])
             self.assertTrue(decidr_client.call_batch_results(["one", "two"], **options)["ok"])
         for operation in (wheel.send, wheel.send_batch):
@@ -133,6 +134,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
             self.assertNotIn("provider", args)
             self.assertIs(args["general_log"], wheel.logger.return_value["value"])
         wheel.category.assert_not_called()
+        wheel.logger.assert_called_once_with("judge-jev")
 
     def test_real_wheel_prefers_environment_then_dotenv_with_keyring_trapped(self):
         try:

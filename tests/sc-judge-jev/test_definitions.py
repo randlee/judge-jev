@@ -282,7 +282,7 @@ class Composition(DefinitionCase):
         code, out = self.quality("--adr", "ADR-T-0001", "--definitions", path, answers={"*": tree_answers("quality-adr.json")})
         self.assertEqual(code, 0, out)
         tree, _quads = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test")
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test", log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertIsInstance(rebuilt, Ok, rebuilt)
         linked = sorted(q.object.value for q in rebuilt.value if q.predicate.value.endswith("#carriedDefinition"))
         self.assertEqual(linked, [iri("a"), iri("b")])
@@ -293,7 +293,7 @@ class Composition(DefinitionCase):
         code, out = self.quality("--adr", "ADR-T-0001", answers={"*": tree_answers("quality-adr.json")})
         self.assertEqual(code, 0, out)
         tree, _quads = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test")
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test", log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertFalse([q for q in rebuilt.value if q.predicate.value.endswith("#carriedDefinition")])
 
     def test_the_shipped_question_wording_is_unchanged(self):
