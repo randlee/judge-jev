@@ -202,7 +202,7 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
     import pyoxigraph as ox
     # Durable graph projection reads the shared JSON record form, including historical logs.
     import decidr_client
-    result_lines = decidr_client._json_answers(result_lines)
+    result_lines = decidr_client.json_answers(result_lines)
     quality = _quality_json(tree)
     iris = _iris(tree, quality)
     ranks = _rule_ranks(tree)

@@ -282,14 +282,14 @@ class AnswersEnvelope(unittest.TestCase):
         job = jj.BatchJob("item", None, "candidate", 2, "request", {}, {"answer": {"type": "noul"}}, {}, "directive")
         keys = ("delegated/r2", "delegated", "candidate", "*")
         with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys:
-            result = jj.decidr_client._fixture_attempt(job,
+            result = jj.decidr_client.fixture_attempt(job,
                 {"delegated/r2": {"answer": {"type": "noul", "noul": 0.75}}}, 1)
         self.assertEqual(result["value"]["answers"]["answer"].noul, 0.75)
         get_keys.assert_called_once_with(job)
         missing = jj.ClientError("TEST.MISSING", "shared helper result")
         with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys, \
                 mock.patch.object(jj.decidr_client, "_fixture_missing", return_value=missing) as get_missing:
-            result = jj.decidr_client._fixture_attempt(job, {}, 1)
+            result = jj.decidr_client.fixture_attempt(job, {}, 1)
         self.assertFalse(result["ok"])
         self.assertIs(result["error"], missing)
         get_keys.assert_called_once_with(job)

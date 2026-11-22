@@ -38,7 +38,7 @@ def plan_answers(rel="yes", comp="yes", conf="no", p=0.9, rel_p=None, comp_p=Non
 
 def typed_answers(answers):
     """Use the shared fixture answer form without importing the optional wheel."""
-    return {key: jj.decidr_client._typed_answer(value) for key, value in answers.items()}
+    return {key: jj.decidr_client.typed_answer(value) for key, value in answers.items()}
 
 
 def dev_answers(rel="yes", comp="yes", conf="no", evid="yes", p=0.9, evid_p=None):
