@@ -97,6 +97,19 @@ class DeepInputIsATypedError(unittest.TestCase):
 
 
 
+    def test_validate_requests_and_batch_dry_run_refuse_a_deep_request_before_any_call(self):
+        # Past JSON_MAX_DEPTH the line is INPUT.MALFORMED at parse, on every Python.
+        for depth, expected in ((600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
+            src = self.request_with(nested(depth))
+            with self.subTest(command="validate", depth=depth):
+                code, out = validate("--requests", src)
+                self.assertEqual((code, out["error"]["code"]), (2, expected), out)
+                self.assertIn("maximum container depth is 32" if expected == "VALIDATION.INPUT" else str(jj.JSON_MAX_DEPTH),
+                              out["error"]["message"])
+            with self.subTest(command="batch", depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
+                code, out = run_cli(["batch", "--input", src, "--dry-run"])
+                self.assertEqual((code, out["error"]["code"]), (2, expected), out)
+
     def test_a_record_diagnostic_with_a_deep_field_still_prints_json(self):
         # 450 reaches emit with an issue nested past EMIT_MAX_DEPTH; 600 and 900 are past JSON_MAX_DEPTH, refused at parse.
         for depth, expected in ((300, "RECORD.DIAGNOSTICS"), (450, "RECORD.DIAGNOSTICS"), (600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
@@ -108,6 +121,16 @@ class DeepInputIsATypedError(unittest.TestCase):
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
 
 
+
+    def test_a_deep_record_field_is_a_typed_size_refusal(self):
+        for depth in (300, 900):
+            index = copy.deepcopy(tq.INDEX)
+            index["decisions"][0]["x"] = nested(depth)
+            with self.subTest(depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
+                code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
+                self.assertIsInstance(out, dict, out)
+                self.assertEqual(code, 2)
+                self.assertNotEqual(out["error"]["code"], "SCRIPT.INTERNAL")
 
 
 def counting_pump(sent):
