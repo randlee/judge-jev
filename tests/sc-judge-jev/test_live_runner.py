@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import types
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +23,17 @@ def load_runner():
 
 
 class LiveRunner(unittest.TestCase):
+    def test_batch_probe_reads_nested_result(self):
+        runner = load_runner()
+        for result, expected in (({'ok': True}, True),
+                                 ({'ok': False, 'error': {'id': 'secrets.keyring_timeout'}}, True),
+                                 ({'ok': False, 'error': {'id': 'decision.api_status'}}, False)):
+            fake = types.SimpleNamespace(send_batch=lambda *args, **kwargs: {'ok': True, 'value': [{'index': 0, 'result': result}]})
+            output = io.StringIO()
+            with mock.patch.dict(sys.modules, {'sc_agent': fake}), contextlib.redirect_stdout(output):
+                exec(runner.keychain_probe('send_batch'), {})
+            self.assertEqual(runner.accepted_keychain(json.loads(output.getvalue())), expected)
+
     def test_only_success_or_typed_timeout_are_accepted(self):
         accepts = load_runner().accepted_keychain
         self.assertTrue(accepts({'ok': True, 'value': {}}))
