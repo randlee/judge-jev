@@ -11,7 +11,6 @@ import contextlib
 import importlib.util
 import io
 import os
-import runpy
 from pathlib import Path
 import shutil
 import subprocess
@@ -127,41 +126,66 @@ class GenInstallData(unittest.TestCase):
 
 
 class InstallMatchedWheels(unittest.TestCase):
-    def test_each_wheel_uses_its_own_runtime_pin(self):
-        source = '#   "sc-decidr==7.1.2",\n#   "sitr==8.3.4",\n'
-        with mock.patch.dict(os.environ, {"RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"}), \
-                mock.patch.object(Path, "read_text", return_value=source), \
-                mock.patch.object(subprocess, "run") as run:
-            runpy.run_path(str(SCRIPTS_DIR / "install_sc_decidr_ci.py"))
-        commands = [call.args[0] for call in run.call_args_list]
-        self.assertEqual(commands, [
-            [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-input",
-             "--only-binary=:all:", "--index-url", "https://pypi.org/simple", "sc-decidr==7.1.2"],
-            [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--no-input",
-             "--only-binary=:all:", "--index-url", "https://pypi.org/simple", "sitr==8.3.4"],
-        ])
-        with self.subTest(unsupported_runner=True), \
-                mock.patch.dict(os.environ, {"RUNNER_OS": "Plan9", "RUNNER_ARCH": "RISC-V"}), \
-                mock.patch.object(Path, "read_text", return_value=source):
-            with self.assertRaisesRegex(SystemExit, "No sc-decidr wheel for"):
-                runpy.run_path(str(SCRIPTS_DIR / "install_sc_decidr_ci.py"))
+    def setUp(self):
+        self.ci = load("install_sc_decidr_ci")
+        self.source = '#   "sc-decidr==7.1.2",\n'
+        self.env = mock.patch.dict(os.environ, {"RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"})
+        self.env.start()
+        self.addCleanup(self.env.stop)
 
-    def test_each_download_or_install_timeout_exits_with_message(self):
-        source = '#   "sc-decidr==7.1.2",\n#   "sitr==8.3.4",\n'
-        for failing_call in range(2):
-            errors = [None] * failing_call + [subprocess.TimeoutExpired(["child"], 300)]
-            with self.subTest(failing_call=failing_call), \
-                    mock.patch.dict(os.environ, {"RUNNER_OS": "Linux", "RUNNER_ARCH": "X64"}), \
-                    mock.patch.object(Path, "read_text", return_value=source), \
-                    mock.patch.object(subprocess, "run", side_effect=errors) as run, \
-                    contextlib.redirect_stderr(io.StringIO()) as stderr:
-                with self.assertRaises(SystemExit) as caught:
-                    runpy.run_path(str(SCRIPTS_DIR / "install_sc_decidr_ci.py"))
-            self.assertEqual(caught.exception.code, 2)
-            self.assertIn("install_sc_decidr_ci: subprocess timed out after 300s", stderr.getvalue())
-            for call in run.call_args_list:
-                self.assertIs(call.kwargs["stdin"], subprocess.DEVNULL)
-                self.assertEqual(call.kwargs["timeout"], 300)
+    def test_published_wheel_uses_runtime_pin(self):
+        with mock.patch.object(Path, "read_text", return_value=self.source), \
+                mock.patch.object(self.ci, "urlopen"), mock.patch.object(self.ci, "run_child") as run:
+            self.ci.main()
+        self.assertEqual(run.call_args.args[0][-3:], ["--index-url", "https://pypi.org/simple", "sc-decidr==7.1.2"])
+
+    def test_prerelease_checksum_is_checked_before_install(self):
+        import hashlib
+        from urllib.error import HTTPError
+        payload = b"verified wheel"
+        asset = "sc_decidr-7.1.2-cp311-abi3-manylinux_2_28_x86_64.whl"
+        original_read = Path.read_text
+        def read(path, *args, **kwargs):
+            return self.source if path.name == "jev_judge.py.j2" else original_read(path, *args, **kwargs)
+        def child(argv):
+            if argv[0] == "gh":
+                root = Path(argv[-1])
+                (root / asset).write_bytes(payload)
+                (root / "checksums.txt").write_text(f"{hashlib.sha256(payload).hexdigest()}  {asset}\n")
+        with mock.patch.object(Path, "read_text", read), \
+                mock.patch.object(self.ci, "urlopen", side_effect=HTTPError("url", 404, "missing", {}, None)), \
+                mock.patch.object(self.ci, "run_child", side_effect=child) as run:
+            self.ci.main()
+        self.assertEqual(run.call_args_list[0].args[0][3], "prerelease/v7.1.2")
+        self.assertIn("--no-index", run.call_args_list[1].args[0])
+
+    def test_bad_checksum_is_refused(self):
+        from urllib.error import HTTPError
+        original_read = Path.read_text
+        def read(path, *args, **kwargs):
+            return self.source if path.name == "jev_judge.py.j2" else original_read(path, *args, **kwargs)
+        def child(argv):
+            root = Path(argv[-1])
+            (root / "checksums.txt").write_text("0" * 64 + "  sc_decidr-7.1.2-cp311-abi3-manylinux_2_28_x86_64.whl\n")
+            (root / "sc_decidr-7.1.2-cp311-abi3-manylinux_2_28_x86_64.whl").write_bytes(b"different")
+        with mock.patch.object(Path, "read_text", read), \
+                mock.patch.object(self.ci, "urlopen", side_effect=HTTPError("url", 404, "missing", {}, None)), \
+                mock.patch.object(self.ci, "run_child", side_effect=child) as run:
+            with self.assertRaisesRegex(SystemExit, "Checksum verification failed"):
+                self.ci.main()
+        self.assertEqual(run.call_count, 1)
+
+    def test_unsupported_runner_and_timeout_fail(self):
+        with mock.patch.dict(os.environ, {"RUNNER_OS": "Plan9", "RUNNER_ARCH": "RISC-V"}), \
+                mock.patch.object(Path, "read_text", return_value=self.source):
+            with self.assertRaisesRegex(SystemExit, "No sc-decidr wheel for"):
+                self.ci.main()
+        with mock.patch.object(subprocess, "run", side_effect=subprocess.TimeoutExpired(["child"], 300)), \
+                contextlib.redirect_stderr(io.StringIO()) as stderr:
+            with self.assertRaises(SystemExit) as caught:
+                self.ci.run_child(["child"])
+        self.assertEqual(caught.exception.code, 2)
+        self.assertIn("timed out after 300s", stderr.getvalue())
 
 
 class InstallScComposeCi(unittest.TestCase):

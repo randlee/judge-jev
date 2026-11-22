@@ -199,7 +199,7 @@ class Composition(DefinitionCase):
                            ("only at a location", definition("l", "x", "t", "docs/r.md", (ADR, "docs/r.md")))):
             with self.subTest(name):
                 request, result = self.adr_state("--definitions", self.definitions(text))
-                self.assertEqual(jj.decidr_client._encode_request(request).encode("utf-8"), jj.decidr_client._encode_request(plain).encode("utf-8"))
+                self.assertEqual(json.dumps(request).encode("utf-8"), json.dumps(plain).encode("utf-8"))
                 self.assertNotIn("definitions", request["state"])
                 self.assertNotIn("definitions", result)
         self.assertNotIn("definitions", plain["state"])
@@ -282,7 +282,7 @@ class Composition(DefinitionCase):
         code, out = self.quality("--adr", "ADR-T-0001", "--definitions", path, answers={"*": tree_answers("quality-adr.json")})
         self.assertEqual(code, 0, out)
         tree, _quads = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository="urn:raptor:repo:test")
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test", log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertIsInstance(rebuilt, Ok, rebuilt)
         linked = sorted(q.object.value for q in rebuilt.value if q.predicate.value.endswith("#carriedDefinition"))
         self.assertEqual(linked, [iri("a"), iri("b")])
@@ -293,7 +293,7 @@ class Composition(DefinitionCase):
         code, out = self.quality("--adr", "ADR-T-0001", answers={"*": tree_answers("quality-adr.json")})
         self.assertEqual(code, 0, out)
         tree, _quads = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository="urn:raptor:repo:test")
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test", log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertFalse([q for q in rebuilt.value if q.predicate.value.endswith("#carriedDefinition")])
 
     def test_the_shipped_question_wording_is_unchanged(self):
@@ -323,8 +323,7 @@ class Compare(DefinitionCase):
     def compare(self, *argv, answers=None, run="c1"):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
         with env(), mock.patch.multiple(jj.decidr_client, call_result=never_called, call_batch_results=never_called):  # no real key, no real settings, no live Jev
-            return run_cli(["compare-definition", "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", run,
-                            *argv, *extra])
+            return run_cli(["compare-definition", "--index", self.index, "--run-name", run, *argv, *extra])
 
     def adr(self, *argv, **kw):
         return self.compare("--adr", "ADR-T-0001", *argv, **kw)

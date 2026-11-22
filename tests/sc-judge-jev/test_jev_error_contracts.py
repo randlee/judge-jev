@@ -18,28 +18,24 @@ class ConsumerErrorContracts(unittest.TestCase):
         log.event.return_value = jj.Ok(None)
 
         def batch_result(_requests, **kwargs):
-            kwargs["general_log"]({"action": "sc_decidr.error", "target": "sc_decidr",
-                                   "correlation_id": "request-1",
-                                   "fields": {"code": "DECIDR.OVERLOADED", "message": "busy"}})
+            self.assertIs(kwargs["general_log"], log)
             kwargs["on_result"](record)
             return {"ok": True, "value": [record], "position": None, "line": None, "attempts": None}
 
-        with mock.patch.object(jj, "check_log_events", return_value=jj.Ok(None)), \
-                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)) as log_line, \
+        with                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)) as log_line, \
                 mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result) as call:
             got = jj._live_batch_results([request_line()], settings, log, False)
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
                           got.value[0]["attempts"]), ("DECIDR.OVERLOADED", 3, []))
         log_line.assert_called_once_with(log, got.value[0], {})
-        log.event.assert_called_once_with("sc_decidr.error",
-                                          {"sc_agent_target": "sc_decidr", "code": "DECIDR.OVERLOADED", "message": "busy"},
-                                          correlation_id="request-1")
+        log.event.assert_not_called()  # Native general events are not forwarded through Python.
+
         self.assertNotIn("category_codes", call.call_args.kwargs)
-        self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
-        self.assertEqual(call.call_args.kwargs["agent_role"], "quality")
+        self.assertNotIn("project", call.call_args.kwargs)
+        self.assertNotIn("agent_role", call.call_args.kwargs)
         self.assertEqual(call.call_args.kwargs["timeout_secs"], 42.0)
         self.assertEqual(call.call_args.kwargs["workers"], 2)
-        self.assertTrue(call.call_args.kwargs["general_log"])
+        self.assertIs(call.call_args.kwargs["general_log"], log)
         self.assertTrue(call.call_args.kwargs["on_result"])
         for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
             self.assertNotIn(name, call.call_args.kwargs)
@@ -60,8 +56,7 @@ class ConsumerErrorContracts(unittest.TestCase):
             logged.append(line["model_answered"])
             return jj.Ok(None)
 
-        with mock.patch.object(jj, "check_log_events", return_value=jj.Ok(None)), \
-                mock.patch.object(jj, "log_result_line", side_effect=log_line), \
+        with                mock.patch.object(jj, "log_result_line", side_effect=log_line), \
                 mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result):
             got = jj._live_batch_results([request_line("one"), request_line("two")], settings, mock.Mock(), False)
         self.assertEqual(logged, ["second", "first"])

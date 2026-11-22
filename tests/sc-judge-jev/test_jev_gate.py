@@ -5,6 +5,8 @@ from child_support import run_child
 import sys
 import tempfile
 import unittest
+from unittest import mock
+import os
 
 from layout_support import SCRIPTS  # noqa: E402 - the scripts as installed
 
@@ -30,6 +32,9 @@ class GateCase(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
         self.d = Path(self.td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.addCleanup(self.td.cleanup)
 
     def write(self, name, results, success=True, error=None):

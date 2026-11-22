@@ -67,7 +67,7 @@ class Batched:
         d = tempfile.mkdtemp(dir=str(repo.root))
         src = write(d, "in.jsonl", jsonl([request_line()]))
         err = io.StringIO()
-        argv = ["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", str(repo.root), *extra]
+        argv = ["batch", "--input", src, "--repository-root", str(repo.root), *extra]
         with env(**(dict(KEY) if env_values is None else env_values)), \
                 mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=self.transport) as call, contextlib.redirect_stderr(err):
             self.code, self.out = run_cli(argv)
@@ -189,7 +189,7 @@ class LiveCallConsentTests(unittest.TestCase):
             src = write(d, "in.jsonl", jsonl([request_line()]))
             with env(**KEY), mock.patch.object(jj.decidr_client, "call_batch_results", t), \
                     mock.patch.object(settings_mod, "_git_toplevel", lambda start: None):
-                code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), "--repository-root", d])
+                code, out = run_cli(["batch", "--input", src, "--repository-root", d])
             self.assertEqual((code, out["error"]["code"], t.bodies), (2, "REPO.NOT_FOUND", []))
 
     def test_dry_run_and_fixture_answers_need_no_setting(self):
@@ -201,8 +201,7 @@ class LiveCallConsentTests(unittest.TestCase):
                 with self.subTest(extra=extra):
                     t = BatchTransport()
                     with env(), mock.patch.object(jj.decidr_client, "call_batch_results", t), mock.patch.dict(sys.modules, {"yaml": None}):
-                        code, out = run_cli(["batch", "--input", src, "--run-dir", str(Path(d) / "runs"), *extra,
-                                             "--repository-root", missing])
+                        code, out = run_cli(["batch", "--input", src, *extra, "--repository-root", missing])
                     self.assertEqual((code, t.bodies), (0, []), out)
 
 
