@@ -321,6 +321,9 @@ class AnswersEnvelope(unittest.TestCase):
         code_text = "J" * jj.FIXTURE_CODE_LIMIT
         code, out, sent = self.quality({"*": {"__error__": code_text}})
         self.assertEqual((code, out["error"]["code"], sent), (2, code_text, 1), out)
+        events = tq.read_log(self.d / "logs")
+        self.assertEqual([event["action"] for event in events], ["request", "answer", "result"])
+        self.assertEqual((events[-1]["fields"]["ok"], events[-1]["fields"]["error"]["code"]), (False, code_text))
 
 
 if __name__ == "__main__":

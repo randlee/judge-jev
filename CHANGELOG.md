@@ -5,9 +5,10 @@
 ## 0.6.0 — 2026-11-21
 
 - Remove `--run-dir`, the Python RunLog wrapper, and pre-send log-event size checks. Use one native Logger at `~/.sc-agent/logs/judge-jev.log.jsonl`; preserve `--run-name` on events.
-- Adopt sc-decidr 0.3.0's shared client, returned failures, native cancellation and indexed batch callbacks.
+- Adopt sc-decidr's shared client, returned failures, native cancellation and indexed batch callbacks; the runtime template holds the wheel pin.
 - Use the sitr API included in that wheel and remove the separate sitr dependency.
 - Remove the Python batch executor; keep shared fixture and record helpers in the generated client.
+- Add an unattended live integration runner for the migrated consumer, including real-provider, credential-failure, keychain and sitr checks.
 
 ## 0.5.2 — 2026-11-18
 
