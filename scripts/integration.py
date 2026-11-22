@@ -30,13 +30,15 @@ def main():
         if not secret:
             raise ValueError('TypeSafe key is required')
         python = str(args.venv.resolve() / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python'))
-        env = {k: v for k, v in os.environ.items() if not k.endswith('_API_KEY') and k != args.key_variable}
+        env = {k: v for k, v in os.environ.items()
+               if not k.endswith('_API_KEY') and k != args.key_variable and not k.startswith('SC_AGENT__')}
         env.update(SC_PROJECT='judge-jev-integration', JUDGE_JEV_REQUIRE_SITR='1',
                    PATH=str(Path(python).parent) + os.pathsep + env.get('PATH', ''))
         cases = []
         with tempfile.TemporaryDirectory(prefix='judge-jev-live-') as tmp:
             root = Path(tmp)
             env['JUDGE_JEV_LOG_ROOT'] = str(root / 'logs')
+            env['DECIDR_LOG_ROOT'] = str(root / 'logs')
             def run(name, command, *, key=secret, expected=0, check=None):
                 child_env = dict(env)
                 if key is not None:
