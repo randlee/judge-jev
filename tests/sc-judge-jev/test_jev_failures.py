@@ -28,7 +28,7 @@ class Interrupts(unittest.TestCase):
 
     def test_judge_input_interrupt_returns_canceled(self):
         with mock.patch.object(jj, "read_request_lines", side_effect=KeyboardInterrupt):
-            self.assert_canceled(run_cli(["batch", "--input", "input.jsonl", "--run-dir", "runs", "--dry-run"]))
+            self.assert_canceled(run_cli(["batch", "--input", "input.jsonl", "--dry-run"]))
 
     def test_settings_input_interrupt_returns_canceled(self):
         output = io.StringIO()
@@ -38,19 +38,19 @@ class Interrupts(unittest.TestCase):
         self.assertEqual((code, envelope["success"], envelope["data"], envelope["error"]["code"]),
                          (130, False, None, "CANCELED"))
 
-    def test_batch_interrupt_closes_owned_log_once(self):
+    def test_batch_interrupt_flushes_owned_logger_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = write(root, "input.jsonl", batch_helpers.jsonl(batch_helpers.BatchTests.LINES))
             answers = write(root, "answers.json", batch_helpers.BatchTests.FIXTURE)
             log = mock.Mock()
             with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)), \
-                    mock.patch.object(jj, "judge_batch", side_effect=KeyboardInterrupt):
-                self.assert_canceled(run_cli(["batch", "--input", source, "--run-dir", str(root / "logs"),
-                                               "--answers-file", answers]))
-            log.close.assert_called_once_with()
+                    mock.patch.object(jj, "judge_batch", side_effect=KeyboardInterrupt), \
+                    mock.patch("sc_agent.flush") as flushed:
+                self.assert_canceled(run_cli(["batch", "--input", source, "--answers-file", answers]))
+            flushed.assert_called_once_with(log)
 
-    def test_drift_interrupt_closes_owned_log_once(self):
+    def test_drift_interrupt_flushes_owned_logger_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             old = write(root, "old.json", OLD)
@@ -58,62 +58,53 @@ class Interrupts(unittest.TestCase):
             answers = write(root, "answers.json", {"*": {}})
             log = mock.Mock()
             with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)), \
-                    mock.patch.object(jj, "judge_batch", side_effect=KeyboardInterrupt):
-                self.assert_canceled(run_cli(["drift", "--old-index", old, "--new-index", new,
-                                               "--req", "REQ-T-0001", "--controls", "0",
-                                               "--run-dir", str(root / "logs"), "--answers-file", answers]))
-            log.close.assert_called_once_with()
+                    mock.patch.object(jj, "judge_batch", side_effect=KeyboardInterrupt), \
+                    mock.patch("sc_agent.flush") as flushed:
+                self.assert_canceled(run_cli(["drift", "--old-index", old, "--new-index", new, "--req", "REQ-T-0001", "--controls", "0", "--answers-file", answers]))
+            flushed.assert_called_once_with(log)
 
-    def test_quality_interrupt_closes_owned_log_once(self):
+    def test_quality_interrupt_flushes_owned_logger_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             index = write(root, "index.json", INDEX)
             answers = write(root, "answers.json", {"*": {}})
             log = mock.Mock()
             with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)), \
-                    mock.patch.object(jj, "walk_tree", side_effect=KeyboardInterrupt):
-                self.assert_canceled(run_cli(["quality", "--adr", "ADR-T-0001", "--index", index,
-                                               "--run-dir", str(root / "logs"), "--answers-file", answers]))
-            log.close.assert_called_once_with()
+                    mock.patch.object(jj, "walk_tree", side_effect=KeyboardInterrupt), \
+                    mock.patch("sc_agent.flush") as flushed:
+                self.assert_canceled(run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--answers-file", answers]))
+            flushed.assert_called_once_with(log)
 
-    def test_compare_interrupt_closes_each_open_arm_log_once(self):
+    def test_compare_interrupt_flushes_each_open_arm_logger_once(self):
         for interrupted_arm in (0, 1):
             with self.subTest(arm=interrupted_arm), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 index = write(root, "index.json", INDEX)
                 defs = write(root, "defs.ttl", ttl(definition("fast", "fast", "Under 5 s.", "docs/r.md", (ADR, None))))
                 answers = write(root, "answers.json", {"*": {}})
-                logs = [mock.Mock(), mock.Mock()]
-                for log in logs:
-                    log.close.return_value = jj.Ok(None)
+                log = mock.Mock()
                 walks = [jj.Ok(("yes", [], []))] * interrupted_arm + [KeyboardInterrupt()]
-                with mock.patch.object(jj, "open_run_log", side_effect=[jj.Ok(log) for log in logs]), \
-                        mock.patch.object(jj, "walk_tree", side_effect=walks):
-                    self.assert_canceled(run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", index,
-                                                   "--definitions", defs, "--definition", iri("fast"),
-                                                   "--run-dir", str(root / "logs"), "--answers-file", answers]))
-                for log in logs[:interrupted_arm + 1]:
-                    log.close.assert_called_once_with()
-                if interrupted_arm == 0:
-                    logs[1].close.assert_not_called()
+                with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)) as opened, \
+                        mock.patch.object(jj, "walk_tree", side_effect=walks), \
+                        mock.patch("sc_agent.flush") as flushed:
+                    self.assert_canceled(run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", index, "--definitions", defs, "--definition", iri("fast"), "--answers-file", answers]))
+                self.assertEqual(flushed.call_args_list, [mock.call(log)] * (interrupted_arm + 1))
+                opened.assert_called_once_with()
 
-    def test_compare_final_event_interrupt_closes_final_log_once(self):
+    def test_compare_final_event_interrupt_flushes_final_logger_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             index = write(root, "index.json", INDEX)
             defs = write(root, "defs.ttl", ttl(definition("fast", "fast", "Under 5 s.", "docs/r.md", (ADR, None))))
             answers = write(root, "answers.json", {"*": {}})
-            logs = [mock.Mock() for _ in range(3)]
-            for log in logs:
-                log.close.return_value = jj.Ok(None)
-            logs[2].event.side_effect = KeyboardInterrupt
-            with mock.patch.object(jj, "open_run_log", side_effect=[jj.Ok(log) for log in logs]), \
-                    mock.patch.object(jj, "walk_tree", return_value=jj.Ok(("yes", [], []))):
-                self.assert_canceled(run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", index,
-                                               "--definitions", defs, "--definition", iri("fast"),
-                                               "--run-dir", str(root / "logs"), "--answers-file", answers]))
-            for log in logs:
-                log.close.assert_called_once_with()
+            log = mock.Mock()
+            with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(log)) as opened, \
+                    mock.patch.object(jj, "walk_tree", return_value=jj.Ok(("yes", [], []))), \
+                    mock.patch("sc_agent.log", side_effect=KeyboardInterrupt), \
+                    mock.patch("sc_agent.flush") as flushed:
+                self.assert_canceled(run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", index, "--definitions", defs, "--definition", iri("fast"), "--answers-file", answers]))
+            self.assertEqual(flushed.call_args_list, [mock.call(log)] * 3)
+            opened.assert_called_once_with()
 
 
 if __name__ == "__main__":

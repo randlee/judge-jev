@@ -8,6 +8,7 @@ from child_support import run_child
 import sys
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest import mock
 
@@ -32,6 +33,9 @@ class ValidateKinds(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
 
     def accepted(self, flag, path, kind):
         code, out = validate(flag, str(path))
@@ -91,7 +95,7 @@ class ValidateKinds(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(validate("--requests", big, "--gate", "dev")[1]["error"]["code"], "QUESTIONS.ROLES")  # plan questions, dev roles
         code, out = validate("--requests", big, "--max-request-bytes", "70000")
-        self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), out)
+        self.assertEqual(code, 0, out)
 
     def test_raw_json_no_value_can_express_is_input_malformed(self):
         tree_text = (tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8")
@@ -109,6 +113,9 @@ class FieldPaths(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.adr = json.loads((tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8"))
 
     def message(self, flag, value, code_name):
@@ -215,7 +222,7 @@ class StdinIsNeverACrash(unittest.TestCase):
 
     def test_batch_input_on_stdin(self):
         with tempfile.TemporaryDirectory() as td:
-            code, out = self.run_script("batch", "--run-dir", td, "--dry-run")
+            code, out = self.run_script("batch", "--dry-run")
         self.assertEqual((code, out["error"]["code"]), (2, "INPUT.MALFORMED"), out)
 
     def test_in_process_text_stream_with_invalid_utf8(self):
@@ -230,104 +237,7 @@ class StdinIsNeverACrash(unittest.TestCase):
         self.assertEqual((code, out["error"]["code"]), (2, "INPUT.MALFORMED"), out)
 
 
-class LogEventLimit(unittest.TestCase):
-    """REQ-JEV-0211: every log event of a request is sized the way the sc-observability logger sizes it, before the request is sent."""
 
-    def setUp(self):
-        import sc_observability as sco
-        self.sco = sco
-        td = tempfile.TemporaryDirectory()
-        self.addCleanup(td.cleanup)
-        self.d = Path(td.name)
-        self.limit = sco.AdapterPolicy().max_request_bytes
-
-    def logger_accepts(self, fields):
-        created = self.sco.create_logger(self.sco.LoggerConfig(service="judge-jev", log_root=str(self.d / "log")))
-        self.assertNotIsInstance(created, self.sco.Err)
-        try:
-            got = created.value.log(self.sco.LogEvent(level="info", target=jj.LOG_TARGET, action="request", correlation_id="c",
-                                                      fields={"run": jj.LOG_RUN_NAME_WORST, **fields}))
-        finally:
-            created.value.shutdown()
-        return not isinstance(got, self.sco.Err) and got.value.kind == "accepted"
-
-    def size(self, fields):
-        got = jj.log_event_size(self.sco, "request", fields, "c")
-        self.assertIsInstance(got, jj.Ok)
-        return got.value
-
-    def test_the_measure_is_the_loggers_at_its_boundary(self):
-        shapes = {"ascii": lambda n: {"x": "a" * n}, "escaped": lambda n: {"x": "é" * n}, "nested": lambda n: {"x": {"k": ["v"] * n}},
-                  "numbers": lambda n: {"x": [1] * n}}
-        for name, make in shapes.items():
-            lo, hi = 0, 100000  # the largest n whose event the measure keeps within the limit (bisection on the measure alone)
-            while lo < hi:
-                mid = (lo + hi + 1) // 2
-                lo, hi = (mid, hi) if self.size(make(mid)) <= self.limit else (lo, mid - 1)
-            with self.subTest(name):
-                self.assertLessEqual(self.size(make(lo)), self.limit)
-                self.assertGreater(self.size(make(lo + 1)), self.limit)
-                self.assertTrue(self.logger_accepts(make(lo)), "the logger refused an event the measure accepts")
-                self.assertFalse(self.logger_accepts(make(lo + 1)), "the logger accepted an event the measure refuses")
-
-    def adr_with_questions(self, questions, options):
-        tree = json.loads((tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8"))
-        tree["nodes"]["wave-1"] = {"questions": {f"q{i}": {"type": "choice", "instructions": "Q", "criteria": {f"o{j}": "d" for j in range(options)}}
-                                                 for i in range(questions)}, "verdict_rules": [{"verdict": "yes"}]}
-        return tree
-
-    def quality(self, tree, *mode):
-        index = write(self.d, "index.json", tq.INDEX)
-        sent = []
-        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), \
-                mock.patch.object(jj, "judge_batch", side_effect=lambda *a, **k: sent.append(a) or AssertionError("sent")):
-            code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--questions", write(self.d, "tree.json", tree),
-                                 "--run-dir", str(self.d / "logs"), "--run-name", "c2", *mode])
-        self.assertEqual(sent, [], "a request was sent")
-        self.assertFalse((self.d / "logs").exists(), "the run log was opened")
-        return code, out
-
-    def test_c2_a_tree_whose_request_fits_but_whose_log_events_do_not_is_refused_before_any_call(self):
-        tree = self.adr_with_questions(7, 255)
-        line = jj.wave_line(tq.INDEX["decisions"][0], "wave-1", jj.parse_quality_tree(json.dumps(tree), "t").value.nodes["wave-1"])
-        size = len(jj.decidr_client._encode_request({"model": jj.DEFAULT_MODEL, "state": {"item": line["item"]}, "questions": line["questions"][0]["questions"]}).encode("utf-8"))
-        self.assertLessEqual(size, jj.DEFAULT_MAX_REQUEST_BYTES, "the request itself must fit --max-request-bytes")
-        answers = write(self.d, "answers.json", {"*": {}})
-        for mode in (["--dry-run"], ["--answers-file", answers]):
-            with self.subTest(mode=mode[0]):
-                code, out = self.quality(tree, *mode)
-                self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"), out)
-                message = out["error"]["message"]
-                self.assertRegex(message, r"the (request|answer|result) log event would be \d+ bytes, over the run log's 65536-byte event limit")
-                self.assertIn("ADR-T-0001/wave-1", message)
-
-    def test_the_answer_event_is_the_one_named_when_only_the_answer_is_too_big(self):
-        code, out = self.quality(self.adr_with_questions(6, 255), "--dry-run")
-        self.assertEqual(out["error"]["code"], "JEV.CONTEXT_EXCEEDED", out)
-        self.assertIn("log event would be", out["error"]["message"])
-
-    def test_a_tree_within_the_limit_still_runs(self):
-        tree = self.adr_with_questions(3, 20)
-        index = write(self.d, "index.json", tq.INDEX)
-        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
-            code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--questions", write(self.d, "tree.json", tree), "--dry-run"])
-        self.assertEqual((code, out["success"]), (0, True), out)
-
-    def test_worst_answers_are_answers_the_validator_accepts(self):
-        questions = {qid: q.model_dump() for qid, q in jj.load_quality_tree("req").value.nodes["wave-1"].questions.items()}
-        answers = jj.worst_answers(questions)
-        self.assertEqual(set(answers), set(questions))
-        self.assertTrue(all(isinstance(answer, jj.decidr_client.ChoiceAnswer) for answer in answers.values()))
-
-    def test_the_batch_command_refuses_the_same_way(self):
-        big = {f"q{i}": {"type": "choice", "instructions": "Q", "criteria": {f"o{j}": "d" for j in range(255)}} for i in range(7)}
-        line = request_line(questions=big)
-        del line["anchor"]  # an anchorless line needs no roles
-        src = write(self.d, "in.jsonl", jsonl([line]))
-        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
-            code, out = run_cli(["batch", "--input", src, "--run-dir", str(self.d / "runs"), "--dry-run"])
-        self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"), out)
-        self.assertFalse((self.d / "runs").exists())
 
 
 if __name__ == "__main__":

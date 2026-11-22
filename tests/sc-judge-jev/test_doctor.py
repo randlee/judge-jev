@@ -7,6 +7,7 @@ source. Jev is never called, no key is set, and nothing is written.
 import json
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest import mock
 
@@ -30,6 +31,9 @@ class DoctorCase(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.root = self.d / "repo"
         (self.root / "docs").mkdir(parents=True)
         (self.root / "docs" / "r.md").write_text("# Title\n\n## Heading\n\ntext\n", encoding="utf-8")

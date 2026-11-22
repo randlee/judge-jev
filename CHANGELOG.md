@@ -2,6 +2,19 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.6.0 — 2026-11-21
+
+- Remove `--run-dir` and the Python RunLog wrapper. Use one native Logger at `~/.sc-agent/logs/judge-jev.log.jsonl`; preserve `--run-name` on events.
+- Adopt sc-decidr's shared client, returned failures, native cancellation and indexed batch callbacks; the runtime template holds the wheel pin.
+- Use the sitr API included in that wheel and remove the separate sitr dependency.
+- Remove the Python batch executor; keep shared fixture and record helpers in the generated client.
+- Add an unattended live integration runner for the migrated consumer, including real-provider, credential-failure, keychain and sitr checks.
+- Pin sc-decidr and the generated consumer to the 0.3.6 prerelease.
+
+- Preserve per-run gate reasons and clarify candidate selection, stopping, and reporting.
+- Fix loop: keep a candidate when its own statement's weak answer rises and no other answer drops more than 0.05 or newly below the threshold (not when the record's lowest answer rises); run rounds until the record passes or two rounds in a row keep nothing, instead of stopping at three.
+- Never report a judge-jev failure without Jev's reasons: for each answer below the threshold, the chosen and runner-up options with their criteria (and any `Fix:` line) and the `d_*` answers, verbatim (SKILL.md hard stops; fix-strategy.md Report).
+
 ## 0.5.2 — 2026-11-18
 
 - Document how to uninstall an installed copy and clean up generated folders.

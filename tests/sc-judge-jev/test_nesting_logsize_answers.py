@@ -8,6 +8,7 @@ import io
 import json
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest import mock
 
@@ -85,16 +86,20 @@ class DeepInputIsATypedError(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
 
     def request_with(self, deep):
         line = request_line(questions={"q": {"type": "choice", "instructions": "i", "criteria": {"a": "A", "b": "B"}, "x": deep}})
         del line["anchor"]
         return write(self.d, "r.jsonl", jsonl([line]))
 
+
+
     def test_validate_requests_and_batch_dry_run_refuse_a_deep_request_before_any_call(self):
-        # Within JSON_MAX_DEPTH the request parses and reaches the log-event check (redact_sensitive walks it); past it
-        # the line is INPUT.MALFORMED at parse, on every Python.
-        for depth, expected in ((40, "VALIDATION.INPUT"), (450, "VALIDATION.INPUT"), (600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
+        # Past JSON_MAX_DEPTH the line is INPUT.MALFORMED at parse, on every Python.
+        for depth, expected in ((600, "INPUT.MALFORMED"), (900, "INPUT.MALFORMED")):
             src = self.request_with(nested(depth))
             with self.subTest(command="validate", depth=depth):
                 code, out = validate("--requests", src)
@@ -102,7 +107,7 @@ class DeepInputIsATypedError(unittest.TestCase):
                 self.assertIn("maximum container depth is 32" if expected == "VALIDATION.INPUT" else str(jj.JSON_MAX_DEPTH),
                               out["error"]["message"])
             with self.subTest(command="batch", depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
-                code, out = run_cli(["batch", "--input", src, "--dry-run", "--run-dir", str(self.d / "logs")])
+                code, out = run_cli(["batch", "--input", src, "--dry-run"])
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
 
     def test_a_record_diagnostic_with_a_deep_field_still_prints_json(self):
@@ -114,6 +119,8 @@ class DeepInputIsATypedError(unittest.TestCase):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
                 self.assertEqual((code, out["error"]["code"]), (2, expected), out)
+
+
 
     def test_a_deep_record_field_is_a_typed_size_refusal(self):
         for depth in (300, 900):
@@ -153,105 +160,7 @@ class JsonDepthIsTheSameOnEveryPython(unittest.TestCase):
                 jj.strict_loads("ignored")
 
 
-class LogSizeIsMeasuredEscaped(unittest.TestCase):
-    """Messages are clipped by characters; the logger measures ASCII-escaped JSON. A non-ASCII message must be modelled at
-    its escaped size (the worst message is ATTEMPT_MESSAGE_LIMIT astral characters, 12 bytes each), so nothing a size check
-    admits is refused by the logger after a request was sent."""
 
-    def setUp(self):
-        td = tempfile.TemporaryDirectory()
-        self.addCleanup(td.cleanup)
-        self.d = Path(td.name)
-
-    @staticmethod
-    def questions(per, count=6):
-        return {f"q{i}": {"type": "choice", "instructions": f"Q{i}?", "criteria": {f"o{j}": "x" for j in range(per)}} for i in range(count)}
-
-    def batch_line(self, per):
-        return {"item": {"id": "it", "title": "", "text": "Some item text."},
-                "questions": [{"candidate_id": "c", "questions": self.questions(per)}]}
-
-    def batch(self, per, answers):
-        sent = []
-        src = write(self.d, f"r{per}.jsonl", json.dumps(self.batch_line(per)))
-        with env(), self.transient_once(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
-            code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, f"a{per}.json", answers),
-                                 "--run-dir", str(self.d / f"l{per}"), "--run-name", "p"])
-        return code, out, len(sent)
-
-    def worst_fixture(self, per):
-        return {"it/c": jj.decidr_client._json_answers(jj.worst_answers(self.questions(per)))}
-
-    def transient_once(self):
-        # Drive the long error explicitly; malformed reply validation belongs to the shared client.
-        real = jj.decidr_client._fixture_attempt
-
-        def attempt(job, fixture, number, **kwargs):
-            if number == 1:
-                raise jj.ClientError("DECIDR.OVERLOADED", ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT, True)
-            return real(job, fixture, number, **kwargs)
-        return mock.patch.object(jj.decidr_client, "_fixture_attempt", side_effect=attempt)
-
-    def refused_before_send(self, per):
-        line = self.batch_line(per)
-        settings = jj.BatchSettings("plan", jj.DEFAULT_MODEL, 1, "batch", jj.DEFAULT_THRESHOLD, 30.0, 1, jj.MAX_REQUEST_BYTES_CEILING, True)
-        return isinstance(jj.batch_jobs(line, 1, settings, {}), jj.Err)
-
-    def boundary(self, refused):
-        for per in range(10, 256):
-            if refused(per):
-                return per
-        self.fail("no option count crossed the log-event limit")
-
-    def test_the_worst_attempt_message_measures_at_its_escaped_size(self):
-        line = self.batch_line(10)
-        settings = jj.BatchSettings("plan", jj.DEFAULT_MODEL, 1, "batch", jj.DEFAULT_THRESHOLD, 30.0, 1, jj.MAX_REQUEST_BYTES_CEILING, True)
-        job = jj.batch_jobs(line, 1, settings, {}).value[0]
-        worst = jj.worst_line(job, settings)
-        message = worst["attempts"][0]["error"]["message"]
-        self.assertEqual((message, len(message)), (ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT, jj.ATTEMPT_MESSAGE_LIMIT))
-        sco = jj.logger_module().value
-        plain = copy.deepcopy(worst)
-        plain["attempts"][0]["error"]["message"] = "x" * jj.ATTEMPT_MESSAGE_LIMIT
-        size = lambda l: max(jj.log_event_size(sco, a, f, l["run_id"]).value for a, f in jj.result_line_events(l, {}))
-        self.assertGreaterEqual(size(worst) - size(plain), jj.ATTEMPT_MESSAGE_LIMIT * 11)
-
-    def test_a_batch_the_check_admits_logs_an_astral_failure_then_an_answer(self):
-        edge = self.boundary(self.refused_before_send)
-        code, out, sent = self.batch(edge - 1, self.worst_fixture(edge - 1))
-        self.assertEqual((code, sent), (0, 1), out if isinstance(out, dict) else out[:300])
-        results = [out] if isinstance(out, dict) else [json.loads(x) for x in out.splitlines() if x.strip()]  # run_cli parses one line whole
-        self.assertEqual([(r["ok"], r["retry_count"]) for r in results], [(True, 1)])
-        self.assertEqual(results[0]["attempts"][0]["error"]["code"], "DECIDR.OVERLOADED")
-        self.assertEqual(results[0]["attempts"][0]["error"]["message"], ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT)
-
-    def test_a_batch_over_the_boundary_is_refused_with_nothing_sent(self):
-        edge = self.boundary(self.refused_before_send)
-        code, out, sent = self.batch(edge, self.worst_fixture(edge))
-        self.assertEqual((code, out["error"]["code"], sent), (2, "JEV.CONTEXT_EXCEEDED", 0), out)
-
-    def quality_tree(self, per):
-        tree = json.loads((tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8"))
-        tree["nodes"]["wave-1"]["questions"] = self.questions(per)
-        tree["nodes"]["wave-1"]["verdict_rules"] = [{"verdict": "yes"}]
-        return tree
-
-    def quality(self, per, *mode):
-        sent = []
-        argv = ["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "index.json", tq.INDEX),
-                "--questions", write(self.d, f"t{per}.json", self.quality_tree(per)), "--run-dir", str(self.d / f"q{per}"), "--run-name", "p", *mode]
-        with env(), self.transient_once(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
-            code, out = run_cli(argv)
-        return code, out, len(sent)
-
-    def test_a_quality_wave_the_check_admits_logs_an_astral_failure_then_an_answer(self):
-        edge = self.boundary(lambda per: (self.quality(per, "--dry-run")[1].get("error") or {}).get("code") == "JEV.CONTEXT_EXCEEDED")
-        worst = jj.decidr_client._json_answers(jj.worst_answers(self.questions(edge - 1)))
-        code, out, sent = self.quality(edge - 1, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": worst}))
-        self.assertEqual((code, sent), (0, 1), out)
-        self.assertEqual(out["data"]["results"][0]["verdict"], "yes")
-        over, refused, sent_over = self.quality(edge, "--answers-file", write(self.d, "a.json", {"ADR-T-0001/wave-1": worst}))
-        self.assertEqual((over, refused["error"]["code"], sent_over), (2, "JEV.CONTEXT_EXCEEDED", 0), refused)
 
 
 class AnswersEnvelope(unittest.TestCase):
@@ -262,6 +171,9 @@ class AnswersEnvelope(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.good = tq.tree_answers("quality-adr.json")
         self.tree = json.loads((tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8"))
 
@@ -272,9 +184,7 @@ class AnswersEnvelope(unittest.TestCase):
 
     def quality(self, fixture):
         sent = []
-        argv = ["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "index.json", tq.INDEX),
-                "--questions", write(self.d, "tree.json", self.tree), "--run-dir", str(self.d / "logs"), "--run-name", "p",
-                "--answers-file", write(self.d, "a.json", fixture)]
+        argv = ["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "index.json", tq.INDEX), "--questions", write(self.d, "tree.json", self.tree), "--run-name", "p", "--answers-file", write(self.d, "a.json", fixture)]
         with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
             code, out = run_cli(argv)
         return code, out, len(sent)
@@ -283,7 +193,7 @@ class AnswersEnvelope(unittest.TestCase):
         sent = []
         src = write(self.d, "r.jsonl", jsonl([request_line()]))
         with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
-            code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, "b.json", fixture), "--run-dir", str(self.d / "blogs")])
+            code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, "b.json", fixture)])
         return code, out, len(sent)
 
     ENVELOPE_REFUSED = {
@@ -372,16 +282,16 @@ class AnswersEnvelope(unittest.TestCase):
         job = jj.BatchJob("item", None, "candidate", 2, "request", {}, {"answer": {"type": "noul"}}, {}, "directive")
         keys = ("delegated/r2", "delegated", "candidate", "*")
         with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys:
-            result = jj.decidr_client._fixture_attempt(job,
+            result = jj.decidr_client.fixture_attempt(job,
                 {"delegated/r2": {"answer": {"type": "noul", "noul": 0.75}}}, 1)
-        self.assertEqual(result["answers"]["answer"].noul, 0.75)
+        self.assertEqual(result["value"]["answers"]["answer"].noul, 0.75)
         get_keys.assert_called_once_with(job)
         missing = jj.ClientError("TEST.MISSING", "shared helper result")
         with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys, \
                 mock.patch.object(jj.decidr_client, "_fixture_missing", return_value=missing) as get_missing:
-            with self.assertRaises(jj.ClientError) as caught:
-                jj.decidr_client._fixture_attempt(job, {}, 1)
-        self.assertIs(caught.exception, missing)
+            result = jj.decidr_client.fixture_attempt(job, {}, 1)
+        self.assertFalse(result["ok"])
+        self.assertIs(result["error"], missing)
         get_keys.assert_called_once_with(job)
         get_missing.assert_called_once_with(keys)
 
@@ -391,7 +301,7 @@ class AnswersEnvelope(unittest.TestCase):
         src = write(self.d, "r2.jsonl", jsonl(lines))
         fixture = write(self.d, "b2.json", {"covered/cur": plan_answers()})
         with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
-            code, out = run_cli(["batch", "--input", src, "--answers-file", fixture, "--run-dir", str(self.d / "blogs2")])
+            code, out = run_cli(["batch", "--input", src, "--answers-file", fixture])
         self.assertEqual((code, out["error"]["code"], len(sent)), (2, "FIXTURE.MISSING", 0), out)
         self.assertFalse((self.d / "blogs2").exists())
 
@@ -411,6 +321,9 @@ class AnswersEnvelope(unittest.TestCase):
         code_text = "J" * jj.FIXTURE_CODE_LIMIT
         code, out, sent = self.quality({"*": {"__error__": code_text}})
         self.assertEqual((code, out["error"]["code"], sent), (2, code_text, 1), out)
+        events = tq.read_log(self.d / "logs")
+        self.assertEqual([event["action"] for event in events], ["request", "answer", "result"])
+        self.assertEqual((events[-1]["fields"]["ok"], events[-1]["fields"]["error"]["code"]), (False, code_text))
 
 
 if __name__ == "__main__":

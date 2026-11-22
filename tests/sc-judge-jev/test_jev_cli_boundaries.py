@@ -56,10 +56,6 @@ class RenderedTextTests(unittest.TestCase):
             text = (SCRIPTS / name).read_text(encoding="utf-8")
             with self.subTest(name=name):
                 self.assertIsNone(re.search(r"\{\{\s*\w|\{%-?\s*\w", text))
-                if name == "decidr_client.py":
-                    provenance = "# Derived from plan-anchor fff69b2, plugins/sc-plan-anchor/install/templates/skills/plan-anchoring/scripts/decidr_client.py.j2."
-                    self.assertIn(provenance, text)
-                    text = text.replace(provenance, "")
                 self.assertIsNone(re.search(r"plan[-_]anchor", text, re.IGNORECASE))
 
 

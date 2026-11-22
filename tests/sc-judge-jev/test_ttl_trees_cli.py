@@ -4,6 +4,8 @@ import hashlib
 import json
 import tempfile
 import unittest
+from unittest import mock
+import os
 from pathlib import Path
 
 from test_graph_tree import ADR_TTL
@@ -64,6 +66,9 @@ class ValidateTtl(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
 
     def test_shipped_ttl_trees_pass(self):
         for kind, _flag, _record in KINDS:

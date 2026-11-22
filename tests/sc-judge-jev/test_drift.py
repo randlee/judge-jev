@@ -7,6 +7,7 @@ import copy
 import json
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest import mock
 
@@ -47,6 +48,9 @@ class DriftCase(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.old, self.new = write(self.d, "old.json", OLD), write(self.d, "new.json", NEW)
 
     qset = "brief"  # these cases are written against the brief set; None runs the default
@@ -56,8 +60,7 @@ class DriftCase(unittest.TestCase):
         if self.qset and "--question-set" not in argv:
             extra += ["--question-set", self.qset]
         with env(), mock.patch.multiple(jj.decidr_client, call_result=never_called, call_batch_results=never_called):
-            return run_cli(["drift", "--old-index", self.old, "--new-index", self.new, *argv,
-                            "--run-dir", str(self.d / "logs"), "--run-name", "d1", *extra])
+            return run_cli(["drift", "--old-index", self.old, "--new-index", self.new, *argv, "--run-name", "d1", *extra])
 
 class DriftTrust(DriftCase):
     def test_dry_run_rejects_a_corrupt_nearest_install_lock(self):
@@ -81,9 +84,7 @@ class LiveDrift(DriftCase):
         with env(), mock.patch.object(jj.decidr_client, "remote_judge_consent") as consent, \
                 mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
                 mock.patch.object(jj.decidr_client, "call_result", never_called):
-            code, out = run_cli(["drift", "--old-index", self.old, "--new-index", self.new,
-                                 "--req", "REQ-T-0001", "--controls", "0", "--question-set", "brief",
-                                 "--run-dir", str(self.d / "logs"), "--run-name", "live"])
+            code, out = run_cli(["drift", "--old-index", self.old, "--new-index", self.new, "--req", "REQ-T-0001", "--controls", "0", "--question-set", "brief", "--run-name", "live"])
         self.assertEqual(code, 0, out)
         consent.assert_called_once()
         self.assertEqual(len(transport.bodies), 1)

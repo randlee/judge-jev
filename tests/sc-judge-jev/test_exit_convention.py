@@ -15,6 +15,7 @@ from child_support import run_child
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "plugins" / "sc-judge-jev"
@@ -32,6 +33,9 @@ class ConventionCase(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
         self.d = Path(self.td.name).resolve()
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.addCleanup(self.td.cleanup)
 
     def run_script(self, script, *argv):
