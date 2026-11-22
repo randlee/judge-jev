@@ -385,8 +385,8 @@ Typed errors on an unresolved record or location, a render failure or an
 oversize request.
 
 Every input yields one JSON object, its result or a typed error. An invalid
-tree, question set, index or request stream is refused before the first Jev
-request (REQ-JEV-0211).
+tree, question set, index or request stream, and a log event that exceeds the
+logger's size limit, are refused before the first Jev request (REQ-JEV-0211).
 
 ## Open
 

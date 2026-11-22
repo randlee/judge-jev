@@ -485,7 +485,9 @@ with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a
 `suggested_action`. A tree is a quality decision tree file, a question set a
 file of questions, an index a Raptor import index, a request stream the
 request lines of the batch command. An input is a tree, question set,
-index or request stream.
+index or request stream. A log event is one event written through the
+sc-observability logger; the logger's event size limit is 65536 bytes
+(sc-observability 1.5.0).
 
 **MUST statements:**
 - For every input, every `judge-jev` command MUST print exactly one JSON
@@ -498,6 +500,9 @@ index or request stream.
 - `judge-jev` MUST refuse an invalid index before its first Jev request.
 - `judge-jev` MUST refuse an invalid request stream before its first Jev
   request.
+- `judge-jev` MUST check that every log event of a request (the request,
+  Jev's largest possible answer and the result) fits the logger's event
+  size limit before sending the request.
 
 ### Rationale
 
