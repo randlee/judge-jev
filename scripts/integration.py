@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 INVALID_KEY = 'invalid-judge-jev-integration-key'
@@ -14,6 +15,18 @@ INVALID_KEY = 'invalid-judge-jev-integration-key'
 
 def accepted_keychain(result):
     return result.get('ok') is True or (result.get('error') or {}).get('id') == 'secrets.keyring_timeout'
+
+
+def dependencies(path):
+    text = path.read_text(encoding='utf-8').split('# /// script\n', 1)[1].split('# ///', 1)[0]
+    return tomllib.loads('\n'.join(line.removeprefix('# ') for line in text.splitlines()))['dependencies']
+
+
+def keychain_probe(operation):
+    return ("import json,sc_agent; q={'model':'jev','state':'test','questions':{'q':{'type':'noul','instructions':'Assess whether the statement is clear.'}}}; "
+            f"r=sc_agent.{operation}({'[q]' if operation == 'send_batch' else 'q'},model='jev',agent_role='judge-jev'); "
+            "r=(r['value'][0]['result'] if r.get('ok') and isinstance(r.get('value'),list) else r); "
+            "print(json.dumps({'ok':r.get('ok'),'error':{'id':(r.get('error') or {}).get('id')}}))")
 
 
 def main():
@@ -66,8 +79,11 @@ def main():
                 cases.append({'case': name, 'passed': passed, 'exit': proc.returncode, 'stdout': stdout, 'stderr': stderr})
                 print(f'{name}: {"PASS" if passed else "FAIL"}', flush=True)
                 return stdout
-            run('git-init', ['git', 'init', '-q', str(root)])
             installer = ROOT / 'plugins/sc-judge-jev/install.py'
+            runtime = ROOT / 'plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/jev_judge.py.j2'
+            deps = ['pytest', *dependencies(installer), *[d for d in dependencies(runtime) if not d.startswith('sc-decidr==')]]
+            run('dependencies', [python, '-m', 'pip', 'install', *deps], key=None)
+            run('git-init', ['git', 'init', '-q', str(root)])
             run('install', [python, str(installer), '--dest', str(root), '--target', 'claude', '--allow-remote-judge'])
             setup = ("import json,sys; from pathlib import Path; "
                      "sys.path.insert(0,sys.argv[1]); from test_quality import INDEX; "
@@ -83,10 +99,7 @@ def main():
                 run(f'invalid-key-{n + 1}', batch, key=INVALID_KEY, expected=2,
                     check=lambda text: any((json.loads(line).get('error') or {}).get('code') == 'AUTH.CREDENTIALS' for line in text.splitlines()))
             for operation in ('send', 'send_batch'):
-                probe = ("import json,sc_agent; q={'model':'jev','state':'test','questions':{'q':{'type':'noul'}}}; "
-                         f"r=sc_agent.{operation}({'[q]' if operation == 'send_batch' else 'q'},model='jev',agent_role='judge-jev'); "
-                         "r=(r['value'][0] if r.get('ok') and isinstance(r.get('value'),list) else r); "
-                         "print(json.dumps({'ok':r.get('ok'),'error':{'id':(r.get('error') or {}).get('id')}}))")
+                probe = keychain_probe(operation)
                 text = run('keychain-' + operation, [python, '-c', probe], key=None,
                            check=lambda out: accepted_keychain(json.loads(out)))
                 try:
