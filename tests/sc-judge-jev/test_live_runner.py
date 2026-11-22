@@ -1,4 +1,6 @@
 """Controlled tests for unattended live-run orchestration; no provider or keychain."""
+import contextlib
+import io
 import importlib.util
 import json
 import os
@@ -28,17 +30,23 @@ class LiveRunner(unittest.TestCase):
         self.assertFalse(accepts({}))
 
     def test_runner_separates_environment_and_keychain_and_records_timeout(self):
-        for output, code, outcome in ((json.dumps({'ok': False, 'error': {'id': 'secrets.keyring_timeout'}}), 0, 'secrets.keyring_timeout'),
-                                      (json.dumps({'ok': False, 'error': {'id': 'secrets.keyring_read'}}), 1, 'secrets.keyring_read'),
-                                      ('', 1, 'invalid result')):
-            with self.subTest(outcome=outcome):
-                self.check_runner_keychain(output, code, outcome)
+        timeout_probe = json.dumps({'ok': False, 'error': {'id': 'secrets.keyring_timeout'}})
+        for output, code, outcome, timeout in ((timeout_probe, 0, 'secrets.keyring_timeout', False),
+                                               (json.dumps({'ok': False, 'error': {'id': 'secrets.keyring_read'}}), 1, 'secrets.keyring_read', False),
+                                               ('', 1, 'invalid result', False),
+                                               (timeout_probe, 1, 'secrets.keyring_timeout', True)):
+            with self.subTest(outcome=outcome, timeout=timeout):
+                self.check_runner(output, code, outcome, timeout)
 
-    def check_runner_keychain(self, probe_output, expected_exit, expected_outcome):
+    def check_runner(self, probe_output, expected_exit, expected_outcome, timeout):
         runner = load_runner()
         calls = []
         def child(argv, **kwargs):
+            self.assertEqual(kwargs['timeout'], 300)
+            self.assertIs(kwargs['stdin'], subprocess.DEVNULL)
             calls.append((argv, kwargs['env']))
+            if timeout and 'quality' in argv:
+                raise subprocess.TimeoutExpired(argv, 300, stderr=b'controlled-secret')
             if 'quality' in argv:
                 out, code = json.dumps({'success': True}), 0
             elif 'batch' in argv:
@@ -56,13 +64,20 @@ class LiveRunner(unittest.TestCase):
             credentials.write_text('TEST_KEY=controlled-secret\n')
             argv = ['integration.py', '--venv', str(root / 'venv'), '--env-file', str(credentials),
                     '--key-variable', 'TEST_KEY', '--results', str(results)]
+            stderr = io.StringIO()
             with mock.patch.object(sys, 'argv', argv), mock.patch.object(runner.subprocess, 'run', side_effect=child), \
-                    mock.patch.dict(os.environ, {'OTHER_API_KEY': 'unrelated', 'SC_AGENT_TEST_TRAP_PLATFORM_KEYRING': '1'}, clear=True):
+                    mock.patch.dict(os.environ, {'OTHER_API_KEY': 'unrelated', 'SC_AGENT_TEST_TRAP_PLATFORM_KEYRING': '1'}, clear=True), \
+                    contextlib.redirect_stderr(stderr):
                 self.assertEqual(runner.main(), expected_exit)
+            self.assertNotIn('controlled-secret', stderr.getvalue())
+            if timeout:
+                self.assertIn('<redacted>', stderr.getvalue())
             report = json.loads(results.read_text())
+            if timeout:
+                self.assertFalse(next(row for row in report if row['case'] == 'quality')['passed'])
             keychain = [row for row in report if row['case'].startswith('keychain-')]
             self.assertEqual([row['keychain_outcome'] for row in keychain], [expected_outcome] * 2)
-            self.assertEqual([row['passed'] for row in keychain], [expected_exit == 0] * 2)
+            self.assertEqual([row['passed'] for row in keychain], [expected_exit == 0 or timeout] * 2)
             probes = [env for argv, env in calls if '-c' in argv and 'sc_agent.' in argv[2]]
             self.assertEqual(len(probes), 2)
             self.assertTrue(all('TEST_KEY' not in env and 'OTHER_API_KEY' not in env
