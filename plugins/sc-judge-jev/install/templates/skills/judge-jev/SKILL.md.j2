@@ -88,6 +88,6 @@ You apply and measure every candidate; a proposer never edits a file or calls Je
 - Never report a judged failure without Jev's reasons: quote each failing or weak answer's per-run choice, confidence, criterion, runner-up, probability and criterion (including `Fix:`), and the `d_*` answers. Mark missing fields unavailable; never guess the word.
 - A record passes only when three identical runs give at least two `yes` verdicts and every gate-answer median is at least `T` (default 0.6; `scripts/jev_gate.py`).
 - An accepted record is frozen: do not judge it again unless its text changes.
-- Keep the run files and `.sc/judge-jev/accepted.jsonl`. Logs are under `~/.judge-jev/<repository name>/<UTC date>/logs/` (`USERPROFILE` on Windows; `.sc/judge-jev` only when no home is known). They have no rotation, use a new folder per UTC day, and contain whole requests and record text. To prune, delete whole dated folders that no active run uses.
+- Keep the run files and `.sc/judge-jev/accepted.jsonl`. The log is `~/.sc-agent/logs/judge-jev.log.jsonl` and contains whole requests and record text. Pruning follows the sc-observability retention policy.
 
 Jev request format, limits and every error code: `references/jev-api.md`.
