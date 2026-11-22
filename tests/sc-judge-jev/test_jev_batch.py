@@ -4,13 +4,11 @@ Ported from plan-anchor's tests/sc-plan-anchor/test_tournament.py (BatchTests). 
 answers files or a stubbed transport; Jev is never called. Ordering is driven by events, not sleeps.
 """
 import contextlib
-import asyncio
 import hashlib
 import io
 import json
 import os
 import sys
-import threading
 import unittest
 from unittest import mock
 import tempfile
@@ -159,40 +157,27 @@ class BatchTests(BatchCase):
         self.assertNotIn(b"\r", proc.stdout)
         self.assertEqual(self.log("crlf"), self.parsed(proc.stdout))
 
-    def test_results_stream_in_request_order_as_each_answer_arrives(self):
-        """Completion order is forced to c3, c1, c2 with events (no sleeps); lines still come out c1, c2, c3, and c1
-        is yielded while c2 is still unanswered, so nothing is held back for the end of the batch."""
+    def test_native_callbacks_persist_finish_order_and_match_input_indices(self):
+        from test_jev_judge import wheel_record
         line = request_line("s1", "text", ("c1", PLAN_QS["questions"]), ("c2", PLAN_QS["questions"]), ("c3", PLAN_QS["questions"]))
-        c3_done, release_c2 = threading.Event(), threading.Event()
-        completed, waits = [], []
-        real = jj.run_batch_job
-
-        def controlled(job, settings, fixture):
-            if job.candidate_id == "c1":
-                waits.append(c3_done.wait(timeout=30))  # a guard against a deadlocked implementation, not a timing input
-            if job.candidate_id == "c2":
-                waits.append(release_c2.wait(timeout=30))
-            result = real(job, settings, fixture)
-            completed.append(job.candidate_id)
-            if job.candidate_id == "c3":
-                c3_done.set()
-            return result
-
         settings = jj.BatchSettings("plan", "fixture-model", 1, "p", 0.6, 30.0, 3, 24000, False)
-
-        async def consume():
-            got = []
-            async for result in jj.judge_stream([line], settings, {"*": plan_answers()}):
-                got.append((result["candidate_id"], list(completed)))
-                release_c2.set()
-            return got
-
-        with mock.patch.object(jj, "run_batch_job", controlled):
-            got = asyncio.run(consume())
-        self.assertEqual(waits, [True, True])
-        self.assertEqual([cid for cid, _ in got], ["c1", "c2", "c3"])
-        self.assertEqual(got[0][1], ["c3", "c1"])  # c1 was yielded before c2 had an answer
-        self.assertEqual(completed, ["c3", "c1", "c2"])
+        records = [wheel_record((json.dumps({"response": {"answers": plan_answers()}, "sends": 1}), None), i) for i in range(3)]
+        persisted = []
+        def native_batch(requests, **kwargs):
+            self.assertEqual(len(requests), 3)
+            for i in (2, 0, 1):
+                kwargs["on_result"](records[i])
+                self.assertEqual(len(persisted), (2, 0, 1).index(i) + 1)
+            return {"ok": True, "value": records}
+        def log_result(log, result, fields):
+            persisted.append(result["candidate_id"])
+            return jj.Ok(None)
+        with mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=native_batch), \
+                mock.patch.object(jj, "log_result_line", side_effect=log_result):
+            got = jj._live_batch_results([line], settings, mock.Mock(), False)
+        self.assertIsInstance(got, jj.Ok)
+        self.assertEqual(persisted, ["c3", "c1", "c2"])
+        self.assertEqual([r["candidate_id"] for r in got.value], ["c1", "c2", "c3"])
 
     def test_failed_call_is_a_line_and_exit_2_with_the_error_on_stderr(self):
         self.FIXTURE = {"s1/cur": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}], "*": plan_answers()}

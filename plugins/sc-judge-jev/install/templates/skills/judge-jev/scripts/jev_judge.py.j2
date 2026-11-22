@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_judge
-version: 0.5.2
+version: 0.5.3
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -16,9 +16,8 @@ required_variables:
 #   "pyoxigraph>=0.5,<0.6",
 #   "pyshacl>=0.30,<1",
 #   "sc-observability==1.5.0",
-# # Matched sc-decidr and sitr releases are documented, not enforced (REQ-SAG-0018; ADR-SAG-0019 decision 4).
-#   "sc-decidr==0.2.9",
-#   "sitr==0.2.9",
+#   # sc-decidr includes both the decidr and sitr APIs.
+#   "sc-decidr==0.3.0",
 # ]
 # ///
 """jev_judge.py
@@ -852,7 +851,7 @@ def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict, log
     anchor_id = anchor.id if anchored else None
     for cand in request.questions:
         body = {"model": settings.model, "state": state, "questions": cand.questions}
-        size = len(decidr_client._encode_request(body).encode("utf-8"))
+        size = len(json.dumps(body).encode("utf-8"))
         if size > settings.max_request_bytes:
             return fail("JEV.CONTEXT_EXCEEDED", f"{where}: the request for {item.id}/{cand.candidate_id} is {size} bytes, over --max-request-bytes {settings.max_request_bytes}",
                         action="Shorten the item (see references/plan-size-and-shape.md); never raise the cap to make it fit.")
@@ -887,7 +886,17 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
     attempts, raw, error = [], None, None
     for attempt in range(1, BATCH_FIXTURE_RETRY_LIMIT + 2):
         try:
-            raw = decidr_client._fixture_attempt(job, fixture, attempt, transient_codes=FIXTURE_RETRYABLE_CODES)
+            _checked = decidr_client._fixture_attempt(job, fixture, attempt, transient_codes=FIXTURE_RETRYABLE_CODES)
+            if not _checked["ok"]:
+                error = _checked["error"]
+                attempts.append({"attempt": attempt, "ok": False,
+                    "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
+                              "recoverable": error.retryable}})
+                if not error.retryable:
+                    break
+                continue
+            else:
+                raw = _checked["value"]
             error = None
             attempts.append({"attempt": attempt, "ok": True})
             break
@@ -899,15 +908,6 @@ def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
             if not error.retryable:
                 break
     return decidr_client._line(job, settings, raw, attempts, error, False, result_fields=batch_verdict_fields)
-
-
-def judge_stream(source, settings, fixture=None, fields=None):
-    base = load_question_set(settings.gate)
-    if isinstance(base, Err):
-        raise BatchInputError(base.error)
-    return decidr_client.stream_batch(source, settings,
-        make_jobs=functools.partial(batch_jobs, log_fields=fields),
-        run_job=functools.partial(run_batch_job, fixture=fixture), question_sets=base.value.roles)
 
 
 def parse_request_lines(text: str, path: str) -> Result[list, ClientError]:
@@ -1011,7 +1011,9 @@ def open_run_log(log_root, run_name: str) -> Result[RunLog, ClientError]:
     """Start the run's logger; the run name defaults to a UTC timestamp and must be a safe id."""
     name = run_name or stamp()
     try:
-        _safe_id(name, "--run-name")
+        _checked = decidr_client._safe_id(name, "--run-name")
+        if not _checked["ok"]:
+            return Err(_checked["error"])
     except ClientError as exc:
         return Err(exc)
     module = logger_module()
@@ -1142,34 +1144,22 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: RunLog, echo:
     general_log_errors = []
     result_lines = {}
 
-    def record_general(event):
-        if not isinstance(event, dict):
-            return
-        event_fields = event.get("fields")
-        if not isinstance(event_fields, dict):
-            event_fields = {}
-        logged = log.event(str(event.get("action") or "sc_agent.event"),
-                           {"sc_agent_target": event.get("target"), **event_fields},
-                           correlation_id=event.get("correlation_id"))
-        if isinstance(logged, Err):
-            general_log_errors.append(logged.error)
-
     def persist(record):
         position = record["position"]
         job = jobs[position]
         result_line = _batch_result_line(job, settings, record)
-        try:
-            decidr_client.pump_batch(decidr_client._aiter([result_line]),
-                log_result=lambda line: log_result_line(log, line, fields or {}), echo=echo,
-                redact=redact_sensitive)
-        except ClientError as exc:
-            general_log_errors.append(exc)
+        logged = log_result_line(log, result_line, fields or {})
+        if isinstance(logged, Err):
+            general_log_errors.append(logged.error)
+            return
+        if echo:
+            decidr_client.write_stdout_line(decidr_client.encode_result_line(result_line, redact=redact_sensitive))
         result_lines[position] = result_line
 
     batch = decidr_client.call_batch_results(
         [job.body for job in jobs],
-        model=settings.model, project="judge-jev", agent_role="quality",
-        abort_on=frozenset({"auth"}), general_log=record_general, timeout_secs=settings.timeout,
+        model=settings.model,
+        abort_on=frozenset({"auth"}), general_log=None, timeout_secs=settings.timeout,
         workers=settings.max_workers, on_result=persist, repository_root=repository_root,
     )
     if general_log_errors:
@@ -1183,29 +1173,50 @@ def judge_batch(lines, settings, fixture, log, echo, fields=None, *, repository_
     """Compose consumer job authoring with the shared stream and durable result pump."""
     if fixture is None and not settings.dry_run:
         return _live_batch_results(lines, settings, log, echo, fields, repository_root=repository_root)
-    try:
-        return Ok(decidr_client.pump_batch(judge_stream(lines, settings, fixture, fields),
-            log_result=lambda line: log_result_line(log, line, fields or {}), echo=echo,
-            redact=redact_sensitive))
-    except BatchInputError as exc:
-        return Err(exc.error)
-    except ClientError as exc:
-        return Err(exc)
+    base = load_question_set(settings.gate)
+    if isinstance(base, Err):
+        return base
+    results = []
+    for number, request in enumerate(lines, start=1):
+        built = batch_jobs(request, number, settings, base.value.roles, fields or {})
+        if isinstance(built, Err):
+            return built
+        for job in built.value:
+            result = run_batch_job(job, settings, fixture)
+            logged = log_result_line(log, result, fields or {})
+            if isinstance(logged, Err):
+                return logged
+            if echo:
+                decidr_client.write_stdout_line(decidr_client.encode_result_line(result, redact=redact_sensitive))
+            results.append(result)
+    return Ok(results)
 
 
 def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
     """The shared CLI path for `batch` and `bead-batch`: validate, consent, stream, log. Stdout carries only result lines."""
-    settings = decidr_client.batch_settings(args, args.request_prefix,
+    _checked = decidr_client.batch_settings(args, args.request_prefix,
         check_threshold=check_threshold, request_cap=request_cap)
+    if not _checked["ok"]:
+        return Err(_checked["error"])
+    else:
+        settings = _checked["value"]
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base
     try:
-        decidr_client.validate_request_lines(lines, settings, base.value.roles, batch_jobs)
-        fixture = decidr_client.load_answers_fixture(args.answers_file,
+        _checked = decidr_client.validate_request_lines(lines, settings, base.value.roles, batch_jobs)
+        if not _checked["ok"]:
+            return Err(_checked["error"])
+        _checked = decidr_client.load_answers_fixture(args.answers_file,
             "'<item>/<candidate>/r<n>', '<item>/<candidate>', '<candidate>'", load_json,
             validate_envelope=answers_envelope_error)
-        decidr_client.check_fixture_coverage(lines, settings, base.value.roles, batch_jobs, fixture)
+        if not _checked["ok"]:
+            return Err(_checked["error"])
+        else:
+            fixture = _checked["value"]
+        _checked = decidr_client.check_fixture_coverage(lines, settings, base.value.roles, batch_jobs, fixture)
+        if not _checked["ok"]:
+            return Err(_checked["error"])
     except BatchInputError as exc:
         return Err(exc.error)
     except ClientError as exc:
@@ -1216,12 +1227,16 @@ def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
                     action="Pass --run-dir <directory> for the result log; for an anchor run, pass --anchors <plan>/anchors.json to log under <plan>/anchor-runs/.")
     run_name = args.run_name or stamp()
     try:
-        _safe_id(run_name, "--run-name")
+        _checked = decidr_client._safe_id(run_name, "--run-name")
+        if not _checked["ok"]:
+            return Err(_checked["error"])
     except ClientError as exc:
         return Err(exc)
     if not settings.dry_run and fixture is None:
         try:
-            decidr_client.remote_preflight(args.repository_root, "The anchor statements, scopes and item texts in the request stream")
+            _checked = decidr_client.remote_preflight(args.repository_root, "The anchor statements, scopes and item texts in the request stream")
+            if not _checked["ok"]:
+                return Err(_checked["error"])
         except ClientError as exc:
             return Err(exc)
     log = open_run_log(run_dir, run_name)
@@ -1683,10 +1698,10 @@ def dry_run_wave(tree: QualityTree, jobs: list, settings: BatchSettings) -> dict
     """The composed start-wave request(s) of a dry run, with their sizes (one per statement for a per-statement wave)."""
     if tree.nodes[tree.start].per == "statement":
         wave = {"node": tree.start, "per": "statement",
-                "requests": [{"statement": s, "request": job.body, "request_bytes": len(decidr_client._encode_request(job.body).encode("utf-8"))} for s, job in jobs]}
+                "requests": [{"statement": s, "request": job.body, "request_bytes": len(json.dumps(job.body).encode("utf-8"))} for s, job in jobs]}
     else:
         (_s, job), = jobs
-        wave = {"node": tree.start, "request": job.body, "request_bytes": len(decidr_client._encode_request(job.body).encode("utf-8"))}
+        wave = {"node": tree.start, "request": job.body, "request_bytes": len(json.dumps(job.body).encode("utf-8"))}
     return {**wave, "max_request_bytes": settings.max_request_bytes}
 
 
@@ -1727,21 +1742,29 @@ def cmd_quality(args) -> Result[Any, ClientError]:
         return Ok({"success": True, "error": None, "data": {"dry_run": True, "results": results}})
     run_refs = prepared[0][2] if len(prepared) == 1 else {"records": [refs for _t, _r, refs, _j, _c in prepared]}
     try:
-        fixture = decidr_client.load_answers_fixture(args.answers_file,
+        _checked = decidr_client.load_answers_fixture(args.answers_file,
             "'<record>/<node>/r1', '<record>/<node>', '<node>'", load_json,
             validate_envelope=answers_envelope_error)
+        if not _checked["ok"]:
+            return _with_refs(Err(_checked["error"]), run_refs)
+        else:
+            fixture = _checked["value"]
     except BatchInputError as exc:
         return _with_refs(Err(exc.error), run_refs)
     except ClientError as exc:
         return _with_refs(Err(exc), run_refs)
     run_name = args.run_name or stamp()
     try:
-        _safe_id(run_name, "--run-name")
+        _checked = decidr_client._safe_id(run_name, "--run-name")
+        if not _checked["ok"]:
+            return _with_refs(Err(_checked["error"]), run_refs)
     except ClientError as exc:
         return _with_refs(Err(exc), run_refs)
     if fixture is None:
         try:
-            decidr_client.remote_preflight(args.repository_root, "The record text")
+            _checked = decidr_client.remote_preflight(args.repository_root, "The record text")
+            if not _checked["ok"]:
+                return _with_refs(Err(_checked["error"]), run_refs)
         except ClientError as exc:
             return _with_refs(Err(exc), run_refs)
     log = open_run_log(quality_log_root(args), run_name)
@@ -1834,7 +1857,9 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture,
         if isinstance(base, Err):
             return base
         try:
-            decidr_client.check_fixture_coverage(lines, settings, base.value.roles, batch_jobs, fixture)
+            _checked = decidr_client.check_fixture_coverage(lines, settings, base.value.roles, batch_jobs, fixture)
+            if not _checked["ok"]:
+                return Err(_checked["error"])
         except BatchInputError as exc:
             return Err(exc.error)
         except ClientError as exc:
@@ -1904,7 +1929,9 @@ def validate_input(kind: str, raw: str, path: str, args) -> Result[None, ClientE
         if isinstance(base, Err):
             return base
         try:
-            decidr_client.validate_request_lines(lines.value, settings, base.value.roles, batch_jobs)
+            _checked = decidr_client.validate_request_lines(lines.value, settings, base.value.roles, batch_jobs)
+            if not _checked["ok"]:
+                return Err(_checked["error"])
         except BatchInputError as exc:
             return Err(exc.error)
         except ClientError as exc:
@@ -2060,8 +2087,12 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
                 for arm in COMPARE_ARMS}
         return Ok({"success": True, "error": None, "data": {"dry_run": True, **head, "arms": arms}})
     try:
-        fixture = decidr_client.load_answers_fixture(args.answers_file, COMPARE_FIXTURE_KEYS, load_json,
+        _checked = decidr_client.load_answers_fixture(args.answers_file, COMPARE_FIXTURE_KEYS, load_json,
                                                     validate_envelope=answers_envelope_error)
+        if not _checked["ok"]:
+            return _with_refs(Err(_checked["error"]), head)
+        else:
+            fixture = _checked["value"]
     except BatchInputError as exc:
         return _with_refs(Err(exc.error), head)
     except ClientError as exc:
@@ -2070,7 +2101,9 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
     runs = {arm: f"{run_name}.{arm}" for arm in COMPARE_ARMS}
     for name in (run_name, *runs.values()):
         try:
-            _safe_id(name, "--run-name")
+            _checked = decidr_client._safe_id(name, "--run-name")
+            if not _checked["ok"]:
+                return _with_refs(Err(_checked["error"]), head)
         except ClientError as exc:
             return _with_refs(Err(exc), head)
     worst = compare_event_fields(rid, candidates, location, threshold,
@@ -2080,7 +2113,9 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
         return _with_refs(sized, head)
     if fixture is None:
         try:
-            decidr_client.remote_preflight(args.repository_root, "The record text and the definitions")
+            _checked = decidr_client.remote_preflight(args.repository_root, "The record text and the definitions")
+            if not _checked["ok"]:
+                return _with_refs(Err(_checked["error"]), head)
         except ClientError as exc:
             return _with_refs(Err(exc), head)
     walks = {}
@@ -2421,14 +2456,24 @@ def cmd_drift(args) -> Result[Any, ClientError]:
     if args.dry_run:
         return Ok({"success": True, "error": None, "data": {"dry_run": True, **head, "requests": lines}})
     try:
-        fixture = decidr_client.load_answers_fixture(args.answers_file,
+        _checked = decidr_client.load_answers_fixture(args.answers_file,
             "'<record>/drift', '<record>.ctl-same/drift', '*'", load_json,
             validate_envelope=answers_envelope_error)
-        decidr_client.check_fixture_coverage(lines, settings, {}, batch_jobs, fixture)
+        if not _checked["ok"]:
+            return Err(_checked["error"])
+        else:
+            fixture = _checked["value"]
+        _checked = decidr_client.check_fixture_coverage(lines, settings, {}, batch_jobs, fixture)
+        if not _checked["ok"]:
+            return Err(_checked["error"])
         run_name = args.run_name or stamp()
-        _safe_id(run_name, "--run-name")
+        _checked = decidr_client._safe_id(run_name, "--run-name")
+        if not _checked["ok"]:
+            return Err(_checked["error"])
         if fixture is None and lines:
-            decidr_client.remote_preflight(args.repository_root, "The normative text of each compared record, old and new")
+            _checked = decidr_client.remote_preflight(args.repository_root, "The normative text of each compared record, old and new")
+            if not _checked["ok"]:
+                return Err(_checked["error"])
     except BatchInputError as exc:
         return Err(exc.error)
     except ClientError as exc:

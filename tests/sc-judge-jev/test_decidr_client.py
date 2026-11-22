@@ -20,15 +20,15 @@ import jev_judge
 from test_jev_judge import consented
 
 
-def parsed_result(*, answers=None, position=0, error=None):
-    """Controlled output at the public wheel parse_result boundary."""
-    return dict(session_id="controlled", position=position, sends=1, digests={}, error=error,
-                answers=answers or {}, usage={})
-
-
 class ConsumerAdoptionTests(unittest.TestCase):
+    def setUp(self):
+        patcher = mock.patch.object(decidr_client, "_LOGGER", None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_shared_default_codes_preserve_wheel_message_and_recovery(self):
         wheel = types.ModuleType("sc_agent")
+        wheel.logger = mock.Mock(return_value={"ok": True, "value": object()})
         wheel.category = lambda encoded: json.loads(encoded)["category"]
         wheel.retryable = lambda encoded: True
         for category, expected in (("quota", "DECIDR.RATE_LIMITED"), ("busy", "DECIDR.OVERLOADED"),
@@ -36,7 +36,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
                                    ("response_invalid", "DECIDR.RESPONSE_INVALID")):
             with self.subTest(category=category), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
                 error = decidr_client.wheel_error({"id": "test", "category": category,
-                                                   "message": "Rust message", "recovery": "Rust recovery"})
+                                                   "message": "Rust message", "action": "Rust recovery"})
                 self.assertEqual((error.code, error.message, error.action),
                                  (expected, "Rust message", "Rust recovery"))
         with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
@@ -44,13 +44,12 @@ class ConsumerAdoptionTests(unittest.TestCase):
                                                "message": "context too large"})
         self.assertEqual(error.code, "DECIDR.CONTEXT_EXCEEDED")
 
-    def test_missing_sitr_returns_actionable_shared_error(self):
-        with mock.patch.dict(sys.modules, {"sc_treesitter": None}):
-            with self.assertRaises(decidr_client.ClientError) as caught:
-                decidr_client.extract("python", "query", "source")
-        self.assertEqual(caught.exception.code, "DEPENDENCY.SITR")
-        self.assertIn(f"sitr=={jev_support.SITR_VERSION}", caught.exception.message)
-        self.assertIn(f"sitr=={jev_support.SITR_VERSION}", caught.exception.action)
+    def test_missing_wheel_returns_actionable_shared_error(self):
+        with mock.patch.dict(sys.modules, {"sc_agent": None}):
+            result = decidr_client.extract("python", "source", "query")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"]["id"], "DEPENDENCY.SC_DECIDR")
+        self.assertIn("Install sc-decidr", result["error"]["action"])
 
     def test_script_render_uses_the_sitr_pin_independently(self):
         with tempfile.TemporaryDirectory() as tmp, \
@@ -58,8 +57,8 @@ class ConsumerAdoptionTests(unittest.TestCase):
                 mock.patch.object(jev_support, "SITR_VERSION", "8.0.0"):
             rendered = jev_support._render(Path(tmp)) / "decidr_client.py"
             text = rendered.read_text(encoding="utf-8")
-        self.assertIn('SC_DECIDR_VERSION = "7.0.0"', text)
-        self.assertIn("Optional sitr 8.0.0", text)
+        self.assertIn(f'SC_DECIDR_VERSION = "{metadata.version("sc-decidr")}' , text)
+        self.assertIn("return sc_agent.sitr.query(", text)
 
     def test_judge_imports_rendered_client(self):
         self.assertIs(jev_judge.decidr_client, decidr_client)
@@ -70,7 +69,7 @@ class ConsumerAdoptionTests(unittest.TestCase):
             installed_version = jev_support.SC_DECIDR_VERSION
         self.assertEqual(decidr_client.SC_DECIDR_VERSION, installed_version)
         self.assertTrue(callable(decidr_client.extract))
-        self.assertIn(f"Optional sitr {jev_support.SITR_VERSION}", Path(decidr_client.__file__).read_text(encoding="utf-8"))
+        self.assertNotIn("import sc_treesitter", Path(decidr_client.__file__).read_text(encoding="utf-8"))
 
     def test_importing_rendered_client_does_not_import_sitr(self):
         path = Path(decidr_client.__file__)
@@ -81,72 +80,85 @@ class ConsumerAdoptionTests(unittest.TestCase):
         self.assertTrue(callable(isolated.extract))
 
     def test_optional_sitr_is_lazy_and_extraction_reaches_a_dry_run(self):
-        if importlib.util.find_spec("sc_treesitter") is None:
+        if importlib.util.find_spec("sc_agent.sitr") is None:
             if os.environ.get("JUDGE_JEV_REQUIRE_SITR") == "1":
-                self.fail("JUDGE_JEV_REQUIRE_SITR=1 but the sitr wheel is not installed")
-            self.skipTest("sitr wheel is not installed in this test environment")
+                self.fail("JUDGE_JEV_REQUIRE_SITR=1 but the sc-decidr wheel is not installed")
+            self.skipTest("sc-decidr wheel is not installed in this test environment")
 
         # Stub send to check extraction-to-request wiring without a provider call;
-        # skip when the optional sitr wheel is absent.
+        # skip when the optional sc-decidr wheel is absent.
         source = Path(__file__).parent / "fixtures" / "sitr_match.rs"
-        captures = decidr_client.extract("rust", "(match_expression) @match", source.read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as root, mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": root}):
+            captures = decidr_client.extract("rust", source.read_text(encoding="utf-8"), "(match_expression) @match")["value"]
         self.assertTrue(captures)
-        prompt = "\n".join(capture.text for capture in captures)
+        prompt = "\n".join(capture["text"] for capture in captures)
         sent = []
 
         wheel = types.ModuleType("sc_agent")
-        wheel.SagError = type("SagError", (Exception,), {})
+        wheel.logger = mock.Mock(return_value={"ok": True, "value": object()})
 
         def dry_run(request, **kwargs):
             sent.append(json.loads(request))
-            return '{"response": {"dry_run": true}}'
+            return {"ok": True, "value": {"answers": {"q": {"type": "noul", "noul": 0.5}}}}
 
         wheel.send = dry_run
-        wheel.parse_result = lambda _: parsed_result(answers={"q": decidr_client.NoulAnswer(0.5)})
         with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             request = json.dumps({"model": "jev", "state": prompt, "questions": {"q": {"type": "noul"}}})
-            result = decidr_client.call_result(request, model="jev", project="judge-jev", agent_role="quality",
-                                                abort_on=frozenset(), category_codes={},
+            result = decidr_client.call_result(request, model="jev", project="judge-jev",                                                 abort_on=frozenset(), category_codes={},
                                                 cancel=mock.Mock())
         self.assertTrue(result["ok"])
         self.assertEqual(sent[0]["state"], prompt)
         self.assertIn("match", prompt)
 
-    def test_public_client_forwards_explicit_keyring_values_when_requested(self):
+    def test_public_client_omits_removed_keyring_overrides(self):
         wheel = types.ModuleType("sc_agent")
-        wheel.SagError = type("SagError", (Exception,), {})
-        line = json.dumps({"response": {"answers": {}}})
+        wheel.logger = mock.Mock(return_value={"ok": True, "value": object()})
+        line = {"ok": True, "value": {"answers": {}}}
         wheel.send = mock.Mock(return_value=line)
-        wheel.send_batch = mock.Mock(return_value=[json.dumps({"response": {"answers": {}}, "position": i}) for i in range(2)])
+        wheel.send_batch = mock.Mock(return_value={"ok": True, "value": [{"index": i, "result": line} for i in range(2)]})
         wheel.category = mock.Mock()
-        wheel.parse_result = lambda line: parsed_result(position=json.loads(line).get("position", 0))
         cancel = mock.Mock()
-        options = dict(model="jev", project="judge-jev", agent_role="quality",
-                       abort_on=frozenset(), category_codes={}, cancel=cancel,
-                       keyring_service="plan-anchor", keyring_account="typesafe-api-key")
+        options = dict(model="jev", project="judge-jev",                        abort_on=frozenset(), category_codes={}, cancel=cancel,
+                       general_log=None)
         with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
             self.assertTrue(decidr_client.call_result("one", **options)["ok"])
             self.assertTrue(decidr_client.call_batch_results(["one", "two"], **options)["ok"])
         for operation in (wheel.send, wheel.send_batch):
             args = operation.call_args.kwargs
-            self.assertEqual(args["keyring_service"], "plan-anchor")
-            self.assertEqual(args["keyring_account"], "typesafe-api-key")
+            self.assertNotIn("keyring_service", args)
+            self.assertNotIn("keyring_account", args)
             self.assertEqual(args["project"], "judge-jev")
-            self.assertEqual(args["agent_role"], "quality")
+            self.assertEqual(args["agent_role"], "judge-jev")
             self.assertIs(args["cancel"], cancel)
             self.assertNotIn("provider", args)
-            self.assertIsNone(args["general_log"])
+            self.assertIs(args["general_log"], wheel.logger.return_value["value"])
         wheel.category.assert_not_called()
 
-    @unittest.skipUnless(find_spec("yaml"), "PyYAML is required to read the loopback repository consent setting")
-    @unittest.skipUnless(find_spec("sc_agent"), "sc-decidr wheel is not installed")
-    def test_real_wheel_prefers_dotenv_then_environment_with_keyring_trapped(self):
-        import sc_agent
+    def test_real_wheel_prefers_environment_then_dotenv_with_keyring_trapped(self):
+        try:
+            importlib.metadata.distribution("sc-decidr")
+        except importlib.metadata.PackageNotFoundError:
+            self.skipTest("sc-decidr wheel is not installed")
+
+        # Other tests install a module double in sys.modules. Load the installed
+        # wheel itself and make it visible only for these client calls.
+        previous_agent = sys.modules.pop("sc_agent", None)
+        try:
+            wheel = importlib.import_module("sc_agent")
+        finally:
+            if previous_agent is not None:
+                sys.modules["sc_agent"] = previous_agent
 
         seen = []
+        ready = threading.Event()
 
-        class LocalRunner(BaseHTTPRequestHandler):
-            def log_message(self, *args):
+        class LocalRunner(ThreadingHTTPServer):
+            def serve_forever(self, *args, **kwargs):
+                ready.set()
+                return super().serve_forever(*args, **kwargs)
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *_args):
                 pass
 
             def reply(self, body):
@@ -165,97 +177,89 @@ class ConsumerAdoptionTests(unittest.TestCase):
                 self.reply({"model": "jev-latest", "answers": {"q": {"type": "noul", "noul": 0.5}},
                             "usage": {"input_tokens": 1, "output_tokens": 1}})
 
-        server = ThreadingHTTPServer(("127.0.0.1", 0), LocalRunner)
+        server = LocalRunner(("127.0.0.1", 0), Handler)
         server.daemon_threads = True
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
-        self.addCleanup(thread.join, 120)  # hang guard only
-        self.addCleanup(server.server_close)
-        self.addCleanup(server.shutdown)
-        request = json.dumps({"model": "jev-latest", "state": "s", "questions": {"q": {"type": "noul"}}})
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            run_child(["git", "init", "-q", str(root)], check=True)
-            config = root / "config"
-            config.mkdir()
-            settings = root / ".sc/judge-jev/settings.yaml"
-            settings.parent.mkdir(parents=True)
-            settings.write_text("schema_version: 1\nallow_remote_judge: true\n")
-            (config / "default.json").write_text(json.dumps({
-                "log_root": str(root / "logs"),
-                "local_runners": {"dec": {"kind": "mapika", "host": "127.0.0.1", "port": server.server_port,
-                                          "model": "jev-latest", "key_env": "TYPESAFE_API_KEY"}},
-            }))
-            environment = {k: v for k, v in os.environ.items() if not k.endswith("_API_KEY") and not k.startswith("SC_AGENT__")}
-            environment.update(TYPESAFE_API_KEY="env-test-key", SC_AGENT_TEST_TRAP_PLATFORM_KEYRING="1")
-            previous = os.getcwd()
-            try:
-                os.chdir(root)
-                with mock.patch.dict(os.environ, environment, clear=True):
-                    decidr_client.remote_preflight(str(root), "controlled loopback requests")
-                    options = dict(model="dec", project="test", agent_role="test", abort_on=frozenset(),
-                                   category_codes={}, cancel=sc_agent.CancelToken(), config_dir=str(config))
-                    dotenv = root / ".env"
-                    dotenv.write_text("TYPESAFE_API_KEY=dotenv-test-key\n")
-                    decidr_client.call_result(request, **options)
-                    dotenv.unlink()
-                    decidr_client.call_result(request, **options)
-                    del os.environ["TYPESAFE_API_KEY"]
-                    result = decidr_client.call_result(request, **options)
-                    self.assertFalse(result["ok"])
-                    self.assertIn("secrets.keyring_construction_refused", json.dumps(result["error"].data))
-            finally:
-                os.chdir(previous)
-        self.assertEqual(seen, ["Bearer dotenv-test-key", "Bearer env-test-key"])
+        try:
+            self.assertTrue(ready.wait(5), "local runner did not become ready")
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                run_child(["git", "init", "-q", str(root)], check=True)
+                config = root / "config"
+                config.mkdir()
+                environment = {"PATH": os.defpath, "TYPESAFE_API_KEY": "env-test-key",
+                               "DECIDR_LOG_ROOT": str(root / "logs"), "JUDGE_JEV_LOG_ROOT": str(root / "logs")}
+                request = {"model": "jev-latest", "state": "s", "questions": {"q": {"type": "noul"}}}
+                options = dict(model="jev", project="test", abort_on=frozenset(),
+                               category_codes={}, cancel=wheel.Cancel(), config_dir=str(config))
+                client = decidr_client
+                native_send = wheel.send
+                def trapped_keyring(name):
+                    raise RuntimeError("test keyring refused")
+                def send(request, **kwargs):
+                    return native_send(request, base_url=f"http://127.0.0.1:{server.server_port}/v1",
+                                       keyring_lookup=trapped_keyring, **kwargs)
+                with mock.patch.object(wheel, "send", side_effect=send), mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(client, "remote_preflight", return_value={"ok": True, "value": None}), \
+                        mock.patch.dict(sys.modules, {"sc_agent": wheel}):
+                    previous_cwd = os.getcwd()
+                    os.chdir(root)
+                    try:
+                        dotenv = root / ".env"
+                        dotenv.write_text("TYPESAFE_API_KEY=dotenv-test-key\n")
+                        first = client.call_result(request, **options)
+                        self.assertTrue(first["ok"], first)
+                        del os.environ["TYPESAFE_API_KEY"]
+                        second = client.call_result(request, **options)
+                        self.assertTrue(second["ok"], second)
+                        dotenv.unlink()
+                        third = client.call_result(request, **options)
+                        self.assertFalse(third["ok"], third)
+                        self.assertIn("secrets.keyring_read", json.dumps(third["error"].data))
+                    finally:
+                        os.chdir(previous_cwd)
+            self.assertEqual(seen, ["Bearer env-test-key", "Bearer dotenv-test-key"])
+        finally:
+            server.shutdown()
+            thread.join(5)
+            server.server_close()
 
-    def test_auth_error_line_maps_category_and_cancels(self):
+    def test_auth_error_value_maps_category_and_cancels(self):
         wheel = types.ModuleType("sc_agent")
-        wheel.SagError = type("SagError", (Exception,), {})
-        line = json.dumps({"error": {"id": "auth", "category": "auth", "message": "Rust auth failure", "recovery": "Fix key"}})
-        wheel.send = mock.Mock(return_value=line)
-        wheel.category = mock.Mock(return_value="auth")
-        wheel.retryable = mock.Mock(return_value=False)
-        typed_error = wheel.SagError("Rust auth failure")
-        typed_error.detail = json.loads(line)["error"]
-        typed_error.category = "auth"
-        wheel.parse_result = lambda _: parsed_result(error=typed_error)
+        wheel.logger = mock.Mock(return_value={"ok": True, "value": object()})
+        detail = {"id": "http.auth", "category": "auth", "message": "Rust auth failure", "action": "Fix key"}
+        wheel.send = mock.Mock(return_value={"ok": False, "error": detail})
         cancel = mock.Mock()
         with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
-            result = decidr_client.call_result("one", model="jev", project="judge-jev",
-                                       agent_role="quality", abort_on=frozenset({"auth"}),
-                                       category_codes={"auth": "AUTH"}, cancel=cancel)
+            result = decidr_client.call_result("one", model="jev", project="test", abort_on=frozenset({"auth"}),
+                                               category_codes={"auth": "AUTH"}, cancel=cancel)
         self.assertEqual((result["error"].code, result["error"].message, result["error"].action), ("AUTH", "Rust auth failure", "Fix key"))
+        self.assertEqual(result["error"].data, detail)
         cancel.cancel.assert_called_once_with()
-        self.assertEqual(json.loads(wheel.category.call_args.args[0])["category"], "auth")
 
-    def test_sag_error_category_cancels_and_propagates(self):
+    def test_returned_error_category_cancels_and_propagates(self):
         wheel = types.ModuleType("sc_agent")
-        wheel.SagError = type("SagError", (Exception,), {})
-        error = wheel.SagError("denied")
-        error.category = "auth"
-        error.detail = {"id": "auth", "category": "auth", "message": "Rust denied", "recovery": "Fix key"}
-        wheel.category = mock.Mock(return_value="auth")
-        wheel.retryable = mock.Mock(return_value=False)
-        wheel.send = mock.Mock(side_effect=error)
+        wheel.logger = mock.Mock(return_value={"ok": True, "value": object()})
+        detail = {"id": "http.auth", "category": "auth", "message": "Rust denied", "action": "Fix key"}
+        wheel.send = mock.Mock(return_value={"ok": False, "error": detail})
         cancel = mock.Mock()
         with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
-            result = decidr_client.call_result("one", model="jev", project="judge-jev",
-                                               agent_role="quality", abort_on=frozenset({"auth"}),
+            result = decidr_client.call_result("one", model="jev", project="test", abort_on=frozenset({"auth"}),
                                                category_codes={}, cancel=cancel)
         self.assertIsInstance(result["error"], decidr_client.ClientError)
         self.assertEqual((result["error"].message, result["error"].action), ("Rust denied", "Fix key"))
         cancel.cancel.assert_called_once_with()
 
-    def test_keyboard_interrupt_cancels_and_propagates(self):
+    def test_keyboard_interrupt_returns_cancellation(self):
         wheel = types.ModuleType("sc_agent")
-        wheel.SagError = type("SagError", (Exception,), {})
+        wheel.logger = mock.Mock(return_value={"ok": True, "value": object()})
         wheel.send = mock.Mock(side_effect=KeyboardInterrupt)
         cancel = mock.Mock()
         with consented(), mock.patch.dict(sys.modules, {"sc_agent": wheel}):
-            with self.assertRaises(KeyboardInterrupt):
-                decidr_client.call_result("one", model="jev", project="judge-jev",
-                                   agent_role="quality", abort_on=frozenset(),
-                                   category_codes={}, cancel=cancel)
+            result = decidr_client.call_result("one", model="jev", project="test", abort_on=frozenset(),
+                                               category_codes={}, cancel=cancel)
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"].code, "CANCELED")
         cancel.cancel.assert_called_once_with()
 
 

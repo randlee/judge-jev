@@ -248,10 +248,7 @@ def load_package(plugin_dir: Path = PLUGIN_DIR) -> Result[Package, ToolError]:
     if decidr_match is None:
         return err(bad, f"{runtime_template} must pin sc-decidr to an exact X.Y.Z version")
     sc_decidr_version = decidr_match.group(1)
-    sitr_match = re.search(r'^\s*#\s*"sitr==([0-9]+\.[0-9]+\.[0-9]+)",\s*$', runtime_text, re.M)
-    if sitr_match is None:
-        return err(bad, f"{runtime_template} must pin sitr to an exact X.Y.Z version")
-    sitr_version = sitr_match.group(1)
+    sitr_version = sc_decidr_version
     agents_src = plugin_dir / "install" / "templates" / "agents"
     harness = plugin_dir / "install" / "harness"
     if not skill_src.is_dir():

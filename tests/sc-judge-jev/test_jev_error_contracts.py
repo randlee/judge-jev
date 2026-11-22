@@ -18,9 +18,7 @@ class ConsumerErrorContracts(unittest.TestCase):
         log.event.return_value = jj.Ok(None)
 
         def batch_result(_requests, **kwargs):
-            kwargs["general_log"]({"action": "sc_decidr.error", "target": "sc_decidr",
-                                   "correlation_id": "request-1",
-                                   "fields": {"code": "DECIDR.OVERLOADED", "message": "busy"}})
+            self.assertFalse(callable(kwargs["general_log"]))
             kwargs["on_result"](record)
             return {"ok": True, "value": [record], "position": None, "line": None, "attempts": None}
 
@@ -31,15 +29,14 @@ class ConsumerErrorContracts(unittest.TestCase):
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
                           got.value[0]["attempts"]), ("DECIDR.OVERLOADED", 3, []))
         log_line.assert_called_once_with(log, got.value[0], {})
-        log.event.assert_called_once_with("sc_decidr.error",
-                                          {"sc_agent_target": "sc_decidr", "code": "DECIDR.OVERLOADED", "message": "busy"},
-                                          correlation_id="request-1")
+        log.event.assert_not_called()  # Native general events are not forwarded through Python.
+
         self.assertNotIn("category_codes", call.call_args.kwargs)
-        self.assertEqual(call.call_args.kwargs["project"], "judge-jev")
-        self.assertEqual(call.call_args.kwargs["agent_role"], "quality")
+        self.assertNotIn("project", call.call_args.kwargs)
+        self.assertNotIn("agent_role", call.call_args.kwargs)
         self.assertEqual(call.call_args.kwargs["timeout_secs"], 42.0)
         self.assertEqual(call.call_args.kwargs["workers"], 2)
-        self.assertTrue(call.call_args.kwargs["general_log"])
+        self.assertFalse(callable(call.call_args.kwargs["general_log"]))
         self.assertTrue(call.call_args.kwargs["on_result"])
         for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
             self.assertNotIn(name, call.call_args.kwargs)

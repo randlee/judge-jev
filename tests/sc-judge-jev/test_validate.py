@@ -290,7 +290,7 @@ class LogEventLimit(unittest.TestCase):
     def test_c2_a_tree_whose_request_fits_but_whose_log_events_do_not_is_refused_before_any_call(self):
         tree = self.adr_with_questions(7, 255)
         line = jj.wave_line(tq.INDEX["decisions"][0], "wave-1", jj.parse_quality_tree(json.dumps(tree), "t").value.nodes["wave-1"])
-        size = len(jj.decidr_client._encode_request({"model": jj.DEFAULT_MODEL, "state": {"item": line["item"]}, "questions": line["questions"][0]["questions"]}).encode("utf-8"))
+        size = len(json.dumps({"model": jj.DEFAULT_MODEL, "state": {"item": line["item"]}, "questions": line["questions"][0]["questions"]}).encode("utf-8"))
         self.assertLessEqual(size, jj.DEFAULT_MAX_REQUEST_BYTES, "the request itself must fit --max-request-bytes")
         answers = write(self.d, "answers.json", {"*": {}})
         for mode in (["--dry-run"], ["--answers-file", answers]):

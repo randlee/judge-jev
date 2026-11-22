@@ -188,7 +188,7 @@ class LogSizeIsMeasuredEscaped(unittest.TestCase):
 
         def attempt(job, fixture, number, **kwargs):
             if number == 1:
-                raise jj.ClientError("DECIDR.OVERLOADED", ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT, True)
+                return {"ok": False, "error": jj.ClientError("DECIDR.OVERLOADED", ASTRAL * jj.ATTEMPT_MESSAGE_LIMIT, True)}
             return real(job, fixture, number, **kwargs)
         return mock.patch.object(jj.decidr_client, "_fixture_attempt", side_effect=attempt)
 
@@ -374,14 +374,14 @@ class AnswersEnvelope(unittest.TestCase):
         with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys:
             result = jj.decidr_client._fixture_attempt(job,
                 {"delegated/r2": {"answer": {"type": "noul", "noul": 0.75}}}, 1)
-        self.assertEqual(result["answers"]["answer"].noul, 0.75)
+        self.assertEqual(result["value"]["answers"]["answer"].noul, 0.75)
         get_keys.assert_called_once_with(job)
         missing = jj.ClientError("TEST.MISSING", "shared helper result")
         with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys, \
                 mock.patch.object(jj.decidr_client, "_fixture_missing", return_value=missing) as get_missing:
-            with self.assertRaises(jj.ClientError) as caught:
-                jj.decidr_client._fixture_attempt(job, {}, 1)
-        self.assertIs(caught.exception, missing)
+            result = jj.decidr_client._fixture_attempt(job, {}, 1)
+        self.assertFalse(result["ok"])
+        self.assertIs(result["error"], missing)
         get_keys.assert_called_once_with(job)
         get_missing.assert_called_once_with(keys)
 

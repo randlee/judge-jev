@@ -75,7 +75,7 @@ def env(**values):
 def consented():
     """The repository's allow_remote_judge is true (the real lookup is tested in test_jev_remote_judge_setting)."""
     stack = contextlib.ExitStack()
-    stack.enter_context(mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value=None))
+    stack.enter_context(mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value={"ok": True, "value": None}))
     return stack
 
 
@@ -156,17 +156,16 @@ def result_lines(text):
 
 class ConsentBoundaryTests(unittest.TestCase):
     def test_remote_preflight_uses_the_shared_consent_gate(self):
-        with mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value=None) as consent:
-            self.assertIsNone(jj.decidr_client.remote_preflight("controlled-repository", "record text"))
+        with mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value={"ok": True, "value": None}) as consent:
+            self.assertEqual(jj.decidr_client.remote_preflight("controlled-repository", "record text"), {"ok": True, "value": None})
         consent.assert_called_once_with("controlled-repository", "record text")
         self.assertFalse(hasattr(jj, "remote_judge_consent"))
 
     def test_remote_preflight_propagates_the_shared_refusal(self):
         refused = jj.ClientError("POLICY.REMOTE_JUDGE_DISABLED", "consent is absent")
-        with mock.patch.object(jj.decidr_client, "remote_judge_consent", side_effect=refused):
-            with self.assertRaises(jj.ClientError) as caught:
-                jj.decidr_client.remote_preflight("controlled-repository", "record text")
-        self.assertIs(caught.exception, refused)
+        with mock.patch.object(jj.decidr_client, "remote_judge_consent", return_value={"ok": False, "error": refused}):
+            got = jj.decidr_client.remote_preflight("controlled-repository", "record text")
+        self.assertIs(got["error"], refused)
 
 
 class DecideTests(unittest.TestCase):
