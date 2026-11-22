@@ -1,19 +1,22 @@
 # Owner-attended live integration runs
 
 Live integration runs exercise the same judge-jev request cases used by the
-controlled tests, with the request sent to the real Jev provider. The owner
-must attend and manually trigger each run. Do not enable unattended live runs
-in CI or in the unit-test suite.
+controlled tests, with requests sent to the real Jev provider. With owner
+authorization, the run may execute unattended; do not enable it in CI or in
+the unit-test suite. Use `python scripts/integration.py --venv <venv> --env-file
+<temporary-file> --key-variable TYPESAFE_API_KEY --results <report.json>`.
+The runner consumes the temporary credential file, uses that key for functional
+cases, and records each keychain probe as success or `secrets.keyring_timeout`.
+Other keychain errors remain failures.
 
 ## Before a run
 
-1. Confirm the owner is present and has selected the platform and request cases
-   to run.
+1. Confirm the owner has authorized the run and selected the platform and request cases.
 2. Use the pinned judge-jev checkout and sc-agent client versions recorded in
    the run report. Confirm `.sc/judge-jev/settings.yaml` allows remote judging.
-3. Supply credentials through sc-agent's normal lookup order: repository
-   `.env`, `TYPESAFE_API_KEY`, then the default platform credential entry
-   (`TYPESAFE_API_KEY`, current OS account). Do not pass keyring overrides.
+3. Supply an environment or `.env` key for functional cases. Keychain cases
+   use the default platform entry without overrides; a typed timeout is recorded
+   and accepted, so access approval is never needed for the run to finish.
 4. Run the existing cases selected by the owner as real requests. Record the
    exact command, platform, runtime versions, commit and outcome. Do not
    substitute a fixture result for a live result.
