@@ -6,6 +6,7 @@ not random, so each run checks the same inputs."""
 import copy
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -87,6 +88,18 @@ def tree_cases(base):
 
 
 class TreeSweep(unittest.TestCase):
+    def setUp(self):
+        log_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(log_dir.cleanup)
+        environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": log_dir.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+        logger = jj.open_run_log()
+        self.assertIsInstance(logger, jj.Ok)
+        self.logger = logger.value
+        self.enterContext(mock.patch.object(jj, "open_run_log", side_effect=lambda: jj.Ok(self.logger)))
+        self.addCleanup(setattr, self, "logger", None)
+
     def sweep(self, base, flag, record_id):
         with tempfile.TemporaryDirectory() as td:
             d = Path(td)
