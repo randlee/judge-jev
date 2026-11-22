@@ -51,6 +51,7 @@ class BatchCase(unittest.TestCase):
         _log_environment.start()
         self.addCleanup(_log_environment.stop)
         self.addCleanup(self.td.cleanup)
+        self.enterContext(mock.patch.object(jj.decidr_client, "_logger_handle", None))
 
     def put(self, name, value):
         return write(self.d, name, value)
