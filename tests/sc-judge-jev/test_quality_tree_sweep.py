@@ -6,6 +6,7 @@ not random, so each run checks the same inputs."""
 import copy
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -87,6 +88,19 @@ def tree_cases(base):
 
 
 class TreeSweep(unittest.TestCase):
+    def setUp(self):
+        log_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(log_dir.cleanup)
+        environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": log_dir.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+        self.enterContext(mock.patch.object(jj.decidr_client, "_logger_handle", None))
+        logger = jj.open_run_log()
+        self.assertIsInstance(logger, jj.Ok)
+        self.logger = logger.value
+        self.enterContext(mock.patch.object(jj, "open_run_log", side_effect=lambda: jj.Ok(self.logger)))
+        self.addCleanup(setattr, self, "logger", None)
+
     def sweep(self, base, flag, record_id):
         with tempfile.TemporaryDirectory() as td:
             d = Path(td)
@@ -97,16 +111,15 @@ class TreeSweep(unittest.TestCase):
                 outcomes = []
                 for mode in (["--dry-run"], ["--answers-file", answers]):
                     sent = []
-                    real = jj.pump_batch
+                    real = jj.judge_batch
 
                     def counting(lines, *args, **kwargs):
                         sent.extend(lines)
                         return real(lines, *args, **kwargs)
 
-                    with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
-                            mock.patch.object(jj, "pump_batch", counting):
-                        code, out = run_cli(["quality", flag, record_id, "--index", index, "--questions", tree_file,
-                                             "--run-dir", str(d / "logs"), "--run-name", "sweep", *mode])
+                    with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), \
+                            mock.patch.object(jj, "judge_batch", counting):
+                        code, out = run_cli(["quality", flag, record_id, "--index", index, "--questions", tree_file, "--run-name", "sweep", *mode])
                     where = f"{path} = {'<deleted>' if value is DELETED else repr(value)} ({mode[0]})"
                     self.assertIsInstance(out, dict, where)
                     error = out.get("error") or {}
@@ -118,7 +131,7 @@ class TreeSweep(unittest.TestCase):
                 self.assertEqual(outcomes[0], outcomes[1], f"{path} = {value!r}: dry run and live run disagree")
                 # `validate --tree` applies the tree's own checks: it refuses what quality refuses as a tree, with the same code,
                 # and accepts what quality accepts; only what needs the record (its statements) is left to quality
-                with env(), mock.patch.object(jj, "call_jev", tq.never_called):
+                with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
                     vcode, vout = run_cli(["validate", "--tree", tree_file])
                 verdict = (vout.get("error") or {}).get("code")
                 self.assertIsInstance(vout, dict, where)
@@ -131,14 +144,14 @@ class TreeSweep(unittest.TestCase):
         """``answer_side``: the mutation is in Jev's answers (the answers file stands in for the response), so it can only
         be refused after the request; the check is then only that nothing crashes."""
         sent = []
-        real = jj.pump_batch
+        real = jj.judge_batch
 
         def counting(lines, *args, **kwargs):
             sent.extend(lines)
             return real(lines, *args, **kwargs)
 
-        with env(), mock.patch.object(jj, "call_jev", tq.never_called), mock.patch.object(jj, "pump_batch", counting):
-            code, out = run_cli([*argv, "--run-dir", str(d / "logs"), "--run-name", "sweep"])
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting):
+            code, out = run_cli([*argv, "--run-name", "sweep"])
         self.assertIsInstance(out, dict, argv)
         error = out.get("error") or {}
         self.assertNotEqual(error.get("code"), "SCRIPT.INTERNAL", f"{argv}: {error}")
@@ -180,17 +193,6 @@ class TreeSweep(unittest.TestCase):
                     with self.subTest(name=name, argv=argv[0]):
                         self.assertEqual(self.run_quality(d, ["quality", "--adr", "ADR-T-0001", *argv]), "INPUT.MALFORMED")
 
-    def test_unwritable_run_dir_is_refused_before_any_call(self):
-        with tempfile.TemporaryDirectory() as td:
-            d = Path(td)
-            index = write(d, "index.json", tq.INDEX)
-            answers = write(d, "answers.json", {"ADR-T-0001/wave-1": tq.tree_answers("quality-adr.json")})
-            not_a_dir = write(d, "file", "x")
-            with env(), mock.patch.object(jj, "call_jev", tq.never_called), \
-                    mock.patch.object(jj, "pump_batch", side_effect=AssertionError("sent before the log was checked")):
-                code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", index, "--answers-file", answers,
-                                     "--run-dir", not_a_dir])
-            self.assertEqual((code, out["error"]["code"]), (2, "LOG.WRITE"), out)
 
     def test_stdout_is_json_on_a_real_utf8_stream(self):
         """emit never fails on a lone surrogate (here, from a non-UTF-8 argument) when stdout is a strict UTF-8 stream."""

@@ -1,5 +1,5 @@
 """Definitions (ADR-JEV-0008; REQ-JEV-0212, REQ-JEV-0213): a definition is data attached to a record, or to a record and a
-location, carried in the request state of every request it reaches. Jev is never called (call_jev fails the test); answers
+location, carried in the request state of every request it reaches. Jev is never called (the client calls fail the test); answers
 come from fixture files; the run log is read back through sc-observability.
 """
 import hashlib
@@ -199,7 +199,7 @@ class Composition(DefinitionCase):
                            ("only at a location", definition("l", "x", "t", "docs/r.md", (ADR, "docs/r.md")))):
             with self.subTest(name):
                 request, result = self.adr_state("--definitions", self.definitions(text))
-                self.assertEqual(jj.encode_body(request), jj.encode_body(plain))
+                self.assertEqual(json.dumps(request).encode("utf-8"), json.dumps(plain).encode("utf-8"))
                 self.assertNotIn("definitions", request["state"])
                 self.assertNotIn("definitions", result)
         self.assertNotIn("definitions", plain["state"])
@@ -282,7 +282,7 @@ class Composition(DefinitionCase):
         code, out = self.quality("--adr", "ADR-T-0001", "--definitions", path, answers={"*": tree_answers("quality-adr.json")})
         self.assertEqual(code, 0, out)
         tree, _quads = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository="urn:raptor:repo:test")
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test", log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertIsInstance(rebuilt, Ok, rebuilt)
         linked = sorted(q.object.value for q in rebuilt.value if q.predicate.value.endswith("#carriedDefinition"))
         self.assertEqual(linked, [iri("a"), iri("b")])
@@ -293,7 +293,7 @@ class Composition(DefinitionCase):
         code, out = self.quality("--adr", "ADR-T-0001", answers={"*": tree_answers("quality-adr.json")})
         self.assertEqual(code, 0, out)
         tree, _quads = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository="urn:raptor:repo:test")
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository="urn:raptor:repo:test", log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertFalse([q for q in rebuilt.value if q.predicate.value.endswith("#carriedDefinition")])
 
     def test_the_shipped_question_wording_is_unchanged(self):
@@ -306,11 +306,24 @@ class Composition(DefinitionCase):
 
 
 class Compare(DefinitionCase):
+    def test_dry_run_rejects_a_corrupt_nearest_install_lock(self):
+        repo = self.d / "installed"
+        script = repo / ".claude" / "skills" / "judge-jev" / "scripts" / "jev_judge.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("untrusted copy\n", encoding="utf-8")
+        lock = repo / ".sc" / "judge-jev" / "install-lock.json"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("{corrupt", encoding="utf-8")
+        code, out = run_cli(["compare-definition", "--adr", "ADR-T-0001", "--index", self.index,
+                             "--definition", iri("fast"), "--definitions", self.defs,
+                             "--dry-run", "--repository-root", str(repo)])
+        self.assertEqual((code, out["success"], (out.get("error") or {}).get("code")),
+                         (2, False, "VALIDATION.PATH"), out)
+
     def compare(self, *argv, answers=None, run="c1"):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
-        with env(), mock.patch.object(jj, "call_jev", never_called):  # no real key, no real settings, no live Jev
-            return run_cli(["compare-definition", "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", run,
-                            *argv, *extra])
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=never_called, call_batch_results=never_called):  # no real key, no real settings, no live Jev
+            return run_cli(["compare-definition", "--index", self.index, "--run-name", run, *argv, *extra])
 
     def adr(self, *argv, **kw):
         return self.compare("--adr", "ADR-T-0001", *argv, **kw)
@@ -463,8 +476,11 @@ class Compare(DefinitionCase):
         self.assertEqual((got, out["error"]["code"]), (2, "DEFINITIONS.NOT_FOUND"), out)
 
     def test_a_live_comparison_without_an_answers_file_needs_consent_before_any_call(self):
-        got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"))
-        self.assertEqual((got, out["success"], out["error"]["code"]), (2, False, "AUTH.CREDENTIALS"), out)  # no key: stopped before any call
+        (self.d / ".git").mkdir()
+        got, out = self.adr("--definitions", self.defs, "--definition", iri("fast"),
+                            "--repository-root", str(self.d))
+        self.assertEqual((got, out["success"], out["error"]["code"]),
+                         (2, False, "POLICY.REMOTE_JUDGE_DISABLED"), out)  # consent is checked before sc-agent resolves credentials
 
 
 if __name__ == "__main__":

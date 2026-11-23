@@ -61,21 +61,21 @@ class NonConsecutiveRanks(RunCase):
     def run_ttl(self, ttl, flag, record_id, answers):
         path = self.d / "tree.ttl"
         path.write_bytes(ttl.encode("utf-8"))
-        pumped, real = [], jj.pump_batch
+        pumped, real = [], jj.judge_batch
 
         def spy(*args, **kwargs):
             got = real(*args, **kwargs)
             pumped.extend(got.value)
             return got
 
-        with mock.patch.object(jj, "pump_batch", spy):
+        with mock.patch.object(jj, "judge_batch", spy):
             code, out = self.quality(flag, record_id, "--questions", str(path), answers=answers)
         self.assertEqual(code, 0, out)
         (result,) = out["data"]["results"]
         tree = jev_graph.load_tree(str(path)).value
         run = {"name": "q1", "tree_sha256": result["tree"]["sha256"], "record_id": record_id, "repository": REPOSITORY}
         built = jev_runs.run_triples(tree, run, pumped, result)
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository=REPOSITORY)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY, log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertIsInstance(rebuilt, jj.Ok, rebuilt)
         self.assertEqual(built, rebuilt.value)
         store = ox.Store()

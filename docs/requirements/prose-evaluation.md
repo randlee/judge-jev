@@ -428,7 +428,7 @@ the refused field, such as `nodes.wave-1.questions.context.criteria`. An
 answers file is a JSON file of Jev's answers, keyed by request, that
 `--answers-file` gives judge-jev in place of a live call. Its envelope is
 its outer structure: its keys and the type of each value.
-`JEV.RESPONSE_INVALID` is the typed error code for an answer whose
+`DECIDR.RESPONSE_INVALID` is the typed error code for an answer whose
 questions, choices or probabilities do not match the request.
 
 **MUST statements:**
@@ -460,7 +460,7 @@ paid call wastes it.
 
 The answers file stands in for Jev's response, so what an answer holds
 (its questions, choices and probabilities) is not part of the envelope; it
-is checked after the send as `JEV.RESPONSE_INVALID`.
+is checked after the send as `DECIDR.RESPONSE_INVALID`.
 
 ### Success Criteria
 
@@ -484,9 +484,8 @@ the JSON object it prints on success. A typed error is a JSON error object
 with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a
 `suggested_action`. A tree is a quality decision tree file, a question set a
 file of questions, an index a Raptor import index, a request stream the
-request lines of the batch command, and a run directory the folder that
-holds a run's log. An input is a tree, question set, index, request stream
-or run directory. A log event is one event written through the
+request lines of the batch command. An input is a tree, question set,
+index or request stream. A log event is one event written through the
 sc-observability logger; the logger's event size limit is 65536 bytes
 (sc-observability 1.5.0).
 
@@ -500,8 +499,6 @@ sc-observability logger; the logger's event size limit is 65536 bytes
   request.
 - `judge-jev` MUST refuse an invalid index before its first Jev request.
 - `judge-jev` MUST refuse an invalid request stream before its first Jev
-  request.
-- `judge-jev` MUST refuse an invalid run directory before its first Jev
   request.
 - `judge-jev` MUST check that every log event of a request (the request,
   Jev's largest possible answer and the result) fits the logger's event

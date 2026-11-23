@@ -7,13 +7,14 @@ import copy
 import json
 import tempfile
 import unittest
+import os
 from pathlib import Path
 from unittest import mock
 
 import jev_support  # noqa: F401  (renders the scripts and puts them on sys.path)
 import jev_judge as jj  # noqa: E402
 
-from test_jev_judge import answer, env, run_cli, write  # noqa: E402
+from test_jev_judge import BatchTransport, answer, env, run_cli, write  # noqa: E402
 from test_quality import never_called, requirement  # noqa: E402
 
 KEEP = list(jj.DRIFT_KEEP_CRITERIA)
@@ -47,6 +48,9 @@ class DriftCase(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.old, self.new = write(self.d, "old.json", OLD), write(self.d, "new.json", NEW)
 
     qset = "brief"  # these cases are written against the brief set; None runs the default
@@ -55,9 +59,37 @@ class DriftCase(unittest.TestCase):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
         if self.qset and "--question-set" not in argv:
             extra += ["--question-set", self.qset]
-        with env(), mock.patch.object(jj, "call_jev", never_called):
-            return run_cli(["drift", "--old-index", self.old, "--new-index", self.new, *argv,
-                            "--run-dir", str(self.d / "logs"), "--run-name", "d1", *extra])
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=never_called, call_batch_results=never_called):
+            return run_cli(["drift", "--old-index", self.old, "--new-index", self.new, *argv, "--run-name", "d1", *extra])
+
+class DriftTrust(DriftCase):
+    def test_dry_run_rejects_a_corrupt_nearest_install_lock(self):
+        repo = self.d / "installed"
+        script = repo / ".claude" / "skills" / "judge-jev" / "scripts" / "jev_judge.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("untrusted copy\n", encoding="utf-8")
+        lock = repo / ".sc" / "judge-jev" / "install-lock.json"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("{corrupt", encoding="utf-8")
+        code, out = run_cli(["drift", "--old-index", self.old, "--new-index", self.new,
+                             "--req", "REQ-T-0001", "--dry-run", "--repository-root", str(repo)])
+        self.assertEqual((code, out["success"], (out.get("error") or {}).get("code")),
+                         (2, False, "VALIDATION.PATH"), out)
+
+
+class LiveDrift(DriftCase):
+    def test_consent_and_live_batch_return_drift_verdict(self):
+        wire = json.dumps({"response": {"model": "controlled", "answers": answers(2, keep=[1])}, "sends": 1})
+        transport = BatchTransport((wire, None))
+        with env(), mock.patch.object(jj.decidr_client, "remote_judge_consent") as consent, \
+                mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
+                mock.patch.object(jj.decidr_client, "call_result", never_called):
+            code, out = run_cli(["drift", "--old-index", self.old, "--new-index", self.new, "--req", "REQ-T-0001", "--controls", "0", "--question-set", "brief", "--run-name", "live"])
+        self.assertEqual(code, 0, out)
+        consent.assert_called_once()
+        self.assertEqual(len(transport.bodies), 1)
+        self.assertEqual(out["data"]["records"][0]["verdict"], "no-drift")
+        self.assertEqual(out["data"]["records"][0]["id"], "REQ-T-0001")
 
 
 class Selection(DriftCase):
@@ -207,7 +239,8 @@ class OrthogonalRule(unittest.TestCase):
         return out
 
     def assess(self, answers_):
-        return jj.drift_assess(answers_, [], 0.6, "orthogonal")
+        return jj.drift_assess({qid: jj.decidr_client.ChoiceAnswer(a["choice"], a["confidence"], a["probabilities"])
+                                for qid, a in answers_.items()}, [], 0.6, "orthogonal")
 
     def test_one_low_answer_in_a_feature_whose_other_answer_is_confident_is_no_drift(self):
         got = self.assess(self.ans(low=("broadens_scope",)))

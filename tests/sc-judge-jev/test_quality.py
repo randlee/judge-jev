@@ -1,7 +1,7 @@
 """`jev_judge.py quality`: one record from a Raptor import index, its kind's decision tree, one batch request per wave
 (one per MUST / MUST NOT statement for a per-statement wave).
 
-Answers come from answers files (keyed '<record>/<node>'); Jev is never called (call_jev is replaced with a stub that
+Answers come from answers files (keyed '<record>/<node>'); Jev is never called (the client calls are replaced with stubs that
 fails the test). The run log is read back through sc-observability's query API.
 """
 import hashlib
@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from clock_support import FIXED_UTC, utc_clock
 from jev_support import ROOT, SKILL, read_log
 import jev_judge as jj  # noqa: E402
 
@@ -87,15 +88,31 @@ class QualityCase(unittest.TestCase):
         td = tempfile.TemporaryDirectory()
         self.addCleanup(td.cleanup)
         self.d = Path(td.name)
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.index = write(self.d, "index.json", INDEX)
 
     def quality(self, *argv, answers=None):
         extra = ["--answers-file", write(self.d, "answers.json", answers)] if answers is not None else []
-        with env(), mock.patch.object(jj, "call_jev", never_called):
-            return run_cli(["quality", *argv, "--index", self.index, "--run-dir", str(self.d / "logs"), "--run-name", "q1", *extra])
+        with env(), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
+            return run_cli(["quality", *argv, "--index", self.index, "--run-name", "q1", *extra])
 
 
 class DryRun(QualityCase):
+    def test_dry_run_rejects_an_untrusted_copy_when_the_install_lock_is_corrupt(self):
+        repo = self.d / "installed"
+        script = repo / ".claude" / "skills" / "judge-jev" / "scripts" / "jev_judge.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("untrusted copy\n", encoding="utf-8")
+        lock = repo / ".sc" / "judge-jev" / "install-lock.json"
+        lock.parent.mkdir(parents=True)
+        lock.write_text("{corrupt", encoding="utf-8")
+        code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index,
+                             "--dry-run", "--repository-root", str(repo)])
+        self.assertEqual((code, out["success"], (out.get("error") or {}).get("code")),
+                         (2, False, "VALIDATION.PATH"), out)
+
     def test_dry_run_reports_the_tree_record_and_wave_1_request_and_writes_nothing(self):
         code, out = self.quality("--adr", "ADR-T-0001", "--dry-run")
         self.assertEqual((code, out["success"], out["error"]), (0, True, None), out)
@@ -111,7 +128,7 @@ class DryRun(QualityCase):
         self.assertEqual(wave["request"]["questions"], tree_node("quality-adr.json")["questions"])
         self.assertEqual(wave["request"]["state"], {"item": {"id": "ADR-T-0001", "title": "Use SQLite",
                                                              "text": json.dumps(INDEX["decisions"][0], indent=2, ensure_ascii=False)}})
-        self.assertEqual((wave["request_bytes"], wave["max_request_bytes"]), (len(jj.encode_body(wave["request"])), 24000))
+        self.assertEqual((wave["request_bytes"], wave["max_request_bytes"]), (len(json.dumps(wave["request"]).encode("utf-8")), 24000))
         self.assertFalse((self.d / "logs").exists())
 
     def test_dry_run_of_a_per_statement_wave_shows_every_statements_request(self):
@@ -127,7 +144,7 @@ class DryRun(QualityCase):
             self.assertEqual(req["request"]["state"], {"item": {
                 "id": f"REQ-T-0001.s{st['index']}", "title": "Title of REQ-T-0001",
                 "text": json.dumps({"statement": st, "record": record}, indent=2, ensure_ascii=False)}})
-            self.assertEqual(req["request_bytes"], len(jj.encode_body(req["request"])))
+            self.assertEqual(req["request_bytes"], len(json.dumps(req["request"]).encode("utf-8")))
         self.assertFalse((self.d / "logs").exists())
 
     def test_each_kind_uses_its_own_tree_and_table(self):
@@ -195,11 +212,11 @@ class WaveReasons(QualityCase):
         answers = {"*": tree_answers("quality-req.json")}
         logs = []
         for name in ("a", "b"):
-            with env(), mock.patch.object(jj, "call_jev", never_called):
-                code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / name),
-                                     "--answers-file", write(self.d, "answers.json", answers)])
+            with env(JUDGE_JEV_LOG_ROOT=str(self.d / name)), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
+                code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", write(self.d, "answers.json", answers)])
             self.assertEqual(code, 0, out)
             logs.append([e["fields"]["request"] for e in read_log(self.d / name, action="request")])
+            self.assertTrue(logs[-1], "quality log must contain requests before comparing them")
         self.assertEqual(logs[0], logs[1])
 
     def test_the_log_holds_the_wave_with_its_request_answers_reason_verdict_tree_id_and_digest(self):
@@ -220,61 +237,24 @@ class WaveReasons(QualityCase):
         self.assertEqual((events[-1]["fields"]["verdict"], events[-1]["fields"]["path"]), ("no", ["wave-1"]))
 
     def test_a_wave_without_an_answer_is_exit_2_with_the_path_so_far(self):
-        answers = {"ADR-T-0001/wave-1": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}]}
+        answers = {"ADR-T-0001/wave-1": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}]}
         code, out = self.quality("--adr", "ADR-T-0001", answers=answers)
-        self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "JEV.OVERLOADED"))
+        self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "DECIDR.OVERLOADED"))
         self.assertEqual((out["data"]["path"], out["data"]["results"]), (["wave-1"], []))
         self.assertEqual(out["data"]["tree"]["id"], "quality-adr")
 
-    def test_a_live_run_needs_a_key_before_anything_is_logged(self):
-        with env(), mock.patch.object(jj, "call_jev", never_called):
-            code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--run-dir", str(self.d / "logs")])
-        self.assertEqual((code, out["error"]["code"]), (2, "AUTH.CREDENTIALS"))
-        self.assertFalse((self.d / "logs").exists())
+    def test_live_client_auth_error_is_typed(self):
+        auth = jj.ClientError("AUTH.CREDENTIALS", "no test credential", action="Check credentials.", status=401)
+        auth_record = {"ok": False, "position": None, "line": None, "attempts": None, "error": auth}
+        with env(), mock.patch.object(jj.decidr_client, "remote_preflight", return_value={"ok": True, "value": None}), \
+                mock.patch.object(jj.decidr_client, "call_batch_results", return_value=auth_record) as call:
+            code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index])
+        call.assert_called_once()
+        self.assertEqual((code, out["error"]["code"], out["error"]["message"], out["error"]["suggested_action"]),
+                         (2, "AUTH.CREDENTIALS", "no test credential", "Check credentials."))
 
 
-class LogPath(QualityCase):
-    def run_default(self, cwd, home):
-        answers = write(self.d, "answers.json", {"*": tree_answers("quality-req.json")})
-        before = os.getcwd()
-        self.addCleanup(os.chdir, before)
-        os.chdir(cwd)
-        with env(), mock.patch.object(jj, "call_jev", never_called), \
-                mock.patch.object(jj.judge_jev_paths, "home_dir", lambda: home):
-            return run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", answers])
 
-    def test_the_default_log_is_the_central_folder_of_the_repository_and_utc_date(self):
-        home, repo = (self.d / "home").resolve(), (self.d / "my repo").resolve()
-        (repo / ".git").mkdir(parents=True)
-        home.mkdir()
-        code, out = self.run_default(repo, home)
-        today = jj._dt.datetime.now(jj._dt.timezone.utc).date().isoformat()
-        root = home / ".judge-jev" / "my_repo" / today
-        self.assertEqual((code, out["data"]["log"]["log_root"]), (0, str(root)), out)
-        self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.jsonl")), ["logs/judge-jev.log.jsonl"])
-        self.assertEqual(list(repo.rglob("*.jsonl")), [])  # nothing is logged inside the repository
-
-    def test_a_linked_worktree_logs_under_its_main_checkout(self):
-        home, main, tree = (self.d / "home").resolve(), (self.d / "main-repo").resolve(), (self.d / "scratch" / "wt-1").resolve()
-        (main / ".git" / "worktrees" / "wt-1").mkdir(parents=True)
-        tree.mkdir(parents=True)
-        home.mkdir()
-        (tree / ".git").write_text(f"gitdir: {main / '.git' / 'worktrees' / 'wt-1'}\n", encoding="utf-8")
-        code, out = self.run_default(tree, home)
-        self.assertEqual((code, Path(out["data"]["log"]["log_root"]).parent), (0, home / ".judge-jev" / "main-repo"), out)
-
-    def test_run_dir_still_chooses_the_log_root(self):
-        home = (self.d / "home").resolve()
-        home.mkdir()
-        with mock.patch.object(jj.judge_jev_paths, "home_dir", lambda: home):
-            code, out = self.quality("--req", "REQ-T-0001", answers={"*": tree_answers("quality-req.json")})
-        self.assertEqual((code, out["data"]["log"]["log_root"]), (0, str(self.d / "logs")), out)
-        self.assertFalse((home / ".judge-jev").exists())
-
-    def test_with_no_home_directory_the_log_falls_back_to_the_repository(self):
-        code, out = self.run_default(self.d, None)
-        self.assertEqual((code, out["data"]["log"]["log_root"]), (0, ".sc/judge-jev"), out)
-        self.assertTrue((self.d / ".sc" / "judge-jev" / "logs" / "judge-jev.log.jsonl").is_file())
 
 
 class SeveralRecords(QualityCase):
@@ -505,9 +485,9 @@ class PerStatement(QualityCase):
 
     def test_a_statement_without_an_answer_names_the_statement(self):
         answers = {"REQ-T-0001.s1/wave-1": tree_answers("quality-req.json"),
-                   "REQ-T-0001.s3/wave-1": [{"__error__": "JEV.OVERLOADED"}, {"__error__": "JEV.OVERLOADED"}]}
+                   "REQ-T-0001.s3/wave-1": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}]}
         code, out = self.quality("--req", "REQ-T-0001", answers=answers)
-        self.assertEqual((code, out["error"]["code"]), (2, "JEV.OVERLOADED"))
+        self.assertEqual((code, out["error"]["code"]), (2, "DECIDR.OVERLOADED"))
         self.assertIn("statement 3", out["error"]["message"])
         self.assertEqual((out["data"]["statement"], out["data"]["path"]), (JUDGED[1], ["wave-1"]))
 
@@ -565,7 +545,7 @@ class ShippedTrees(unittest.TestCase):
         line = jj.wave_line(record, "wave-1", node, JUDGED[1])  # a per-statement line is a plain anchorless batch line
         settings = jj.quality_settings(False)
         job = jj.batch_jobs(line, 1, settings, {}).value[0]
-        result = jj.run_batch_job(job, settings, "", {"*": tree_answers("quality-req.json")}, jj._AbortFlag())
+        result = jj.run_batch_job(job, settings, {"*": tree_answers("quality-req.json")})
         self.assertEqual((result["request_id"], result["anchor_id"], result["verdict"]), ("quality/REQ-T-0001.s3/wave-1/r1", None, None))
         schemas = SKILL / "assets" / "schemas"
         for name, value in (("jev-batch-request", line), ("jev-batch-result", result)):

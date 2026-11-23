@@ -1,6 +1,6 @@
 """A quality run as triples (ADR-JEV-0006 run vocabulary) and the Transport / GraphStore ports (ADR-JEV-0007).
 
-Jev is never called: ``call_jev`` is replaced with a stub that fails the test and every answer comes from an answers
+Jev is never called: the client calls are replaced with stubs that fail the test and every answer comes from an answers
 fixture. The tree graph comes from the shipped JSON tree through ``tree_fixture`` (its triples minted with
 ``jev_runs.JsonIris``); once ``jev_graph.load_tree`` and the shipped TTL tree exist it loads that instead.
 """
@@ -76,14 +76,14 @@ class RunCase(QualityCase):
     def run_quality(self, flag, record_id, answers):
         """Run ``quality`` once; (the results[] entry, the result lines pump_batch returned, the run dict)."""
         pumped = []
-        real = jj.pump_batch
+        real = jj.judge_batch
 
         def spy(*args, **kwargs):
             got = real(*args, **kwargs)
             pumped.extend(got.value)
             return got
 
-        with mock.patch.object(jj, "pump_batch", spy):
+        with mock.patch.object(jj, "judge_batch", spy):
             code, out = self.quality(flag, record_id, answers=answers)
         self.assertEqual(code, 0, out)
         (result,) = out["data"]["results"]
@@ -95,7 +95,7 @@ class RunCase(QualityCase):
         result, lines, run = self.run_quality(flag, record_id, answers)
         tree, tree_quads = tree_fixture(kind)
         built = jev_runs.run_triples(tree, run, lines, result)
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository=REPOSITORY)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY, log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertIsInstance(rebuilt, jj.Ok, rebuilt)
         self.assertTrue(built)
         self.assertEqual(built, rebuilt.value)
@@ -163,7 +163,7 @@ class AdrRun(RunCase):
     def test_a_rebuild_without_the_repository_uses_the_unknown_repository(self):
         _iri, _store, _result = self.check_projection("adr", "--adr", "ADR-T-0001", {"ADR-T-0001/wave-1": tree_answers("quality-adr.json")})
         tree, _ = tree_fixture("adr")
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         records = [q.object.value for q in rebuilt.value if q.predicate == jn("record")]
         self.assertEqual(records, ["urn:raptor:repo:unknown#ADR-T-0001"])
 
@@ -306,7 +306,7 @@ class RenamedAdrRun(RunCase):
             tree = loaded(renamed, scratch)
         result, lines, run = self.run_quality("--adr", "ADR-T-0001", {"ADR-T-0001/wave-1": tree_answers("quality-adr.json", alternatives="none")})
         built = jev_runs.run_triples(tree, run, lines, result)
-        rebuilt = jev_runs.rebuild_from_log(self.d / "logs", "q1", tree, repository=REPOSITORY)
+        rebuilt = jev_runs.rebuild_from_log("q1", tree, repository=REPOSITORY, log_file=self.d / "logs/logs/judge-jev.log.jsonl")
         self.assertEqual(rebuilt.value, built)
         store = ox.Store()
         store.extend(list(tree.store) + built)
@@ -339,7 +339,7 @@ class RebuildMismatch(unittest.TestCase):
 
     def rebuild(self, events, tree=None):
         with mock.patch.object(jev_runs, "read_run_events", return_value=jj.Ok(events)):
-            return jev_runs.rebuild_from_log("unused", "q1", tree if tree is not None else self.tree, repository=REPOSITORY)
+            return jev_runs.rebuild_from_log("q1", tree if tree is not None else self.tree, repository=REPOSITORY)
 
     def test_matching_events_rebuild(self):
         self.assertIsInstance(self.rebuild(self.events()), jj.Ok)
@@ -393,7 +393,7 @@ class RebuildMismatch(unittest.TestCase):
 class Ports(unittest.TestCase):
     def test_transports_satisfy_the_port(self):
         self.assertIsInstance(jev_ports.FixtureTransport({}), jev_ports.Transport)
-        self.assertIsInstance(jev_ports.PythonCoreTransport(jj.pump_batch, None, "", None, None), jev_ports.Transport)
+        self.assertIsInstance(jev_ports.PythonCoreTransport(jj.judge_batch, None, None, None), jev_ports.Transport)
         self.assertNotIsInstance(object(), jev_ports.Transport)
 
     def test_fixture_transport_returns_its_lines_in_request_order_and_records_calls(self):
@@ -412,9 +412,9 @@ class Ports(unittest.TestCase):
             seen.append(args)
             return jj.Ok(["line"])
 
-        transport = jev_ports.PythonCoreTransport(pump, "settings", "key", "fixture", "log", True, {"f": 1})
+        transport = jev_ports.PythonCoreTransport(pump, "settings", "fixture", "log", True, {"f": 1})
         self.assertEqual(transport.send([{"a": 1}]).value, ["line"])
-        self.assertEqual(seen, [([{"a": 1}], "settings", "key", "fixture", "log", True, {"f": 1})])
+        self.assertEqual(seen, [([{"a": 1}], "settings", "fixture", "log", True, {"f": 1})])
 
     def test_oxigraph_store_round_trips_record_run_and_query(self):
         store = jev_ports.OxigraphGraphStore()

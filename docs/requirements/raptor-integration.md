@@ -55,20 +55,18 @@ them and notify judge-jev without breaking it.
 Definitions: Jev is TypeSafe's hosted judge model: it answers each
 multiple-choice question about a text with one choice and a confidence from
 0 to 1. A Jev request is one call to it. The batch command is `jev_judge.py
-batch`: it reads request lines (one JSON request per line), sends each to
-Jev and writes a result line. A result envelope is the JSON result line for
+batch`: it reads request lines (one JSON request per line), sends each through
+the adopted sc-agent client to Jev and writes a result line. A result envelope is the JSON result line for
 one request, holding its answers or its error
 (`assets/schemas/jev-batch-result.schema.json`). A typed error code is a
-stable dotted code naming a failure, such as `JEV.NETWORK` or
-`JEV.RATE_LIMITED`. The fixed retry policy is one retry of a call that
-failed with a recoverable or transient error (`JEV.RATE_LIMITED`,
-`JEV.OVERLOADED`, `JEV.NETWORK`, `JEV.RESPONSE_INVALID`), after the
-response's Retry-After delay capped at 30 seconds, or after 1 second without
-one. The request size limit is the `--max-request-bytes` value, at most
+stable dotted code naming a failure, such as `DECIDR.NETWORK` or
+`DECIDR.RATE_LIMITED`. The retry policy belongs to the adopted sc-agent client;
+judge-jev does not resend requests and records the send count reported by the
+client. The request size limit is the `--max-request-bytes` value, at most
 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
 `--gate dev`. The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
-`~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`.
+`~/.sc-agent/logs/judge-jev.log.jsonl`.
 
 **MUST statements:**
 
@@ -76,7 +74,8 @@ sc-observability package (version 1.5.0), which writes
 - The batch command MUST read request lines.
 - The batch command MUST write one result envelope per request.
 - The batch command MUST use typed error codes.
-- The batch command MUST apply a fixed retry policy.
+- The batch command MUST use the adopted sc-agent client's retry policy and
+  record its typed send count without resending requests itself.
 - The batch command MUST enforce request size limits.
 - The batch command MUST log every request through the sc-observability
   logger (REQ-JEV-0008).
@@ -108,9 +107,10 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 
 **MUST statements:**
 
-- judge-jev MUST read the TypeSafe API key from `TYPESAFE_API_KEY` first,
-  then from the platform credential store, service `plan-anchor`, account
-  `typesafe-api-key`.
+- The adopted sc-agent client MUST resolve the TypeSafe API key from the
+  repository `.env` file first, then `TYPESAFE_API_KEY`, then its default
+  platform credential entry (service `TYPESAFE_API_KEY`, current OS account).
+- judge-jev MUST NOT pass keyring service or account overrides to sc-agent.
 
 ### Rationale
 
@@ -120,8 +120,8 @@ Tools that call Jev share one stored key, saved once.
 
 **Acceptance Criteria:**
 
-- [ ] A key stored under that service and account is found with no other
-  setup.
+- [ ] A key stored in sc-agent's default credential entry is found with no
+  other setup.
 
 ## REQ-JEV-0004: Remote-judge consent
 
@@ -254,7 +254,7 @@ first.
 
 Definitions: The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
-`~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
+`~/.sc-agent/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
 Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). A
 quality-tree branch is the next wave a quality decision tree's rules select
 from Jev's answers.

@@ -85,11 +85,11 @@ class DriftTests(unittest.TestCase):
 class VerdictTests(unittest.TestCase):
     OK = {"success": True, "data": {"results": [{"record": {"id": "REQ-X-1"}, "verdict": "yes"},
                                                  {"record": {"id": "REQ-X-2"}, "verdict": "no"}]}}
-    ERR = {"success": False, "error": {"code": "JEV.NETWORK", "message": "down"}}
+    ERR = {"success": False, "error": {"code": "DECIDR.NETWORK", "message": "down"}}
 
     def test_verdicts(self):
         self.assertEqual(run.verdicts(self.OK), {"REQ-X-1": "yes", "REQ-X-2": "no"})
-        self.assertEqual(run.verdicts(self.ERR), {"*": "ERROR JEV.NETWORK: down"})
+        self.assertEqual(run.verdicts(self.ERR), {"*": "ERROR DECIDR.NETWORK: down"})
 
     def test_pass_needs_yes_on_every_run(self):
         ok = run.verdicts(self.OK)

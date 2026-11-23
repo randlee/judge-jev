@@ -11,10 +11,11 @@ import json
 import os
 from pathlib import Path
 import re
-import subprocess
+from child_support import run_child
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 PLUGIN = ROOT / "plugins" / "sc-judge-jev"
@@ -32,11 +33,14 @@ class ConventionCase(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
         self.d = Path(self.td.name).resolve()
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment.start()
+        self.addCleanup(_log_environment.stop)
         self.addCleanup(self.td.cleanup)
 
     def run_script(self, script, *argv):
-        proc = subprocess.run([sys.executable, str(script), *argv], cwd=str(self.d), env=clean_env(),
-                              capture_output=True, text=True, encoding="utf-8")
+        proc = run_child([sys.executable, str(script), *argv], cwd=str(self.d), env=clean_env(),
+                              text=True, encoding="utf-8")
         self.assertNotEqual(proc.returncode, 1, f"{script.name} {argv} exited 1: {proc.stdout}{proc.stderr}")
         try:
             out = json.loads(proc.stdout)
@@ -65,7 +69,7 @@ class ConventionCase(unittest.TestCase):
 class OtherScripts(ConventionCase):
     def test_settings(self):
         script = SCRIPTS / "judge_jev_settings.py"
-        subprocess.run(["git", "init", "-q", str(self.d)], check=True)
+        run_child(["git", "init", "-q", str(self.d)], check=True)
         try:
             import yaml  # noqa: F401
         except ImportError:  # the settings script needs PyYAML; its absence is a could-not-run error

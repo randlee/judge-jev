@@ -47,9 +47,8 @@ judges every named record under one run name.
   request and a `statement` event (statement, answers, reason), then a
   `wave` event with the request ids, matched statements and verdict. Logging goes through the sc-observability
   logger, the one sc-agent uses (REQ-JEV-0008), to
-  `~/.judge-jev/<repository name>/<UTC date>/logs/judge-jev.log.jsonl`.
-  That folder is per user, outside the repository and shared by every worktree of it; `--run-dir <folder>` logs
-  elsewhere, and with no home directory the log root is `.sc/judge-jev`. In the result, each answer carries
+  `~/.sc-agent/logs/judge-jev.log.jsonl`.
+  That file is per user and shared by every repository and worktree; `--run-name` tags a run's events. In the result, each answer carries
   `probabilities` (every option) and `runner_up` (the option Jev nearly chose: its name, probability and criterion),
   and each wave carries `models`, the Jev versions that answered.
 
@@ -120,7 +119,7 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
   string code of at most 64 characters and nothing else (`INPUT.MALFORMED`
   otherwise). An answer's own body (its choice, probabilities, extra keys) is
   Jev's response stand-in and is checked after the send
-  (`JEV.RESPONSE_INVALID`), so a test can feed an invalid answer on purpose.
+  (`DECIDR.RESPONSE_INVALID` from the shared client), so a test can feed an invalid answer on purpose.
 - Never calls Jev, needs no key, writes no log.
 - Output: one JSON object. Success names the kind, the path and the file's
   sha256.
@@ -188,7 +187,7 @@ Diagram: [diagrams/definitions.md](diagrams/definitions.md)
 ```
 judge-jev compare-definition (--req|--adr|--nfr <id>) --index <file> --definition <iri>...
     [--definitions <file>]... [--location <loc>] [--threshold <p>] [--questions <file>]
-    [--dry-run | --answers-file <file>] [--run-dir <dir>] [--run-name <name>]
+    [--dry-run | --answers-file <file>] [--run-name <name>]
 ```
 
 REQ-JEV-0213. Runs one record's walk twice, without and with the named
@@ -224,7 +223,7 @@ Diagram: [diagrams/compare.md](diagrams/compare.md)
 ```
 judge-jev drift --old-index <file> --new-index <file> (--req|--adr|--nfr <id>... | --changed)
     [--form diff|full] [--question-set orthogonal|brief|sixteen] [--controls <n>] [--threshold <p>]
-    [--dry-run | --answers-file <file>] [--run-dir <dir>] [--run-name <name>]
+    [--dry-run | --answers-file <file>] [--run-name <name>]
 ```
 
 Does a rewritten record still require exactly what the original required?
@@ -386,9 +385,8 @@ Typed errors on an unresolved record or location, a render failure or an
 oversize request.
 
 Every input yields one JSON object, its result or a typed error. An invalid
-tree, question set, index, request stream or run directory, and a log event
-that exceeds the logger's size limit, are refused before the first Jev
-request (REQ-JEV-0211).
+tree, question set, index or request stream, and a log event that exceeds the
+logger's size limit, are refused before the first Jev request (REQ-JEV-0211).
 
 ## Open
 
