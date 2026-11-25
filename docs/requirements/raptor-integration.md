@@ -358,7 +358,7 @@ Owner ruling (2026-11-24, phase j): every tool built on sc-agent works with
 is set.
 
 Owner ruling (2026-11-24, phase j plan review): consumers pass only the
-model name; the wheel resolves the provider (sc-agent sprint j-5).
+model name; the wheel resolves the provider (sc-agent sprint j-3).
 
 ### Success Criteria
 

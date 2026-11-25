@@ -50,8 +50,10 @@ sc-agent's session log is adopted through the wheel's `Run`: each
 command opens one `Run`, sends through it and reads its `run_id` from
 it; the core mints no id. The `Run` owns the logger, cancellation,
 configuration resolution and test seams, so a call passes only its
-requests, the model when it varies, `cache=False` for an intentional
-resend and, for a batch, `on_result`.
+requests, the model when it varies (the wheel's typed model value,
+`sc_agent.model("haiku")`; the `Run` holds the default model and no call
+names a provider), `cache=False` for an intentional resend and, for a
+batch, `on_result`.
 
 ### Rationale
 
