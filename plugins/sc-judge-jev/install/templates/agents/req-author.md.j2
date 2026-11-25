@@ -49,11 +49,15 @@ Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/j
    ```bash
    "$R/.venv/bin/python" -c "import raptor_schema, sys; raptor_schema.validate_scalar('Id', sys.argv[1])" "<record_id>"
    ```
-2. Read `source`. For a repair, copy the record to `$W/original.md` and take its statements and definitions as the starting text. Write `$W/vars.json`.
-3. Render, then import. The import must list no issue for this record.
+2. Write the record.
+   - New record: `$F` must not exist. Write `$W/vars.json` with the header `vars` plus the content variables the template's `defaults` list. REQ and NFR: `definitions` (one paragraph), `must` and `must_not` (lists of statements), `rationale`, `acceptance_criteria`, and any other default the source supports. ADR: `context`, `decision`, `rationale`, `positive`, `negative`, `alternatives` and the others the source supports. Do not write `should`: Jev judges only MUST and MUST NOT. Then render:
+     ```bash
+     sc-compose render --root "$A" --file "raptor-$K-record.md.j2" --var-file "$W/vars.json" --strict --unknown-var-mode error --output "$F"
+     ```
+   - Repair: `$F` must hold only this record (one `## <record_id>` heading and no other record id heading), or return `blocked`. Copy it to `$W/original.md`. Do not render: edit `$F` in place, so every section stays.
+3. Import. This must print 0:
    ```bash
-   sc-compose render --root "$A" --file "raptor-$K-record.md.j2" --var-file "$W/vars.json" --strict --unknown-var-mode error --output "$F"
-   "$R/.venv/bin/python" "$R/scripts/extract.py" --project-root . --output "$W/index.json"
+   "$R/.venv/bin/python" "$R/scripts/extract.py" --project-root . --output "$W/index.json" | jq '.issues'
    ```
 4. Judge (`<n>` is the round):
    ```bash
@@ -61,14 +65,32 @@ Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/j
    python3 "$G" --threshold 0.6 "$W"/<n>-r*.json
    ```
    Rule: run once. If every gating answer's score is below 0.50 or above 0.70, that run decides. If any is from 0.50 to 0.70, run `-r2` and `-r3` the same way and rerun the gate on all three: their medians decide. `pass=true` means done: return `pass`.
-5. For each statement with a gating answer under 0.6, ask Jev which part. Copy `$S/assets/questions/diag-$K.json` to `$W/which.json` and add one question under `.nodes["wave-1"].questions`:
-   ```json
-   "d_which_part": {"type": "choice",
-     "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the record in `record`. Which part of statement <index> makes its <question> answer uncertain?",
-     "criteria": {"<a term or clause of that statement>": "This part.", "none": "No single part."}}
-   ```
-   One choice per term or clause of that statement, plus `none`. Run `quality --questions "$W/which.json"` once and read `d_which_part` for that statement.
-6. Edit only the part Jev named. If Jev says `none`, reason from the answer probabilities (the runner-up choice and its score) about why, check that reason against the record, then edit. Write the cause in one sentence. Go to step 3.
+5. Find what to fix. A failing statement (REQ, NFR) is one with a gating answer whose median is under 0.6, or whose choice takes the tree's no path (`term` = no, `checkable` = needs a measure or no, `joined_by` = and-list, alternatives or obligation+rationale), even when confident.
+   - REQ, NFR: for each failing statement, copy `$S/assets/questions/diag-$K.json` to `$W/which-<n>-s<i>.json` and add under `.nodes["wave-1"].questions`:
+     ```json
+     "d_which_part": {"type": "choice",
+       "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the record in `record`. Which part of this statement makes its <question> answer uncertain or wrong? Choose a part that occurs in this statement; if none does, choose none.",
+       "criteria": {"<a term or clause of that statement>": "This part.", "none": "No single part."}}
+     ```
+     One choice per term or clause of that statement, plus `none`. Run `quality --questions "$W/which-<n>-s<i>.json" --run-name "<record_id>-<n>-which-s<i>" > "$W/which-<n>-s<i>.out.json"` and read `d_which_part` for statement `<i>` only.
+   - ADR: run `quality --questions "$S/assets/questions/diag-adr.json" --run-name "<record_id>-<n>-diag" > "$W/diag-<n>.out.json"` and read `d_ctx_gap`, `d_alt_gap`, `d_cons_gap` and `d_cons_weak`: each names what its section lacks.
+6. Edit only the part Jev named (ADR: only the section it named). If Jev says `none`, reason from the answer probabilities (the runner-up choice and its score) about why, check that reason against the record, then edit. Write the cause in one sentence.
+   - Repair: run this guard on `$W/original.md` against `$F`. A loss is a changed obligation: undo the edit and return `blocked` with the question it raises.
+     ```bash
+     python3 - "$W/original.md" "$F" <<'PY'
+     import re, sys
+     from collections import Counter
+     pats = {"code span": r"`[^`\n]+`", "number": r"(?<![\w.])\d+(?:\.\d+)?(?![\w.])",
+             "record id": r"\b[A-Z]+-[A-Z0-9]+-\d+\b", "MUST": r"\bMUST(?! NOT)\b", "MUST NOT": r"\bMUST NOT\b"}
+     a, b = (open(p, encoding="utf-8").read() for p in sys.argv[1:3])
+     lost = {k: sorted((Counter(re.findall(p, a)) - Counter(re.findall(p, b))).elements()) for k, p in pats.items()}
+     lost = {k: v for k, v in lost.items() if v}
+     print(f"REJECT, lost: {lost}" if lost else "guard ok")
+     PY
+     ```
+   - Go to step 3 with round `<n>+1`. Stop after round 5 and return `blocked` with the question the last diagnosis raises.
+
+The caller runs `drift` on a repaired record if it wants that check; this agent does not.
 
 ## Output Format
 
