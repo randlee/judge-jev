@@ -9,12 +9,10 @@ required_variables:
 ---
 name: definitions
 version: {{ version }}
-description: The one place that says how definitions work in judge-jev - where a term is defined, how to look one up, add one and test one, and what a request carries. Every other skill, agent and reference links here (ADR-JEV-0009).
+description: The one place that says how definitions work in judge-jev - where a term is defined, how to look one up, add one and test one, and what a request carries.
 ---
 
 # Definitions
-
-This page is the single source of truth for definitions (ADR-JEV-0009, REQ-JEV-0216). Other judge-jev files link here and do not repeat it.
 
 Jev's `term` question asks whether every term in a statement is "common usage, defined in this record, or defined in a linked record". Jev sees only the record and the definitions its request carries, so a term defined anywhere else is undefined to Jev.
 
@@ -22,7 +20,7 @@ Jev's `term` question asks whether every term in a statement is "common usage, d
 
 | The term is used by | Define it in |
 | --- | --- |
-| more than one record (a shared term) | the repository's definitions file, `.sc/judge-jev/definitions.ttl`, and nowhere else (REQ-JEV-0217) |
+| more than one record (a shared term) | the repository's definitions file, `.sc/judge-jev/definitions.ttl`, and nowhere else |
 | this record only | the record's own `Definitions:` paragraph, the first paragraph under `### Requirement Statement` (create it if absent) |
 | everyone, in its plain meaning | nowhere: it is common usage |
 
@@ -55,7 +53,7 @@ An attachment with `jj:location` reaches only requests made at that location. A 
 
 Then run `doctor --index <index>`. `DEFINITION.REPOSITORY_UNKNOWN` means the index has no `metadata.repository`, so every record IRI is `urn:raptor:repo:unknown#<id>` and no attachment matches: fix the Raptor inventory first. `DEFINITION.RECORD_UNKNOWN` on a new record clears once the index includes it.
 
-Authors working in parallel who attach to the same definition edit the same `jj:attachedTo` line: expect a merge conflict and merge those branches one at a time (ADR-JEV-0009, negative consequence).
+Authors working in parallel who attach to the same definition edit the same `jj:attachedTo` line: expect a merge conflict and merge those branches one at a time.
 
 Record-only term: one sentence in the record's `Definitions:` paragraph, built from facts already in the record or the repository.
 
