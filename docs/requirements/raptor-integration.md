@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.4.0  
+**Version:** 0.4.1  
 
 ---
 
@@ -133,8 +133,9 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 - judge-jev MUST obtain every provider key, the TypeSafe API key included,
   only through the adopted sc-agent client, which resolves it in the order of
   REQ-SAG-0401 (the environment, then the repository `.env` file, then the
-  default platform credential entry: service `TYPESAFE_API_KEY`, current OS
-  account).
+  default platform credential entry: service = that provider's
+  credential-variable name, `TYPESAFE_API_KEY` for the TypeSafe key, and the
+  current OS account).
 
 **MUST NOT statements:**
 
