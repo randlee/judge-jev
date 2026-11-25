@@ -1,7 +1,7 @@
 # Fix workflow (`references/fix-strategy.md`)
 
 Reader: an agent or person fixing one record that fails the gate; the owner
-reviewing what such an agent did. This is the workflow as shipped in 0.8.0.
+reviewing what such an agent did. This is the workflow as shipped (unchanged in 0.8.1).
 
 ```mermaid
 flowchart TD
@@ -18,9 +18,12 @@ flowchart TD
     GU -- yes --> MS["Apply, verify c&lt;n&gt;, restore base"]
     MS --> KP{"Own weak answer rose,<br/>no other answer fell > 0.05<br/>or newly below T?"}
     KP -- no --> RJ
-    KP -- yes --> AP["Apply the best kept candidates"]
+    KP -- yes --> KEPT["Kept"]
+    KEPT --> AP["Apply the kept candidates together, verify comb;<br/>drop the smallest-gain one while comb loses a gain;<br/>restore base if the gains do not hold"]
     AP --> V
-    RJ --> RD{"Two rounds in a row<br/>kept no candidate?"}
+    RJ --> RN{"Any candidate kept<br/>this round?"}
+    RN -- yes --> KEPT
+    RN -- no --> RD{"Two rounds in a row<br/>kept no candidate?"}
     RD -- no --> V
     RD -- yes --> UNR["Unresolved: keep best text;<br/>to write.md once"]
     ACC["Accept: guard and diff against original (rule 1: obligations unchanged);<br/>append id, sha256, runs, lowest to .sc/judge-jev/accepted.jsonl (frozen)"]

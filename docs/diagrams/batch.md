@@ -14,8 +14,10 @@ flowchart LR
     DR -- no --> FX{"--answers-file?"}
     FX -- yes --> FA["Fixture answers; no network"]
     FX -- no --> J["Jev (parallel workers)"]
-    FA --> DEC
-    J --> DEC["decide(): answers by role<br/>(relevance, compliance, conflict, evidence)<br/>→ verdict, min_confidence,<br/>leaning (verdict at threshold 0)"]
+    FA --> AN
+    J --> AN{"Line anchored?<br/>(anchor_id set)"}
+    AN -- no --> NUL["verdict, min_confidence,<br/>leaning: null"] --> L
+    AN -- yes --> DEC["decide(): answers by role<br/>(relevance, compliance, conflict, evidence)<br/>→ verdict, min_confidence,<br/>leaning (verdict at threshold 0)"]
     DEC --> L["Log each result line<br/>(sc-observability)"]
     L --> OUT["One JSONL result line per job<br/>jev-batch-result.schema.json"]
 ```

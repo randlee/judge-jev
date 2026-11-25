@@ -12,10 +12,15 @@ flowchart LR
     AS -- yes --> M["Median confidence over the runs that asked it;<br/>runner-up choice and its median"]
     M --> T{"Median ≥ threshold<br/>(--threshold, default 0.6)?"}
     A --> V{"Verdict yes in more<br/>than half of the runs?"}
-    T -- "every gating answer: yes" --> P
-    V -- yes --> P["pass: true"]
-    T -- "any: no" --> F["pass: false;<br/>lowest = the gating answer with the lowest median"]
+    A --> C{"Comparable? every run has the record,<br/>same statement text"}
+    C -- yes --> AND
+    T -- "every gating answer: yes" --> AND{"comparable AND verdicts AND medians?"}
+    V -- yes --> AND
+    AND -- "all three" --> P["pass: true"]
+    C -- no --> F["pass: false"]
+    T -- "any: no" --> F
     V -- no --> F
+    M --> LO["lowest = the gating answer with the lowest median<br/>(reported for passing and failing records)"]
 ```
 
 With three runs, "more than half" is two. `jev_gate.py` exits 0 whenever it
