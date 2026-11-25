@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.4.1  
+**Version:** 0.5.0  
 
 ---
 
@@ -123,39 +123,40 @@ of a line; there is no third artifact beside the result line and the event.
 
 ### Requirement Statement
 
-Definitions: TypeSafe is the company whose API (application programming
-interface) serves Jev, the judge model; the TypeSafe API key authenticates
-calls to it. The platform credential store is the macOS Keychain, the
-Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
+Definitions: A provider key is the API key for one provider, which
+REQ-SAG-0401 calls a credential. A provider key's default credential entry
+is its platform keyring entry, whose keyring service is the provider's
+credential-variable name and whose keyring account is the user name of
+the operating-system user running judge-jev (REQ-SAG-0401).
 
 **MUST statements:**
 
-- judge-jev MUST obtain every provider key, the TypeSafe API key included,
-  only through the adopted sc-agent client, which resolves it in the order of
-  REQ-SAG-0401 (the environment, then the repository `.env` file, then the
-  default platform credential entry: service = that provider's
-  credential-variable name, `TYPESAFE_API_KEY` for the TypeSafe key, and the
-  current OS account).
+- When a provider key is stored only in its default credential entry,
+  judge-jev MUST use that key for its queries to the key's provider.
 
 **MUST NOT statements:**
 
-- judge-jev MUST NOT pass keyring service or account overrides to sc-agent.
-- judge-jev MUST NOT read a provider key itself.
+- judge-jev's own code MUST NOT read a provider key.
 
 ### Rationale
 
-Tools that call Jev share one stored key, saved once.
-
-Consumers do not read keys; the wheel resolves them (REQ-SAG-0401). The
-earlier `.env`-first order is replaced by the wheel's order (phase j plan
-review, 2026-11-24).
+sc-agent owns key resolution: it looks in the environment, then the
+repository `.env` file, then the default credential entry (REQ-SAG-0401).
+judge-jev leaves that to sc-agent, so a key saved once in the keyring serves
+every tool that calls the same provider, and judge-jev needs no environment
+variable, `.env` entry or setting of its own to find it.
 
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] A key stored in sc-agent's default credential entry is found with no
-  other setup.
+- [ ] With the TypeSafe key stored only in its default credential entry,
+  judge-jev sends a query with that key. No existing judge-jev test shows
+  this.
+- [ ] No judge-jev source reads a provider key. No existing test shows
+  this: `tests/sc-judge-jev/test_no_plugin_env_vars.py` still allows and
+  requires a `TYPESAFE_API_KEY` read, and agt-j-5 changes it to forbid one
+  when deliverable J5-12 deletes the one reader, `jev_errors.py.j2`.
 
 ## REQ-JEV-0004: Remote-judge consent
 
