@@ -541,7 +541,9 @@ after a paid call wastes the call; a crash loses its answer.
 
 Definitions: A definition is attached to a record, or to a record and a
 location. A request's state is the data it sends. The size limit is 24000
-bytes. A definition's digest is the SHA-256.
+bytes. A definition's digest is the SHA-256. A request's result record is
+judge-jev's own record of that request's result; it carries the request's
+`session_id`.
 
 **MUST statements:**
 - A definition MUST be attachable to a record alone, or to a record and
@@ -553,8 +555,8 @@ bytes. A definition's digest is the SHA-256.
   sent without definitions.
 - `judge-jev` MUST refuse, before sending, a request whose definitions take
   it over the size limit.
-- Every request's log event MUST record the digest of each definition it
-  carried.
+- Every request's result record MUST carry the digest of each definition
+  the request carried.
 
 **MUST NOT statements:**
 - `judge-jev` MUST NOT truncate a definition.
@@ -568,13 +570,17 @@ term carry the definition w/ it for all jev calls"; a record-and-location
 definition "would only be added to specific data (code/prompt/skill) which
 requires clarification".
 
+Owner ruling (2026-11-24, phase j): judge-jev writes no per-request log
+event; the request itself is in sc-agent's session log under its
+`session_id`, so the digests go in the request's result record.
+
 ### Success Criteria
 
 **Acceptance Criteria:**
 - [ ] With definitions linked to record A only, the requests for record B
   are byte-identical to a run without definitions.
-- [ ] The requests for record A carry exactly A's definitions, and their log
-  events list those definitions' digests.
+- [ ] The requests for record A carry exactly A's definitions, and their
+  result records list those definitions' digests.
 - [ ] A definition attached to record A and location X is carried by A's
   request for X and by no other request about A.
 

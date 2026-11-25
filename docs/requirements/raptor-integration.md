@@ -1,6 +1,6 @@
 # judge-jev Requirements - Raptor Integration
 
-**ID Range:** REQ-JEV-0001 through REQ-JEV-0008, NFR-JEV-0001  
+**ID Range:** REQ-JEV-0001 through REQ-JEV-0010, NFR-JEV-0001  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
@@ -314,6 +314,80 @@ session log by `session_id`; judge-jev's logs do not copy them.
 Today the copied core writes its own `anchor-runs/tournament-<run>.jsonl`
 (`jev_judge.py` `pump_batch`). plan-anchor moves to the same logger after
 judge-jev.
+
+## REQ-JEV-0009: Fast models without a TypeSafe key
+
+**Status:** Draft  
+
+### Requirement Statement
+
+Definitions: `haiku` and `luna` are fast model names that the adopted
+sc-agent client sends to a provider other than TypeSafe. A provider key is
+the API key for that provider, read from `ANTHROPIC_API_KEY`,
+`OPENAI_API_KEY` or `OPENROUTER_API_KEY`. A live request is a request
+sent to a model, as opposed to a dry run or an answers file.
+
+**MUST statements:**
+
+- Every judge-jev command that takes `--model` MUST accept `--model haiku`.
+- Every judge-jev command that takes `--model` MUST accept `--model luna`.
+- judge-jev MUST send each `haiku` or `luna` request through the adopted
+  sc-agent client.
+
+**MUST NOT statements:**
+
+- judge-jev MUST NOT refuse a live `haiku` or `luna` request because
+  `TYPESAFE_API_KEY` is unset when that model's provider key is set.
+
+### Rationale
+
+Owner ruling (2026-11-24, phase j): every tool built on sc-agent works with
+`--model haiku` and `--model luna`, including when no `TYPESAFE_API_KEY`
+is set.
+
+### Success Criteria
+
+**Acceptance Criteria:**
+
+- [ ] With `TYPESAFE_API_KEY` unset and the model's provider key set to a
+  test value, `--model haiku` and `--model luna` each send their request to
+  sc-agent's loopback provider stub and write a result envelope.
+- [ ] No test uses a real key or the keyring, and no test sets `HOME`.
+
+## REQ-JEV-0010: Provider keys are redacted
+
+**Status:** Draft  
+
+### Requirement Statement
+
+Definitions: A provider key is the value of `TYPESAFE_API_KEY`,
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `OPENROUTER_API_KEY` in
+judge-jev's environment. An emitted value is any value judge-jev writes to
+stdout, to a file or to a log event.
+
+**MUST statements:**
+
+- judge-jev MUST replace each provider key's exact value with `<redacted>`
+  in every emitted value.
+- judge-jev MUST replace each bearer token with `<redacted>` in every
+  emitted value.
+
+### Rationale
+
+Owner ruling (2026-11-24, phase j): secret redaction covers every provider
+key, not only `TYPESAFE_API_KEY`.
+
+### Success Criteria
+
+**Acceptance Criteria:**
+
+- [ ] A canary value in each of the four variables, fed through a request's
+  text, is absent from stdout, the written files and the log events.
+
+### Implementation Notes
+
+Today `_redact_text` in `scripts/jev_errors.py.j2` reads only
+`TYPESAFE_API_KEY`.
 
 ## NFR-JEV-0001: Deterministic offline tests
 
