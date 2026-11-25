@@ -19,7 +19,7 @@ class DefinitionsSsotTest(unittest.TestCase):
                 self.assertRegex(f.read_text(encoding="utf-8"), r"\]\((?:\.\./skills/judge-jev/)?(?:references/)?definitions\.md\)")
 
     def test_definitions_detail_lives_only_on_the_page(self):
-        detail = re.compile(r"DEFINITIONS\.(?:INVALID|NOT_ATTACHED|NOT_FOUND)|DEFINITION\.UNATTACHED|data\.material|jj:attachedTo")
+        detail = re.compile(r"DEFINITIONS?\.[A-Z_]+|data\.material|jj:attachedTo|jj:Attachment|jj:Definition|definitions\.ttl|`Definitions:` paragraph|record-only|shared term")
         self.assertRegex(PAGE.read_text(encoding="utf-8"), detail)
         for f in self.guidance():
             with self.subTest(f.name):

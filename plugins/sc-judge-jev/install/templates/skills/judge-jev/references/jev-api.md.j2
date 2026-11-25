@@ -118,7 +118,9 @@ Every result line is logged through the native sc-decidr Logger, flushed after e
 
 ## Definitions, `compare-definition` and `doctor`
 
-How definitions reach a request, their errors, and the `compare-definition` and `doctor` commands: [definitions.md](definitions.md).
+Definitions (how they reach a request, their errors, `compare-definition`, doctor's definition warnings): [definitions.md](definitions.md).
+
+`doctor [<path>...] [--index <file>] [--repository-root <dir>]` checks the shipped trees, every tree and definitions file under `.sc/judge-jev/` and the argument paths, and calls nothing (no Jev, no key, no log, no file written). Tree errors, exit 2 with the report in `data`: a schema or model failure, a SHACL violation (edges, cycles, closed shapes), `QUESTIONS.DUPLICATE_IRI` (a question IRI declared in more than one tree file, naming every file) and `QUESTIONS.DUPLICATE_ID` (a `jj:id` used twice within one tree). Notes: `DOCTOR.INDEX_SKIPPED` when no index is given, `DOCTOR.SYMBOL_UNCHECKED` for a `path::Symbol` location.
 
 ## Input models and `validate`
 

@@ -40,11 +40,7 @@ For an ADR, one judgement per record: `context` must be "problem and forces", `a
 
 ## Defined terms
 
-Where a term is defined, and how to look one up, add one and test one: [definitions.md](../skills/judge-jev/references/definitions.md). It is the only source; follow it. In short:
-
-- The defined terms you may use are the repository's definitions file, `.sc/judge-jev/definitions.ttl`, plus the record's own `Definitions:` paragraph. Read both before writing (step 2).
-- A term in the definitions file reaches Jev only if it is attached to this record. To use one, add a `jj:Attachment` for this record to that definition. Never change a definition's text.
-- A term only this record uses goes in its `Definitions:` paragraph. A term another record also uses, and that the definitions file lacks, is a shared term: return `blocked`, naming the term and the records that use it, so the owner adds it to the definitions file.
+Before writing, look up every term as [definitions.md](../skills/judge-jev/references/definitions.md) says ("Look a term up"), and define or attach each one as it says ("Add a term"). If that would change another record's text, return `blocked` naming the term and that record.
 
 A statement is one or two short sentences. Context goes in Definitions; the reason goes in the rationale.
 
@@ -56,7 +52,7 @@ Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/j
    ```bash
    "$R/.venv/bin/python" -c "import raptor_schema, sys; raptor_schema.validate_scalar('Id', sys.argv[1])" "<record_id>"
    ```
-2. Read the defined terms: `grep -n 'jj:term' .sc/judge-jev/definitions.ttl` (no file: none) and, for a repair, the record's `Definitions:` paragraph. Then write the record.
+2. Look up the defined terms ("Defined terms" above). Then write the record.
    - New record: `$F` must not exist. Write `$W/vars.json` with the header `vars` plus the content variables the template's `defaults` list. REQ and NFR: `definitions` (one paragraph), `must` and `must_not` (lists of statements), `rationale`, `acceptance_criteria`, and any other default the source supports. ADR: `context`, `decision`, `rationale`, `positive`, `negative`, `alternatives` and the others the source supports. Do not write `should`: Jev judges only MUST and MUST NOT. Then render:
      ```bash
      sc-compose render --root "$A" --file "raptor-$K-record.md.j2" --var-file "$W/vars.json" --strict --unknown-var-mode error --output "$F"
@@ -142,4 +138,4 @@ Return fenced JSON:
 - If a fact is missing, return `blocked` with the one question that would unblock it. Do not guess.
 - Never edit the template, a tree, a question or the 0.6 threshold.
 - Never reword to raise a score. Each edit fixes the cause Jev named.
-- Write only `$F`, `$W`, and attachments for this record in `.sc/judge-jev/definitions.ttl`.
+- Write only `$F`, `$W`, and what "Add a term" in the definitions page allows for this record.

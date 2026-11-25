@@ -28,6 +28,12 @@ With A alone, every record's request carries every repository definition: more b
 
 Recommendation: D, with `jj:alias`. Risk: a term used only through a synonym is missed; doctor can warn when a repository definition matches no record (`DEFINITION.UNUSED`, about 10 lines).
 
+## Consequences to settle before building
+
+- D makes the set of definitions a request carries depend on the record's wording: editing a record can add or drop a definition and change its digests. `compare-definition` assumes a fixed set (its arms and `DEFINITIONS.NOT_ATTACHED`), so it must compute the set from the record text it judges, and the log already shows what was carried.
+- A changes ADR-JEV-0008's model ("definitions are graph nodes targeted at records"): it needs an amendment or a successor ADR before code.
+- A also removes the merge conflict of parallel authors attaching to one definition (ADR-JEV-0009, negative consequence).
+
 ## Combined size of A + D
 
 About 60 lines of code across `jev_definitions.py`, `jev_graph.py`, the ontology and the SHACL shape, plus about 10 tests. `references/definitions.md` gains one subsection. No change to the request format: `state.definitions` stays `[{term, text}]`.
