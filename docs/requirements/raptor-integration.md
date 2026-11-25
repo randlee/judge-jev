@@ -3,7 +3,7 @@
 **ID Range:** REQ-JEV-0001 through REQ-JEV-0008, NFR-JEV-0001  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-07  
+**Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
 **Version:** 0.1.0  
 
@@ -56,14 +56,16 @@ Definitions: Jev is TypeSafe's hosted judge model: it answers each
 multiple-choice question about a text with one choice and a confidence from
 0 to 1. A Jev request is one call to it. The batch command is `jev_judge.py
 batch`: it reads request lines (one JSON request per line), sends each through
-the adopted sc-agent client to Jev and writes a result line. A result envelope is the JSON result line for
-one request, holding its answers or its error
-(`assets/schemas/jev-batch-result.schema.json`). A typed error code is a
-stable dotted code naming a failure, such as `DECIDR.NETWORK` or
-`DECIDR.RATE_LIMITED`. The retry policy belongs to the adopted sc-agent client;
-judge-jev does not resend requests and records the send count reported by the
-client. The request size limit is the `--max-request-bytes` value, at most
-64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
+the adopted sc-agent client to Jev and writes a result line. The session
+log is sc-agent's log of every Jev query: one row per query, keyed by the
+query's `session_id`, holding the request and Jev's answers. A result
+envelope is the `jev-batch-result/2` JSON result line for one request
+(`assets/schemas/jev-batch-result.schema.json`): it holds the request's
+`session_id` and the verdict derived from Jev's answers, or its error. A
+typed error code is a stable dotted code naming a failure, such as
+`DECIDR.NETWORK` or `DECIDR.RATE_LIMITED`. The retry policy belongs to the
+adopted sc-agent client; judge-jev does not resend requests. The request
+size limit is the `--max-request-bytes` value, at most 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
 `--gate dev`. The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
 `~/.sc-agent/logs/judge-jev.log.jsonl`.
@@ -74,25 +76,38 @@ sc-observability package (version 1.5.0), which writes
 - The batch command MUST read request lines.
 - The batch command MUST write one result envelope per request.
 - The batch command MUST use typed error codes.
-- The batch command MUST use the adopted sc-agent client's retry policy and
-  record its typed send count without resending requests itself.
+- The batch command MUST use the adopted sc-agent client's retry policy
+  without resending requests itself.
 - The batch command MUST enforce request size limits.
-- The batch command MUST log every request through the sc-observability
-  logger (REQ-JEV-0008).
-- The batch command MUST log every answer through the sc-observability
-  logger (REQ-JEV-0008).
+- Each result envelope of an answered request MUST carry the `session_id`
+  of the session-log row that holds the request and its answers.
+- The batch command MUST log every result envelope through the
+  sc-observability logger (REQ-JEV-0008).
+
+**MUST NOT statements:**
+
+- The batch command MUST NOT write the request text, Jev's response, Jev's
+  answers, the answering model or a send count into a result envelope.
+- The batch command MUST NOT log the request text, Jev's response, Jev's
+  answers, the answering model or a send count.
 
 ### Rationale
 
 One call path keeps the Jev core stable while a Rust implementation
 replaces it (ADR-JEV-0001).
 
+Owner ruling (2026-11-24, phase j): every Jev query lands in sc-agent's
+session log, so a tool's own records reference the query's `session_id`
+and copy nothing the session row holds.
+
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] A request file of three lines produces three result envelopes and
-  three log entries.
+- [ ] A request file of three lines produces three result envelopes, each
+  carrying its `session_id`, and three result log events.
+- [ ] No result envelope or log event of the batch command holds a request
+  text or an answer.
 
 ## REQ-JEV-0003: TypeSafe key lookup
 
@@ -110,6 +125,9 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 - The adopted sc-agent client MUST resolve the TypeSafe API key from the
   repository `.env` file first, then `TYPESAFE_API_KEY`, then its default
   platform credential entry (service `TYPESAFE_API_KEY`, current OS account).
+
+**MUST NOT statements:**
+
 - judge-jev MUST NOT pass keyring service or account overrides to sc-agent.
 
 ### Rationale
@@ -257,17 +275,20 @@ sc-observability package (version 1.5.0), which writes
 `~/.sc-agent/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
 Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). A
 quality-tree branch is the next wave a quality decision tree's rules select
-from Jev's answers.
+from Jev's answers. The session log is sc-agent's log of every Jev
+query: one row per query, keyed by the query's `session_id`, holding the
+request and Jev's answers.
 
 **MUST statements:**
 
-- judge-jev MUST write its run logs (requests, answers, quality-tree
-  branches, verdicts) through the sc-observability logger, the logger
-  sc-agent uses.
+- judge-jev MUST write its run logs (result envelopes, quality-tree
+  branches and verdicts, each referencing the `session_id`s it used)
+  through the sc-observability logger, the logger sc-agent uses.
 
 **MUST NOT statements:**
 
 - judge-jev MUST NOT keep its own log format alongside it.
+- judge-jev MUST NOT write Jev requests or Jev's answers to its run logs.
 
 ### Rationale
 
@@ -275,12 +296,17 @@ Rand (2026-11-08): "we will need to use sc-observability logger for both
 (this is what sc-agent uses). we should implement in judge-jev first then
 we can upgrade plan-anchor which is currently working solidly."
 
+Owner ruling (2026-11-24, phase j): requests and answers are read from the
+session log by `session_id`; judge-jev's logs do not copy them.
+
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] A live `check` run's requests, answers and verdicts appear in the
-  sc-observability log.
+- [ ] A live `check` run's quality-tree branches and verdicts appear in
+  the sc-observability log with the `session_id`s they used.
+- [ ] No event of that run in the sc-observability log holds a request
+  text or an answer.
 - [ ] No judge-jev command writes `anchor-runs/tournament-*.jsonl`.
 
 ### Implementation Notes

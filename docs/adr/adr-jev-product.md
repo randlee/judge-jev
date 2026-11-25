@@ -4,7 +4,7 @@
 **Version:** 0.1.0  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-08  
+**Last Updated:** 2026-11-24  
 **Decision Date:** 2026-11-07  
 **Owner:** Rand Lee  
 
@@ -33,8 +33,9 @@ or its callers break when the replacement lands.
 ### Decision
 
 The Jev core keeps its architecture and contracts unchanged. It changes
-only to fix a defect, or to replace its run log with the sc-observability
-logger (REQ-JEV-0008).
+only to fix a defect, to replace its run log with the sc-observability
+logger (REQ-JEV-0008), or to adopt sc-agent's session log and the
+`jev-batch-result/2` result line (owner ruling 2026-11-24).
 
 ### Rationale
 
@@ -374,26 +375,36 @@ later takes over graph work without judge-jev changing its callers.
 judge-jev has two ports:
 
 - **Transport:** sends the request lines of one wave and returns their
-  result lines. Its contract is the existing batch request and result
-  schemas (`assets/schemas/jev-batch-request.schema.json`,
-  `jev-batch-result.schema.json`), unchanged. The Python core implements it
-  now; sc-agent's Jev tool implements it later.
+  result lines. Its contract is the batch request schema
+  (`assets/schemas/jev-batch-request.schema.json`) and the shared
+  `jev-batch-result/2` result line (`jev-batch-result.schema.json`), which
+  holds generic fields only: `schema`, `tool`, `tool_version`, `run_id`,
+  `session_id`, `request_id`, `project`, `agent_role`, `threshold`,
+  `verdict`, `min_confidence`, `leaning`, `ok` and `error`. judge-jev's
+  record id lives in judge-jev's own records, which reference the
+  `session_id`. The Python core implements the port now; sc-agent's Jev
+  tool implements it later.
 - **Graph store:** loads a tree, validates it with SHACL, compiles a wave
   to its JSON questions, records a run's triples and answers queries.
   judge-jev implements it now with `pyoxigraph` and a SHACL validator; a
   Jev tool with Oxigraph may implement it later.
 
-Only JSON crosses the transport. The result lines in the sc-observability
-log are the record of a run; a run's triples are a projection of those
-lines and the tree, so they can be rebuilt from the log at any time. The
-tree walk (which wave next, which verdict) uses only the compiled waves and
-the answers, so it runs on either side of the seam.
+Only JSON crosses the transport. sc-agent's session log is the record of
+a run's queries: one row per Jev query, keyed by `session_id`, holding the
+request and Jev's answers. The result lines and judge-jev's own records
+hold only what judge-jev derived and reference those rows by `session_id`;
+they are not the record of a run's queries. A run's triples are a
+projection of the session rows, judge-jev's records and the tree, so they
+can be rebuilt from them at any time. The tree walk (which wave next, which
+verdict) uses only the compiled waves and the answers, so it runs on either
+side of the seam.
 
 ### Rationale
 
 A Jev tool without a graph store needs only the JSON contract it already
-has. Because the triples are rebuilt from the log, no run is lost when the
-store moves to the other side of the seam.
+has. Because the triples are rebuilt from the session log and judge-jev's
+records, no run is lost when the store moves to the other side of the
+seam.
 
 ### Consequences
 
@@ -406,8 +417,8 @@ store moves to the other side of the seam.
 **Negative:**
 
 - Until sc-agent hosts the store, judge-jev carries the graph dependencies.
-- The projection from result lines to triples must stay in step with the
-  ontology.
+- The projection from session rows and judge-jev's records to triples
+  must stay in step with the ontology.
 
 ### Alternatives Considered
 

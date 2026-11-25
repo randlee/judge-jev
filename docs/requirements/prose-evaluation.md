@@ -3,7 +3,7 @@
 **ID Range:** REQ-JEV-0201 through REQ-JEV-0215  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-08  
+**Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
 **Version:** 0.1.0  
 
@@ -360,18 +360,30 @@ questions that judges whether a record is well written: waves of questions
 - A dry run MUST fail with a typed error on anything that would make the
   live request wrong: an unresolved record or location, a render failure,
   or an oversize request.
+- A dry run MUST report its entries only in the result it prints on stdout.
+
+**MUST NOT statements:**
+- A dry run MUST NOT send a request through sc-agent's client, so it
+  writes no session-log row.
+- A dry run MUST NOT write a result envelope.
+- A dry run MUST NOT write a result, wave or verdict event to the
+  sc-observability logger.
 
 ### Rationale
 
 The caller must know the prompt will be built correctly before any text
-leaves the machine. A `quality` dry run stops at wave 1 because later
-waves depend on live answers.
+leaves the machine. Owner ruling (2026-11-24, phase j): a dry run only
+checks that its input composes into a valid request and shows that
+request; it is never recorded as if it were a run. A `quality` dry run
+stops at wave 1 because later waves depend on live answers.
 
 ### Success Criteria
 
 **Acceptance Criteria:**
 - [ ] A dry run makes no network call and reports one entry per request a
   live run would send.
+- [ ] A dry run writes no session-log row, no result envelope and no
+  result, wave or verdict log event.
 - [ ] A dry run over a task location with a missing variable fails naming
   the variable.
 
@@ -486,8 +498,10 @@ with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a
 file of questions, an index a Raptor import index, a request stream the
 request lines of the batch command. An input is a tree, question set,
 index or request stream. A log event is one event written through the
-sc-observability logger; the logger's event size limit is 65536 bytes
-(sc-observability 1.5.0).
+sc-observability logger. The event size limit is the largest event the
+installed sc-observability package accepts; it is that package's limit,
+not a judge-jev rule. Whether a request fits a session-log row is
+sc-agent's rule.
 
 **MUST statements:**
 - For every input, every `judge-jev` command MUST print exactly one JSON
@@ -500,9 +514,8 @@ sc-observability logger; the logger's event size limit is 65536 bytes
 - `judge-jev` MUST refuse an invalid index before its first Jev request.
 - `judge-jev` MUST refuse an invalid request stream before its first Jev
   request.
-- `judge-jev` MUST check that every log event of a request (the request,
-  Jev's largest possible answer and the result) fits the logger's event
-  size limit before sending the request.
+- `judge-jev` MUST check that every log event judge-jev writes for a
+  request fits the event size limit before sending the request.
 
 ### Rationale
 
