@@ -1,0 +1,3063 @@
+{
+  "example": "decidr-pipeline",
+  "mode": "live",
+  "captured_at": "2026-11-25T19:59:07.402319+00:00",
+  "revision": "c823e4600cbbee7f987cc2e65485f7c8deb6da92",
+  "index_sha256": "562b08b639bf265269bc492ef356fe9908b2a8d78222ff6f16b15a1fdae27414",
+  "diagnostics": [
+    {
+      "file": "docs/requirements/raptor-integration.md",
+      "line": 113,
+      "column": 13,
+      "rule": "MODAL_MISMATCH",
+      "id": "REQ-JEV-0003",
+      "record": "REQ-JEV-0003",
+      "section": "Requirement Statement",
+      "label": "MUST statements",
+      "value": "MUST NOT",
+      "allowed": [
+        "MUST"
+      ],
+      "message": "Found 'MUST NOT' in a statement under 'MUST statements'; expected 'MUST' or no keyword. The label's modal is kept.",
+      "remedy": "Fix the source: move the statement under the label for its keyword, or reword it to use the label's keyword.",
+      "source": "- judge-jev MUST NOT pass keyring service or account overrides to sc-agent.",
+      "fix": "replace `MUST NOT` at line 113, column 13 with `MUST`, or reword the statement without a modal keyword",
+      "edit": {
+        "op": "replace",
+        "line": 113,
+        "lines": [
+          "- judge-jev MUST pass keyring service or account overrides to sc-agent."
+        ]
+      }
+    }
+  ],
+  "import": null,
+  "bar": 0.8,
+  "views": [
+    {
+      "id": "REQ-JEV-0001.s1",
+      "kind": "req",
+      "title": "Records come from Raptor",
+      "text": "judge-jev MUST obtain records through Raptor's query interface.",
+      "tree": {
+        "id": "decidr-req",
+        "kind": "req",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "obligations",
+                "pass": "1",
+                "choices": [
+                  "1",
+                  "2",
+                  "3",
+                  "4+"
+                ]
+              },
+              {
+                "id": "term",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "no"
+                ]
+              },
+              {
+                "id": "checkable",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "needs a measure",
+                  "no"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "obtain": "The literal term `obtain` accounts for the answer or uncertainty.",
+                  "records": "The literal term `records` accounts for the answer or uncertainty.",
+                  "through": "The literal term `through` accounts for the answer or uncertainty.",
+                  "Raptor's": "The literal term `Raptor's` accounts for the answer or uncertainty.",
+                  "query": "The literal term `query` accounts for the answer or uncertainty.",
+                  "interface": "The literal term `interface` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "review",
+      "path": [
+        "gates",
+        "which-part",
+        "review"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 2
+        },
+        {
+          "node": "which-part",
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s1",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.96,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s1",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 0.99,
+          "criterion": "One obligation.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s1",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.4,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "under bar"
+        },
+        {
+          "wave": "which-part",
+          "item": "REQ-JEV-0001.s1",
+          "question": "which_part",
+          "choice": "none",
+          "confidence": 0.3,
+          "criterion": "",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "REQ-JEV-0001.s1",
+              "title": "Records come from Raptor",
+              "text": "{\"statement\": {\"index\": 1, \"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, \"record\": {\"id\": \"REQ-JEV-0001\", \"title\": \"Records come from Raptor\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Raptor is the tool that imports records.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}]}, \"rationale\": \"Raptor owns the schema and every conversion; the Raptor team can change\\nthem and notify judge-jev without breaking it.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"judge-jev contains no Markdown record parser and no SQL statement.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+            }
+          },
+          "questions": {
+            "obligations": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+              "criteria": {
+                "1": "One obligation.",
+                "2": "Two independent obligations.",
+                "3": "Three independent obligations.",
+                "4+": "Four or more independent obligations."
+              }
+            },
+            "term": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+              "criteria": {
+                "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                "no": "At least one term is none of these."
+              }
+            },
+            "checkable": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+              "criteria": {
+                "yes": "Yes, by a test, a command run, or reading files.",
+                "needs a measure": "A check exists only once a measure is stated.",
+                "no": "Nothing could check it."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "checkable": {
+                  "choice": "yes",
+                  "confidence": 0.96,
+                  "probabilities": {
+                    "needs a measure": 0.02,
+                    "no": 0.01,
+                    "yes": 0.97
+                  },
+                  "type": "choice"
+                },
+                "obligations": {
+                  "choice": "1",
+                  "confidence": 0.99,
+                  "probabilities": {
+                    "1": 0.99,
+                    "2": 0.01,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "term": {
+                  "choice": "yes",
+                  "confidence": 0.4,
+                  "probabilities": {
+                    "no": 0.3,
+                    "yes": 0.7
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "checkable": "20d278a08504e69c5a210bd176afdf06c72785188689430620bebf3df5f8a7ee",
+                "obligations": "5d3387a15f1c5dd832e0d0e4bb050357c47b3a0c713c422a48111b9a374821c4",
+                "term": "d85fa2bc485781008bdcbf9bb145b013669873dee6ea016ca011e41776be091a"
+              },
+              "session_id": "01M8A4MQ4Y9JXVFKPYAB61YE6A",
+              "usage": {
+                "input_tokens": 1105,
+                "output_tokens": 114
+              }
+            }
+          },
+          "next": {
+            "state": {
+              "item": {
+                "id": "REQ-JEV-0001.s1",
+                "title": "Records come from Raptor",
+                "text": "{\"statement\": {\"index\": 1, \"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, \"record\": {\"id\": \"REQ-JEV-0001\", \"title\": \"Records come from Raptor\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Raptor is the tool that imports records.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}]}, \"rationale\": \"Raptor owns the schema and every conversion; the Raptor team can change\\nthem and notify judge-jev without breaking it.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"judge-jev contains no Markdown record parser and no SQL statement.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+              },
+              "gate": {
+                "question": "term",
+                "answer": {
+                  "choice": "yes",
+                  "confidence": 0.4,
+                  "probabilities": {
+                    "no": 0.3,
+                    "yes": 0.7
+                  },
+                  "type": "choice"
+                },
+                "cause": "confidence"
+              },
+              "bar": 0.8
+            },
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "obtain": "The literal term `obtain` accounts for the answer or uncertainty.",
+                  "records": "The literal term `records` accounts for the answer or uncertainty.",
+                  "through": "The literal term `through` accounts for the answer or uncertainty.",
+                  "Raptor's": "The literal term `Raptor's` accounts for the answer or uncertainty.",
+                  "query": "The literal term `query` accounts for the answer or uncertainty.",
+                  "interface": "The literal term `interface` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            }
+          },
+          "stage2": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "which_part": {
+                  "choice": "none",
+                  "confidence": 0.3,
+                  "probabilities": {
+                    "MUST": 0.37,
+                    "Raptor's": 0.03,
+                    "interface": 0.09,
+                    "judge-jev": 0.01,
+                    "none": 0.38,
+                    "obtain": 0.04,
+                    "query": 0.06,
+                    "records": 0.01,
+                    "through": 0.01
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "which_part": "56e8a363bc6038c0cece84bb5f522570f486dd95595d2ae743bdb2fa4373ba81"
+              },
+              "session_id": "01M8A4MQFK30GZMQV66D8K5783",
+              "usage": {
+                "input_tokens": 1105,
+                "output_tokens": 88
+              }
+            }
+          },
+          "verdict": {
+            "verdict": "review",
+            "stage": "which-part",
+            "which_part": "none",
+            "confidence": 0.3,
+            "model": "jev-1.14.0"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s1",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "id": "REQ-JEV-0001.s2",
+      "kind": "req",
+      "title": "Records come from Raptor",
+      "text": "judge-jev MUST NOT parse record Markdown itself.",
+      "tree": {
+        "id": "decidr-req",
+        "kind": "req",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "obligations",
+                "pass": "1",
+                "choices": [
+                  "1",
+                  "2",
+                  "3",
+                  "4+"
+                ]
+              },
+              {
+                "id": "term",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "no"
+                ]
+              },
+              {
+                "id": "checkable",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "needs a measure",
+                  "no"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "parse": "The literal term `parse` accounts for the answer or uncertainty.",
+                  "record": "The literal term `record` accounts for the answer or uncertainty.",
+                  "Markdown": "The literal term `Markdown` accounts for the answer or uncertainty.",
+                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "review",
+      "path": [
+        "gates",
+        "which-part",
+        "review"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 2
+        },
+        {
+          "node": "which-part",
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s2",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.98,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s2",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s2",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.4,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "under bar"
+        },
+        {
+          "wave": "which-part",
+          "item": "REQ-JEV-0001.s2",
+          "question": "which_part",
+          "choice": "none",
+          "confidence": 0.42,
+          "criterion": "",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "REQ-JEV-0001.s2",
+              "title": "Records come from Raptor",
+              "text": "{\"statement\": {\"index\": 2, \"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, \"record\": {\"id\": \"REQ-JEV-0001\", \"title\": \"Records come from Raptor\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Raptor is the tool that imports records.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}]}, \"rationale\": \"Raptor owns the schema and every conversion; the Raptor team can change\\nthem and notify judge-jev without breaking it.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"judge-jev contains no Markdown record parser and no SQL statement.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+            }
+          },
+          "questions": {
+            "obligations": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+              "criteria": {
+                "1": "One obligation.",
+                "2": "Two independent obligations.",
+                "3": "Three independent obligations.",
+                "4+": "Four or more independent obligations."
+              }
+            },
+            "term": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+              "criteria": {
+                "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                "no": "At least one term is none of these."
+              }
+            },
+            "checkable": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+              "criteria": {
+                "yes": "Yes, by a test, a command run, or reading files.",
+                "needs a measure": "A check exists only once a measure is stated.",
+                "no": "Nothing could check it."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "checkable": {
+                  "choice": "yes",
+                  "confidence": 0.98,
+                  "probabilities": {
+                    "needs a measure": 0.01,
+                    "no": 0.0,
+                    "yes": 0.99
+                  },
+                  "type": "choice"
+                },
+                "obligations": {
+                  "choice": "1",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "term": {
+                  "choice": "yes",
+                  "confidence": 0.4,
+                  "probabilities": {
+                    "no": 0.3,
+                    "yes": 0.7
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "checkable": "c1eafabe04d9d6a6e4a005786d8b168db35576c75f4f3815a59d3d09d0091ec2",
+                "obligations": "2e12b05d09f7bccfc5c1673813d5e15bdbf41e575f8d6d02f1aa2109a501d89c",
+                "term": "99116159cb04fe2a500e9f92786fd803dbd520cbe9c3eda4f307898280782f46"
+              },
+              "session_id": "01M8A4MQSTTEZXZJA2BYV0C2WD",
+              "usage": {
+                "input_tokens": 1102,
+                "output_tokens": 114
+              }
+            }
+          },
+          "next": {
+            "state": {
+              "item": {
+                "id": "REQ-JEV-0001.s2",
+                "title": "Records come from Raptor",
+                "text": "{\"statement\": {\"index\": 2, \"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, \"record\": {\"id\": \"REQ-JEV-0001\", \"title\": \"Records come from Raptor\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Raptor is the tool that imports records.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}]}, \"rationale\": \"Raptor owns the schema and every conversion; the Raptor team can change\\nthem and notify judge-jev without breaking it.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"judge-jev contains no Markdown record parser and no SQL statement.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+              },
+              "gate": {
+                "question": "term",
+                "answer": {
+                  "choice": "yes",
+                  "confidence": 0.4,
+                  "probabilities": {
+                    "no": 0.3,
+                    "yes": 0.7
+                  },
+                  "type": "choice"
+                },
+                "cause": "confidence"
+              },
+              "bar": 0.8
+            },
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "parse": "The literal term `parse` accounts for the answer or uncertainty.",
+                  "record": "The literal term `record` accounts for the answer or uncertainty.",
+                  "Markdown": "The literal term `Markdown` accounts for the answer or uncertainty.",
+                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            }
+          },
+          "stage2": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "which_part": {
+                  "choice": "none",
+                  "confidence": 0.42,
+                  "probabilities": {
+                    "MUST": 0.03,
+                    "Markdown": 0.12,
+                    "NOT": 0.15,
+                    "itself": 0.07,
+                    "judge-jev": 0.02,
+                    "none": 0.49,
+                    "parse": 0.11,
+                    "record": 0.01
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "which_part": "03b0cfbb0426545e9d28091573ba70f9059d2e16731c6ef7a54324a4d6563b4f"
+              },
+              "session_id": "01M8A4MR1EHKM1RCGR12530VRY",
+              "usage": {
+                "input_tokens": 1072,
+                "output_tokens": 78
+              }
+            }
+          },
+          "verdict": {
+            "verdict": "review",
+            "stage": "which-part",
+            "which_part": "none",
+            "confidence": 0.42,
+            "model": "jev-1.14.0"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s2",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "id": "REQ-JEV-0001.s3",
+      "kind": "req",
+      "title": "Records come from Raptor",
+      "text": "judge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself.",
+      "tree": {
+        "id": "decidr-req",
+        "kind": "req",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "obligations",
+                "pass": "1",
+                "choices": [
+                  "1",
+                  "2",
+                  "3",
+                  "4+"
+                ]
+              },
+              {
+                "id": "term",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "no"
+                ]
+              },
+              {
+                "id": "checkable",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "needs a measure",
+                  "no"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "run": "The literal term `run` accounts for the answer or uncertainty.",
+                  "SQL": "The literal term `SQL` accounts for the answer or uncertainty.",
+                  "Structured": "The literal term `Structured` accounts for the answer or uncertainty.",
+                  "Query": "The literal term `Query` accounts for the answer or uncertainty.",
+                  "Language": "The literal term `Language` accounts for the answer or uncertainty.",
+                  "against": "The literal term `against` accounts for the answer or uncertainty.",
+                  "the": "The literal term `the` accounts for the answer or uncertainty.",
+                  "record": "The literal term `record` accounts for the answer or uncertainty.",
+                  "store": "The literal term `store` accounts for the answer or uncertainty.",
+                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "review",
+      "path": [
+        "gates",
+        "which-part",
+        "review"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 2
+        },
+        {
+          "node": "which-part",
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s3",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.98,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s3",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "REQ-JEV-0001.s3",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.54,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "under bar"
+        },
+        {
+          "wave": "which-part",
+          "item": "REQ-JEV-0001.s3",
+          "question": "which_part",
+          "choice": "none",
+          "confidence": 0.32,
+          "criterion": "",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "REQ-JEV-0001.s3",
+              "title": "Records come from Raptor",
+              "text": "{\"statement\": {\"index\": 3, \"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}, \"record\": {\"id\": \"REQ-JEV-0001\", \"title\": \"Records come from Raptor\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Raptor is the tool that imports records.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}]}, \"rationale\": \"Raptor owns the schema and every conversion; the Raptor team can change\\nthem and notify judge-jev without breaking it.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"judge-jev contains no Markdown record parser and no SQL statement.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+            }
+          },
+          "questions": {
+            "obligations": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+              "criteria": {
+                "1": "One obligation.",
+                "2": "Two independent obligations.",
+                "3": "Three independent obligations.",
+                "4+": "Four or more independent obligations."
+              }
+            },
+            "term": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+              "criteria": {
+                "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                "no": "At least one term is none of these."
+              }
+            },
+            "checkable": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+              "criteria": {
+                "yes": "Yes, by a test, a command run, or reading files.",
+                "needs a measure": "A check exists only once a measure is stated.",
+                "no": "Nothing could check it."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "checkable": {
+                  "choice": "yes",
+                  "confidence": 0.98,
+                  "probabilities": {
+                    "needs a measure": 0.01,
+                    "no": 0.0,
+                    "yes": 0.99
+                  },
+                  "type": "choice"
+                },
+                "obligations": {
+                  "choice": "1",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "term": {
+                  "choice": "yes",
+                  "confidence": 0.54,
+                  "probabilities": {
+                    "no": 0.23,
+                    "yes": 0.77
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "checkable": "4d32d8ca2e25442b0761f701617ceb09f6de8086920d765efe5896462f2bafdc",
+                "obligations": "eae6bc96dcf649ad8210cf3e32d9ee84ad302b8e1558fad2374c08ac18da572d",
+                "term": "6bacf679e2e3bbfd7ccaab3de86311ed2de53995057d01dcaaa41a22afee8f6d"
+              },
+              "session_id": "01M8A4MR8J2JR6JMP1EBVX10TF",
+              "usage": {
+                "input_tokens": 1111,
+                "output_tokens": 114
+              }
+            }
+          },
+          "next": {
+            "state": {
+              "item": {
+                "id": "REQ-JEV-0001.s3",
+                "title": "Records come from Raptor",
+                "text": "{\"statement\": {\"index\": 3, \"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}, \"record\": {\"id\": \"REQ-JEV-0001\", \"title\": \"Records come from Raptor\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Raptor is the tool that imports records.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"}]}, \"rationale\": \"Raptor owns the schema and every conversion; the Raptor team can change\\nthem and notify judge-jev without breaking it.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"judge-jev contains no Markdown record parser and no SQL statement.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+              },
+              "gate": {
+                "question": "term",
+                "answer": {
+                  "choice": "yes",
+                  "confidence": 0.54,
+                  "probabilities": {
+                    "no": 0.23,
+                    "yes": 0.77
+                  },
+                  "type": "choice"
+                },
+                "cause": "confidence"
+              },
+              "bar": 0.8
+            },
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "run": "The literal term `run` accounts for the answer or uncertainty.",
+                  "SQL": "The literal term `SQL` accounts for the answer or uncertainty.",
+                  "Structured": "The literal term `Structured` accounts for the answer or uncertainty.",
+                  "Query": "The literal term `Query` accounts for the answer or uncertainty.",
+                  "Language": "The literal term `Language` accounts for the answer or uncertainty.",
+                  "against": "The literal term `against` accounts for the answer or uncertainty.",
+                  "the": "The literal term `the` accounts for the answer or uncertainty.",
+                  "record": "The literal term `record` accounts for the answer or uncertainty.",
+                  "store": "The literal term `store` accounts for the answer or uncertainty.",
+                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            }
+          },
+          "stage2": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "which_part": {
+                  "choice": "none",
+                  "confidence": 0.32,
+                  "probabilities": {
+                    "Language": 0.0,
+                    "MUST": 0.09,
+                    "NOT": 0.17,
+                    "Query": 0.01,
+                    "SQL": 0.25,
+                    "Structured": 0.01,
+                    "against": 0.0,
+                    "itself": 0.04,
+                    "judge-jev": 0.02,
+                    "none": 0.37,
+                    "record": 0.0,
+                    "run": 0.03,
+                    "store": 0.01,
+                    "the": 0.0
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "which_part": "1946421703e6106ad989cfca3ed0ff9408c94dab170200593d7480e76d3d3ca7"
+              },
+              "session_id": "01M8A4MRE80NFX277JXNQFXWR6",
+              "usage": {
+                "input_tokens": 1228,
+                "output_tokens": 120
+              }
+            }
+          },
+          "verdict": {
+            "verdict": "review",
+            "stage": "which-part",
+            "which_part": "none",
+            "confidence": 0.32,
+            "model": "jev-1.14.0"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s3",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "id": "ADR-JEV-0001",
+      "kind": "adr",
+      "title": "Keep the Jev core unchanged until its Rust replacement",
+      "text": "The Jev core keeps its architecture and contracts unchanged. It changes\nonly to fix a defect, or to replace its run log with the sc-observability\nlogger (REQ-JEV-0008).",
+      "tree": {
+        "id": "decidr-adr",
+        "kind": "adr",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "context": {
+                "type": "choice",
+                "instructions": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+                "criteria": {
+                  "problem and forces": "Names the problem and the forces or constraints that shaped the decision.",
+                  "background only": "Gives background but no problem. Fix: state the problem.",
+                  "missing": "No context in substance. Fix: add the problem and its forces."
+                }
+              },
+              "alternatives": {
+                "type": "choice",
+                "instructions": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+                "criteria": {
+                  "named with reasons rejected": "Names alternatives and why each was rejected.",
+                  "named only": "Names alternatives without why they were rejected. Fix: add why rejected.",
+                  "none": "Names no alternative. Fix: add alternatives."
+                }
+              },
+              "consequences": {
+                "type": "choice",
+                "instructions": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+                "criteria": {
+                  "positive and negative": "Names benefits and costs.",
+                  "positive only": "Names only benefits. Fix: add the costs.",
+                  "missing": "Names no consequence. Fix: add benefits and costs."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "context",
+                "pass": "problem and forces",
+                "choices": [
+                  "problem and forces",
+                  "background only",
+                  "missing"
+                ]
+              },
+              {
+                "id": "alternatives",
+                "pass": "named with reasons rejected",
+                "choices": [
+                  "named with reasons rejected",
+                  "named only",
+                  "none"
+                ]
+              },
+              {
+                "id": "consequences",
+                "pass": "positive and negative",
+                "choices": [
+                  "positive and negative",
+                  "positive only",
+                  "missing"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which section of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "context": "The section `context` accounts for the answer or uncertainty.",
+                  "decision": "The section `decision` accounts for the answer or uncertainty.",
+                  "rationale": "The section `rationale` accounts for the answer or uncertainty.",
+                  "alternatives": "The section `alternatives` accounts for the answer or uncertainty.",
+                  "consequences": "The section `consequences` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "yes",
+      "path": [
+        "gates",
+        "yes"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 3
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "ADR-JEV-0001",
+          "question": "alternatives",
+          "choice": "named with reasons rejected",
+          "confidence": 1.0,
+          "criterion": "Names alternatives and why each was rejected.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "ADR-JEV-0001",
+          "question": "consequences",
+          "choice": "positive and negative",
+          "confidence": 0.98,
+          "criterion": "Names benefits and costs.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "ADR-JEV-0001",
+          "question": "context",
+          "choice": "problem and forces",
+          "confidence": 0.98,
+          "criterion": "Names the problem and the forces or constraints that shaped the decision.",
+          "status": "accepted"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "ADR-JEV-0001",
+              "title": "Keep the Jev core unchanged until its Rust replacement",
+              "text": "{\"id\": \"ADR-JEV-0001\", \"title\": \"Keep the Jev core unchanged until its Rust replacement\", \"status\": \"Approved\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-08\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"decision_date\": \"2026-11-07\", \"context\": {\"text\": \"judge-jev's Jev core (the batch command, request and result contracts,\\nkey lookup and remote-judge consent) is copied from an existing\\nimplementation, and a Rust implementation, exposed through PyO3 bindings or\\na command-line interface (CLI), will replace that Python core. The problem\\nis whether the Python core may change before then: any change to its\\narchitecture or contracts is a change the Rust replacement must reproduce,\\nor its callers break when the replacement lands.\", \"background\": \"\", \"problem_statement\": \"\"}, \"decision\": {\"text\": \"The Jev core keeps its architecture and contracts unchanged. It changes\\nonly to fix a defect, or to replace its run log with the sc-observability\\nlogger (REQ-JEV-0008).\", \"chosen_approach\": \"\", \"key_principles\": []}, \"rationale\": {\"text\": \"An unchanged core lets the Rust implementation replace it with no change\\nto its callers.\", \"benefits\": [], \"trade_offs\": []}, \"consequences\": {\"text\": \"\", \"positive\": [\"The Rust replacement is a drop-in.\"], \"negative\": [\"Improvements to the core wait for the Rust implementation.\"], \"neutral\": []}, \"alternatives\": {\"text\": \"\", \"groups\": [{\"name\": \"Improve the Python core before the Rust replacement\", \"description\": \"Change the copied core's architecture or contracts now.\", \"pros\": [], \"cons\": [], \"why_rejected\": \"The Rust implementation could then not replace the core\\nwithout a change to its callers.\"}]}, \"implementation\": {\"text\": \"\", \"key_components\": [], \"integration_points\": [], \"code_examples\": \"\"}, \"impact_analysis\": {\"text\": \"\", \"affected_components\": \"\", \"performance_impact\": \"\", \"security_impact\": \"\", \"maintainability_impact\": \"\"}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}"
+            }
+          },
+          "questions": {
+            "context": {
+              "type": "choice",
+              "instructions": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+              "criteria": {
+                "problem and forces": "Names the problem and the forces or constraints that shaped the decision.",
+                "background only": "Gives background but no problem. Fix: state the problem.",
+                "missing": "No context in substance. Fix: add the problem and its forces."
+              }
+            },
+            "alternatives": {
+              "type": "choice",
+              "instructions": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+              "criteria": {
+                "named with reasons rejected": "Names alternatives and why each was rejected.",
+                "named only": "Names alternatives without why they were rejected. Fix: add why rejected.",
+                "none": "Names no alternative. Fix: add alternatives."
+              }
+            },
+            "consequences": {
+              "type": "choice",
+              "instructions": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+              "criteria": {
+                "positive and negative": "Names benefits and costs.",
+                "positive only": "Names only benefits. Fix: add the costs.",
+                "missing": "Names no consequence. Fix: add benefits and costs."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "alternatives": {
+                  "choice": "named with reasons rejected",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "named only": 0.0,
+                    "named with reasons rejected": 1.0,
+                    "none": 0.0
+                  },
+                  "type": "choice"
+                },
+                "consequences": {
+                  "choice": "positive and negative",
+                  "confidence": 0.98,
+                  "probabilities": {
+                    "missing": 0.01,
+                    "positive and negative": 0.99,
+                    "positive only": 0.0
+                  },
+                  "type": "choice"
+                },
+                "context": {
+                  "choice": "problem and forces",
+                  "confidence": 0.98,
+                  "probabilities": {
+                    "background only": 0.01,
+                    "missing": 0.0,
+                    "problem and forces": 0.99
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "alternatives": "1926ceaf3d9265dda571043d892deb7d54a0ae3378d191431f686d01410b9e79",
+                "consequences": "df0e706b2a2d32963b95e9f04e1ce8064daa8bfcceb24da54c90b0b9237cf398",
+                "context": "9b16f0fca4afd322f3420f9dd2e4a8c1e41c33f8c61a8fec7d63b357e61672b6"
+              },
+              "session_id": "01M8A4MRKKHAB25S5R7AB1886K",
+              "usage": {
+                "input_tokens": 1182,
+                "output_tokens": 129
+              }
+            }
+          },
+          "next": {
+            "verdict": "yes",
+            "stage": "gates",
+            "item": "ADR-JEV-0001"
+          },
+          "stage2": {
+            "verdict": "yes",
+            "stage": "gates",
+            "item": "ADR-JEV-0001"
+          },
+          "verdict": {
+            "verdict": "yes",
+            "stage": "gates",
+            "item": "ADR-JEV-0001"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/ADR-JEV-0001",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "id": "NFR-JEV-0001.s1",
+      "kind": "nfr",
+      "title": "Deterministic offline tests",
+      "text": "judge-jev tests MUST run offline against recorded Jev answers.",
+      "tree": {
+        "id": "decidr-nfr",
+        "kind": "nfr",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "obligations",
+                "pass": "1",
+                "choices": [
+                  "1",
+                  "2",
+                  "3",
+                  "4+"
+                ]
+              },
+              {
+                "id": "term",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "no"
+                ]
+              },
+              {
+                "id": "checkable",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "needs a measure",
+                  "no"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "run": "The literal term `run` accounts for the answer or uncertainty.",
+                  "offline": "The literal term `offline` accounts for the answer or uncertainty.",
+                  "against": "The literal term `against` accounts for the answer or uncertainty.",
+                  "recorded": "The literal term `recorded` accounts for the answer or uncertainty.",
+                  "Jev": "The literal term `Jev` accounts for the answer or uncertainty.",
+                  "answers": "The literal term `answers` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "review",
+      "path": [
+        "gates",
+        "which-part",
+        "review"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 2
+        },
+        {
+          "node": "which-part",
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s1",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.96,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s1",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 0.4,
+          "criterion": "One obligation.",
+          "status": "under bar"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s1",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.64,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "under bar"
+        },
+        {
+          "wave": "which-part",
+          "item": "NFR-JEV-0001.s1",
+          "question": "which_part",
+          "choice": "MUST",
+          "confidence": 0.42,
+          "criterion": "",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "NFR-JEV-0001.s1",
+              "title": "Deterministic offline tests",
+              "text": "{\"statement\": {\"index\": 1, \"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+            }
+          },
+          "questions": {
+            "obligations": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+              "criteria": {
+                "1": "One obligation.",
+                "2": "Two independent obligations.",
+                "3": "Three independent obligations.",
+                "4+": "Four or more independent obligations."
+              }
+            },
+            "term": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+              "criteria": {
+                "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                "no": "At least one term is none of these."
+              }
+            },
+            "checkable": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+              "criteria": {
+                "yes": "Yes, by a test, a command run, or reading files.",
+                "needs a measure": "A check exists only once a measure is stated.",
+                "no": "Nothing could check it."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "checkable": {
+                  "choice": "yes",
+                  "confidence": 0.96,
+                  "probabilities": {
+                    "needs a measure": 0.03,
+                    "no": 0.0,
+                    "yes": 0.97
+                  },
+                  "type": "choice"
+                },
+                "obligations": {
+                  "choice": "1",
+                  "confidence": 0.4,
+                  "probabilities": {
+                    "1": 0.55,
+                    "2": 0.41,
+                    "3": 0.04,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "term": {
+                  "choice": "yes",
+                  "confidence": 0.64,
+                  "probabilities": {
+                    "no": 0.18,
+                    "yes": 0.82
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "checkable": "3b2b2f8b4eb6561b08c1d41cc73bee6a4cf8e4233b816f15c21d930ec3d4ec45",
+                "obligations": "6e80fd062efaeab8c79892dd502a7e39aed7aa82d464b2dbffb694978b384761",
+                "term": "6c4eee3f73e2e895112de65620152fe8235944c12302048cb65f7c5fcf4a72c5"
+              },
+              "session_id": "01M8A4MRS0KH5V1AN0SRQKCYJT",
+              "usage": {
+                "input_tokens": 1121,
+                "output_tokens": 114
+              }
+            }
+          },
+          "next": {
+            "state": {
+              "item": {
+                "id": "NFR-JEV-0001.s1",
+                "title": "Deterministic offline tests",
+                "text": "{\"statement\": {\"index\": 1, \"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+              },
+              "gate": {
+                "question": "obligations",
+                "answer": {
+                  "choice": "1",
+                  "confidence": 0.4,
+                  "probabilities": {
+                    "1": 0.55,
+                    "2": 0.41,
+                    "3": 0.04,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "cause": "confidence"
+              },
+              "bar": 0.8
+            },
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "run": "The literal term `run` accounts for the answer or uncertainty.",
+                  "offline": "The literal term `offline` accounts for the answer or uncertainty.",
+                  "against": "The literal term `against` accounts for the answer or uncertainty.",
+                  "recorded": "The literal term `recorded` accounts for the answer or uncertainty.",
+                  "Jev": "The literal term `Jev` accounts for the answer or uncertainty.",
+                  "answers": "The literal term `answers` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            }
+          },
+          "stage2": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "which_part": {
+                  "choice": "MUST",
+                  "confidence": 0.42,
+                  "probabilities": {
+                    "Jev": 0.02,
+                    "MUST": 0.48,
+                    "against": 0.0,
+                    "answers": 0.02,
+                    "judge-jev": 0.02,
+                    "none": 0.29,
+                    "offline": 0.09,
+                    "recorded": 0.03,
+                    "run": 0.02,
+                    "tests": 0.03
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "which_part": "40ae6d2d2d051a2d2f4ec55511323c7d0d998bfe4242ed1064fa11391465b6c8"
+              },
+              "session_id": "01M8A4MRYW3107911GRWMMFAW7",
+              "usage": {
+                "input_tokens": 1159,
+                "output_tokens": 95
+              }
+            }
+          },
+          "verdict": {
+            "verdict": "review",
+            "stage": "which-part",
+            "which_part": "MUST",
+            "confidence": 0.42,
+            "model": "jev-1.14.0"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s1",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "id": "NFR-JEV-0001.s2",
+      "kind": "nfr",
+      "title": "Deterministic offline tests",
+      "text": "judge-jev tests MUST NOT depend on timing.",
+      "tree": {
+        "id": "decidr-nfr",
+        "kind": "nfr",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "obligations",
+                "pass": "1",
+                "choices": [
+                  "1",
+                  "2",
+                  "3",
+                  "4+"
+                ]
+              },
+              {
+                "id": "term",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "no"
+                ]
+              },
+              {
+                "id": "checkable",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "needs a measure",
+                  "no"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
+                  "on": "The literal term `on` accounts for the answer or uncertainty.",
+                  "timing": "The literal term `timing` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "review",
+      "path": [
+        "gates",
+        "which-part",
+        "review"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 2
+        },
+        {
+          "node": "which-part",
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s2",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.6,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "under bar"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s2",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s2",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.62,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "under bar"
+        },
+        {
+          "wave": "which-part",
+          "item": "NFR-JEV-0001.s2",
+          "question": "which_part",
+          "choice": "timing",
+          "confidence": 0.46,
+          "criterion": "",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "NFR-JEV-0001.s2",
+              "title": "Deterministic offline tests",
+              "text": "{\"statement\": {\"index\": 2, \"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+            }
+          },
+          "questions": {
+            "obligations": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+              "criteria": {
+                "1": "One obligation.",
+                "2": "Two independent obligations.",
+                "3": "Three independent obligations.",
+                "4+": "Four or more independent obligations."
+              }
+            },
+            "term": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+              "criteria": {
+                "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                "no": "At least one term is none of these."
+              }
+            },
+            "checkable": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+              "criteria": {
+                "yes": "Yes, by a test, a command run, or reading files.",
+                "needs a measure": "A check exists only once a measure is stated.",
+                "no": "Nothing could check it."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "checkable": {
+                  "choice": "yes",
+                  "confidence": 0.6,
+                  "probabilities": {
+                    "needs a measure": 0.25,
+                    "no": 0.02,
+                    "yes": 0.73
+                  },
+                  "type": "choice"
+                },
+                "obligations": {
+                  "choice": "1",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "term": {
+                  "choice": "yes",
+                  "confidence": 0.62,
+                  "probabilities": {
+                    "no": 0.19,
+                    "yes": 0.81
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "checkable": "562105298c883746ee5b00f6e0d29b1e7cf1224ba92788d79d2ff6e968a738ce",
+                "obligations": "8c3c02d3d68c92210d876032166822b11397b465d6582583c503d3bfa6ee0e2d",
+                "term": "04844d2ee3d59346e3923dc12c9e2fc2a35037cf862fcfd6332be9bf315a63bf"
+              },
+              "session_id": "01M8A4MS47V3TTA63C64CSZ4K8",
+              "usage": {
+                "input_tokens": 1119,
+                "output_tokens": 114
+              }
+            }
+          },
+          "next": {
+            "state": {
+              "item": {
+                "id": "NFR-JEV-0001.s2",
+                "title": "Deterministic offline tests",
+                "text": "{\"statement\": {\"index\": 2, \"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+              },
+              "gate": {
+                "question": "term",
+                "answer": {
+                  "choice": "yes",
+                  "confidence": 0.62,
+                  "probabilities": {
+                    "no": 0.19,
+                    "yes": 0.81
+                  },
+                  "type": "choice"
+                },
+                "cause": "confidence"
+              },
+              "bar": 0.8
+            },
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
+                  "on": "The literal term `on` accounts for the answer or uncertainty.",
+                  "timing": "The literal term `timing` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            }
+          },
+          "stage2": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "which_part": {
+                  "choice": "timing",
+                  "confidence": 0.46,
+                  "probabilities": {
+                    "MUST": 0.03,
+                    "NOT": 0.05,
+                    "depend": 0.05,
+                    "judge-jev": 0.01,
+                    "none": 0.32,
+                    "on": 0.0,
+                    "tests": 0.01,
+                    "timing": 0.53
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "which_part": "70f0297e02921df8d721e7ceed2f5ed633913162afdf77ae2decf8fa1a81460b"
+              },
+              "session_id": "01M8A4MS9F5H4Q2NACNYC35061",
+              "usage": {
+                "input_tokens": 1086,
+                "output_tokens": 79
+              }
+            }
+          },
+          "verdict": {
+            "verdict": "review",
+            "stage": "which-part",
+            "which_part": "timing",
+            "confidence": 0.46,
+            "model": "jev-1.14.0"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s2",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "id": "NFR-JEV-0001.s3",
+      "kind": "nfr",
+      "title": "Deterministic offline tests",
+      "text": "judge-jev tests MUST NOT depend on sleeps.",
+      "tree": {
+        "id": "decidr-nfr",
+        "kind": "nfr",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "obligations",
+                "pass": "1",
+                "choices": [
+                  "1",
+                  "2",
+                  "3",
+                  "4+"
+                ]
+              },
+              {
+                "id": "term",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "no"
+                ]
+              },
+              {
+                "id": "checkable",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "needs a measure",
+                  "no"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
+                  "on": "The literal term `on` accounts for the answer or uncertainty.",
+                  "sleeps": "The literal term `sleeps` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "review",
+      "path": [
+        "gates",
+        "which-part",
+        "review"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 2
+        },
+        {
+          "node": "which-part",
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s3",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.91,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s3",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s3",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.48,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "under bar"
+        },
+        {
+          "wave": "which-part",
+          "item": "NFR-JEV-0001.s3",
+          "question": "which_part",
+          "choice": "sleeps",
+          "confidence": 0.59,
+          "criterion": "",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "NFR-JEV-0001.s3",
+              "title": "Deterministic offline tests",
+              "text": "{\"statement\": {\"index\": 3, \"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+            }
+          },
+          "questions": {
+            "obligations": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+              "criteria": {
+                "1": "One obligation.",
+                "2": "Two independent obligations.",
+                "3": "Three independent obligations.",
+                "4+": "Four or more independent obligations."
+              }
+            },
+            "term": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+              "criteria": {
+                "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                "no": "At least one term is none of these."
+              }
+            },
+            "checkable": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+              "criteria": {
+                "yes": "Yes, by a test, a command run, or reading files.",
+                "needs a measure": "A check exists only once a measure is stated.",
+                "no": "Nothing could check it."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "checkable": {
+                  "choice": "yes",
+                  "confidence": 0.91,
+                  "probabilities": {
+                    "needs a measure": 0.05,
+                    "no": 0.01,
+                    "yes": 0.94
+                  },
+                  "type": "choice"
+                },
+                "obligations": {
+                  "choice": "1",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "term": {
+                  "choice": "yes",
+                  "confidence": 0.48,
+                  "probabilities": {
+                    "no": 0.26,
+                    "yes": 0.74
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "checkable": "693a8ead00f2498ec7e30565908104c093305db3f49f90cdb8e5127cb3edaf6d",
+                "obligations": "e5dd99cf5dbf192855ed15f98cdc32d787dada0f689e98d95a88cdcae1ffbfb3",
+                "term": "a75f61691be619e6f94d67c6575db8be5380e70bbbb747c101de94837a56f325"
+              },
+              "session_id": "01M8A4MSEMMGRPN6QJ8Z4GZNDZ",
+              "usage": {
+                "input_tokens": 1119,
+                "output_tokens": 114
+              }
+            }
+          },
+          "next": {
+            "state": {
+              "item": {
+                "id": "NFR-JEV-0001.s3",
+                "title": "Deterministic offline tests",
+                "text": "{\"statement\": {\"index\": 3, \"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+              },
+              "gate": {
+                "question": "term",
+                "answer": {
+                  "choice": "yes",
+                  "confidence": 0.48,
+                  "probabilities": {
+                    "no": 0.26,
+                    "yes": 0.74
+                  },
+                  "type": "choice"
+                },
+                "cause": "confidence"
+              },
+              "bar": 0.8
+            },
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
+                  "on": "The literal term `on` accounts for the answer or uncertainty.",
+                  "sleeps": "The literal term `sleeps` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            }
+          },
+          "stage2": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "which_part": {
+                  "choice": "sleeps",
+                  "confidence": 0.59,
+                  "probabilities": {
+                    "MUST": 0.03,
+                    "NOT": 0.05,
+                    "depend": 0.03,
+                    "judge-jev": 0.01,
+                    "none": 0.23,
+                    "on": 0.0,
+                    "sleeps": 0.64,
+                    "tests": 0.01
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "which_part": "71086fb4869f8ccb778bdd0eaea0bd2ed928387d7994d3d4e3545cfc01bf5eb0"
+              },
+              "session_id": "01M8A4MSMMVNQ5H2DTZEKNZ8XC",
+              "usage": {
+                "input_tokens": 1088,
+                "output_tokens": 81
+              }
+            }
+          },
+          "verdict": {
+            "verdict": "review",
+            "stage": "which-part",
+            "which_part": "sleeps",
+            "confidence": 0.59,
+            "model": "jev-1.14.0"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s3",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    },
+    {
+      "id": "NFR-JEV-0001.s4",
+      "kind": "nfr",
+      "title": "Deterministic offline tests",
+      "text": "judge-jev tests MUST NOT depend on ordering.",
+      "tree": {
+        "id": "decidr-nfr",
+        "kind": "nfr",
+        "start": "gates",
+        "bar": 0.8,
+        "nodes": {
+          "gates": {
+            "title": "Stage 1: gates",
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              }
+            },
+            "policy": [
+              {
+                "id": "obligations",
+                "pass": "1",
+                "choices": [
+                  "1",
+                  "2",
+                  "3",
+                  "4+"
+                ]
+              },
+              {
+                "id": "term",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "no"
+                ]
+              },
+              {
+                "id": "checkable",
+                "pass": "yes",
+                "choices": [
+                  "yes",
+                  "needs a measure",
+                  "no"
+                ]
+              }
+            ],
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "condition": "Any other choice or\nconfidence below 0.8",
+                "goto": "which-part"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "which-part": {
+            "title": "Stage 2: which part?",
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
+                  "on": "The literal term `on` accounts for the answer or uncertainty.",
+                  "ordering": "The literal term `ordering` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            },
+            "next": [
+              {
+                "condition": "ok is false",
+                "goto": "error"
+              },
+              {
+                "goto": "review"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "review": {
+            "verdict": "review"
+          },
+          "error": {
+            "error": "Stop: print the error"
+          }
+        }
+      },
+      "verdict": "review",
+      "path": [
+        "gates",
+        "which-part",
+        "review"
+      ],
+      "waves": [
+        {
+          "node": "gates",
+          "rule_position": 2
+        },
+        {
+          "node": "which-part",
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s4",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.85,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s4",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "accepted"
+        },
+        {
+          "wave": "gates",
+          "item": "NFR-JEV-0001.s4",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.58,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "under bar"
+        },
+        {
+          "wave": "which-part",
+          "item": "NFR-JEV-0001.s4",
+          "question": "which_part",
+          "choice": "ordering",
+          "confidence": 0.38,
+          "criterion": "",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "request": {
+          "state": {
+            "item": {
+              "id": "NFR-JEV-0001.s4",
+              "title": "Deterministic offline tests",
+              "text": "{\"statement\": {\"index\": 4, \"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+            }
+          },
+          "questions": {
+            "obligations": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+              "criteria": {
+                "1": "One obligation.",
+                "2": "Two independent obligations.",
+                "3": "Three independent obligations.",
+                "4+": "Four or more independent obligations."
+              }
+            },
+            "term": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+              "criteria": {
+                "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                "no": "At least one term is none of these."
+              }
+            },
+            "checkable": {
+              "type": "choice",
+              "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+              "criteria": {
+                "yes": "Yes, by a test, a command run, or reading files.",
+                "needs a measure": "A check exists only once a measure is stated.",
+                "no": "Nothing could check it."
+              }
+            }
+          }
+        },
+        "boundaries": {
+          "gates": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "checkable": {
+                  "choice": "yes",
+                  "confidence": 0.85,
+                  "probabilities": {
+                    "needs a measure": 0.09,
+                    "no": 0.01,
+                    "yes": 0.9
+                  },
+                  "type": "choice"
+                },
+                "obligations": {
+                  "choice": "1",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "type": "choice"
+                },
+                "term": {
+                  "choice": "yes",
+                  "confidence": 0.58,
+                  "probabilities": {
+                    "no": 0.21,
+                    "yes": 0.79
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "checkable": "5854e84e5e022d88bf2c5f129a8350dce50bf56db7800ec5827954613b874b65",
+                "obligations": "106242727f68742f62c3a216c6d041a1a4c1e44477418bbfd6c7c210766c88e2",
+                "term": "2d88d9fa593779e49bf97a0c6657b03c8f02ddfcffb82f599c6ae408f848bba3"
+              },
+              "session_id": "01M8A4MSTSS9M5CWB3MD6TB8M8",
+              "usage": {
+                "input_tokens": 1119,
+                "output_tokens": 114
+              }
+            }
+          },
+          "next": {
+            "state": {
+              "item": {
+                "id": "NFR-JEV-0001.s4",
+                "title": "Deterministic offline tests",
+                "text": "{\"statement\": {\"index\": 4, \"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}, \"record\": {\"id\": \"NFR-JEV-0001\", \"title\": \"Deterministic offline tests\", \"status\": \"Draft\", \"version\": \"0.1.0\", \"created\": \"2026-11-07\", \"last_updated\": \"2026-11-07\", \"owner\": \"Rand Lee\", \"supersedes\": null, \"superseded_by\": null, \"requirement_statement\": {\"text\": \"Definitions: Jev is a judge model. Recorded Jev answers are an answers file.\", \"statements\": [{\"modal\": \"Must\", \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on timing.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"}, {\"modal\": \"MustNot\", \"text\": \"judge-jev tests MUST NOT depend on ordering.\"}]}, \"rationale\": \"Flaky tests are prohibited; live Jev calls are neither free nor\\nrepeatable.\", \"success_criteria\": {\"text\": \"\", \"acceptance_criteria\": [{\"text\": \"The test suite passes 20 consecutive runs with networking disabled.\", \"checked\": false}], \"test_evidence\": []}, \"dependencies\": {\"text\": \"\", \"requires\": [], \"related\": []}, \"product_applicability\": {\"text\": \"\", \"applies_to\": [], \"does_not_apply_to\": []}, \"implementation_notes\": {\"text\": \"\", \"key_considerations\": []}, \"test_strategy\": {\"text\": \"\", \"test_types\": []}, \"related_documents\": {\"text\": \"\", \"requirements\": [], \"architecture_decisions\": [], \"design_documents\": [], \"work_items\": [], \"external_references\": []}}}"
+              },
+              "gate": {
+                "question": "term",
+                "answer": {
+                  "choice": "yes",
+                  "confidence": 0.58,
+                  "probabilities": {
+                    "no": 0.21,
+                    "yes": 0.79
+                  },
+                  "type": "choice"
+                },
+                "cause": "confidence"
+              },
+              "bar": 0.8
+            },
+            "questions": {
+              "which_part": {
+                "type": "choice",
+                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "criteria": {
+                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
+                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
+                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
+                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
+                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
+                  "on": "The literal term `on` accounts for the answer or uncertainty.",
+                  "ordering": "The literal term `ordering` accounts for the answer or uncertainty.",
+                  "none": "No listed part accounts for the answer or uncertainty."
+                }
+              }
+            }
+          },
+          "stage2": {
+            "ok": true,
+            "value": {
+              "answers": {
+                "which_part": {
+                  "choice": "ordering",
+                  "confidence": 0.38,
+                  "probabilities": {
+                    "MUST": 0.04,
+                    "NOT": 0.07,
+                    "depend": 0.05,
+                    "judge-jev": 0.01,
+                    "none": 0.36,
+                    "on": 0.0,
+                    "ordering": 0.46,
+                    "tests": 0.01
+                  },
+                  "type": "choice"
+                }
+              },
+              "attempts": 1,
+              "model": "jev-1.14.0",
+              "question_digests": {
+                "which_part": "231e70d4cf26cf0d1757e2bc7546543c977b6418d8b9db668f2e27d0df1dfdb6"
+              },
+              "session_id": "01M8A4MT05JNS07DMC2RFE8WE8",
+              "usage": {
+                "input_tokens": 1084,
+                "output_tokens": 77
+              }
+            }
+          },
+          "verdict": {
+            "verdict": "review",
+            "stage": "which-part",
+            "which_part": "ordering",
+            "confidence": 0.38,
+            "model": "jev-1.14.0"
+          }
+        },
+        "command": {
+          "argv": [
+            "bash",
+            "-o",
+            "pipefail",
+            "-c",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "decidr-pipeline",
+            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s4",
+            "jev",
+            "jev",
+            "0.8"
+          ],
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s1",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s2",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s3",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/ADR-JEV-0001",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s1",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s2",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s3",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "bash",
+        "-o",
+        "pipefail",
+        "-c",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "decidr-pipeline",
+        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s4",
+        "jev",
+        "jev",
+        "0.8"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "exit_code": 0
+}

@@ -13,7 +13,7 @@ Consistency:
   or reference cannot escape. CHANGELOG.md has a "## Unreleased" section or a
   "## X.Y.Z" entry. Registry
   paths, manifest identities and marketplace sources are checked too, and the
-  plugin must expose only the judge-jev-installer skill.
+  plugin must expose exactly the installer and decidr tree-walking skills.
 
 Every PR raises VERSION by at least a patch and changes every declaration with
 it (CONTRIBUTING.md). This script checks that the declarations agree and that
@@ -40,6 +40,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "sc-judge-jev"
 INSTALLER_SKILL = "judge-jev-installer"
+EXPOSED_SKILLS = (INSTALLER_SKILL, "walking-decidr-trees")
 SKILL_NAME = "judge-jev"
 HARNESS = PLUGIN / "install" / "harness"
 TEMPLATES = PLUGIN / "install" / "templates"
@@ -253,8 +254,8 @@ def release_checks(want: str, drift: list) -> int:
         if data and data.get("skills") != "./skills/":
             drift.append(f"{_rel(manifest)}: skills must be ./skills/")
     exposed = sorted(p.name for p in (PLUGIN / "skills").iterdir() if p.is_dir()) if (PLUGIN / "skills").is_dir() else []
-    if exposed != [INSTALLER_SKILL]:
-        drift.append(f"plugins/sc-judge-jev/skills: exposes {exposed}; must be exactly [{INSTALLER_SKILL!r}]")
+    if exposed != sorted(EXPOSED_SKILLS):
+        drift.append(f"plugins/sc-judge-jev/skills: exposes {exposed}; must be exactly {sorted(EXPOSED_SKILLS)}")
     catalogs = [
         ROOT / ".claude-plugin" / "marketplace.json",
         ROOT / ".agents" / "plugins" / "marketplace.json",

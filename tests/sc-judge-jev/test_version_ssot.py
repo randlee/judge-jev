@@ -49,6 +49,7 @@ class VersionSingleSourceOfTruthTests(unittest.TestCase):
             f"{plugin}/.codex-plugin/plugin.json",
             f"{plugin}/.cursor-plugin/plugin.json",
             f"{plugin}/skills/judge-jev-installer/SKILL.md",
+            f"{plugin}/skills/walking-decidr-trees/SKILL.md",
             ".claude-plugin/marketplace.json",
         ]
         # The installed skill and references are templates rendered with plugin.json's version; the

@@ -136,8 +136,9 @@ class RenderingTests(unittest.TestCase):
         self.assertIsInstance(out, inst.Ok, getattr(out, "error", None))
         return out.value
 
-    def test_plugin_ships_only_the_installer_skill_and_no_rendered_tree(self):
-        self.assertEqual(sorted(p.name for p in (PLUGIN / "skills").iterdir()), ["judge-jev-installer"])
+    def test_plugin_ships_installer_and_tree_walking_skill_and_no_rendered_tree(self):
+        self.assertEqual(sorted(p.name for p in (PLUGIN / "skills").iterdir()),
+                         ["judge-jev-installer", "walking-decidr-trees"])
         for gone in (".claude", ".codex", ".cursor", "skills/judge-jev", "install/manifest.json"):
             self.assertFalse((PLUGIN / gone).exists(), gone)
 

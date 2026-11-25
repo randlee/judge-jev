@@ -8,6 +8,7 @@ generated index.html files.
 Sources:
   site/reports/**/*.html      date-stamped report files (YYYYMMDD-HHMMSS-name.html)
   site/diagrams/**/*.html     exported diagrams
+  site/examples/*/report.html recorded example reports, published in place
   site/announcements/*.md     announcement sources: "# Title — Subtitle" and a
                               "**Released:** Month D, YYYY" line
 
@@ -18,6 +19,7 @@ from __future__ import annotations
 import datetime as dt
 import html
 import pathlib
+import posixpath
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -68,8 +70,8 @@ def page(title: str, body: str) -> str:
 
 
 def nav() -> str:
-    return ('<nav><a href="index.html">Home</a> · <a href="announcements/index.html">Announcements</a>'
-            ' · <a href="reports/index.html">Reports</a> · <a href="diagrams/index.html">Diagrams</a></nav>')
+    return ('<nav><a href="../index.html">Home</a> · <a href="../announcements/index.html">Announcements</a>'
+            ' · <a href="../reports/index.html">Reports</a> · <a href="../diagrams/index.html">Diagrams</a></nav>')
 
 
 def collect(pattern_glob: str) -> list[tuple[pathlib.Path, dt.datetime | None, int, str]]:
@@ -79,7 +81,7 @@ def collect(pattern_glob: str) -> list[tuple[pathlib.Path, dt.datetime | None, i
     published on the same day under the YYYYMMDD-<seq>-name scheme.
     """
     out: list[tuple[pathlib.Path, dt.datetime | None, int, str]] = []
-    for path in SITE.glob(pattern_glob):
+    for path in sorted(SITE.glob(pattern_glob)):
         if path.name == "index.html" or path.suffix != ".html":
             continue
         when: dt.datetime | None = None
@@ -111,7 +113,7 @@ def build_reports() -> int:
     items = collect("reports/**/*.html")
     if items:
         entries = "\n".join(
-            f'      <li><a href="{html.escape(str(p.relative_to(SITE)))}">'
+            f'      <li><a href="{html.escape(p.relative_to(SITE / "reports").as_posix())}">'
             f'{html.escape(label)}</a>'
             + (f' <span class="sub">{when:%Y-%m-%d}{f" · run {seq}" if seq else ""}</span>' if when else "")
             + "</li>"
@@ -133,9 +135,11 @@ def build_reports() -> int:
 
 def build_diagrams() -> int:
     items = collect("diagrams/**/*.html")
+    items.extend((p, when, seq, p.parent.name.replace("-", " "))
+                 for p, when, seq, _label in collect("examples/*/report.html"))
     if items:
         entries = "\n".join(
-            f'      <li><a href="{html.escape(str(p.relative_to(SITE)))}">{html.escape(label)}</a></li>'
+            f'      <li><a href="{html.escape(posixpath.relpath(p.relative_to(SITE).as_posix(), "diagrams"))}">{html.escape(label)}</a></li>'
             for p, _when, _seq, label in items
         )
         listing = f"    <ul>\n{entries}\n    </ul>"
@@ -146,7 +150,7 @@ def build_diagrams() -> int:
     <p class="sub">Architecture and flow diagrams as browsable HTML.</p>
 {nav()}
 {listing}
-    <footer>Generated from <code>site/diagrams/</code>.</footer>"""
+    <footer>Generated from <code>site/diagrams/</code> and <code>site/examples/</code>.</footer>"""
     (SITE / "diagrams" / "index.html").write_text(page("Diagrams", body), encoding="utf-8")
     return len(items)
 
@@ -167,7 +171,7 @@ def build_announcements() -> int:
     if rows:
         entries = "\n".join(
             f'      <li><a href="{html.escape(md.with_suffix(".html").name)}">{html.escape(title)}</a>'
-            + (f' <span class="sub">{when:%B %-d, %Y}</span>' if when else "")
+            + (f' <span class="sub">{when:%B} {when.day}, {when.year}</span>' if when else "")
             + "</li>"
             for when, title, md in rows
         )

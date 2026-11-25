@@ -3,7 +3,9 @@
 A tool failure returns an error in the exit code; a call which ran properly and
 returned a negative result still ran properly. So: exit 0 with the outcome in
 ``data`` (negative outcomes included), exit 2 with the typed error envelope when
-the command could not do its job, and no exit 1 anywhere. Every case runs the
+the command could not do its job, and no exit 1 in judge-jev's own tools.
+The independent decidr CLI documented by walking-decidr-trees has its own
+0/1 contract. Every process case below runs the
 script as a subprocess, offline, with no TypeSafe key in the environment.
 """
 
@@ -89,13 +91,17 @@ SHIPPED_TEXT = ("*.md", "*.j2", "*.yaml", "*.json")
 EXIT_ONE = re.compile(r"\bexit(?:s|ed|ing)?\s+(?:code\s+|status\s+)?1\b|\bexit\s+\$\?", re.IGNORECASE)
 
 
-class NoExitOneInShippedText(unittest.TestCase):
-    def test_no_prompt_or_reference_says_exit_1(self):
+class NoExitOneInJudgeJevText(unittest.TestCase):
+    def test_no_judge_jev_prompt_or_reference_says_exit_1(self):
         files = [ROOT / "README.md"]
+        # This convention belongs to the installed judge-jev tools and their
+        # installer, not to external CLIs described by other marketplace skills.
+        roots = (PLUGIN / "install", PLUGIN / "skills" / "judge-jev-installer")
         for pattern in SHIPPED_TEXT:
             # Script templates (*.py.j2) are code: their docstrings state the convention
             # ("There is no exit 1"); prompts must not mention it.
-            files.extend(p for p in PLUGIN.rglob(pattern) if p.is_file() and not p.name.endswith(".py.j2"))
+            files.extend(p for root in roots for p in root.rglob(pattern)
+                         if p.is_file() and not p.name.endswith(".py.j2"))
         self.assertGreater(len(files), 10)
         hits = [f"{p.relative_to(ROOT)}:{n}: {line.strip()}"
                 for p in files for n, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
