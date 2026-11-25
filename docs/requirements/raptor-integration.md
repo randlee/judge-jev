@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.2.0  
+**Version:** 0.3.0  
 
 ---
 
@@ -129,22 +129,24 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 
 **MUST statements:**
 
-- The adopted sc-agent client MUST resolve the TypeSafe API key from the
-  repository `.env` file first, then `TYPESAFE_API_KEY`, then its default
-  platform credential entry (service `TYPESAFE_API_KEY`, current OS account).
-- A per-call model MUST be the wheel's typed model value obtained from the
-  command's `Run` (`run.model(...)`).
+- judge-jev MUST obtain every provider key, the TypeSafe API key included,
+  only through the adopted sc-agent client, which resolves it in the order of
+  REQ-SAG-0401 (the environment, then the repository `.env` file, then the
+  default platform credential entry: service `TYPESAFE_API_KEY`, current OS
+  account).
 
 **MUST NOT statements:**
 
 - judge-jev MUST NOT pass keyring service or account overrides to sc-agent.
+- judge-jev MUST NOT read a provider key itself.
 
 ### Rationale
 
 Tools that call Jev share one stored key, saved once.
 
-Lead ruling (2026-11-24, phase j plan review, pending owner confirmation): the typed model value is `run.model(...)`; the
-wheel has no module-level `sc_agent.model`.
+Consumers do not read keys; the wheel resolves them (REQ-SAG-0401). The
+earlier `.env`-first order is replaced by the wheel's order (phase j plan
+review, 2026-11-24).
 
 ### Success Criteria
 
@@ -346,10 +348,11 @@ judge-jev.
 
 ### Requirement Statement
 
-Definitions: `haiku` and `luna` are fast model names. The sc-decidr
-wheel resolves each to a provider (the global model configuration
-`models.<alias>`, else the first provider whose key resolves) and
-resolves that provider's key; it reports a missing key. A live request
+Definitions: `haiku` and `luna` are fast model names. A model selector is
+a short name or model id the sc-decidr wheel resolves. The wheel resolves
+each selector to a provider (the global model configuration
+`models.<alias>`, else the first model-table row, newest first, whose
+provider is keyless or whose key resolves) and resolves that provider's key; it reports a missing key. A live request
 is a request sent to a model, as opposed to a dry run or an answers
 file.
 
@@ -357,9 +360,9 @@ file.
 
 - Every judge-jev command that takes `--model` MUST accept `--model haiku`.
 - Every judge-jev command that takes `--model` MUST accept `--model luna`.
-- judge-jev MUST send each `haiku` or `luna` request through the adopted
-  sc-agent client, with the model value `run.model(...)` from the
-  command's `Run`.
+- Every judge-jev command that takes `--model` MUST pass the caller's
+  selector unchanged to the command's one `Run` and send every request of
+  that command with that one model.
 
 **MUST NOT statements:**
 
@@ -367,6 +370,7 @@ file.
   `TYPESAFE_API_KEY` is unset when the wheel resolves a key for that
   model.
 - judge-jev MUST NOT choose a provider for a model.
+- judge-jev MUST NOT name a model in code; the caller chooses the model.
 - judge-jev MUST NOT check a provider's key itself.
 
 ### Rationale
@@ -378,7 +382,10 @@ is set.
 Owner ruling (2026-11-24, phase j plan review): consumers pass only the
 model name; the wheel resolves the provider (sc-agent sprint j-3).
 
-Lead ruling (2026-11-24, phase j plan review, pending owner confirmation): the model value is `run.model(...)`.
+Owner ruling (2026-11-24, phase j plan review): no model name is
+hard-coded in a call; the caller runs jev or haiku or luna or laya or
+decider, one model per command, and fan-out across models is the caller's
+job.
 
 ### Success Criteria
 

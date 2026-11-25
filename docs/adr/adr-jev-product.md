@@ -1,7 +1,7 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.2.0  
+**Version:** 0.3.0  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
@@ -50,10 +50,9 @@ review, 2026-11-24):
 sc-agent's session log is adopted through the wheel's `Run`: each
 command opens one `Run` through the adopted client's `open_run`, sends through it and reads its `run_id` from
 it; the core mints no id. The `Run` owns the logger, cancellation,
-configuration resolution and test seams, so a call passes only its
-requests, the model when it varies (the wheel's typed model value,
-`run.model("haiku")`; the `Run` holds the default model and no call
-names a provider), `cache=False` for an intentional resend and, for a
+configuration resolution, test seams and the one model the caller chose
+with `--model`, so no call names a model or a provider, and a call passes only its
+requests, `cache=False` for an intentional resend and, for a
 batch, `on_result`.
 
 ### Rationale
@@ -61,10 +60,8 @@ batch, `on_result`.
 An unchanged core lets the Rust implementation replace it with no change
 to its callers.
 
-Lead ruling (2026-11-24, phase j plan review, pending owner confirmation):
-the typed model value is spelled `run.model(...)`, because resolution
-reads the `Run`'s configuration and credential sources; the wheel has no
-module-level `sc_agent.model`. Consent is checked by the adopted client's
+Owner ruling (2026-11-24, phase j plan review): no model name is
+hard-coded in a call; one model per command, chosen by the caller. Consent is checked by the adopted client's
 gate on the resolved provider (REQ-JEV-0004).
 
 ### Consequences

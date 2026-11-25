@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.2.0  
+**Version:** 0.3.0  
 
 ---
 
@@ -339,7 +339,6 @@ questions that judges whether a record is well written: waves of questions
 
 **MUST statements:**
 - `judge-jev quality` MUST accept `--dry-run`.
-- `judge-jev check` MUST accept `--dry-run`.
 - `judge-jev batch`, `judge-jev compare-definition` and `judge-jev drift`
   MUST accept `--dry-run`.
 - A dry run MUST compose every request with no Jev call.
