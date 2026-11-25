@@ -1,0 +1,82 @@
+---
+name: sc-judge-jev-definitions
+version: 0.9.0
+format: markdown
+description: sc-judge-jev install-time text, rendered by install.py.
+required_variables:
+  - version
+---
+---
+name: definitions
+version: {{ version }}
+description: The one place that says how definitions work in judge-jev - where a term is defined, how to look one up, add one and test one, and what a request carries. Every other skill, agent and reference links here (ADR-JEV-0009).
+---
+
+# Definitions
+
+This page is the single source of truth for definitions (ADR-JEV-0009, REQ-JEV-0216). Other judge-jev files link here and do not repeat it.
+
+Jev's `term` question asks whether every term in a statement is "common usage, defined in this record, or defined in a linked record". Jev sees only the record and the definitions its request carries, so a term defined anywhere else is undefined to Jev.
+
+## Where a term is defined
+
+| The term is used by | Define it in |
+| --- | --- |
+| more than one record (a shared term) | the repository's definitions file, `.sc/judge-jev/definitions.ttl`, and nowhere else (REQ-JEV-0217) |
+| this record only | the record's own `Definitions:` paragraph, the first paragraph under `### Requirement Statement` (create it if absent) |
+| everyone, in its plain meaning | nowhere: it is common usage |
+
+A repository has exactly one definitions file. judge-jev still loads any `*.definitions.ttl` beside it; do not add one.
+
+## Look a term up
+
+1. Search the definitions file: `grep -n 'jj:term "<term>"' .sc/judge-jev/definitions.ttl`.
+2. Search the records' `Definitions:` paragraphs: `grep -rn '<term>' docs/` (or the record roots in `.raptor/sources.toml`).
+3. If a record's paragraph already defines a term another record now uses, the term is shared: move it to the definitions file (next section) and delete it from the paragraph.
+
+Reuse the existing wording; never write a second definition of a term.
+
+## Add a term
+
+Shared term: add one `jj:Definition` to `.sc/judge-jev/definitions.ttl`, with one `jj:Attachment` per record that uses it. The record IRI is `<repository URN>#<record id>` (the index's `metadata.repository`):
+
+```turtle
+@prefix jj: <urn:judge-jev:ontology#> .
+@prefix d:  <urn:judge-jev:definition:> .
+@prefix a:  <urn:judge-jev:attachment:> .
+
+d:fast a jj:Definition ; jj:term "fast" ; jj:text "Finishes within 5 s on the reference host." ;
+    jj:source "docs/requirements/perf.md" ; jj:attachedTo a:fast-1, a:fast-2 .
+a:fast-1 a jj:Attachment ; jj:record <urn:raptor:repo:example#REQ-ABC-0001> .
+a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:example#REQ-ABC-0002> .
+```
+
+An attachment with `jj:location` reaches only requests made at that location. A definition reaches a record's requests only through an attachment: a record that uses the term but has no attachment is judged without it.
+
+Record-only term: one sentence in the record's `Definitions:` paragraph, built from facts already in the record or the repository.
+
+In both cases nothing is invented: take the meaning from the repository and cite its file and line in your report, never in the record.
+
+## Test a term
+
+```bash
+uv run -q --script "$J" doctor --index index.json
+uv run -q --script "$J" compare-definition --req REQ-ABC-0001 --index index.json --definition urn:judge-jev:definition:fast
+```
+
+- `doctor` checks every tree and definitions file and calls nothing (no Jev, no key). Errors, exit 2: an unloadable or invalid file, a definition IRI in two files. Warnings, exit 0: `DEFINITION.UNATTACHED`, `DEFINITION.RECORD_UNKNOWN` (with `--index`), `DEFINITION.LOCATION_MISSING`, `DEFINITION.SOURCE_MISSING`.
+- `compare-definition (--req|--adr|--nfr <id>) --index <file> --definition <iri>... [--location <loc>] [--threshold <p>]` judges the record without and with the candidates (the record's other definitions are in both arms) and reports each answer on both sides. Arms are logged as `<run>.without` and `<run>.with`; `--dry-run` shows both requests.
+- Keep a definition only when `data.material` is `true`: an answer's choice flips, or its confidence crosses the threshold (default 0.6, at or above decides). Moving between failing choices, or from 0.90 to 0.95, is not material. Jev is noisy below 0.5: confirm a material result with a second comparison. Remove a definition that changes nothing.
+- A candidate no request reaches is `DEFINITIONS.NOT_ATTACHED`; an unknown IRI is `DEFINITIONS.NOT_FOUND`.
+
+A record-only term is tested by judging the record (`quality`): its `term` answer is the test.
+
+## What a request carries
+
+A definition is data in the request state, never in a question (ADR-JEV-0008): `state.definitions` is `[{term, text}]` sorted by term, and `state.location` names the location of a request made at one. `quality` and `compare-definition` take `--definitions <file>` (repeatable; default every `definitions.ttl` and `*.definitions.ttl` in `<--repository-root>/.sc/judge-jev/`).
+
+- A definition attached to a record alone is in every request about that record; one attached to a record and a location only in a request at that location. A request no definition reaches is byte-identical to one without the feature.
+- Definitions are never truncated and count toward `--max-request-bytes` and the log-event size check, before any call.
+- Each file is Turtle checked by `assets/shapes/definitions.shacl.ttl` and loaded as its own named graph, so a tree's digest does not change.
+- A bad file is `INPUT.MISSING`, `INPUT.MALFORMED` or `DEFINITIONS.INVALID` (over 128 KiB, a blank-node definition, a literal record, an attachment with two records, an over-long or multi-line term, an absolute or `..` path, a definition IRI in two files), never a crash.
+- Every request, answer, result, wave and verdict event carries `definitions: [{iri, term, digest}]`; the digest is the SHA-256 of term, text and source.

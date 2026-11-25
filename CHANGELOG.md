@@ -5,6 +5,7 @@
 ## 0.9.0 — 2026-11-25
 
 - New agent `req-author`: writes one REQ, NFR or ADR record from a PRD clause, or repairs one, so it passes judge-jev. It renders with Raptor's template, judges once (three runs only when a gating answer is between 0.50 and 0.70), asks Jev which part of a weak statement is the cause, and edits only that part. Returns `pass` or `blocked` with one question.
+- Definitions have one source of truth (ADR-JEV-0009, REQ-JEV-0216, REQ-JEV-0217): new `references/definitions.md` says where a term is defined and how to look one up, add one and test one. quality-workflow, jev-api and fix-strategy now link to it instead of repeating it; a shared term goes in `.sc/judge-jev/definitions.ttl`, not a record's paragraph. `jev-fix-proposer` returns a shared term as a need instead of a candidate; `req-author` reads defined terms from the definitions file plus the record's own paragraph (its `defined_terms` input is removed).
 - Assets: `assets/templates/raptor-{req,nfr,adr}-record.md.j2`, copied verbatim from randlee/raptor `integration/judge-jev` at 8ce2be8 (to be managed centrally later). `check_version_sync.py` leaves their Raptor template version alone.
 
 ## 0.8.0 — 2026-11-25
