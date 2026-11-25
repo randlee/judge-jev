@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.3.0  
+**Version:** 0.4.0  
 
 ---
 
@@ -60,7 +60,7 @@ the adopted sc-agent client to Jev and writes a result line. The session
 log is sc-agent's log of every Jev query: one row per query, keyed by the
 query's `session_id`, holding the request and Jev's answers. A result
 envelope is the `jev-batch-result/2` JSON result line for one request
-(`assets/schemas/jev-batch-result.schema.json`): it holds the request's
+(the sc-decidr wheel's `sc_agent/templates/jev-batch-result.schema.json`): it holds the request's
 `session_id` and the verdict derived from Jev's answers, or its error. A
 typed error code is a stable dotted code naming a failure, such as
 `DECIDR.NETWORK` or `DECIDR.RATE_LIMITED`. The retry policy belongs to the
@@ -68,7 +68,8 @@ adopted sc-agent client; judge-jev does not resend requests. The request
 size limit is the `--max-request-bytes` value, at most 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
 `--gate dev`. The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
-`~/.sc-agent/logs/judge-jev.log.jsonl`.
+`logs/judge-jev.log.jsonl` under the wheel's log root (`JUDGE_JEV_LOG_ROOT`,
+else `~/.sc-agent`; sc-agent REQ-SAG-0022).
 
 **MUST statements:**
 
@@ -299,7 +300,8 @@ first.
 
 Definitions: The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
-`~/.sc-agent/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
+`logs/judge-jev.log.jsonl` under the wheel's log root (`JUDGE_JEV_LOG_ROOT`,
+else `~/.sc-agent`; sc-agent REQ-SAG-0022). sc-agent is the agent tool whose
 Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). A
 quality-tree branch is the next wave a quality decision tree's rules select
 from Jev's answers. The session log is sc-agent's log of every Jev
@@ -330,7 +332,7 @@ session log by `session_id`; judge-jev's logs do not copy them.
 
 **Acceptance Criteria:**
 
-- [ ] A live `check` run's quality-tree branches and verdicts appear in
+- [ ] A live `quality` run's quality-tree branches and verdicts appear in
   the sc-observability log with the `session_id`s they used.
 - [ ] No event of that run in the sc-observability log holds a request
   text or an answer.
@@ -358,11 +360,16 @@ file.
 
 **MUST statements:**
 
-- Every judge-jev command that takes `--model` MUST accept `--model haiku`.
-- Every judge-jev command that takes `--model` MUST accept `--model luna`.
-- Every judge-jev command that takes `--model` MUST pass the caller's
-  selector unchanged to the command's one `Run` and send every request of
-  that command with that one model.
+- The sending commands `batch`, `quality`, `compare-definition` and `drift`
+  MUST each take `--model <selector>`.
+- Each sending command MUST accept `--model haiku`.
+- Each sending command MUST accept `--model luna`.
+- Each sending command MUST pass the caller's selector unchanged to the
+  command's one `Run` and send every request of that command with that one
+  model.
+- With no `--model`, a sending command MUST pass no model, so the wheel's
+  configured default model (setting `model`, built-in `jev`; sc-agent
+  REQ-SAG-0019) applies.
 
 **MUST NOT statements:**
 
@@ -371,6 +378,7 @@ file.
   model.
 - judge-jev MUST NOT choose a provider for a model.
 - judge-jev MUST NOT name a model in code; the caller chooses the model.
+- judge-jev MUST NOT keep a default model of its own.
 - judge-jev MUST NOT check a provider's key itself.
 
 ### Rationale
@@ -380,12 +388,16 @@ Owner ruling (2026-11-24, phase j): every tool built on sc-agent works with
 is set.
 
 Owner ruling (2026-11-24, phase j plan review): consumers pass only the
-model name; the wheel resolves the provider (sc-agent sprint j-3).
+model name; the wheel resolves the provider (sc-agent phase j).
 
 Owner ruling (2026-11-24, phase j plan review): no model name is
 hard-coded in a call; the caller runs jev or haiku or luna or laya or
 decider, one model per command, and fan-out across models is the caller's
 job.
+
+Owner ruling (2026-11-24, phase j plan review): with no `--model` the model
+is `jev`, overridable by a configuration variable (the wheel's `model`
+setting).
 
 ### Success Criteria
 
@@ -394,6 +406,9 @@ job.
 - [ ] With `TYPESAFE_API_KEY` unset and the key of the provider the wheel
   resolves for the model set to a test value, `--model haiku` and `--model luna` each send their request to
   sc-agent's loopback provider stub and write a result envelope.
+- [ ] `batch`, `quality`, `compare-definition` and `drift` each pass
+  `--model haiku` unchanged to their one `Run`, and with no `--model` each
+  opens its `Run` with no model.
 - [ ] No test uses a real key or the keyring, and no test sets `HOME`.
 
 ## REQ-JEV-0010: Provider keys are redacted
