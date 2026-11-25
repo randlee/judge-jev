@@ -1,7 +1,7 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.4.1  
+**Version:** 0.4.2  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
@@ -39,7 +39,7 @@ only to fix a defect, to replace its run log with the sc-observability
 logger (REQ-JEV-0008), to adopt sc-agent's session log and the
 `jev-batch-result/2` result line (owner ruling 2026-11-24), or to make
 one of the four changes that follow (the first three by owner ruling at
-phase j plan review, 2026-11-24; the fourth by lead amendment):
+phase j plan review, 2026-11-24; the fourth by owner approval, 2026-11-24):
 
 - A `--no-cache` flag on `quality`, which sends its requests with
   `cache=False`; `batch --repeat N` above 1 sends all repeats in one
@@ -51,8 +51,8 @@ phase j plan review, 2026-11-24; the fourth by lead amendment):
 - `batch --answers-file` fixture runs answer through the adopted client's
   `run_batch` with no Run, and the fixture retry simulation is removed: a
   fixture entry is one answer or one error, and an entry that carries an
-  attempts list is a validation error (lead amendment at phase j plan
-  review, 2026-11-24; NFR-JEV-0001).
+  attempts list is a validation error (owner approval, 2026-11-24;
+  NFR-JEV-0001).
 
 Owner ruling 2026-11-24: `--model` takes any selector the sc-decidr
 wheel resolves, not only `haiku` and `luna`; the caller chooses one model
