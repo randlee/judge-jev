@@ -27,9 +27,6 @@ Put the discovered directory on PATH for the child scripts too. Install the
 CLI from [sc-agent releases](https://github.com/randlee/sc-agent/releases) or
 `brew install randlee/tap/decidr`; the sc-decidr Python wheel is a different
 entry point. Install jq and Python 3 with the platform's package manager.
-Tested versions and recorded runs belong to the source example README.
-Installation guidance stays inline to keep this skill to one SKILL.md plus
-its executable scripts.
 
 ## Contract
 
@@ -107,27 +104,6 @@ hide a failed call. jq may exit 5 even though decidr's failure exit was 1.
 Both jq stages check `ok:false`. Stop on configuration, credential or
 provider errors; do not convert them into failed answers or automatically
 retry them. A failed Haiku call is not a model comparison. Preserve the raw
-result lines; report commands, stdout/stderr, exit codes and any contradicted
-CLI fact. Use only text authorized for the provider. Helpers write supplied
+result lines; report commands, stdout/stderr and exit codes. Use only text
+authorized for the provider. Helpers write supplied
 run files; decidr sends text remotely and writes its own session logs.
-
-## Source examples and evidence
-
-The source repository's `site/examples/decidr-pipeline/README.md` contains the
-real REQ-SAG-0104.s3 request, Jev response, Haiku error, jq transformation and
-early-stop replay. Personal execution paths and recorded envelopes belong
-there, not in reusable skill instructions. No supplied CLI fact was
-contradicted by those runs.
-
-`site/examples/decidr-pipeline/` and `site/examples/judge-jev-quality/` provide
-runnable REQ/ADR/NFR examples, portable recorded responses, D2 HTML reports
-composed with sc-compose, and Markdown reports with embedded Mermaid.
-They replay by default; `--live` sends new requests. These source examples
-are not assumed to be installed in a consumer repository.
-
-## Why stage (not yet available)
-
-A free-form why stage needs the `text` answer kind in sc-agent. The inspected
-`Answer` enum supports `choice`, `score`, `noul` and `box`; `Noul` serializes
-as `noul`. A literal term, `none`, or a confidence is not a free-text reason.
-Do not advertise a why stage until sc-agent supports that answer kind.

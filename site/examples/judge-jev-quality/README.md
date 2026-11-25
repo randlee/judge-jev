@@ -81,18 +81,3 @@ python3 scripts/gen_tree_diagrams.py \
   --tree plugins/sc-judge-jev/install/templates/skills/judge-jev/assets/questions/quality-adr.json \
   --format md --output /tmp/quality-adr.md
 ```
-
-## Published reports
-
-These example sources and their checked-in reports live under `site/examples/`.
-After this PR reaches `main`, Pages publishes them in place. The dependency-free
-`scripts/build-site.py` links this HTML report from the generated
-[diagrams index](https://randlee.github.io/judge-jev/diagrams/index.html).
-It makes no provider calls and does not need rendering tools in Pages CI.
-
-The published HTML will be [this example](https://randlee.github.io/judge-jev/examples/judge-jev-quality/report.html).
-
-To update a recorded example, rerun with a fresh output directory, copy
-`run.json` to `recorded.json`, and copy `report.html` and `report.md` beside
-this README. Commit those three files together. The Pages workflow watches
-`site/**`, so a merged report update republishes the site.
