@@ -61,6 +61,8 @@ Diagram: [diagrams/quality.md](diagrams/quality.md)
 
 ## `judge-jev check`
 
+> **Planned, not in this release:** `jev_judge.py` has no `check` subcommand.
+
 ```
 judge-jev check --req|--adr|--nfr <id> --location <loc> --mode prompt|skill|task|code
                 [--vars <file>] [--questions <file>] [--dry-run]
@@ -80,6 +82,8 @@ Judges whether one location meets one record (REQ-JEV-0201).
 Diagram: [diagrams/check.md](diagrams/check.md)
 
 ## `judge-jev check --profile`
+
+> **Planned, not in this release:** `jev_judge.py` has no `check` subcommand.
 
 ```
 judge-jev check --profile <profile> [--questions <file>] [--dry-run]
@@ -272,6 +276,8 @@ unified diff to the rewrite; `--form full` sends both texts whole.
   `allow_remote_judge`, checked before the first call. Every request and
   answer is logged like `batch`; a `drift` event holds the summary.
 
+Diagram: [diagrams/drift.md](diagrams/drift.md)
+
 ## `judge-jev doctor`
 
 ```
@@ -305,6 +311,16 @@ all its subfolders except `logs`, `anchor-runs`, `node_modules` and `.git`.
   not checked for this.
 - `data` holds `ok`, `errors`, `warnings`, `notes`, `checked` (file and kind)
   and `counts`.
+
+Diagram: [diagrams/doctor.md](diagrams/doctor.md)
+
+## `judge-jev batch`
+
+The low layer: JSONL request lines in (`--input` or stdin), one JSONL result
+line per (item, candidate, repeat) out, logged. Run `jev_judge.py batch --help`
+for the options.
+
+Diagram: [diagrams/batch.md](diagrams/batch.md)
 
 ## Locations
 
