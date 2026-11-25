@@ -1,0 +1,71 @@
+# ATM team configuration for judge-jev.
+#
+# Team:    judge-jev
+# Prefix:  jj- (lead and quality), bare names for the two codex developers.
+# Model pins are the exact strings the CLIs accept — no 6.1 guesswork:
+#   opus / sonnet = claude aliases
+#   gpt-6.1-sol   = codex sol   (6.1 exists for sol)
+#   gpt-6-luna    = codex luna  (6.1-luna is REJECTED by the API)
+#
+# Provision the roster once (add-member creates the team if it does not exist).
+# The alias is mandatory: herdr agent names must be unique across the machine,
+# so each member's alias equals its name here.
+#
+#   atm teams add-member judge-jev jj-lead    --agent-type lead    --model opus         --home-dir "$HOME/github/judge-jev" --backend herdr --alias jj-lead
+#   atm teams add-member judge-jev sensus     --agent-type dev     --model gpt-6.1-sol  --home-dir "$HOME/github/judge-jev" --backend herdr --alias sensus
+#   atm teams add-member judge-jev logik      --agent-type dev     --model gpt-6-luna   --home-dir "$HOME/github/judge-jev" --backend herdr --alias logik
+#   atm teams add-member judge-jev jj-quality --agent-type qa      --model sonnet       --home-dir "$HOME/github/judge-jev" --backend herdr --alias jj-quality
+#
+# Launch: hmux (reads this file). Panes must be started with the ATM_* env below
+# or no nudge ever reaches them.
+
+[atm]
+default_team = "judge-jev"
+
+[rmux]
+session = "judge-jev"
+
+[[rmux.windows]]
+name = "main"
+layout = "even-horizontal"
+
+[[rmux.windows.panes]]
+name = "jj-lead"
+alias = "jj-lead"
+model = "opus"
+dir = "/Users/randlee/github/judge-jev"
+env = { ATM_IDENTITY = "jj-lead", ATM_TEAM = "judge-jev", CLAUDE_CODE_TASK_LIST_ID = "judge-jev" }
+
+[[rmux.windows.panes]]
+name = "sensus"
+alias = "sensus"
+command = "codex --no-daemon -c features.hooks=true --model gpt-6.1-sol --yolo"
+dir = "/Users/randlee/github/judge-jev"
+env = { ATM_IDENTITY = "sensus", ATM_TEAM = "judge-jev", CLAUDE_CODE_TASK_LIST_ID = "judge-jev" }
+
+[[rmux.windows]]
+name = "quality"
+layout = "even-horizontal"
+
+[[rmux.windows.panes]]
+name = "logik"
+alias = "logik"
+command = "codex --no-daemon -c features.hooks=true --model gpt-6-luna --yolo"
+dir = "/Users/randlee/github/judge-jev"
+env = { ATM_IDENTITY = "logik", ATM_TEAM = "judge-jev", CLAUDE_CODE_TASK_LIST_ID = "judge-jev" }
+
+[[rmux.windows.panes]]
+name = "jj-quality"
+alias = "jj-quality"
+model = "sonnet"
+dir = "/Users/randlee/github/judge-jev"
+env = { ATM_IDENTITY = "jj-quality", ATM_TEAM = "judge-jev", CLAUDE_CODE_TASK_LIST_ID = "judge-jev" }
+
+[[rmux.windows]]
+name = "terminal"
+layout = "even-horizontal"
+
+[[rmux.windows.panes]]
+name = "terminal"
+command = ""
+dir = "/Users/randlee/github/judge-jev"
