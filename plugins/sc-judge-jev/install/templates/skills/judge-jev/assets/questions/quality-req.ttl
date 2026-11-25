@@ -11,7 +11,7 @@ t:quality-req a jj:Tree ;
     jj:kind "req" ;
     jj:version 1 ;
     jj:approved true ;
-    jj:note "gate questions checkable, term (yes/no) and joined_by as a second step: owner wording, 2026-11-25 (issue #137)" ;
+    jj:note "gate questions checkable, term (yes/no) and joined_by as a second step: wording set by Rand Lee in issue #137, 2026-11-25" ;
     jj:start t:quality-req:wave-1 ;
     jj:node t:quality-req:wave-1 , t:quality-req:wave-2 , t:quality-req:yes , t:quality-req:no .
 

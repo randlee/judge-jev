@@ -240,3 +240,46 @@ class OnlyMatchedTtl(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FlippingObligations(unittest.TestCase):
+    """ai-qa on #138: wave-2 asks joined_by only in runs whose obligations answer was 2+, so the runs' answer keys differ.
+    The gate scores such an answer over the runs that asked it and gates it only when more than half did."""
+
+    @staticmethod
+    def run_result(obligations, joined_by=None):
+        statement = {"index": 1, "modal": "Must", "text": "The tool MUST print one line."}
+        wave_1 = [{"id": "obligations", "choice": obligations, "confidence": 0.9},
+                  {"id": "term", "choice": "yes", "confidence": 0.9},
+                  {"id": "checkable", "choice": "yes", "confidence": 0.9},
+                  {"id": "d_term_kind", "choice": "none", "confidence": 0.1}]
+        waves = [{"node": "wave-1", "reason": [{"statement": statement, "answers": wave_1}]}]
+        if joined_by is not None:
+            waves.append({"node": "wave-2", "reason": [{"statement": statement, "answers": [
+                {"id": "joined_by", "choice": joined_by[0], "confidence": joined_by[1]}]}]})
+        return {"REQ-T-0001": {"record": {"id": "REQ-T-0001", "kind": "req"}, "verdict": "yes", "waves": waves}}
+
+    def gate(self, runs):
+        import jev_gate
+        return jev_gate.gate(runs, 0.6)["records"][0]
+
+    def test_joined_by_asked_in_one_run_of_three_does_not_gate(self):
+        record = self.gate([self.run_result("1"), self.run_result("2", ("none", 0.3)), self.run_result("1")])
+        self.assertTrue(record["comparable"])
+        self.assertTrue(record["pass"])
+        joined = [a for a in record["answers"] if a["question"] == "joined_by"]
+        self.assertEqual([(a["asked"], a["gating"], a["median"]) for a in joined], [(1, False, 0.3)])
+        self.assertEqual(record["low"], [])
+
+    def test_joined_by_asked_in_two_runs_of_three_gates_on_their_median(self):
+        record = self.gate([self.run_result("2", ("none", 0.4)), self.run_result("2", ("none", 0.5)), self.run_result("1")])
+        self.assertTrue(record["comparable"])
+        self.assertFalse(record["pass"])
+        self.assertEqual([(a["question"], a["asked"], a["median"]) for a in record["low"]], [("joined_by", 2, 0.45)])
+
+    def test_a_statement_whose_text_differs_between_runs_is_still_not_comparable(self):
+        changed = self.run_result("1")
+        changed["REQ-T-0001"]["waves"][0]["reason"][0]["statement"] = {"index": 1, "modal": "Must", "text": "Other."}
+        record = self.gate([self.run_result("1"), changed, self.run_result("1")])
+        self.assertFalse(record["comparable"])
+        self.assertFalse(record["pass"])

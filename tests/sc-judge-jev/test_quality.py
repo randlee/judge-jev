@@ -532,12 +532,12 @@ class ShippedTrees(unittest.TestCase):
             self.assertIsInstance(tree, jj.Ok, kind)
             raw = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))
             note, nodes = (("wave-1 wording approved by Rand Lee, 2026-11-08", ["wave-1"]) if kind == "adr" else
-                           ("gate questions checkable, term (yes/no) and joined_by as a second step: owner wording, 2026-11-25 (issue #137)",
+                           ("gate questions checkable, term (yes/no) and joined_by as a second step: wording set by Rand Lee in issue #137, 2026-11-25",
                             ["wave-1", "wave-2", "yes", "no"]))
             self.assertEqual((raw["id"], raw["approved"], raw["note"], raw["version"]), (f"quality-{kind}", True, note, 1))
             self.assertEqual((raw["start"], list(raw["nodes"])), ("wave-1", nodes))
 
-    def test_req_and_nfr_ask_four_questions_per_statement_and_adr_three_per_record(self):
+    def test_req_and_nfr_ask_wave_1_and_wave_2_questions_per_statement_and_adr_three_per_record(self):
         wave_1 = {"obligations": ["1", "2", "3", "4+"],
                   "term": ["yes", "no"],
                   "checkable": ["yes", "needs a measure", "no"],

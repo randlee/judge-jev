@@ -4,7 +4,7 @@
  "kind": "nfr",
  "version": 1,
  "approved": true,
- "note": "gate questions checkable, term (yes/no) and joined_by as a second step: owner wording, 2026-11-25 (issue #137)",
+ "note": "gate questions checkable, term (yes/no) and joined_by as a second step: wording set by Rand Lee in issue #137, 2026-11-25",
  "start": "wave-1",
  "nodes": {
   "wave-1": {
