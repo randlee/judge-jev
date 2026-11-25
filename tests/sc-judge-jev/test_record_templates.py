@@ -120,20 +120,28 @@ class WritePrompt(unittest.TestCase):
         """Every choice the prompt names exists in the tree, and its failing choices are the tree's."""
         for kind in ("req", "nfr", "adr"):
             with self.subTest(kind=kind):
-                node = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))["nodes"]["wave-1"]
-                failing = {}
-                for rule in node["verdict_rules"]:
-                    if rule["verdict"] == "no":
-                        for question, choices in {**rule.get("all", {}), **rule.get("any", {})}.items():
-                            failing.setdefault(question, set()).update(choices)
+                nodes = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))["nodes"]
+                waves = {nid: n for nid, n in nodes.items() if "questions" in n}
+                # the gate questions: every wave's questions but the non-gating d_* diagnostics
+                questions = {qid: q for n in waves.values() for qid, q in n["questions"].items() if not qid.startswith("d_")}
+                failing = {}  # choices a verdict rule `no`, or a branch to a `no` leaf, names
+                for n in waves.values():
+                    for rule in n.get("verdict_rules") or []:
+                        if rule["verdict"] == "no":
+                            for question, choices in {**rule.get("all", {}), **rule.get("any", {})}.items():
+                                failing.setdefault(question, set()).update(choices)
+                    for rule in n.get("next") or []:
+                        if nodes[rule["goto"]].get("verdict") == "no":
+                            for question, choices in rule.get("when", {}).items():
+                                failing.setdefault(question, set()).update(choices if isinstance(choices, list) else [choices])
                 text = render(WRITE, write_vars(kind=kind))
                 rows = re.findall(r"^\| `(\w+)`: [^|]* \| ([^|]*) \| ([^|]*) \|$", text, re.M)
-                self.assertEqual(sorted(q for q, _, _ in rows), sorted(node["questions"]))
+                self.assertEqual(sorted(q for q, _, _ in rows), sorted(questions))
                 for question, passing, fails in rows:
                     named_pass, named_fail = set(re.findall(r"`([^`]+)`", passing)), set(re.findall(r"`([^`]+)`", fails))
-                    self.assertEqual(named_pass | named_fail, set(node["questions"][question]["criteria"]), question)
+                    self.assertEqual(named_pass | named_fail, set(questions[question]["criteria"]), question)
                     self.assertFalse(named_pass & named_fail, question)
-                    self.assertEqual(named_fail, failing[question], question)
+                    self.assertEqual(named_fail, failing.get(question, set()), question)
 
 
 class ReferenceCommands(unittest.TestCase):

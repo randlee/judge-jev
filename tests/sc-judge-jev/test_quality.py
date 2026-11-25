@@ -260,7 +260,7 @@ class WaveReasons(QualityCase):
 class SeveralRecords(QualityCase):
     def test_one_invocation_judges_every_named_record_under_one_run_name(self):
         answers = {"*": tree_answers("quality-req.json"),
-                   "NFR-T-0001.s1/wave-1": tree_answers("quality-nfr.json", check="needs a measure"),
+                   "NFR-T-0001.s1/wave-1": tree_answers("quality-nfr.json", checkable="needs a measure"),
                    "ADR-T-0001/wave-1": tree_answers("quality-adr.json")}
         code, out = self.quality("--req", "REQ-T-0001", "--adr", "ADR-T-0001", "--nfr", "NFR-T-0001", answers=answers)
         self.assertEqual(code, 0, out)
@@ -416,7 +416,10 @@ class PerStatement(QualityCase):
     """A per-statement wave: one request per MUST / MUST NOT statement, a reason per statement, rules over statements."""
 
     def judge(self, s1=None, s3=None, flag="--req", rid="REQ-T-0001", tree="quality-req.json"):
-        answers = {f"{rid}.s1/wave-1": tree_answers(tree, **(s1 or {})), f"{rid}.s3/wave-1": tree_answers(tree, p=0.7, **(s3 or {}))}
+        """Each statement's choices apply to whichever wave asks that question (wave-1, or wave-2 for joined_by)."""
+        answers = {f"{rid}.s1/wave-1": tree_answers(tree, **(s1 or {})), f"{rid}.s3/wave-1": tree_answers(tree, p=0.7, **(s3 or {})),
+                   f"{rid}.s1/wave-2": tree_answers(tree, "wave-2", **(s1 or {})),
+                   f"{rid}.s3/wave-2": tree_answers(tree, "wave-2", p=0.7, **(s3 or {}))}
         code, out = self.quality(flag, rid, answers=answers)
         self.assertEqual(code, 0, out)
         return out["data"]["results"][0]
@@ -431,43 +434,64 @@ class PerStatement(QualityCase):
 
     def test_the_reason_lists_each_statement_with_every_questions_choice_criterion_and_confidence(self):
         result = self.judge(s3={"obligations": "2", "joined_by": "and-list"})
-        (wave,) = result["waves"]
+        wave, wave2 = result["waves"]
         questions = tree_node("quality-req.json")["questions"]
+        questions2 = tree_node("quality-req.json", "wave-2")["questions"]
         s3 = {"obligations": "2", "joined_by": "and-list"}
         self.assertEqual(wave["reason"], [
             {"statement": JUDGED[0], "answers": [reason_entry(q, questions[q], next(iter(questions[q]["criteria"])), 0.9) for q in questions]},
             {"statement": JUDGED[1], "answers": [reason_entry(q, questions[q], s3.get(q, next(iter(questions[q]["criteria"]))), 0.7)
                                                  for q in questions]}])
-        self.assertIn("Fix: split into one statement per item", wave["reason"][1]["answers"][1]["criterion"])
-        self.assertEqual((wave["per"], wave["matched_statements"], wave["verdict"], result["verdict"]), ("statement", [3], "no", "no"))
+        # wave-2 asks joined_by of the statement with two or more obligations only
+        self.assertEqual(wave2["reason"], [
+            {"statement": JUDGED[1], "answers": [reason_entry(q, questions2[q], s3[q], 0.7) for q in questions2]}])
+        self.assertIn("Fix: split into one statement per item", wave2["reason"][0]["answers"][0]["criterion"])
+        self.assertEqual((wave["per"], wave["matched_statements"], wave["next"], wave["verdict"]), ("statement", [3], "wave-2", None))
+        self.assertEqual((wave2["per"], wave2["matched_statements"], wave2["verdict"], result["verdict"]), ("statement", [3], "no", "no"))
         self.assertEqual(wave["request_ids"], ["quality/REQ-T-0001.s1/wave-1/r1", "quality/REQ-T-0001.s3/wave-1/r1"])
+        self.assertEqual(wave2["request_ids"], ["quality/REQ-T-0001.s3/wave-2/r1"])
 
     def test_the_verdict_fires_when_any_one_statement_matches_a_rule(self):
-        cases = (({}, {}, "yes", [1, 3]),
-                 ({}, {"obligations": "2", "joined_by": "alternatives"}, "no", [3]),
-                 ({"obligations": "4+", "joined_by": "obligation+rationale"}, {}, "no", [1]),
-                 # `all`: a fix-needing join counts only with two or more obligations, and a condition is not a second one
-                 ({"obligations": "1", "joined_by": "and-list"}, {}, "yes", [1, 3]),
-                 ({"obligations": "2", "joined_by": "condition+obligation"}, {}, "yes", [1, 3]),
-                 ({"term": "vague qualifier"}, {"term": "project term defined in a linked record"}, "no", [1]),
-                 ({}, {"term": "undefined acronym"}, "no", [3]),
-                 ({"check": "none"}, {"check": "needs a measure"}, "no", [1, 3]),
-                 ({"check": "CLI run"}, {"check": "inspection or grep"}, "yes", [1, 3]))
-        for s1, s3, verdict, matched in cases:
+        # each case: the verdict, the path, and each wave's (node, matched statements)
+        cases = (({}, {}, "yes", ["wave-1", "yes"], [("wave-1", [1, 3])]),
+                 ({}, {"obligations": "2", "joined_by": "alternatives"}, "no", ["wave-1", "wave-2"],
+                  [("wave-1", [3]), ("wave-2", [3])]),
+                 ({"obligations": "4+", "joined_by": "obligation+rationale"}, {}, "no", ["wave-1", "wave-2"],
+                  [("wave-1", [1]), ("wave-2", [1])]),
+                 # a fix-needing join counts only with two or more obligations (joined_by is not even asked with one),
+                 # and a condition is not a second one
+                 ({"obligations": "1", "joined_by": "and-list"}, {}, "yes", ["wave-1", "yes"], [("wave-1", [1, 3])]),
+                 ({"obligations": "2", "joined_by": "condition+obligation"}, {}, "yes", ["wave-1", "wave-2"],
+                  [("wave-1", [1]), ("wave-2", [1])]),
+                 # old term vague qualifier -> no, project term defined in a linked record -> yes
+                 ({"term": "no", "d_term_kind": "vague qualifier"}, {"term": "yes", "d_term_kind": "project term defined in a linked record"},
+                  "no", ["wave-1", "no"], [("wave-1", [1])]),
+                 ({}, {"term": "no", "d_term_kind": "undefined acronym"}, "no", ["wave-1", "no"], [("wave-1", [3])]),
+                 # old check none / needs a measure -> checkable no / needs a measure
+                 ({"checkable": "no", "d_check_method": "none"}, {"checkable": "needs a measure", "d_check_method": "needs a measure"},
+                  "no", ["wave-1", "no"], [("wave-1", [1, 3])]),
+                 # old check CLI run / inspection or grep -> checkable yes
+                 ({"checkable": "yes", "d_check_method": "CLI run"}, {"checkable": "yes", "d_check_method": "inspection or grep"},
+                  "yes", ["wave-1", "yes"], [("wave-1", [1, 3])]))
+        for s1, s3, verdict, path, waves in cases:
             result = self.judge(s1, s3)
-            self.assertEqual((result["verdict"], result["waves"][0]["matched_statements"]), (verdict, matched), (s1, s3))
+            self.assertEqual((result["verdict"], result["path"], [(w["node"], w["matched_statements"]) for w in result["waves"]]),
+                             (verdict, path, waves), (s1, s3))
 
     def test_nfr_uses_the_same_per_statement_questions(self):
-        answers = {"NFR-T-0001.s1/wave-1": tree_answers("quality-nfr.json", check="needs a measure")}
+        answers = {"NFR-T-0001.s1/wave-1": tree_answers("quality-nfr.json", checkable="needs a measure")}
         code, out = self.quality("--nfr", "NFR-T-0001", answers=answers)
         self.assertEqual(code, 0, out)
-        (wave,) = out["data"]["results"][0]["waves"]
-        self.assertEqual((wave["verdict"], wave["matched_statements"], wave["reason"][0]["statement"]["text"]),
+        result = out["data"]["results"][0]
+        (wave,) = result["waves"]
+        self.assertEqual((wave["next"], wave["matched_statements"], wave["reason"][0]["statement"]["text"]),
                          ("no", [1], "A run MUST finish in 5 s."))
+        self.assertEqual((result["verdict"], result["path"]), ("no", ["wave-1", "no"]))
+        self.assertEqual([e["id"] for e in wave["reason"][0]["answers"]], list(tree_node("quality-nfr.json")["questions"]))
 
     def test_the_log_holds_every_statements_request_and_answers(self):
         answers = {"REQ-T-0001.s1/wave-1": tree_answers("quality-req.json"),
-                   "REQ-T-0001.s3/wave-1": tree_answers("quality-req.json", check="none")}
+                   "REQ-T-0001.s3/wave-1": tree_answers("quality-req.json", checkable="no")}
         code, out = self.quality("--req", "REQ-T-0001", answers=answers)
         self.assertEqual(code, 0, out)
         events = read_log(self.d / "logs")
@@ -481,7 +505,9 @@ class PerStatement(QualityCase):
         self.assertEqual([{"statement": s["statement"], "answers": s["reason"]} for s in statements],
                          [{"statement": r["statement"], "answers": plain(r["answers"])} for r in result_wave["reason"]])
         wave = events[8]["fields"]
-        self.assertEqual((wave["request_ids"], wave["matched_statements"], wave["verdict"]), (result_wave["request_ids"], [3], "no"))
+        self.assertEqual((wave["request_ids"], wave["matched_statements"], wave["next"], wave["verdict"]),
+                         (result_wave["request_ids"], [3], "no", None))
+        self.assertEqual((events[9]["fields"]["verdict"], events[9]["fields"]["path"]), ("no", ["wave-1", "no"]))
 
     def test_a_statement_without_an_answer_names_the_statement(self):
         answers = {"REQ-T-0001.s1/wave-1": tree_answers("quality-req.json"),
@@ -505,28 +531,42 @@ class ShippedTrees(unittest.TestCase):
             tree = jj.load_quality_tree(kind)
             self.assertIsInstance(tree, jj.Ok, kind)
             raw = json.loads((QUESTIONS / f"quality-{kind}.json").read_text(encoding="utf-8"))
-            self.assertEqual((raw["id"], raw["approved"], raw["note"]), (f"quality-{kind}", True, "wave-1 wording approved by Rand Lee, 2026-11-08"))
-            self.assertEqual((raw["start"], list(raw["nodes"])), ("wave-1", ["wave-1"]))
+            note, nodes = (("wave-1 wording approved by Rand Lee, 2026-11-08", ["wave-1"]) if kind == "adr" else
+                           ("gate questions checkable, term (yes/no) and joined_by as a second step: owner wording, 2026-11-25 (issue #137)",
+                            ["wave-1", "wave-2", "yes", "no"]))
+            self.assertEqual((raw["id"], raw["approved"], raw["note"], raw["version"]), (f"quality-{kind}", True, note, 1))
+            self.assertEqual((raw["start"], list(raw["nodes"])), ("wave-1", nodes))
 
     def test_req_and_nfr_ask_four_questions_per_statement_and_adr_three_per_record(self):
-        options = {"obligations": ["1", "2", "3", "4+"],
-                   "joined_by": ["none", "and-list", "condition+obligation", "alternatives", "obligation+rationale"],
-                   "term": ["none", "project term defined in a linked record", "project term defined nowhere", "vague qualifier",
-                            "undefined acronym"],
-                   "check": ["unit test", "CLI run", "inspection or grep", "needs a measure", "none"]}
+        wave_1 = {"obligations": ["1", "2", "3", "4+"],
+                  "term": ["yes", "no"],
+                  "checkable": ["yes", "needs a measure", "no"],
+                  "d_term_kind": ["none", "project term defined in a linked record", "project term defined nowhere", "vague qualifier",
+                                  "undefined acronym"],
+                  "d_check_method": ["unit test", "CLI run", "inspection or grep", "needs a measure", "none"]}
+        wave_2 = {"joined_by": ["none", "and-list", "condition+obligation", "alternatives", "obligation+rationale"]}
         for kind in ("req", "nfr"):
-            node = tree_node(f"quality-{kind}.json")
-            self.assertEqual((node["per"], node["statements"], node["modals"]),
-                             ("statement", "requirement_statement.statements", ["Must", "MustNot"]))
-            self.assertEqual({qid: list(q["criteria"]) for qid, q in node["questions"].items()}, options)
+            for name, options, only_matched in (("wave-1", wave_1, None), ("wave-2", wave_2, True)):
+                node = tree_node(f"quality-{kind}.json", name)
+                self.assertEqual((node["per"], node["statements"], node["modals"], node.get("only_matched")),
+                                 ("statement", "requirement_statement.statements", ["Must", "MustNot"], only_matched))
+                self.assertEqual({qid: list(q["criteria"]) for qid, q in node["questions"].items()}, options)
+            self.assertEqual(tree_node(f"quality-{kind}.json")["next"], [
+                {"when": {"term": "no"}, "goto": "no"}, {"when": {"checkable": ["needs a measure", "no"]}, "goto": "no"},
+                {"when": {"obligations": ["2", "3", "4+"]}, "goto": "wave-2"}, {"goto": "yes"}])
+            # the failing gate choices of wave-1 carry no fix hint; their diagnostics do
+            diag = tree_node(f"quality-{kind}.json")["questions"]
+            for qid, choice in (("d_term_kind", "project term defined nowhere"), ("d_term_kind", "vague qualifier"),
+                                ("d_term_kind", "undefined acronym"), ("d_check_method", "needs a measure"), ("d_check_method", "none")):
+                self.assertIn("Fix:", diag[qid]["criteria"][choice], (kind, qid, choice))
         node = tree_node("quality-adr.json")
         self.assertNotIn("per", node)
         self.assertEqual({qid: list(q["criteria"]) for qid, q in node["questions"].items()},
                          {"context": ["problem and forces", "background only", "missing"],
                           "alternatives": ["named with reasons rejected", "named only", "none"],
                           "consequences": ["positive and negative", "positive only", "missing"]})
-        for kind in ("req", "nfr", "adr"):  # every option a `no` rule names carries its fix hint in its criterion
-            node = tree_node(f"quality-{kind}.json")
+        for kind, name in (("req", "wave-2"), ("nfr", "wave-2"), ("adr", "wave-1")):  # every option a `no` verdict rule names carries its fix hint
+            node = tree_node(f"quality-{kind}.json", name)
             for rule in node["verdict_rules"]:
                 if rule["verdict"] != "no":
                     continue
