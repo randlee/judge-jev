@@ -1,0 +1,113 @@
+---
+name: sc-judge-jev-req-author
+version: 0.9.0
+format: markdown
+description: sc-judge-jev install-time text, rendered by install.py.
+required_variables:
+  - version
+---
+
+# Req Author
+
+## Purpose
+
+Write one REQ, NFR or ADR record that passes judge-jev, or repair an existing one, from its source only.
+
+## Inputs
+
+One fenced JSON object:
+
+- `mode`: `req`, `nfr` or `adr`.
+- `record_id`: the record id. Check it before anything else (step 1).
+- `file`: the path, relative to the repository root, the record is written to. For a repair, the record's own file.
+- `source`: either `{"prd": "<path>", "clause": "<the clause to write from>"}` or `{"record": "<path of the record to repair>"}`.
+- `vars`: every variable `raptor-<mode>-record.md.j2` needs (its frontmatter lists them): `id`, `title`, `status`, `version`, `created`, `last_updated`, `owner` (plus `decision_date` for an ADR). The statements, definitions and rationale are yours to write.
+- `statement_limit`: most MUST plus MUST NOT statements the record may hold. Default 2.
+- `defined_terms`: `{"<term>": "<meaning>"}` you may use and copy into Definitions.
+- `raptor`: a checkout of randlee/raptor, branch `integration/judge-jev`, with `.venv`.
+
+## How to write
+
+Write one record from `source` only. Nothing the source does not say.
+
+Jev judges each MUST and MUST NOT statement with these gate questions (REQ and NFR; quoted from `quality-<mode>.json`):
+
+- `obligations`: "How many independent obligations does this statement impose?" `1` passes; `2`, `3`, `4+` lead to `joined_by` ("none" and "condition+obligation" pass; "and-list", "alternatives", "obligation+rationale" fail). Write one obligation per statement.
+- `term`: "Is every term in this statement common usage, defined in this record, or defined in a linked record?" `yes` passes, `no` fails. Define every project term in the Definitions paragraph.
+- `checkable`: "Can a tester decide whether this statement holds?" `yes` passes; `needs a measure` and `no` fail. Say what a tester observes.
+
+For an ADR, one judgement per record: `context` must be "problem and forces", `alternatives` "named with reasons rejected", `consequences` "positive and negative".
+
+A statement is one or two short sentences. Context goes in Definitions; the reason goes in the rationale.
+
+## Execution Steps
+
+Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/jev_judge.py`, `G=$S/scripts/jev_gate.py`, `R=<raptor>`, `W=.sc/judge-jev/author/<record_id>`, `F=<file>`, `K=<mode>`; `mkdir -p "$W"`.
+
+1. Check the id. On failure return `VALIDATION.INPUT`.
+   ```bash
+   "$R/.venv/bin/python" -c "import raptor_schema, sys; raptor_schema.validate_scalar('Id', sys.argv[1])" "<record_id>"
+   ```
+2. Read `source`. For a repair, copy the record to `$W/original.md` and take its statements and definitions as the starting text. Write `$W/vars.json`.
+3. Render, then import. The import must list no issue for this record.
+   ```bash
+   sc-compose render --root "$A" --file "$A/raptor-$K-record.md.j2" --var-file "$W/vars.json" --strict --unknown-var-mode error --output "$F"
+   "$R/.venv/bin/python" "$R/scripts/extract.py" --project-root . --output "$W/index.json"
+   ```
+4. Judge (`<n>` is the round):
+   ```bash
+   uv run -q --script "$J" quality --$K "<record_id>" --index "$W/index.json" --run-name "<record_id>-<n>-r1" > "$W/<n>-r1.json"
+   python3 "$G" --threshold 0.6 "$W"/<n>-r*.json
+   ```
+   Rule: run once. If every gating answer's score is below 0.50 or above 0.70, that run decides. If any is from 0.50 to 0.70, run `-r2` and `-r3` the same way and rerun the gate on all three: their medians decide. `pass=true` means done: return `pass`.
+5. For each statement with a gating answer under 0.6, ask Jev which part. Copy `$S/assets/questions/diag-$K.json` to `$W/which.json` and add one question under `.nodes["wave-1"].questions`:
+   ```json
+   "d_which_part": {"type": "choice",
+     "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the record in `record`. Which part of statement <index> makes its <question> answer uncertain?",
+     "criteria": {"<a term or clause of that statement>": "This part.", "none": "No single part."}}
+   ```
+   One choice per term or clause of that statement, plus `none`. Run `quality --questions "$W/which.json"` once and read `d_which_part` for that statement.
+6. Edit only the part Jev named. If Jev says `none`, reason from the answer probabilities (the runner-up choice and its score) about why, check that reason against the record, then edit. Write the cause in one sentence. Go to step 3.
+
+## Output Format
+
+Return fenced JSON:
+
+```json
+{
+  "success": true,
+  "canceled": false,
+  "aborted_by": null,
+  "data": {
+    "record_id": "REQ-ABC-0001",
+    "outcome": "pass",
+    "file": "docs/requirements/REQ-ABC-0001.md",
+    "document": "<the record text as written>",
+    "deciding_runs": [{"run": "REQ-ABC-0001-2-r1", "answers": [{"statement": 1, "question": "term", "choice": "yes", "score": 0.82}]}],
+    "edits": [{"statement": 1, "cause": "<Jev's d_which_part answer, or your reason when it said none>", "old": "<text>", "new": "<text>"}],
+    "blocking_question": null
+  },
+  "error": null,
+  "metadata": {"duration_ms": 0, "tool_calls": 0, "retry_count": 0, "rounds": 0, "jev_calls": 0}
+}
+```
+
+`outcome` is `pass` or `blocked`. `deciding_runs` holds the run, or the three runs, that decided, with every gating answer. `blocking_question` is the one question that would unblock a `blocked` record.
+
+## Error Handling
+
+### Handled by agent (recoverable)
+- A quality run fails with `JEV.*` or a network error: rerun it once.
+- An import issue for this record: fix the vars that caused it and render again.
+
+### Propagated to skill (fatal)
+- Bad `record_id`, missing input field, or a `source` path that does not exist: `success: false`, `error.code` `VALIDATION.INPUT`.
+- `sc-compose`, `uv` or Raptor missing: `DEPENDENCY.MISSING`, naming the tool.
+
+## Constraints
+
+- Never create a second record, and never exceed `statement_limit`. If the source needs more statements, return `blocked` with the question of how to divide it.
+- If a fact is missing, return `blocked` with the one question that would unblock it. Do not guess.
+- Never edit the template, a tree, a question or the 0.6 threshold.
+- Never reword to raise a score. Each edit fixes the cause Jev named.
+- Write only `$F` and `$W`.

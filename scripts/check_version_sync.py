@@ -21,7 +21,8 @@ CHANGELOG.md has a "## <VERSION>" entry (or "## Unreleased"); it does not yet
 compare VERSION with the base branch.
 
 Every other version number is locked too, with no exclusions: each template's
-own header `version:` (every *.j2) equals VERSION, and every integer version
+own header `version:` (every *.j2 except the Raptor
+templates copied verbatim as assets/templates/raptor-*.md.j2) equals VERSION, and every integer version
 (a question set's or tree's `version` / `jj:version`, every `schema_version`)
 equals 1.
 
@@ -137,12 +138,15 @@ INT_VERSION_RES = (
     re.compile(r"\bjj:version\s+([0-9]+)\b"),
 )
 LOCKED_INT_VERSION = "1"
+VENDORED_PREFIX = "raptor-"  # assets/templates/raptor-*.md.j2, copied verbatim from Raptor
 
 
 def locked_drift(root: pathlib.Path, want: str) -> list:
     """Template header versions that are not VERSION, and integer versions that are not 1."""
     drift = []
     for template in sorted(root.glob("plugins/**/*.j2")):
+        if template.name.startswith(VENDORED_PREFIX):
+            continue  # copied from Raptor: its own template version, not ours
         head = FRONT_RE.match(template.read_text(encoding="utf-8"))
         for v in VER_RE.findall(head.group(1)) if head else []:
             if v != want:
