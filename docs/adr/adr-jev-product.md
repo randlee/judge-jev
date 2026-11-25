@@ -1,12 +1,14 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.4.0  
+**Version:** 0.4.1  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Decision Date:** 2026-11-07  
 **Owner:** Rand Lee  
+
+The header Status is the file's. Each ADR's own Status governs that ADR.
 
 ## Context
 
