@@ -130,6 +130,7 @@ Return fenced JSON:
 
 ## Constraints
 
+- Never write a MUST NOT that only restates a MUST (MUST not-x is MUST NOT x), or the reverse: state each obligation once, in whichever form reads plainly.
 - Never create a second record, and never exceed `statement_limit`. If the source needs more statements, return `blocked` with the question of how to divide it.
 - If a fact is missing, return `blocked` with the one question that would unblock it. Do not guess.
 - Never edit the template, a tree, a question or the 0.6 threshold.
