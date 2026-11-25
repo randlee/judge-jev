@@ -9,7 +9,8 @@ shown but never gate the quality verdict.
 
 Review [report.html](report.html) for D2 diagrams and all question results,
 or [report.md](report.md) for the same trees in embedded Mermaid. The actual
-quality command, stdout, stderr, and result envelopes are in
+quality command, stdout, stderr, and result envelopes (with portable execution
+path placeholders) are in
 [recorded.json](recorded.json). Its three recorded verdicts are `yes`.
 Confidence is displayed; the shipped tree's choice rules determine verdicts.
 

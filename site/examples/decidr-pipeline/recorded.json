@@ -1,9 +1,9 @@
 {
   "example": "decidr-pipeline",
   "mode": "live",
-  "captured_at": "2026-11-25T19:59:07.402319+00:00",
-  "revision": "c823e4600cbbee7f987cc2e65485f7c8deb6da92",
-  "index_sha256": "562b08b639bf265269bc492ef356fe9908b2a8d78222ff6f16b15a1fdae27414",
+  "captured_at": "2026-11-25T21:21:07.064411+00:00",
+  "revision": "bcf229e969ede8d22f4c6bb497501e393bf31b85",
+  "index_sha256": "5607a7faf968689166f0d27241534479942d113f2cad89839c78c09d4a84c923",
   "diagnostics": [
     {
       "file": "docs/requirements/raptor-integration.md",
@@ -31,7 +31,19 @@
       }
     }
   ],
-  "import": null,
+  "import": {
+    "argv": [
+      "{raptor}/.venv/bin/python",
+      "{raptor}/scripts/extract.py",
+      "--project-root",
+      "{repo}",
+      "--output",
+      "{run}/index.json"
+    ],
+    "exit_code": 1,
+    "stdout": "{\"index\": \"{run}/index.json\", \"files\": 4, \"records\": 33, \"issues\": 1}\n",
+    "stderr": "docs/requirements/raptor-integration.md:113:13: error[MODAL_MISMATCH]: Found 'MUST NOT' in a statement under 'MUST statements'; expected 'MUST' or no keyword. The label's modal is kept.\n   --> docs/requirements/raptor-integration.md:113:13\n    |\n113 | - judge-jev MUST NOT pass keyring service or account overrides to sc-agent.\n    |             ^\n    = note: record REQ-JEV-0003, field Requirement Statement\n    = help: replace `MUST NOT` at line 113, column 13 with `MUST`, or reword the statement without a modal keyword\n\n"
+  },
   "bar": 0.8,
   "views": [
     {
@@ -117,7 +129,8 @@
               {
                 "goto": "yes"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "which-part": {
             "title": "Stage 2: which part?",
@@ -127,7 +140,6 @@
                 "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "obtain": "The literal term `obtain` accounts for the answer or uncertainty.",
                   "records": "The literal term `records` accounts for the answer or uncertainty.",
                   "through": "The literal term `through` accounts for the answer or uncertainty.",
@@ -146,7 +158,8 @@
               {
                 "goto": "review"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "yes": {
             "verdict": "yes"
@@ -199,7 +212,7 @@
           "item": "REQ-JEV-0001.s1",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.4,
+          "confidence": 0.38,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -208,7 +221,7 @@
           "item": "REQ-JEV-0001.s1",
           "question": "which_part",
           "choice": "none",
-          "confidence": 0.3,
+          "confidence": 0.29,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -280,10 +293,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.4,
+                  "confidence": 0.38,
                   "probabilities": {
-                    "no": 0.3,
-                    "yes": 0.7
+                    "no": 0.31,
+                    "yes": 0.69
                   },
                   "type": "choice"
                 }
@@ -295,7 +308,7 @@
                 "obligations": "5d3387a15f1c5dd832e0d0e4bb050357c47b3a0c713c422a48111b9a374821c4",
                 "term": "d85fa2bc485781008bdcbf9bb145b013669873dee6ea016ca011e41776be091a"
               },
-              "session_id": "01M8A4MQ4Y9JXVFKPYAB61YE6A",
+              "session_id": "01M8A9AVGFVWWVHRGVQ25PHWRT",
               "usage": {
                 "input_tokens": 1105,
                 "output_tokens": 114
@@ -313,10 +326,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.4,
+                  "confidence": 0.38,
                   "probabilities": {
-                    "no": 0.3,
-                    "yes": 0.7
+                    "no": 0.31,
+                    "yes": 0.69
                   },
                   "type": "choice"
                 },
@@ -330,7 +343,6 @@
                 "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "obtain": "The literal term `obtain` accounts for the answer or uncertainty.",
                   "records": "The literal term `records` accounts for the answer or uncertainty.",
                   "through": "The literal term `through` accounts for the answer or uncertainty.",
@@ -348,17 +360,16 @@
               "answers": {
                 "which_part": {
                   "choice": "none",
-                  "confidence": 0.3,
+                  "confidence": 0.29,
                   "probabilities": {
-                    "MUST": 0.37,
-                    "Raptor's": 0.03,
-                    "interface": 0.09,
-                    "judge-jev": 0.01,
+                    "Raptor's": 0.05,
+                    "interface": 0.21,
+                    "judge-jev": 0.03,
                     "none": 0.38,
-                    "obtain": 0.04,
-                    "query": 0.06,
-                    "records": 0.01,
-                    "through": 0.01
+                    "obtain": 0.09,
+                    "query": 0.18,
+                    "records": 0.03,
+                    "through": 0.03
                   },
                   "type": "choice"
                 }
@@ -366,12 +377,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "56e8a363bc6038c0cece84bb5f522570f486dd95595d2ae743bdb2fa4373ba81"
+                "which_part": "328a54ae8a4a140b9e073534fdf63ba9322279425af6ccac598b39ee2efa6275"
               },
-              "session_id": "01M8A4MQFK30GZMQV66D8K5783",
+              "session_id": "01M8A9AVNQ7RFYX8WGKY2S65VC",
               "usage": {
-                "input_tokens": 1105,
-                "output_tokens": 88
+                "input_tokens": 1082,
+                "output_tokens": 80
               }
             }
           },
@@ -379,7 +390,9 @@
             "verdict": "review",
             "stage": "which-part",
             "which_part": "none",
-            "confidence": 0.3,
+            "model_choice": "none",
+            "tied_with_none": false,
+            "confidence": 0.29,
             "model": "jev-1.14.0"
           }
         },
@@ -389,10 +402,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s1",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/REQ-JEV-0001.s1",
             "jev",
             "jev",
             "0.8"
@@ -486,7 +499,8 @@
               {
                 "goto": "yes"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "which-part": {
             "title": "Stage 2: which part?",
@@ -496,7 +510,6 @@
                 "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "parse": "The literal term `parse` accounts for the answer or uncertainty.",
                   "record": "The literal term `record` accounts for the answer or uncertainty.",
@@ -514,7 +527,8 @@
               {
                 "goto": "review"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "yes": {
             "verdict": "yes"
@@ -567,7 +581,7 @@
           "item": "REQ-JEV-0001.s2",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.4,
+          "confidence": 0.3,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -576,7 +590,7 @@
           "item": "REQ-JEV-0001.s2",
           "question": "which_part",
           "choice": "none",
-          "confidence": 0.42,
+          "confidence": 0.37,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -648,10 +662,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.4,
+                  "confidence": 0.3,
                   "probabilities": {
-                    "no": 0.3,
-                    "yes": 0.7
+                    "no": 0.35,
+                    "yes": 0.65
                   },
                   "type": "choice"
                 }
@@ -663,7 +677,7 @@
                 "obligations": "2e12b05d09f7bccfc5c1673813d5e15bdbf41e575f8d6d02f1aa2109a501d89c",
                 "term": "99116159cb04fe2a500e9f92786fd803dbd520cbe9c3eda4f307898280782f46"
               },
-              "session_id": "01M8A4MQSTTEZXZJA2BYV0C2WD",
+              "session_id": "01M8A9AVTMNNG1G5Q2R9RHRFYT",
               "usage": {
                 "input_tokens": 1102,
                 "output_tokens": 114
@@ -681,10 +695,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.4,
+                  "confidence": 0.3,
                   "probabilities": {
-                    "no": 0.3,
-                    "yes": 0.7
+                    "no": 0.35,
+                    "yes": 0.65
                   },
                   "type": "choice"
                 },
@@ -698,7 +712,6 @@
                 "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "parse": "The literal term `parse` accounts for the answer or uncertainty.",
                   "record": "The literal term `record` accounts for the answer or uncertainty.",
@@ -715,16 +728,15 @@
               "answers": {
                 "which_part": {
                   "choice": "none",
-                  "confidence": 0.42,
+                  "confidence": 0.37,
                   "probabilities": {
-                    "MUST": 0.03,
-                    "Markdown": 0.12,
-                    "NOT": 0.15,
-                    "itself": 0.07,
-                    "judge-jev": 0.02,
-                    "none": 0.49,
+                    "Markdown": 0.15,
+                    "NOT": 0.14,
+                    "itself": 0.09,
+                    "judge-jev": 0.03,
+                    "none": 0.46,
                     "parse": 0.11,
-                    "record": 0.01
+                    "record": 0.02
                   },
                   "type": "choice"
                 }
@@ -732,12 +744,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "03b0cfbb0426545e9d28091573ba70f9059d2e16731c6ef7a54324a4d6563b4f"
+                "which_part": "58432deffd4579d4a73974da28efa2b2fcba8dfdde9d80cc19c1fe6d44c8c917"
               },
-              "session_id": "01M8A4MR1EHKM1RCGR12530VRY",
+              "session_id": "01M8A9AVZD288B33G3BYZJM236",
               "usage": {
-                "input_tokens": 1072,
-                "output_tokens": 78
+                "input_tokens": 1048,
+                "output_tokens": 70
               }
             }
           },
@@ -745,7 +757,9 @@
             "verdict": "review",
             "stage": "which-part",
             "which_part": "none",
-            "confidence": 0.42,
+            "model_choice": "none",
+            "tied_with_none": false,
+            "confidence": 0.37,
             "model": "jev-1.14.0"
           }
         },
@@ -755,10 +769,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s2",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/REQ-JEV-0001.s2",
             "jev",
             "jev",
             "0.8"
@@ -852,7 +866,8 @@
               {
                 "goto": "yes"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "which-part": {
             "title": "Stage 2: which part?",
@@ -862,7 +877,6 @@
                 "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "run": "The literal term `run` accounts for the answer or uncertainty.",
                   "SQL": "The literal term `SQL` accounts for the answer or uncertainty.",
@@ -870,7 +884,6 @@
                   "Query": "The literal term `Query` accounts for the answer or uncertainty.",
                   "Language": "The literal term `Language` accounts for the answer or uncertainty.",
                   "against": "The literal term `against` accounts for the answer or uncertainty.",
-                  "the": "The literal term `the` accounts for the answer or uncertainty.",
                   "record": "The literal term `record` accounts for the answer or uncertainty.",
                   "store": "The literal term `store` accounts for the answer or uncertainty.",
                   "itself": "The literal term `itself` accounts for the answer or uncertainty.",
@@ -886,7 +899,8 @@
               {
                 "goto": "review"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "yes": {
             "verdict": "yes"
@@ -939,7 +953,7 @@
           "item": "REQ-JEV-0001.s3",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.54,
+          "confidence": 0.46,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -947,8 +961,8 @@
           "wave": "which-part",
           "item": "REQ-JEV-0001.s3",
           "question": "which_part",
-          "choice": "none",
-          "confidence": 0.32,
+          "choice": "SQL",
+          "confidence": 0.3,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -1020,10 +1034,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.54,
+                  "confidence": 0.46,
                   "probabilities": {
-                    "no": 0.23,
-                    "yes": 0.77
+                    "no": 0.27,
+                    "yes": 0.73
                   },
                   "type": "choice"
                 }
@@ -1035,7 +1049,7 @@
                 "obligations": "eae6bc96dcf649ad8210cf3e32d9ee84ad302b8e1558fad2374c08ac18da572d",
                 "term": "6bacf679e2e3bbfd7ccaab3de86311ed2de53995057d01dcaaa41a22afee8f6d"
               },
-              "session_id": "01M8A4MR8J2JR6JMP1EBVX10TF",
+              "session_id": "01M8A9AW3PDPSAAGGQQ1QVBA33",
               "usage": {
                 "input_tokens": 1111,
                 "output_tokens": 114
@@ -1053,10 +1067,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.54,
+                  "confidence": 0.46,
                   "probabilities": {
-                    "no": 0.23,
-                    "yes": 0.77
+                    "no": 0.27,
+                    "yes": 0.73
                   },
                   "type": "choice"
                 },
@@ -1070,7 +1084,6 @@
                 "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "run": "The literal term `run` accounts for the answer or uncertainty.",
                   "SQL": "The literal term `SQL` accounts for the answer or uncertainty.",
@@ -1078,7 +1091,6 @@
                   "Query": "The literal term `Query` accounts for the answer or uncertainty.",
                   "Language": "The literal term `Language` accounts for the answer or uncertainty.",
                   "against": "The literal term `against` accounts for the answer or uncertainty.",
-                  "the": "The literal term `the` accounts for the answer or uncertainty.",
                   "record": "The literal term `record` accounts for the answer or uncertainty.",
                   "store": "The literal term `store` accounts for the answer or uncertainty.",
                   "itself": "The literal term `itself` accounts for the answer or uncertainty.",
@@ -1092,23 +1104,21 @@
             "value": {
               "answers": {
                 "which_part": {
-                  "choice": "none",
-                  "confidence": 0.32,
+                  "choice": "SQL",
+                  "confidence": 0.3,
                   "probabilities": {
-                    "Language": 0.0,
-                    "MUST": 0.09,
-                    "NOT": 0.17,
+                    "Language": 0.01,
+                    "NOT": 0.15,
                     "Query": 0.01,
-                    "SQL": 0.25,
-                    "Structured": 0.01,
-                    "against": 0.0,
-                    "itself": 0.04,
+                    "SQL": 0.36,
+                    "Structured": 0.0,
+                    "against": 0.01,
+                    "itself": 0.07,
                     "judge-jev": 0.02,
-                    "none": 0.37,
-                    "record": 0.0,
+                    "none": 0.32,
+                    "record": 0.01,
                     "run": 0.03,
-                    "store": 0.01,
-                    "the": 0.0
+                    "store": 0.01
                   },
                   "type": "choice"
                 }
@@ -1116,20 +1126,22 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "1946421703e6106ad989cfca3ed0ff9408c94dab170200593d7480e76d3d3ca7"
+                "which_part": "6c4f4fe541e46e77cb967ac4a6415de9049531eef84ab468f1a0a5f28fcf0296"
               },
-              "session_id": "01M8A4MRE80NFX277JXNQFXWR6",
+              "session_id": "01M8A9AW7SB682D4KS4HCJK73W",
               "usage": {
-                "input_tokens": 1228,
-                "output_tokens": 120
+                "input_tokens": 1178,
+                "output_tokens": 105
               }
             }
           },
           "verdict": {
             "verdict": "review",
             "stage": "which-part",
-            "which_part": "none",
-            "confidence": 0.32,
+            "which_part": "SQL",
+            "model_choice": "SQL",
+            "tied_with_none": false,
+            "confidence": 0.3,
             "model": "jev-1.14.0"
           }
         },
@@ -1139,10 +1151,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s3",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/REQ-JEV-0001.s3",
             "jev",
             "jev",
             "0.8"
@@ -1301,7 +1313,7 @@
           "item": "ADR-JEV-0001",
           "question": "consequences",
           "choice": "positive and negative",
-          "confidence": 0.98,
+          "confidence": 0.97,
           "criterion": "Names benefits and costs.",
           "status": "accepted"
         },
@@ -1310,7 +1322,7 @@
           "item": "ADR-JEV-0001",
           "question": "context",
           "choice": "problem and forces",
-          "confidence": 0.98,
+          "confidence": 0.97,
           "criterion": "Names the problem and the forces or constraints that shaped the decision.",
           "status": "accepted"
         }
@@ -1371,21 +1383,21 @@
                 },
                 "consequences": {
                   "choice": "positive and negative",
-                  "confidence": 0.98,
+                  "confidence": 0.97,
                   "probabilities": {
-                    "missing": 0.01,
-                    "positive and negative": 0.99,
+                    "missing": 0.02,
+                    "positive and negative": 0.98,
                     "positive only": 0.0
                   },
                   "type": "choice"
                 },
                 "context": {
                   "choice": "problem and forces",
-                  "confidence": 0.98,
+                  "confidence": 0.97,
                   "probabilities": {
-                    "background only": 0.01,
+                    "background only": 0.02,
                     "missing": 0.0,
-                    "problem and forces": 0.99
+                    "problem and forces": 0.98
                   },
                   "type": "choice"
                 }
@@ -1397,7 +1409,7 @@
                 "consequences": "df0e706b2a2d32963b95e9f04e1ce8064daa8bfcceb24da54c90b0b9237cf398",
                 "context": "9b16f0fca4afd322f3420f9dd2e4a8c1e41c33f8c61a8fec7d63b357e61672b6"
               },
-              "session_id": "01M8A4MRKKHAB25S5R7AB1886K",
+              "session_id": "01M8A9AWCF2MTQJVPV83A3GN6D",
               "usage": {
                 "input_tokens": 1182,
                 "output_tokens": 129
@@ -1426,10 +1438,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/ADR-JEV-0001",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/ADR-JEV-0001",
             "jev",
             "jev",
             "0.8"
@@ -1523,7 +1535,8 @@
               {
                 "goto": "yes"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "which-part": {
             "title": "Stage 2: which part?",
@@ -1534,7 +1547,6 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "run": "The literal term `run` accounts for the answer or uncertainty.",
                   "offline": "The literal term `offline` accounts for the answer or uncertainty.",
                   "against": "The literal term `against` accounts for the answer or uncertainty.",
@@ -1553,7 +1565,8 @@
               {
                 "goto": "review"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "yes": {
             "verdict": "yes"
@@ -1597,7 +1610,7 @@
           "item": "NFR-JEV-0001.s1",
           "question": "obligations",
           "choice": "1",
-          "confidence": 0.4,
+          "confidence": 0.48,
           "criterion": "One obligation.",
           "status": "under bar"
         },
@@ -1606,7 +1619,7 @@
           "item": "NFR-JEV-0001.s1",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.64,
+          "confidence": 0.62,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -1614,8 +1627,8 @@
           "wave": "which-part",
           "item": "NFR-JEV-0001.s1",
           "question": "which_part",
-          "choice": "MUST",
-          "confidence": 0.42,
+          "choice": "none",
+          "confidence": 0.35,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -1676,21 +1689,21 @@
                 },
                 "obligations": {
                   "choice": "1",
-                  "confidence": 0.4,
+                  "confidence": 0.48,
                   "probabilities": {
-                    "1": 0.55,
-                    "2": 0.41,
-                    "3": 0.04,
+                    "1": 0.61,
+                    "2": 0.36,
+                    "3": 0.03,
                     "4+": 0.0
                   },
                   "type": "choice"
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.64,
+                  "confidence": 0.62,
                   "probabilities": {
-                    "no": 0.18,
-                    "yes": 0.82
+                    "no": 0.19,
+                    "yes": 0.81
                   },
                   "type": "choice"
                 }
@@ -1702,7 +1715,7 @@
                 "obligations": "6e80fd062efaeab8c79892dd502a7e39aed7aa82d464b2dbffb694978b384761",
                 "term": "6c4eee3f73e2e895112de65620152fe8235944c12302048cb65f7c5fcf4a72c5"
               },
-              "session_id": "01M8A4MRS0KH5V1AN0SRQKCYJT",
+              "session_id": "01M8A9AWGP8PNPG8XZEB4Q1NPV",
               "usage": {
                 "input_tokens": 1121,
                 "output_tokens": 114
@@ -1720,11 +1733,11 @@
                 "question": "obligations",
                 "answer": {
                   "choice": "1",
-                  "confidence": 0.4,
+                  "confidence": 0.48,
                   "probabilities": {
-                    "1": 0.55,
-                    "2": 0.41,
-                    "3": 0.04,
+                    "1": 0.61,
+                    "2": 0.36,
+                    "3": 0.03,
                     "4+": 0.0
                   },
                   "type": "choice"
@@ -1740,7 +1753,6 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "run": "The literal term `run` accounts for the answer or uncertainty.",
                   "offline": "The literal term `offline` accounts for the answer or uncertainty.",
                   "against": "The literal term `against` accounts for the answer or uncertainty.",
@@ -1757,19 +1769,18 @@
             "value": {
               "answers": {
                 "which_part": {
-                  "choice": "MUST",
-                  "confidence": 0.42,
+                  "choice": "none",
+                  "confidence": 0.35,
                   "probabilities": {
-                    "Jev": 0.02,
-                    "MUST": 0.48,
-                    "against": 0.0,
-                    "answers": 0.02,
-                    "judge-jev": 0.02,
-                    "none": 0.29,
-                    "offline": 0.09,
-                    "recorded": 0.03,
-                    "run": 0.02,
-                    "tests": 0.03
+                    "Jev": 0.03,
+                    "against": 0.01,
+                    "answers": 0.07,
+                    "judge-jev": 0.07,
+                    "none": 0.42,
+                    "offline": 0.19,
+                    "recorded": 0.08,
+                    "run": 0.05,
+                    "tests": 0.08
                   },
                   "type": "choice"
                 }
@@ -1777,20 +1788,22 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "40ae6d2d2d051a2d2f4ec55511323c7d0d998bfe4242ed1064fa11391465b6c8"
+                "which_part": "331b6545153ce56422824a476c497b60b1947da4d28b0bc023f909ac7631eef9"
               },
-              "session_id": "01M8A4MRYW3107911GRWMMFAW7",
+              "session_id": "01M8A9AWMK270EF7V0J9DX4RJ3",
               "usage": {
-                "input_tokens": 1159,
-                "output_tokens": 95
+                "input_tokens": 1134,
+                "output_tokens": 86
               }
             }
           },
           "verdict": {
             "verdict": "review",
             "stage": "which-part",
-            "which_part": "MUST",
-            "confidence": 0.42,
+            "which_part": "none",
+            "model_choice": "none",
+            "tied_with_none": false,
+            "confidence": 0.35,
             "model": "jev-1.14.0"
           }
         },
@@ -1800,10 +1813,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s1",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/NFR-JEV-0001.s1",
             "jev",
             "jev",
             "0.8"
@@ -1897,7 +1910,8 @@
               {
                 "goto": "yes"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "which-part": {
             "title": "Stage 2: which part?",
@@ -1908,10 +1922,8 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "on": "The literal term `on` accounts for the answer or uncertainty.",
                   "timing": "The literal term `timing` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
@@ -1925,7 +1937,8 @@
               {
                 "goto": "review"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "yes": {
             "verdict": "yes"
@@ -1960,7 +1973,7 @@
           "item": "NFR-JEV-0001.s2",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.6,
+          "confidence": 0.62,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "under bar"
         },
@@ -1978,7 +1991,7 @@
           "item": "NFR-JEV-0001.s2",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.62,
+          "confidence": 0.6,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -1987,7 +2000,7 @@
           "item": "NFR-JEV-0001.s2",
           "question": "which_part",
           "choice": "timing",
-          "confidence": 0.46,
+          "confidence": 0.54,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -2038,11 +2051,11 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.6,
+                  "confidence": 0.62,
                   "probabilities": {
-                    "needs a measure": 0.25,
+                    "needs a measure": 0.23,
                     "no": 0.02,
-                    "yes": 0.73
+                    "yes": 0.75
                   },
                   "type": "choice"
                 },
@@ -2059,10 +2072,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.62,
+                  "confidence": 0.6,
                   "probabilities": {
-                    "no": 0.19,
-                    "yes": 0.81
+                    "no": 0.2,
+                    "yes": 0.8
                   },
                   "type": "choice"
                 }
@@ -2074,7 +2087,7 @@
                 "obligations": "8c3c02d3d68c92210d876032166822b11397b465d6582583c503d3bfa6ee0e2d",
                 "term": "04844d2ee3d59346e3923dc12c9e2fc2a35037cf862fcfd6332be9bf315a63bf"
               },
-              "session_id": "01M8A4MS47V3TTA63C64CSZ4K8",
+              "session_id": "01M8A9AWRZBYVWN495PTZ0D2R0",
               "usage": {
                 "input_tokens": 1119,
                 "output_tokens": 114
@@ -2092,10 +2105,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.62,
+                  "confidence": 0.6,
                   "probabilities": {
-                    "no": 0.19,
-                    "yes": 0.81
+                    "no": 0.2,
+                    "yes": 0.8
                   },
                   "type": "choice"
                 },
@@ -2110,10 +2123,8 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "on": "The literal term `on` accounts for the answer or uncertainty.",
                   "timing": "The literal term `timing` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
@@ -2126,16 +2137,14 @@
               "answers": {
                 "which_part": {
                   "choice": "timing",
-                  "confidence": 0.46,
+                  "confidence": 0.54,
                   "probabilities": {
-                    "MUST": 0.03,
-                    "NOT": 0.05,
-                    "depend": 0.05,
+                    "NOT": 0.02,
+                    "depend": 0.04,
                     "judge-jev": 0.01,
-                    "none": 0.32,
-                    "on": 0.0,
+                    "none": 0.3,
                     "tests": 0.01,
-                    "timing": 0.53
+                    "timing": 0.62
                   },
                   "type": "choice"
                 }
@@ -2143,12 +2152,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "70f0297e02921df8d721e7ceed2f5ed633913162afdf77ae2decf8fa1a81460b"
+                "which_part": "bee4bec068dae89c35a40dc259960c9946931332ce6ff6ef8e67f7d05afea183"
               },
-              "session_id": "01M8A4MS9F5H4Q2NACNYC35061",
+              "session_id": "01M8A9AWXQCSWV2J0MT226KTMR",
               "usage": {
-                "input_tokens": 1086,
-                "output_tokens": 79
+                "input_tokens": 1033,
+                "output_tokens": 64
               }
             }
           },
@@ -2156,7 +2165,9 @@
             "verdict": "review",
             "stage": "which-part",
             "which_part": "timing",
-            "confidence": 0.46,
+            "model_choice": "timing",
+            "tied_with_none": false,
+            "confidence": 0.54,
             "model": "jev-1.14.0"
           }
         },
@@ -2166,10 +2177,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s2",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/NFR-JEV-0001.s2",
             "jev",
             "jev",
             "0.8"
@@ -2263,7 +2274,8 @@
               {
                 "goto": "yes"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "which-part": {
             "title": "Stage 2: which part?",
@@ -2274,10 +2286,8 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "on": "The literal term `on` accounts for the answer or uncertainty.",
                   "sleeps": "The literal term `sleeps` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
@@ -2291,7 +2301,8 @@
               {
                 "goto": "review"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "yes": {
             "verdict": "yes"
@@ -2326,7 +2337,7 @@
           "item": "NFR-JEV-0001.s3",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.91,
+          "confidence": 0.89,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "accepted"
         },
@@ -2344,7 +2355,7 @@
           "item": "NFR-JEV-0001.s3",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.48,
+          "confidence": 0.54,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -2353,7 +2364,7 @@
           "item": "NFR-JEV-0001.s3",
           "question": "which_part",
           "choice": "sleeps",
-          "confidence": 0.59,
+          "confidence": 0.4,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -2404,11 +2415,11 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.91,
+                  "confidence": 0.89,
                   "probabilities": {
-                    "needs a measure": 0.05,
+                    "needs a measure": 0.06,
                     "no": 0.01,
-                    "yes": 0.94
+                    "yes": 0.93
                   },
                   "type": "choice"
                 },
@@ -2425,10 +2436,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.48,
+                  "confidence": 0.54,
                   "probabilities": {
-                    "no": 0.26,
-                    "yes": 0.74
+                    "no": 0.23,
+                    "yes": 0.77
                   },
                   "type": "choice"
                 }
@@ -2440,7 +2451,7 @@
                 "obligations": "e5dd99cf5dbf192855ed15f98cdc32d787dada0f689e98d95a88cdcae1ffbfb3",
                 "term": "a75f61691be619e6f94d67c6575db8be5380e70bbbb747c101de94837a56f325"
               },
-              "session_id": "01M8A4MSEMMGRPN6QJ8Z4GZNDZ",
+              "session_id": "01M8A9AX1ZTP1GP0MF64S3T1PX",
               "usage": {
                 "input_tokens": 1119,
                 "output_tokens": 114
@@ -2458,10 +2469,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.48,
+                  "confidence": 0.54,
                   "probabilities": {
-                    "no": 0.26,
-                    "yes": 0.74
+                    "no": 0.23,
+                    "yes": 0.77
                   },
                   "type": "choice"
                 },
@@ -2476,10 +2487,8 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "on": "The literal term `on` accounts for the answer or uncertainty.",
                   "sleeps": "The literal term `sleeps` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
@@ -2492,16 +2501,14 @@
               "answers": {
                 "which_part": {
                   "choice": "sleeps",
-                  "confidence": 0.59,
+                  "confidence": 0.4,
                   "probabilities": {
-                    "MUST": 0.03,
-                    "NOT": 0.05,
-                    "depend": 0.03,
+                    "NOT": 0.03,
+                    "depend": 0.06,
                     "judge-jev": 0.01,
-                    "none": 0.23,
-                    "on": 0.0,
-                    "sleeps": 0.64,
-                    "tests": 0.01
+                    "none": 0.37,
+                    "sleeps": 0.5,
+                    "tests": 0.03
                   },
                   "type": "choice"
                 }
@@ -2509,12 +2516,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "71086fb4869f8ccb778bdd0eaea0bd2ed928387d7994d3d4e3545cfc01bf5eb0"
+                "which_part": "e08a09b3e995de79bf57a0454ecea96786e0ab480cff2c63e8e6b0edd8686ef8"
               },
-              "session_id": "01M8A4MSMMVNQ5H2DTZEKNZ8XC",
+              "session_id": "01M8A9AX60ZA50G9Q2RWHD3F7G",
               "usage": {
-                "input_tokens": 1088,
-                "output_tokens": 81
+                "input_tokens": 1038,
+                "output_tokens": 66
               }
             }
           },
@@ -2522,7 +2529,9 @@
             "verdict": "review",
             "stage": "which-part",
             "which_part": "sleeps",
-            "confidence": 0.59,
+            "model_choice": "sleeps",
+            "tied_with_none": false,
+            "confidence": 0.4,
             "model": "jev-1.14.0"
           }
         },
@@ -2532,10 +2541,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s3",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/NFR-JEV-0001.s3",
             "jev",
             "jev",
             "0.8"
@@ -2629,7 +2638,8 @@
               {
                 "goto": "yes"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "which-part": {
             "title": "Stage 2: which part?",
@@ -2640,10 +2650,8 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "on": "The literal term `on` accounts for the answer or uncertainty.",
                   "ordering": "The literal term `ordering` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
@@ -2657,7 +2665,8 @@
               {
                 "goto": "review"
               }
-            ]
+            ],
+            "per": "statement"
           },
           "yes": {
             "verdict": "yes"
@@ -2692,7 +2701,7 @@
           "item": "NFR-JEV-0001.s4",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.85,
+          "confidence": 0.83,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "accepted"
         },
@@ -2710,7 +2719,7 @@
           "item": "NFR-JEV-0001.s4",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.58,
+          "confidence": 0.6,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -2719,7 +2728,7 @@
           "item": "NFR-JEV-0001.s4",
           "question": "which_part",
           "choice": "ordering",
-          "confidence": 0.38,
+          "confidence": 0.4,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -2770,11 +2779,11 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.85,
+                  "confidence": 0.83,
                   "probabilities": {
                     "needs a measure": 0.09,
-                    "no": 0.01,
-                    "yes": 0.9
+                    "no": 0.02,
+                    "yes": 0.89
                   },
                   "type": "choice"
                 },
@@ -2791,10 +2800,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.58,
+                  "confidence": 0.6,
                   "probabilities": {
-                    "no": 0.21,
-                    "yes": 0.79
+                    "no": 0.2,
+                    "yes": 0.8
                   },
                   "type": "choice"
                 }
@@ -2806,7 +2815,7 @@
                 "obligations": "106242727f68742f62c3a216c6d041a1a4c1e44477418bbfd6c7c210766c88e2",
                 "term": "2d88d9fa593779e49bf97a0c6657b03c8f02ddfcffb82f599c6ae408f848bba3"
               },
-              "session_id": "01M8A4MSTSS9M5CWB3MD6TB8M8",
+              "session_id": "01M8A9AXA27P5QEQRX1N5W48ZM",
               "usage": {
                 "input_tokens": 1119,
                 "output_tokens": 114
@@ -2824,10 +2833,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.58,
+                  "confidence": 0.6,
                   "probabilities": {
-                    "no": 0.21,
-                    "yes": 0.79
+                    "no": 0.2,
+                    "yes": 0.8
                   },
                   "type": "choice"
                 },
@@ -2842,10 +2851,8 @@
                 "criteria": {
                   "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
                   "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "MUST": "The literal term `MUST` accounts for the answer or uncertainty.",
                   "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
                   "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "on": "The literal term `on` accounts for the answer or uncertainty.",
                   "ordering": "The literal term `ordering` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
@@ -2858,16 +2865,14 @@
               "answers": {
                 "which_part": {
                   "choice": "ordering",
-                  "confidence": 0.38,
+                  "confidence": 0.4,
                   "probabilities": {
-                    "MUST": 0.04,
-                    "NOT": 0.07,
+                    "NOT": 0.03,
                     "depend": 0.05,
-                    "judge-jev": 0.01,
-                    "none": 0.36,
-                    "on": 0.0,
-                    "ordering": 0.46,
-                    "tests": 0.01
+                    "judge-jev": 0.02,
+                    "none": 0.38,
+                    "ordering": 0.5,
+                    "tests": 0.02
                   },
                   "type": "choice"
                 }
@@ -2875,12 +2880,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "231e70d4cf26cf0d1757e2bc7546543c977b6418d8b9db668f2e27d0df1dfdb6"
+                "which_part": "7121b49f816764f032262e30a73f3bf6213c1a28f7dc88afca282628e0c38e04"
               },
-              "session_id": "01M8A4MT05JNS07DMC2RFE8WE8",
+              "session_id": "01M8A9AXEFX89Q21V1TGQ4PPKX",
               "usage": {
-                "input_tokens": 1084,
-                "output_tokens": 77
+                "input_tokens": 1031,
+                "output_tokens": 62
               }
             }
           },
@@ -2888,7 +2893,9 @@
             "verdict": "review",
             "stage": "which-part",
             "which_part": "ordering",
-            "confidence": 0.38,
+            "model_choice": "ordering",
+            "tied_with_none": false,
+            "confidence": 0.4,
             "model": "jev-1.14.0"
           }
         },
@@ -2898,10 +2905,10 @@
             "-o",
             "pipefail",
             "-c",
-            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+            "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
             "decidr-pipeline",
-            "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-            "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s4",
+            "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+            "{run}/NFR-JEV-0001.s4",
             "jev",
             "jev",
             "0.8"
@@ -2920,10 +2927,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s1",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/REQ-JEV-0001.s1",
         "jev",
         "jev",
         "0.8"
@@ -2938,10 +2945,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s2",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/REQ-JEV-0001.s2",
         "jev",
         "jev",
         "0.8"
@@ -2956,10 +2963,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s3",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/REQ-JEV-0001.s3",
         "jev",
         "jev",
         "0.8"
@@ -2974,10 +2981,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/ADR-JEV-0001",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/ADR-JEV-0001",
         "jev",
         "jev",
         "0.8"
@@ -2992,10 +2999,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s1",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/NFR-JEV-0001.s1",
         "jev",
         "jev",
         "0.8"
@@ -3010,10 +3017,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s2",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/NFR-JEV-0001.s2",
         "jev",
         "jev",
         "0.8"
@@ -3028,10 +3035,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s3",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/NFR-JEV-0001.s3",
         "jev",
         "jev",
         "0.8"
@@ -3046,10 +3053,10 @@
         "-o",
         "pipefail",
         "-c",
-        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
+        "scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \"$first_model\" --agent-role skill-author < \"$job/request.json\" \\\n  | tee \"$job/gates.jsonl\" \\\n  | jq -c --slurpfile item \"$job/item.json\" --slurpfile terms \"$job/terms.json\" --slurpfile tree \"$job/tree.json\" --argjson bar \"$bar\" -f \"$scripts/next.jq\" \\\n  | tee \"$job/next.jsonl\" \\\n  | bash \"$scripts/send-next.sh\" \"$second_model\" --project decidr-question-tree --agent-role skill-author \\\n  | tee \"$job/stage2.jsonl\" \\\n  | jq -c -f \"$scripts/verdict.jq\" > \"$job/verdict.jsonl\"\n",
         "decidr-pipeline",
-        "/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
-        "/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s4",
+        "{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts",
+        "{run}/NFR-JEV-0001.s4",
         "jev",
         "jev",
         "0.8"

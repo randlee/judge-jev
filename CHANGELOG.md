@@ -2,6 +2,13 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.10.0 — 2026-11-25
+
+- Add the published `walking-decidr-trees` skill for one-wave-per-call decidr and jq pipelines, including deterministic early-stop, error, and which-part routing.
+- Add runnable REQ/ADR/NFR examples under `site/examples/`, with recorded live responses, offline replay, D2 diagrams, Mermaid output and sc-compose XHTML reports linked from the Pages diagrams index.
+- Make the second-stage project and agent role configurable, handle newline-free input, report ties with `none`, and omit stopwords from diagnostic term choices.
+- Normalize local execution paths in published recordings and reports; explain that an example `review` calls for follow-up and is not a quality failure.
+
 ## 0.8.0 — 2026-11-25
 
 - Gate questions (issue #137). REQ and NFR trees: `check` is replaced by `checkable` (yes / needs a measure / no); `term` becomes a yes/no question (common usage, defined in this record, or defined in a linked record); `joined_by` is asked in a second wave only of statements whose `obligations` is 2 or more. The old five-way questions stay as non-gating diagnostics `d_check_method` and `d_term_kind`. Verdicts: `checkable` needs a measure or no, or `term` no, gives no; `obligations` 2+ with `joined_by` and-list, alternatives or obligation+rationale gives no.

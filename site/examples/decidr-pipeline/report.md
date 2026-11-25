@@ -1,10 +1,14 @@
 # decidr-pipeline — decision report
 
-Recorded live responses; rendering this report does not send model requests.
+Results from this live example run.
 
-Source revision: `c823e4600cbbee7f987cc2e65485f7c8deb6da92`. Captured: 2026-11-25T19:59:07.402319+00:00.
+Source revision: `bcf229e969ede8d22f4c6bb497501e393bf31b85`. Captured: 2026-11-25T21:21:07.064411+00:00.
 
 The highlighted path is reconstructed from recorded branches and answers.
+
+Review means a gate answer is under this example's bar (0.8 confidence or an accepted-choice rule). It needs follow-up; it is not a judge-jev quality failure.
+
+Execution locations use placeholders such as `{repo}` and `{tmp}`; model response values are unchanged.
 
 ## Raptor import diagnostics
 
@@ -24,10 +28,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s1 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/REQ-JEV-0001.s1' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -41,10 +45,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s2 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/REQ-JEV-0001.s2' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -58,10 +62,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s3 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/REQ-JEV-0001.s3' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -75,10 +79,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/ADR-JEV-0001 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/ADR-JEV-0001' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -92,10 +96,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s1 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/NFR-JEV-0001.s1' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -109,10 +113,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s2 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/NFR-JEV-0001.s2' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -126,10 +130,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s3 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/NFR-JEV-0001.s3' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -143,10 +147,10 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \
   | tee "$job/next.jsonl" \
-  | bash "$scripts/send-next.sh" "$second_model" \
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \
   | tee "$job/stage2.jsonl" \
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
-' decidr-pipeline /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts /private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s4 jev jev 0.8
+' decidr-pipeline '{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts' '{run}/NFR-JEV-0001.s4' jev jev 0.8
 ```
 Exit status: 0.
 
@@ -192,8 +196,8 @@ flowchart TD
 |---|---|---|---:|---|
 | gates / REQ-JEV-0001.s1 | checkable | yes | 96% | accepted |
 | gates / REQ-JEV-0001.s1 | obligations | 1 | 99% | accepted |
-| gates / REQ-JEV-0001.s1 | term | yes | 40% | under bar |
-| which-part / REQ-JEV-0001.s1 | which_part | none | 30% | diagnostic |
+| gates / REQ-JEV-0001.s1 | term | yes | 38% | under bar |
+| which-part / REQ-JEV-0001.s1 | which_part | none | 29% | diagnostic |
 
 ## REQ-JEV-0001.s2 — Records come from Raptor
 
@@ -237,8 +241,8 @@ flowchart TD
 |---|---|---|---:|---|
 | gates / REQ-JEV-0001.s2 | checkable | yes | 98% | accepted |
 | gates / REQ-JEV-0001.s2 | obligations | 1 | 100% | accepted |
-| gates / REQ-JEV-0001.s2 | term | yes | 40% | under bar |
-| which-part / REQ-JEV-0001.s2 | which_part | none | 42% | diagnostic |
+| gates / REQ-JEV-0001.s2 | term | yes | 30% | under bar |
+| which-part / REQ-JEV-0001.s2 | which_part | none | 37% | diagnostic |
 
 ## REQ-JEV-0001.s3 — Records come from Raptor
 
@@ -283,8 +287,8 @@ flowchart TD
 |---|---|---|---:|---|
 | gates / REQ-JEV-0001.s3 | checkable | yes | 98% | accepted |
 | gates / REQ-JEV-0001.s3 | obligations | 1 | 100% | accepted |
-| gates / REQ-JEV-0001.s3 | term | yes | 54% | under bar |
-| which-part / REQ-JEV-0001.s3 | which_part | none | 32% | diagnostic |
+| gates / REQ-JEV-0001.s3 | term | yes | 46% | under bar |
+| which-part / REQ-JEV-0001.s3 | which_part | SQL | 30% | diagnostic |
 
 ## ADR-JEV-0001 — Keep the Jev core unchanged until its Rust replacement
 
@@ -325,8 +329,8 @@ flowchart TD
 | Wave / item | Question | Choice | Confidence | Role |
 |---|---|---|---:|---|
 | gates / ADR-JEV-0001 | alternatives | named with reasons rejected | 100% | accepted |
-| gates / ADR-JEV-0001 | consequences | positive and negative | 98% | accepted |
-| gates / ADR-JEV-0001 | context | problem and forces | 98% | accepted |
+| gates / ADR-JEV-0001 | consequences | positive and negative | 97% | accepted |
+| gates / ADR-JEV-0001 | context | problem and forces | 97% | accepted |
 
 ## NFR-JEV-0001.s1 — Deterministic offline tests
 
@@ -369,9 +373,9 @@ flowchart TD
 | Wave / item | Question | Choice | Confidence | Role |
 |---|---|---|---:|---|
 | gates / NFR-JEV-0001.s1 | checkable | yes | 96% | accepted |
-| gates / NFR-JEV-0001.s1 | obligations | 1 | 40% | under bar |
-| gates / NFR-JEV-0001.s1 | term | yes | 64% | under bar |
-| which-part / NFR-JEV-0001.s1 | which_part | MUST | 42% | diagnostic |
+| gates / NFR-JEV-0001.s1 | obligations | 1 | 48% | under bar |
+| gates / NFR-JEV-0001.s1 | term | yes | 62% | under bar |
+| which-part / NFR-JEV-0001.s1 | which_part | none | 35% | diagnostic |
 
 ## NFR-JEV-0001.s2 — Deterministic offline tests
 
@@ -413,10 +417,10 @@ flowchart TD
 
 | Wave / item | Question | Choice | Confidence | Role |
 |---|---|---|---:|---|
-| gates / NFR-JEV-0001.s2 | checkable | yes | 60% | under bar |
+| gates / NFR-JEV-0001.s2 | checkable | yes | 62% | under bar |
 | gates / NFR-JEV-0001.s2 | obligations | 1 | 100% | accepted |
-| gates / NFR-JEV-0001.s2 | term | yes | 62% | under bar |
-| which-part / NFR-JEV-0001.s2 | which_part | timing | 46% | diagnostic |
+| gates / NFR-JEV-0001.s2 | term | yes | 60% | under bar |
+| which-part / NFR-JEV-0001.s2 | which_part | timing | 54% | diagnostic |
 
 ## NFR-JEV-0001.s3 — Deterministic offline tests
 
@@ -458,10 +462,10 @@ flowchart TD
 
 | Wave / item | Question | Choice | Confidence | Role |
 |---|---|---|---:|---|
-| gates / NFR-JEV-0001.s3 | checkable | yes | 91% | accepted |
+| gates / NFR-JEV-0001.s3 | checkable | yes | 89% | accepted |
 | gates / NFR-JEV-0001.s3 | obligations | 1 | 100% | accepted |
-| gates / NFR-JEV-0001.s3 | term | yes | 48% | under bar |
-| which-part / NFR-JEV-0001.s3 | which_part | sleeps | 59% | diagnostic |
+| gates / NFR-JEV-0001.s3 | term | yes | 54% | under bar |
+| which-part / NFR-JEV-0001.s3 | which_part | sleeps | 40% | diagnostic |
 
 ## NFR-JEV-0001.s4 — Deterministic offline tests
 
@@ -503,7 +507,7 @@ flowchart TD
 
 | Wave / item | Question | Choice | Confidence | Role |
 |---|---|---|---:|---|
-| gates / NFR-JEV-0001.s4 | checkable | yes | 85% | accepted |
+| gates / NFR-JEV-0001.s4 | checkable | yes | 83% | accepted |
 | gates / NFR-JEV-0001.s4 | obligations | 1 | 100% | accepted |
-| gates / NFR-JEV-0001.s4 | term | yes | 58% | under bar |
-| which-part / NFR-JEV-0001.s4 | which_part | ordering | 38% | diagnostic |
+| gates / NFR-JEV-0001.s4 | term | yes | 60% | under bar |
+| which-part / NFR-JEV-0001.s4 | which_part | ordering | 40% | diagnostic |

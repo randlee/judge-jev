@@ -40,7 +40,8 @@
     <p class="eyebrow">judge-jev / decidr-pipeline</p>
     <h1>One wave at a time.</h1>
     <p>Accepted gate choice and confidence ≥ 0.8. Otherwise, ask which part and return review.</p>
-    <p class="meta">Recorded live results · offline replay · 2026-11-25T19:59:07.402319+00:00</p>
+    <p>Review means a gate answer is under this example&#x27;s bar (0.8 confidence or an accepted-choice rule). It needs follow-up; it is not a judge-jev quality failure.</p>
+    <p class="meta">Live run · 2026-11-25T21:21:07.064411+00:00</p>
   </header>
   <main>
     <div class="topline"><span class="outcomes">1 yes · 7 review</span><span class="count">8 recorded items · REQ / ADR / NFR</span></div>
@@ -80,13 +81,13 @@
 <p class="criterion">One obligation.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>REQ-JEV-0001.s1 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">40%</span></div>
-            <div class="track"><div class="fill" style="width:40.0%"></div></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">38%</span></div>
+            <div class="track"><div class="fill" style="width:38.0%"></div></div>
 <p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
           <div class="answer diagnostic">
             <div class="answer-meta"><span>REQ-JEV-0001.s1 / which-part</span><span>diagnostic</span></div>
-            <div class="answer-top"><span>which_part: <span class="choice">none</span></span><span class="probability">30%</span></div>
-            <div class="track"><div class="fill" style="width:30.0%"></div></div>
+            <div class="answer-top"><span>which_part: <span class="choice">none</span></span><span class="probability">29%</span></div>
+            <div class="track"><div class="fill" style="width:29.0%"></div></div>
           </div>
         </section>
       </div>
@@ -157,10 +158,10 @@
           },
           &quot;term&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.4,
+            &quot;confidence&quot;: 0.38,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.3,
-              &quot;yes&quot;: 0.7
+              &quot;no&quot;: 0.31,
+              &quot;yes&quot;: 0.69
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -172,7 +173,7 @@
           &quot;obligations&quot;: &quot;5d3387a15f1c5dd832e0d0e4bb050357c47b3a0c713c422a48111b9a374821c4&quot;,
           &quot;term&quot;: &quot;d85fa2bc485781008bdcbf9bb145b013669873dee6ea016ca011e41776be091a&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MQ4Y9JXVFKPYAB61YE6A&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AVGFVWWVHRGVQ25PHWRT&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1105,
           &quot;output_tokens&quot;: 114
@@ -190,10 +191,10 @@
           &quot;question&quot;: &quot;term&quot;,
           &quot;answer&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.4,
+            &quot;confidence&quot;: 0.38,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.3,
-              &quot;yes&quot;: 0.7
+              &quot;no&quot;: 0.31,
+              &quot;yes&quot;: 0.69
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -207,7 +208,6 @@
           &quot;instructions&quot;: &quot;The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.&quot;,
           &quot;criteria&quot;: {
             &quot;judge-jev&quot;: &quot;The literal term `judge-jev` accounts for the answer or uncertainty.&quot;,
-            &quot;MUST&quot;: &quot;The literal term `MUST` accounts for the answer or uncertainty.&quot;,
             &quot;obtain&quot;: &quot;The literal term `obtain` accounts for the answer or uncertainty.&quot;,
             &quot;records&quot;: &quot;The literal term `records` accounts for the answer or uncertainty.&quot;,
             &quot;through&quot;: &quot;The literal term `through` accounts for the answer or uncertainty.&quot;,
@@ -225,17 +225,16 @@
         &quot;answers&quot;: {
           &quot;which_part&quot;: {
             &quot;choice&quot;: &quot;none&quot;,
-            &quot;confidence&quot;: 0.3,
+            &quot;confidence&quot;: 0.29,
             &quot;probabilities&quot;: {
-              &quot;MUST&quot;: 0.37,
-              &quot;Raptor&#x27;s&quot;: 0.03,
-              &quot;interface&quot;: 0.09,
-              &quot;judge-jev&quot;: 0.01,
+              &quot;Raptor&#x27;s&quot;: 0.05,
+              &quot;interface&quot;: 0.21,
+              &quot;judge-jev&quot;: 0.03,
               &quot;none&quot;: 0.38,
-              &quot;obtain&quot;: 0.04,
-              &quot;query&quot;: 0.06,
-              &quot;records&quot;: 0.01,
-              &quot;through&quot;: 0.01
+              &quot;obtain&quot;: 0.09,
+              &quot;query&quot;: 0.18,
+              &quot;records&quot;: 0.03,
+              &quot;through&quot;: 0.03
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -243,12 +242,12 @@
         &quot;attempts&quot;: 1,
         &quot;model&quot;: &quot;jev-1.14.0&quot;,
         &quot;question_digests&quot;: {
-          &quot;which_part&quot;: &quot;56e8a363bc6038c0cece84bb5f522570f486dd95595d2ae743bdb2fa4373ba81&quot;
+          &quot;which_part&quot;: &quot;328a54ae8a4a140b9e073534fdf63ba9322279425af6ccac598b39ee2efa6275&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MQFK30GZMQV66D8K5783&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AVNQ7RFYX8WGKY2S65VC&quot;,
         &quot;usage&quot;: {
-          &quot;input_tokens&quot;: 1105,
-          &quot;output_tokens&quot;: 88
+          &quot;input_tokens&quot;: 1082,
+          &quot;output_tokens&quot;: 80
         }
       }
     },
@@ -256,7 +255,9 @@
       &quot;verdict&quot;: &quot;review&quot;,
       &quot;stage&quot;: &quot;which-part&quot;,
       &quot;which_part&quot;: &quot;none&quot;,
-      &quot;confidence&quot;: 0.3,
+      &quot;model_choice&quot;: &quot;none&quot;,
+      &quot;tied_with_none&quot;: false,
+      &quot;confidence&quot;: 0.29,
       &quot;model&quot;: &quot;jev-1.14.0&quot;
     }
   },
@@ -266,10 +267,10 @@
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s1&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/REQ-JEV-0001.s1&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -302,13 +303,13 @@
 <p class="criterion">One obligation.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>REQ-JEV-0001.s2 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">40%</span></div>
-            <div class="track"><div class="fill" style="width:40.0%"></div></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">30%</span></div>
+            <div class="track"><div class="fill" style="width:30.0%"></div></div>
 <p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
           <div class="answer diagnostic">
             <div class="answer-meta"><span>REQ-JEV-0001.s2 / which-part</span><span>diagnostic</span></div>
-            <div class="answer-top"><span>which_part: <span class="choice">none</span></span><span class="probability">42%</span></div>
-            <div class="track"><div class="fill" style="width:42.0%"></div></div>
+            <div class="answer-top"><span>which_part: <span class="choice">none</span></span><span class="probability">37%</span></div>
+            <div class="track"><div class="fill" style="width:37.0%"></div></div>
           </div>
         </section>
       </div>
@@ -379,10 +380,10 @@
           },
           &quot;term&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.4,
+            &quot;confidence&quot;: 0.3,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.3,
-              &quot;yes&quot;: 0.7
+              &quot;no&quot;: 0.35,
+              &quot;yes&quot;: 0.65
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -394,7 +395,7 @@
           &quot;obligations&quot;: &quot;2e12b05d09f7bccfc5c1673813d5e15bdbf41e575f8d6d02f1aa2109a501d89c&quot;,
           &quot;term&quot;: &quot;99116159cb04fe2a500e9f92786fd803dbd520cbe9c3eda4f307898280782f46&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MQSTTEZXZJA2BYV0C2WD&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AVTMNNG1G5Q2R9RHRFYT&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1102,
           &quot;output_tokens&quot;: 114
@@ -412,10 +413,10 @@
           &quot;question&quot;: &quot;term&quot;,
           &quot;answer&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.4,
+            &quot;confidence&quot;: 0.3,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.3,
-              &quot;yes&quot;: 0.7
+              &quot;no&quot;: 0.35,
+              &quot;yes&quot;: 0.65
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -429,7 +430,6 @@
           &quot;instructions&quot;: &quot;The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.&quot;,
           &quot;criteria&quot;: {
             &quot;judge-jev&quot;: &quot;The literal term `judge-jev` accounts for the answer or uncertainty.&quot;,
-            &quot;MUST&quot;: &quot;The literal term `MUST` accounts for the answer or uncertainty.&quot;,
             &quot;NOT&quot;: &quot;The literal term `NOT` accounts for the answer or uncertainty.&quot;,
             &quot;parse&quot;: &quot;The literal term `parse` accounts for the answer or uncertainty.&quot;,
             &quot;record&quot;: &quot;The literal term `record` accounts for the answer or uncertainty.&quot;,
@@ -446,16 +446,15 @@
         &quot;answers&quot;: {
           &quot;which_part&quot;: {
             &quot;choice&quot;: &quot;none&quot;,
-            &quot;confidence&quot;: 0.42,
+            &quot;confidence&quot;: 0.37,
             &quot;probabilities&quot;: {
-              &quot;MUST&quot;: 0.03,
-              &quot;Markdown&quot;: 0.12,
-              &quot;NOT&quot;: 0.15,
-              &quot;itself&quot;: 0.07,
-              &quot;judge-jev&quot;: 0.02,
-              &quot;none&quot;: 0.49,
+              &quot;Markdown&quot;: 0.15,
+              &quot;NOT&quot;: 0.14,
+              &quot;itself&quot;: 0.09,
+              &quot;judge-jev&quot;: 0.03,
+              &quot;none&quot;: 0.46,
               &quot;parse&quot;: 0.11,
-              &quot;record&quot;: 0.01
+              &quot;record&quot;: 0.02
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -463,12 +462,12 @@
         &quot;attempts&quot;: 1,
         &quot;model&quot;: &quot;jev-1.14.0&quot;,
         &quot;question_digests&quot;: {
-          &quot;which_part&quot;: &quot;03b0cfbb0426545e9d28091573ba70f9059d2e16731c6ef7a54324a4d6563b4f&quot;
+          &quot;which_part&quot;: &quot;58432deffd4579d4a73974da28efa2b2fcba8dfdde9d80cc19c1fe6d44c8c917&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MR1EHKM1RCGR12530VRY&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AVZD288B33G3BYZJM236&quot;,
         &quot;usage&quot;: {
-          &quot;input_tokens&quot;: 1072,
-          &quot;output_tokens&quot;: 78
+          &quot;input_tokens&quot;: 1048,
+          &quot;output_tokens&quot;: 70
         }
       }
     },
@@ -476,7 +475,9 @@
       &quot;verdict&quot;: &quot;review&quot;,
       &quot;stage&quot;: &quot;which-part&quot;,
       &quot;which_part&quot;: &quot;none&quot;,
-      &quot;confidence&quot;: 0.42,
+      &quot;model_choice&quot;: &quot;none&quot;,
+      &quot;tied_with_none&quot;: false,
+      &quot;confidence&quot;: 0.37,
       &quot;model&quot;: &quot;jev-1.14.0&quot;
     }
   },
@@ -486,10 +487,10 @@
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s2&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/REQ-JEV-0001.s2&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -523,13 +524,13 @@ store itself.</p>
 <p class="criterion">One obligation.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>REQ-JEV-0001.s3 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">54%</span></div>
-            <div class="track"><div class="fill" style="width:54.0%"></div></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">46%</span></div>
+            <div class="track"><div class="fill" style="width:46.0%"></div></div>
 <p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
           <div class="answer diagnostic">
             <div class="answer-meta"><span>REQ-JEV-0001.s3 / which-part</span><span>diagnostic</span></div>
-            <div class="answer-top"><span>which_part: <span class="choice">none</span></span><span class="probability">32%</span></div>
-            <div class="track"><div class="fill" style="width:32.0%"></div></div>
+            <div class="answer-top"><span>which_part: <span class="choice">SQL</span></span><span class="probability">30%</span></div>
+            <div class="track"><div class="fill" style="width:30.0%"></div></div>
           </div>
         </section>
       </div>
@@ -600,10 +601,10 @@ store itself.</p>
           },
           &quot;term&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.54,
+            &quot;confidence&quot;: 0.46,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.23,
-              &quot;yes&quot;: 0.77
+              &quot;no&quot;: 0.27,
+              &quot;yes&quot;: 0.73
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -615,7 +616,7 @@ store itself.</p>
           &quot;obligations&quot;: &quot;eae6bc96dcf649ad8210cf3e32d9ee84ad302b8e1558fad2374c08ac18da572d&quot;,
           &quot;term&quot;: &quot;6bacf679e2e3bbfd7ccaab3de86311ed2de53995057d01dcaaa41a22afee8f6d&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MR8J2JR6JMP1EBVX10TF&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AW3PDPSAAGGQQ1QVBA33&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1111,
           &quot;output_tokens&quot;: 114
@@ -633,10 +634,10 @@ store itself.</p>
           &quot;question&quot;: &quot;term&quot;,
           &quot;answer&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.54,
+            &quot;confidence&quot;: 0.46,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.23,
-              &quot;yes&quot;: 0.77
+              &quot;no&quot;: 0.27,
+              &quot;yes&quot;: 0.73
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -650,7 +651,6 @@ store itself.</p>
           &quot;instructions&quot;: &quot;The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.&quot;,
           &quot;criteria&quot;: {
             &quot;judge-jev&quot;: &quot;The literal term `judge-jev` accounts for the answer or uncertainty.&quot;,
-            &quot;MUST&quot;: &quot;The literal term `MUST` accounts for the answer or uncertainty.&quot;,
             &quot;NOT&quot;: &quot;The literal term `NOT` accounts for the answer or uncertainty.&quot;,
             &quot;run&quot;: &quot;The literal term `run` accounts for the answer or uncertainty.&quot;,
             &quot;SQL&quot;: &quot;The literal term `SQL` accounts for the answer or uncertainty.&quot;,
@@ -658,7 +658,6 @@ store itself.</p>
             &quot;Query&quot;: &quot;The literal term `Query` accounts for the answer or uncertainty.&quot;,
             &quot;Language&quot;: &quot;The literal term `Language` accounts for the answer or uncertainty.&quot;,
             &quot;against&quot;: &quot;The literal term `against` accounts for the answer or uncertainty.&quot;,
-            &quot;the&quot;: &quot;The literal term `the` accounts for the answer or uncertainty.&quot;,
             &quot;record&quot;: &quot;The literal term `record` accounts for the answer or uncertainty.&quot;,
             &quot;store&quot;: &quot;The literal term `store` accounts for the answer or uncertainty.&quot;,
             &quot;itself&quot;: &quot;The literal term `itself` accounts for the answer or uncertainty.&quot;,
@@ -672,23 +671,21 @@ store itself.</p>
       &quot;value&quot;: {
         &quot;answers&quot;: {
           &quot;which_part&quot;: {
-            &quot;choice&quot;: &quot;none&quot;,
-            &quot;confidence&quot;: 0.32,
+            &quot;choice&quot;: &quot;SQL&quot;,
+            &quot;confidence&quot;: 0.3,
             &quot;probabilities&quot;: {
-              &quot;Language&quot;: 0.0,
-              &quot;MUST&quot;: 0.09,
-              &quot;NOT&quot;: 0.17,
+              &quot;Language&quot;: 0.01,
+              &quot;NOT&quot;: 0.15,
               &quot;Query&quot;: 0.01,
-              &quot;SQL&quot;: 0.25,
-              &quot;Structured&quot;: 0.01,
-              &quot;against&quot;: 0.0,
-              &quot;itself&quot;: 0.04,
+              &quot;SQL&quot;: 0.36,
+              &quot;Structured&quot;: 0.0,
+              &quot;against&quot;: 0.01,
+              &quot;itself&quot;: 0.07,
               &quot;judge-jev&quot;: 0.02,
-              &quot;none&quot;: 0.37,
-              &quot;record&quot;: 0.0,
+              &quot;none&quot;: 0.32,
+              &quot;record&quot;: 0.01,
               &quot;run&quot;: 0.03,
-              &quot;store&quot;: 0.01,
-              &quot;the&quot;: 0.0
+              &quot;store&quot;: 0.01
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -696,20 +693,22 @@ store itself.</p>
         &quot;attempts&quot;: 1,
         &quot;model&quot;: &quot;jev-1.14.0&quot;,
         &quot;question_digests&quot;: {
-          &quot;which_part&quot;: &quot;1946421703e6106ad989cfca3ed0ff9408c94dab170200593d7480e76d3d3ca7&quot;
+          &quot;which_part&quot;: &quot;6c4f4fe541e46e77cb967ac4a6415de9049531eef84ab468f1a0a5f28fcf0296&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MRE80NFX277JXNQFXWR6&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AW7SB682D4KS4HCJK73W&quot;,
         &quot;usage&quot;: {
-          &quot;input_tokens&quot;: 1228,
-          &quot;output_tokens&quot;: 120
+          &quot;input_tokens&quot;: 1178,
+          &quot;output_tokens&quot;: 105
         }
       }
     },
     &quot;verdict&quot;: {
       &quot;verdict&quot;: &quot;review&quot;,
       &quot;stage&quot;: &quot;which-part&quot;,
-      &quot;which_part&quot;: &quot;none&quot;,
-      &quot;confidence&quot;: 0.32,
+      &quot;which_part&quot;: &quot;SQL&quot;,
+      &quot;model_choice&quot;: &quot;SQL&quot;,
+      &quot;tied_with_none&quot;: false,
+      &quot;confidence&quot;: 0.3,
       &quot;model&quot;: &quot;jev-1.14.0&quot;
     }
   },
@@ -719,10 +718,10 @@ store itself.</p>
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/REQ-JEV-0001.s3&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/REQ-JEV-0001.s3&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -752,13 +751,13 @@ logger (REQ-JEV-0008).</p>
 <p class="criterion">Names alternatives and why each was rejected.</p>          </div>
           <div class="answer accepted">
             <div class="answer-meta"><span>ADR-JEV-0001 / gates</span><span>accepted</span></div>
-            <div class="answer-top"><span>consequences: <span class="choice">positive and negative</span></span><span class="probability">98%</span></div>
-            <div class="track"><div class="fill" style="width:98.0%"></div></div>
+            <div class="answer-top"><span>consequences: <span class="choice">positive and negative</span></span><span class="probability">97%</span></div>
+            <div class="track"><div class="fill" style="width:97.0%"></div></div>
 <p class="criterion">Names benefits and costs.</p>          </div>
           <div class="answer accepted">
             <div class="answer-meta"><span>ADR-JEV-0001 / gates</span><span>accepted</span></div>
-            <div class="answer-top"><span>context: <span class="choice">problem and forces</span></span><span class="probability">98%</span></div>
-            <div class="track"><div class="fill" style="width:98.0%"></div></div>
+            <div class="answer-top"><span>context: <span class="choice">problem and forces</span></span><span class="probability">97%</span></div>
+            <div class="track"><div class="fill" style="width:97.0%"></div></div>
 <p class="criterion">Names the problem and the forces or constraints that shaped the decision.</p>          </div>
         </section>
       </div>
@@ -818,21 +817,21 @@ logger (REQ-JEV-0008).</p>
           },
           &quot;consequences&quot;: {
             &quot;choice&quot;: &quot;positive and negative&quot;,
-            &quot;confidence&quot;: 0.98,
+            &quot;confidence&quot;: 0.97,
             &quot;probabilities&quot;: {
-              &quot;missing&quot;: 0.01,
-              &quot;positive and negative&quot;: 0.99,
+              &quot;missing&quot;: 0.02,
+              &quot;positive and negative&quot;: 0.98,
               &quot;positive only&quot;: 0.0
             },
             &quot;type&quot;: &quot;choice&quot;
           },
           &quot;context&quot;: {
             &quot;choice&quot;: &quot;problem and forces&quot;,
-            &quot;confidence&quot;: 0.98,
+            &quot;confidence&quot;: 0.97,
             &quot;probabilities&quot;: {
-              &quot;background only&quot;: 0.01,
+              &quot;background only&quot;: 0.02,
               &quot;missing&quot;: 0.0,
-              &quot;problem and forces&quot;: 0.99
+              &quot;problem and forces&quot;: 0.98
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -844,7 +843,7 @@ logger (REQ-JEV-0008).</p>
           &quot;consequences&quot;: &quot;df0e706b2a2d32963b95e9f04e1ce8064daa8bfcceb24da54c90b0b9237cf398&quot;,
           &quot;context&quot;: &quot;9b16f0fca4afd322f3420f9dd2e4a8c1e41c33f8c61a8fec7d63b357e61672b6&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MRKKHAB25S5R7AB1886K&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AWCF2MTQJVPV83A3GN6D&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1182,
           &quot;output_tokens&quot;: 129
@@ -873,10 +872,10 @@ logger (REQ-JEV-0008).</p>
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/ADR-JEV-0001&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/ADR-JEV-0001&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -904,18 +903,18 @@ logger (REQ-JEV-0008).</p>
 <p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>NFR-JEV-0001.s1 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">40%</span></div>
-            <div class="track"><div class="fill" style="width:40.0%"></div></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">48%</span></div>
+            <div class="track"><div class="fill" style="width:48.0%"></div></div>
 <p class="criterion">One obligation.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>NFR-JEV-0001.s1 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">64%</span></div>
-            <div class="track"><div class="fill" style="width:64.0%"></div></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">62%</span></div>
+            <div class="track"><div class="fill" style="width:62.0%"></div></div>
 <p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
           <div class="answer diagnostic">
             <div class="answer-meta"><span>NFR-JEV-0001.s1 / which-part</span><span>diagnostic</span></div>
-            <div class="answer-top"><span>which_part: <span class="choice">MUST</span></span><span class="probability">42%</span></div>
-            <div class="track"><div class="fill" style="width:42.0%"></div></div>
+            <div class="answer-top"><span>which_part: <span class="choice">none</span></span><span class="probability">35%</span></div>
+            <div class="track"><div class="fill" style="width:35.0%"></div></div>
           </div>
         </section>
       </div>
@@ -975,21 +974,21 @@ logger (REQ-JEV-0008).</p>
           },
           &quot;obligations&quot;: {
             &quot;choice&quot;: &quot;1&quot;,
-            &quot;confidence&quot;: 0.4,
+            &quot;confidence&quot;: 0.48,
             &quot;probabilities&quot;: {
-              &quot;1&quot;: 0.55,
-              &quot;2&quot;: 0.41,
-              &quot;3&quot;: 0.04,
+              &quot;1&quot;: 0.61,
+              &quot;2&quot;: 0.36,
+              &quot;3&quot;: 0.03,
               &quot;4+&quot;: 0.0
             },
             &quot;type&quot;: &quot;choice&quot;
           },
           &quot;term&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.64,
+            &quot;confidence&quot;: 0.62,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.18,
-              &quot;yes&quot;: 0.82
+              &quot;no&quot;: 0.19,
+              &quot;yes&quot;: 0.81
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1001,7 +1000,7 @@ logger (REQ-JEV-0008).</p>
           &quot;obligations&quot;: &quot;6e80fd062efaeab8c79892dd502a7e39aed7aa82d464b2dbffb694978b384761&quot;,
           &quot;term&quot;: &quot;6c4eee3f73e2e895112de65620152fe8235944c12302048cb65f7c5fcf4a72c5&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MRS0KH5V1AN0SRQKCYJT&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AWGP8PNPG8XZEB4Q1NPV&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1121,
           &quot;output_tokens&quot;: 114
@@ -1019,11 +1018,11 @@ logger (REQ-JEV-0008).</p>
           &quot;question&quot;: &quot;obligations&quot;,
           &quot;answer&quot;: {
             &quot;choice&quot;: &quot;1&quot;,
-            &quot;confidence&quot;: 0.4,
+            &quot;confidence&quot;: 0.48,
             &quot;probabilities&quot;: {
-              &quot;1&quot;: 0.55,
-              &quot;2&quot;: 0.41,
-              &quot;3&quot;: 0.04,
+              &quot;1&quot;: 0.61,
+              &quot;2&quot;: 0.36,
+              &quot;3&quot;: 0.03,
               &quot;4+&quot;: 0.0
             },
             &quot;type&quot;: &quot;choice&quot;
@@ -1039,7 +1038,6 @@ logger (REQ-JEV-0008).</p>
           &quot;criteria&quot;: {
             &quot;judge-jev&quot;: &quot;The literal term `judge-jev` accounts for the answer or uncertainty.&quot;,
             &quot;tests&quot;: &quot;The literal term `tests` accounts for the answer or uncertainty.&quot;,
-            &quot;MUST&quot;: &quot;The literal term `MUST` accounts for the answer or uncertainty.&quot;,
             &quot;run&quot;: &quot;The literal term `run` accounts for the answer or uncertainty.&quot;,
             &quot;offline&quot;: &quot;The literal term `offline` accounts for the answer or uncertainty.&quot;,
             &quot;against&quot;: &quot;The literal term `against` accounts for the answer or uncertainty.&quot;,
@@ -1056,19 +1054,18 @@ logger (REQ-JEV-0008).</p>
       &quot;value&quot;: {
         &quot;answers&quot;: {
           &quot;which_part&quot;: {
-            &quot;choice&quot;: &quot;MUST&quot;,
-            &quot;confidence&quot;: 0.42,
+            &quot;choice&quot;: &quot;none&quot;,
+            &quot;confidence&quot;: 0.35,
             &quot;probabilities&quot;: {
-              &quot;Jev&quot;: 0.02,
-              &quot;MUST&quot;: 0.48,
-              &quot;against&quot;: 0.0,
-              &quot;answers&quot;: 0.02,
-              &quot;judge-jev&quot;: 0.02,
-              &quot;none&quot;: 0.29,
-              &quot;offline&quot;: 0.09,
-              &quot;recorded&quot;: 0.03,
-              &quot;run&quot;: 0.02,
-              &quot;tests&quot;: 0.03
+              &quot;Jev&quot;: 0.03,
+              &quot;against&quot;: 0.01,
+              &quot;answers&quot;: 0.07,
+              &quot;judge-jev&quot;: 0.07,
+              &quot;none&quot;: 0.42,
+              &quot;offline&quot;: 0.19,
+              &quot;recorded&quot;: 0.08,
+              &quot;run&quot;: 0.05,
+              &quot;tests&quot;: 0.08
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1076,20 +1073,22 @@ logger (REQ-JEV-0008).</p>
         &quot;attempts&quot;: 1,
         &quot;model&quot;: &quot;jev-1.14.0&quot;,
         &quot;question_digests&quot;: {
-          &quot;which_part&quot;: &quot;40ae6d2d2d051a2d2f4ec55511323c7d0d998bfe4242ed1064fa11391465b6c8&quot;
+          &quot;which_part&quot;: &quot;331b6545153ce56422824a476c497b60b1947da4d28b0bc023f909ac7631eef9&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MRYW3107911GRWMMFAW7&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AWMK270EF7V0J9DX4RJ3&quot;,
         &quot;usage&quot;: {
-          &quot;input_tokens&quot;: 1159,
-          &quot;output_tokens&quot;: 95
+          &quot;input_tokens&quot;: 1134,
+          &quot;output_tokens&quot;: 86
         }
       }
     },
     &quot;verdict&quot;: {
       &quot;verdict&quot;: &quot;review&quot;,
       &quot;stage&quot;: &quot;which-part&quot;,
-      &quot;which_part&quot;: &quot;MUST&quot;,
-      &quot;confidence&quot;: 0.42,
+      &quot;which_part&quot;: &quot;none&quot;,
+      &quot;model_choice&quot;: &quot;none&quot;,
+      &quot;tied_with_none&quot;: false,
+      &quot;confidence&quot;: 0.35,
       &quot;model&quot;: &quot;jev-1.14.0&quot;
     }
   },
@@ -1099,10 +1098,10 @@ logger (REQ-JEV-0008).</p>
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s1&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/NFR-JEV-0001.s1&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -1125,8 +1124,8 @@ logger (REQ-JEV-0008).</p>
         <section class="answers"><h3>Observed answers</h3>
           <div class="answer under-bar">
             <div class="answer-meta"><span>NFR-JEV-0001.s2 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">60%</span></div>
-            <div class="track"><div class="fill" style="width:60.0%"></div></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">62%</span></div>
+            <div class="track"><div class="fill" style="width:62.0%"></div></div>
 <p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
           <div class="answer accepted">
             <div class="answer-meta"><span>NFR-JEV-0001.s2 / gates</span><span>accepted</span></div>
@@ -1135,13 +1134,13 @@ logger (REQ-JEV-0008).</p>
 <p class="criterion">One obligation.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>NFR-JEV-0001.s2 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">62%</span></div>
-            <div class="track"><div class="fill" style="width:62.0%"></div></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">60%</span></div>
+            <div class="track"><div class="fill" style="width:60.0%"></div></div>
 <p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
           <div class="answer diagnostic">
             <div class="answer-meta"><span>NFR-JEV-0001.s2 / which-part</span><span>diagnostic</span></div>
-            <div class="answer-top"><span>which_part: <span class="choice">timing</span></span><span class="probability">46%</span></div>
-            <div class="track"><div class="fill" style="width:46.0%"></div></div>
+            <div class="answer-top"><span>which_part: <span class="choice">timing</span></span><span class="probability">54%</span></div>
+            <div class="track"><div class="fill" style="width:54.0%"></div></div>
           </div>
         </section>
       </div>
@@ -1191,11 +1190,11 @@ logger (REQ-JEV-0008).</p>
         &quot;answers&quot;: {
           &quot;checkable&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.6,
+            &quot;confidence&quot;: 0.62,
             &quot;probabilities&quot;: {
-              &quot;needs a measure&quot;: 0.25,
+              &quot;needs a measure&quot;: 0.23,
               &quot;no&quot;: 0.02,
-              &quot;yes&quot;: 0.73
+              &quot;yes&quot;: 0.75
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -1212,10 +1211,10 @@ logger (REQ-JEV-0008).</p>
           },
           &quot;term&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.62,
+            &quot;confidence&quot;: 0.6,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.19,
-              &quot;yes&quot;: 0.81
+              &quot;no&quot;: 0.2,
+              &quot;yes&quot;: 0.8
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1227,7 +1226,7 @@ logger (REQ-JEV-0008).</p>
           &quot;obligations&quot;: &quot;8c3c02d3d68c92210d876032166822b11397b465d6582583c503d3bfa6ee0e2d&quot;,
           &quot;term&quot;: &quot;04844d2ee3d59346e3923dc12c9e2fc2a35037cf862fcfd6332be9bf315a63bf&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MS47V3TTA63C64CSZ4K8&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AWRZBYVWN495PTZ0D2R0&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1119,
           &quot;output_tokens&quot;: 114
@@ -1245,10 +1244,10 @@ logger (REQ-JEV-0008).</p>
           &quot;question&quot;: &quot;term&quot;,
           &quot;answer&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.62,
+            &quot;confidence&quot;: 0.6,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.19,
-              &quot;yes&quot;: 0.81
+              &quot;no&quot;: 0.2,
+              &quot;yes&quot;: 0.8
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -1263,10 +1262,8 @@ logger (REQ-JEV-0008).</p>
           &quot;criteria&quot;: {
             &quot;judge-jev&quot;: &quot;The literal term `judge-jev` accounts for the answer or uncertainty.&quot;,
             &quot;tests&quot;: &quot;The literal term `tests` accounts for the answer or uncertainty.&quot;,
-            &quot;MUST&quot;: &quot;The literal term `MUST` accounts for the answer or uncertainty.&quot;,
             &quot;NOT&quot;: &quot;The literal term `NOT` accounts for the answer or uncertainty.&quot;,
             &quot;depend&quot;: &quot;The literal term `depend` accounts for the answer or uncertainty.&quot;,
-            &quot;on&quot;: &quot;The literal term `on` accounts for the answer or uncertainty.&quot;,
             &quot;timing&quot;: &quot;The literal term `timing` accounts for the answer or uncertainty.&quot;,
             &quot;none&quot;: &quot;No listed part accounts for the answer or uncertainty.&quot;
           }
@@ -1279,16 +1276,14 @@ logger (REQ-JEV-0008).</p>
         &quot;answers&quot;: {
           &quot;which_part&quot;: {
             &quot;choice&quot;: &quot;timing&quot;,
-            &quot;confidence&quot;: 0.46,
+            &quot;confidence&quot;: 0.54,
             &quot;probabilities&quot;: {
-              &quot;MUST&quot;: 0.03,
-              &quot;NOT&quot;: 0.05,
-              &quot;depend&quot;: 0.05,
+              &quot;NOT&quot;: 0.02,
+              &quot;depend&quot;: 0.04,
               &quot;judge-jev&quot;: 0.01,
-              &quot;none&quot;: 0.32,
-              &quot;on&quot;: 0.0,
+              &quot;none&quot;: 0.3,
               &quot;tests&quot;: 0.01,
-              &quot;timing&quot;: 0.53
+              &quot;timing&quot;: 0.62
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1296,12 +1291,12 @@ logger (REQ-JEV-0008).</p>
         &quot;attempts&quot;: 1,
         &quot;model&quot;: &quot;jev-1.14.0&quot;,
         &quot;question_digests&quot;: {
-          &quot;which_part&quot;: &quot;70f0297e02921df8d721e7ceed2f5ed633913162afdf77ae2decf8fa1a81460b&quot;
+          &quot;which_part&quot;: &quot;bee4bec068dae89c35a40dc259960c9946931332ce6ff6ef8e67f7d05afea183&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MS9F5H4Q2NACNYC35061&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AWXQCSWV2J0MT226KTMR&quot;,
         &quot;usage&quot;: {
-          &quot;input_tokens&quot;: 1086,
-          &quot;output_tokens&quot;: 79
+          &quot;input_tokens&quot;: 1033,
+          &quot;output_tokens&quot;: 64
         }
       }
     },
@@ -1309,7 +1304,9 @@ logger (REQ-JEV-0008).</p>
       &quot;verdict&quot;: &quot;review&quot;,
       &quot;stage&quot;: &quot;which-part&quot;,
       &quot;which_part&quot;: &quot;timing&quot;,
-      &quot;confidence&quot;: 0.46,
+      &quot;model_choice&quot;: &quot;timing&quot;,
+      &quot;tied_with_none&quot;: false,
+      &quot;confidence&quot;: 0.54,
       &quot;model&quot;: &quot;jev-1.14.0&quot;
     }
   },
@@ -1319,10 +1316,10 @@ logger (REQ-JEV-0008).</p>
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s2&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/NFR-JEV-0001.s2&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -1345,8 +1342,8 @@ logger (REQ-JEV-0008).</p>
         <section class="answers"><h3>Observed answers</h3>
           <div class="answer accepted">
             <div class="answer-meta"><span>NFR-JEV-0001.s3 / gates</span><span>accepted</span></div>
-            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">91%</span></div>
-            <div class="track"><div class="fill" style="width:91.0%"></div></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">89%</span></div>
+            <div class="track"><div class="fill" style="width:89.0%"></div></div>
 <p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
           <div class="answer accepted">
             <div class="answer-meta"><span>NFR-JEV-0001.s3 / gates</span><span>accepted</span></div>
@@ -1355,13 +1352,13 @@ logger (REQ-JEV-0008).</p>
 <p class="criterion">One obligation.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>NFR-JEV-0001.s3 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">48%</span></div>
-            <div class="track"><div class="fill" style="width:48.0%"></div></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">54%</span></div>
+            <div class="track"><div class="fill" style="width:54.0%"></div></div>
 <p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
           <div class="answer diagnostic">
             <div class="answer-meta"><span>NFR-JEV-0001.s3 / which-part</span><span>diagnostic</span></div>
-            <div class="answer-top"><span>which_part: <span class="choice">sleeps</span></span><span class="probability">59%</span></div>
-            <div class="track"><div class="fill" style="width:59.0%"></div></div>
+            <div class="answer-top"><span>which_part: <span class="choice">sleeps</span></span><span class="probability">40%</span></div>
+            <div class="track"><div class="fill" style="width:40.0%"></div></div>
           </div>
         </section>
       </div>
@@ -1411,11 +1408,11 @@ logger (REQ-JEV-0008).</p>
         &quot;answers&quot;: {
           &quot;checkable&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.91,
+            &quot;confidence&quot;: 0.89,
             &quot;probabilities&quot;: {
-              &quot;needs a measure&quot;: 0.05,
+              &quot;needs a measure&quot;: 0.06,
               &quot;no&quot;: 0.01,
-              &quot;yes&quot;: 0.94
+              &quot;yes&quot;: 0.93
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -1432,10 +1429,10 @@ logger (REQ-JEV-0008).</p>
           },
           &quot;term&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.48,
+            &quot;confidence&quot;: 0.54,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.26,
-              &quot;yes&quot;: 0.74
+              &quot;no&quot;: 0.23,
+              &quot;yes&quot;: 0.77
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1447,7 +1444,7 @@ logger (REQ-JEV-0008).</p>
           &quot;obligations&quot;: &quot;e5dd99cf5dbf192855ed15f98cdc32d787dada0f689e98d95a88cdcae1ffbfb3&quot;,
           &quot;term&quot;: &quot;a75f61691be619e6f94d67c6575db8be5380e70bbbb747c101de94837a56f325&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MSEMMGRPN6QJ8Z4GZNDZ&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AX1ZTP1GP0MF64S3T1PX&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1119,
           &quot;output_tokens&quot;: 114
@@ -1465,10 +1462,10 @@ logger (REQ-JEV-0008).</p>
           &quot;question&quot;: &quot;term&quot;,
           &quot;answer&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.48,
+            &quot;confidence&quot;: 0.54,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.26,
-              &quot;yes&quot;: 0.74
+              &quot;no&quot;: 0.23,
+              &quot;yes&quot;: 0.77
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -1483,10 +1480,8 @@ logger (REQ-JEV-0008).</p>
           &quot;criteria&quot;: {
             &quot;judge-jev&quot;: &quot;The literal term `judge-jev` accounts for the answer or uncertainty.&quot;,
             &quot;tests&quot;: &quot;The literal term `tests` accounts for the answer or uncertainty.&quot;,
-            &quot;MUST&quot;: &quot;The literal term `MUST` accounts for the answer or uncertainty.&quot;,
             &quot;NOT&quot;: &quot;The literal term `NOT` accounts for the answer or uncertainty.&quot;,
             &quot;depend&quot;: &quot;The literal term `depend` accounts for the answer or uncertainty.&quot;,
-            &quot;on&quot;: &quot;The literal term `on` accounts for the answer or uncertainty.&quot;,
             &quot;sleeps&quot;: &quot;The literal term `sleeps` accounts for the answer or uncertainty.&quot;,
             &quot;none&quot;: &quot;No listed part accounts for the answer or uncertainty.&quot;
           }
@@ -1499,16 +1494,14 @@ logger (REQ-JEV-0008).</p>
         &quot;answers&quot;: {
           &quot;which_part&quot;: {
             &quot;choice&quot;: &quot;sleeps&quot;,
-            &quot;confidence&quot;: 0.59,
+            &quot;confidence&quot;: 0.4,
             &quot;probabilities&quot;: {
-              &quot;MUST&quot;: 0.03,
-              &quot;NOT&quot;: 0.05,
-              &quot;depend&quot;: 0.03,
+              &quot;NOT&quot;: 0.03,
+              &quot;depend&quot;: 0.06,
               &quot;judge-jev&quot;: 0.01,
-              &quot;none&quot;: 0.23,
-              &quot;on&quot;: 0.0,
-              &quot;sleeps&quot;: 0.64,
-              &quot;tests&quot;: 0.01
+              &quot;none&quot;: 0.37,
+              &quot;sleeps&quot;: 0.5,
+              &quot;tests&quot;: 0.03
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1516,12 +1509,12 @@ logger (REQ-JEV-0008).</p>
         &quot;attempts&quot;: 1,
         &quot;model&quot;: &quot;jev-1.14.0&quot;,
         &quot;question_digests&quot;: {
-          &quot;which_part&quot;: &quot;71086fb4869f8ccb778bdd0eaea0bd2ed928387d7994d3d4e3545cfc01bf5eb0&quot;
+          &quot;which_part&quot;: &quot;e08a09b3e995de79bf57a0454ecea96786e0ab480cff2c63e8e6b0edd8686ef8&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MSMMVNQ5H2DTZEKNZ8XC&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AX60ZA50G9Q2RWHD3F7G&quot;,
         &quot;usage&quot;: {
-          &quot;input_tokens&quot;: 1088,
-          &quot;output_tokens&quot;: 81
+          &quot;input_tokens&quot;: 1038,
+          &quot;output_tokens&quot;: 66
         }
       }
     },
@@ -1529,7 +1522,9 @@ logger (REQ-JEV-0008).</p>
       &quot;verdict&quot;: &quot;review&quot;,
       &quot;stage&quot;: &quot;which-part&quot;,
       &quot;which_part&quot;: &quot;sleeps&quot;,
-      &quot;confidence&quot;: 0.59,
+      &quot;model_choice&quot;: &quot;sleeps&quot;,
+      &quot;tied_with_none&quot;: false,
+      &quot;confidence&quot;: 0.4,
       &quot;model&quot;: &quot;jev-1.14.0&quot;
     }
   },
@@ -1539,10 +1534,10 @@ logger (REQ-JEV-0008).</p>
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s3&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/NFR-JEV-0001.s3&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -1565,8 +1560,8 @@ logger (REQ-JEV-0008).</p>
         <section class="answers"><h3>Observed answers</h3>
           <div class="answer accepted">
             <div class="answer-meta"><span>NFR-JEV-0001.s4 / gates</span><span>accepted</span></div>
-            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">85%</span></div>
-            <div class="track"><div class="fill" style="width:85.0%"></div></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">83%</span></div>
+            <div class="track"><div class="fill" style="width:83.0%"></div></div>
 <p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
           <div class="answer accepted">
             <div class="answer-meta"><span>NFR-JEV-0001.s4 / gates</span><span>accepted</span></div>
@@ -1575,13 +1570,13 @@ logger (REQ-JEV-0008).</p>
 <p class="criterion">One obligation.</p>          </div>
           <div class="answer under-bar">
             <div class="answer-meta"><span>NFR-JEV-0001.s4 / gates</span><span>under bar</span></div>
-            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">58%</span></div>
-            <div class="track"><div class="fill" style="width:58.0%"></div></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">60%</span></div>
+            <div class="track"><div class="fill" style="width:60.0%"></div></div>
 <p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
           <div class="answer diagnostic">
             <div class="answer-meta"><span>NFR-JEV-0001.s4 / which-part</span><span>diagnostic</span></div>
-            <div class="answer-top"><span>which_part: <span class="choice">ordering</span></span><span class="probability">38%</span></div>
-            <div class="track"><div class="fill" style="width:38.0%"></div></div>
+            <div class="answer-top"><span>which_part: <span class="choice">ordering</span></span><span class="probability">40%</span></div>
+            <div class="track"><div class="fill" style="width:40.0%"></div></div>
           </div>
         </section>
       </div>
@@ -1631,11 +1626,11 @@ logger (REQ-JEV-0008).</p>
         &quot;answers&quot;: {
           &quot;checkable&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.85,
+            &quot;confidence&quot;: 0.83,
             &quot;probabilities&quot;: {
               &quot;needs a measure&quot;: 0.09,
-              &quot;no&quot;: 0.01,
-              &quot;yes&quot;: 0.9
+              &quot;no&quot;: 0.02,
+              &quot;yes&quot;: 0.89
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -1652,10 +1647,10 @@ logger (REQ-JEV-0008).</p>
           },
           &quot;term&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.58,
+            &quot;confidence&quot;: 0.6,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.21,
-              &quot;yes&quot;: 0.79
+              &quot;no&quot;: 0.2,
+              &quot;yes&quot;: 0.8
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1667,7 +1662,7 @@ logger (REQ-JEV-0008).</p>
           &quot;obligations&quot;: &quot;106242727f68742f62c3a216c6d041a1a4c1e44477418bbfd6c7c210766c88e2&quot;,
           &quot;term&quot;: &quot;2d88d9fa593779e49bf97a0c6657b03c8f02ddfcffb82f599c6ae408f848bba3&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MSTSS9M5CWB3MD6TB8M8&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AXA27P5QEQRX1N5W48ZM&quot;,
         &quot;usage&quot;: {
           &quot;input_tokens&quot;: 1119,
           &quot;output_tokens&quot;: 114
@@ -1685,10 +1680,10 @@ logger (REQ-JEV-0008).</p>
           &quot;question&quot;: &quot;term&quot;,
           &quot;answer&quot;: {
             &quot;choice&quot;: &quot;yes&quot;,
-            &quot;confidence&quot;: 0.58,
+            &quot;confidence&quot;: 0.6,
             &quot;probabilities&quot;: {
-              &quot;no&quot;: 0.21,
-              &quot;yes&quot;: 0.79
+              &quot;no&quot;: 0.2,
+              &quot;yes&quot;: 0.8
             },
             &quot;type&quot;: &quot;choice&quot;
           },
@@ -1703,10 +1698,8 @@ logger (REQ-JEV-0008).</p>
           &quot;criteria&quot;: {
             &quot;judge-jev&quot;: &quot;The literal term `judge-jev` accounts for the answer or uncertainty.&quot;,
             &quot;tests&quot;: &quot;The literal term `tests` accounts for the answer or uncertainty.&quot;,
-            &quot;MUST&quot;: &quot;The literal term `MUST` accounts for the answer or uncertainty.&quot;,
             &quot;NOT&quot;: &quot;The literal term `NOT` accounts for the answer or uncertainty.&quot;,
             &quot;depend&quot;: &quot;The literal term `depend` accounts for the answer or uncertainty.&quot;,
-            &quot;on&quot;: &quot;The literal term `on` accounts for the answer or uncertainty.&quot;,
             &quot;ordering&quot;: &quot;The literal term `ordering` accounts for the answer or uncertainty.&quot;,
             &quot;none&quot;: &quot;No listed part accounts for the answer or uncertainty.&quot;
           }
@@ -1719,16 +1712,14 @@ logger (REQ-JEV-0008).</p>
         &quot;answers&quot;: {
           &quot;which_part&quot;: {
             &quot;choice&quot;: &quot;ordering&quot;,
-            &quot;confidence&quot;: 0.38,
+            &quot;confidence&quot;: 0.4,
             &quot;probabilities&quot;: {
-              &quot;MUST&quot;: 0.04,
-              &quot;NOT&quot;: 0.07,
+              &quot;NOT&quot;: 0.03,
               &quot;depend&quot;: 0.05,
-              &quot;judge-jev&quot;: 0.01,
-              &quot;none&quot;: 0.36,
-              &quot;on&quot;: 0.0,
-              &quot;ordering&quot;: 0.46,
-              &quot;tests&quot;: 0.01
+              &quot;judge-jev&quot;: 0.02,
+              &quot;none&quot;: 0.38,
+              &quot;ordering&quot;: 0.5,
+              &quot;tests&quot;: 0.02
             },
             &quot;type&quot;: &quot;choice&quot;
           }
@@ -1736,12 +1727,12 @@ logger (REQ-JEV-0008).</p>
         &quot;attempts&quot;: 1,
         &quot;model&quot;: &quot;jev-1.14.0&quot;,
         &quot;question_digests&quot;: {
-          &quot;which_part&quot;: &quot;231e70d4cf26cf0d1757e2bc7546543c977b6418d8b9db668f2e27d0df1dfdb6&quot;
+          &quot;which_part&quot;: &quot;7121b49f816764f032262e30a73f3bf6213c1a28f7dc88afca282628e0c38e04&quot;
         },
-        &quot;session_id&quot;: &quot;01M8A4MT05JNS07DMC2RFE8WE8&quot;,
+        &quot;session_id&quot;: &quot;01M8A9AXEFX89Q21V1TGQ4PPKX&quot;,
         &quot;usage&quot;: {
-          &quot;input_tokens&quot;: 1084,
-          &quot;output_tokens&quot;: 77
+          &quot;input_tokens&quot;: 1031,
+          &quot;output_tokens&quot;: 62
         }
       }
     },
@@ -1749,7 +1740,9 @@ logger (REQ-JEV-0008).</p>
       &quot;verdict&quot;: &quot;review&quot;,
       &quot;stage&quot;: &quot;which-part&quot;,
       &quot;which_part&quot;: &quot;ordering&quot;,
-      &quot;confidence&quot;: 0.38,
+      &quot;model_choice&quot;: &quot;ordering&quot;,
+      &quot;tied_with_none&quot;: false,
+      &quot;confidence&quot;: 0.4,
       &quot;model&quot;: &quot;jev-1.14.0&quot;
     }
   },
@@ -1759,10 +1752,10 @@ logger (REQ-JEV-0008).</p>
       &quot;-o&quot;,
       &quot;pipefail&quot;,
       &quot;-c&quot;,
-      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
+      &quot;scripts=$1\njob=$2\nfirst_model=$3\nsecond_model=$4\nbar=$5\ndecidr send --project decidr-question-tree --model \&quot;$first_model\&quot; --agent-role skill-author &lt; \&quot;$job/request.json\&quot; \\\n  | tee \&quot;$job/gates.jsonl\&quot; \\\n  | jq -c --slurpfile item \&quot;$job/item.json\&quot; --slurpfile terms \&quot;$job/terms.json\&quot; --slurpfile tree \&quot;$job/tree.json\&quot; --argjson bar \&quot;$bar\&quot; -f \&quot;$scripts/next.jq\&quot; \\\n  | tee \&quot;$job/next.jsonl\&quot; \\\n  | bash \&quot;$scripts/send-next.sh\&quot; \&quot;$second_model\&quot; --project decidr-question-tree --agent-role skill-author \\\n  | tee \&quot;$job/stage2.jsonl\&quot; \\\n  | jq -c -f \&quot;$scripts/verdict.jq\&quot; &gt; \&quot;$job/verdict.jsonl\&quot;\n&quot;,
       &quot;decidr-pipeline&quot;,
-      &quot;/Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
-      &quot;/private/tmp/decidr-repo-example.n7y7yg/pipeline-report/NFR-JEV-0001.s4&quot;,
+      &quot;{repo}/plugins/sc-judge-jev/skills/walking-decidr-trees/scripts&quot;,
+      &quot;{run}/NFR-JEV-0001.s4&quot;,
       &quot;jev&quot;,
       &quot;jev&quot;,
       &quot;0.8&quot;
@@ -1773,7 +1766,7 @@ logger (REQ-JEV-0008).</p>
   }
 }</pre></details>
     </article>
-    <footer>Diagrams rendered with D2 / ELK. Report composed with sc-compose. Source revision <code>c823e4600cbbee7f987cc2e65485f7c8deb6da92</code>. Confidence is a model response, not a measured probability of correctness.</footer>
+    <footer>Diagrams rendered with D2 / ELK. Report composed with sc-compose. Source revision <code>bcf229e969ede8d22f4c6bb497501e393bf31b85</code>. Confidence is a model response, not a measured probability of correctness.</footer>
   </main>
   <script>
     document.getElementById('record-select').addEventListener('change', function(event) {

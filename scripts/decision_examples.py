@@ -12,6 +12,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from recording_paths import portable_recording
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / 'plugins/sc-judge-jev'
@@ -108,7 +109,7 @@ decidr send --project decidr-question-tree --model "$first_model" --agent-role s
   | tee "$job/gates.jsonl" \\
   | jq -c --slurpfile item "$job/item.json" --slurpfile terms "$job/terms.json" --slurpfile tree "$job/tree.json" --argjson bar "$bar" -f "$scripts/next.jq" \\
   | tee "$job/next.jsonl" \\
-  | bash "$scripts/send-next.sh" "$second_model" \\
+  | bash "$scripts/send-next.sh" "$second_model" --project decidr-question-tree --agent-role skill-author \\
   | tee "$job/stage2.jsonl" \\
   | jq -c -f "$scripts/verdict.jq" > "$job/verdict.jsonl"
 '''
@@ -293,6 +294,14 @@ def main(example):
         if run['example'] != example:
             raise ValueError('recording belongs to a different example')
         code = run['exit_code']
+    locations = [(output, '{run}')]
+    if args.index:
+        locations.append((args.index.resolve(), '{index}'))
+    if args.raptor:
+        locations.append((args.raptor.resolve(), '{raptor}'))
+    if args.judge:
+        locations.append((args.judge.resolve().parents[4], '{installed-judge}'))
+    run = portable_recording(run, locations=locations)
     write(output / 'run.json', run)
     from render_decision_report import render_report
     render_report(run, output, replay=not args.live)

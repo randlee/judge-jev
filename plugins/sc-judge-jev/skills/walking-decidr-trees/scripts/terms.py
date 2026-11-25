@@ -5,6 +5,10 @@ from pathlib import Path
 import re
 import sys
 
+STOPWORDS = frozenset('''a an and are as at be been being by can could for from
+    if in into is it its must of on or shall should that the their then there
+    these this those to was were when which will with would'''.split())
+
 
 def terms(item):
     payload = json.loads(item["text"])
@@ -16,7 +20,10 @@ def terms(item):
     statement = payload["statement"]["text"]
     tokens = re.findall(r"`([^`]+)`|([\w]+(?:[-'][\w]+)*)", statement)
     # Keep the original case: Cancel (the type) differs from cancel (the verb).
-    return list(dict.fromkeys(code or word for code, word in tokens)) + ["none"]
+    # Keep code identifiers and negation, even when they look like prose stopwords.
+    selected = (code or word for code, word in tokens
+                if code or word.casefold() not in STOPWORDS)
+    return [term for term in dict.fromkeys(selected) if term != "none"] + ["none"]
 
 
 if __name__ == "__main__":

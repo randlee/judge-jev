@@ -6,6 +6,10 @@ Source revision: `c823e4600cbbee7f987cc2e65485f7c8deb6da92`. Captured: 2026-11-2
 
 The highlighted path is reconstructed from recorded branches and answers.
 
+This report uses quality's yes/no verdicts. In the companion CLI example, review means an answer under its 0.8 confidence bar needs follow-up, not a quality failure.
+
+Execution locations use placeholders such as `{repo}` and `{tmp}`; model response values are unchanged.
+
 ## Raptor import diagnostics
 
 These records were not selected for the live examples:
@@ -15,7 +19,7 @@ These records were not selected for the live examples:
 ## Commands
 
 ```bash
-uv run --python 3.11 --script /private/tmp/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/scripts/jev_judge.py quality --index /private/tmp/decidr-repo-example.n7y7yg/index.json --repository-root /Users/randlee/github/judge-jev-worktrees/feat/decidr-question-tree --run-name quality-example-live --req REQ-JEV-0001 --adr ADR-JEV-0001 --nfr NFR-JEV-0001
+uv run --python 3.11 --script '{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/scripts/jev_judge.py' quality --index '{tmp}/decidr-repo-example.n7y7yg/index.json' --repository-root '{repo}' --run-name quality-example-live --req REQ-JEV-0001 --adr ADR-JEV-0001 --nfr NFR-JEV-0001
 ```
 Exit status: 0.
 

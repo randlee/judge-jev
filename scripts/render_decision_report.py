@@ -9,12 +9,20 @@ import shlex
 import subprocess
 import xml.etree.ElementTree as ET
 from gen_tree_diagrams import render
+from recording_paths import portable_recording
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def render_report(run, output, *, replay=True):
     output = Path(output)
+    run = portable_recording(run, locations=[(output, '{run}')])
+    bar = run.get('bar')
+    review_meaning = (
+        f'Review means a gate answer is under this example\'s bar ({bar:g} confidence or an accepted-choice rule). '
+        'It needs follow-up; it is not a judge-jev quality failure.' if bar is not None else
+        'This report uses quality\'s yes/no verdicts. In the companion CLI example, review means an answer '
+        'under its 0.8 confidence bar needs follow-up, not a quality failure.')
     diagrams = output / 'diagrams'
     diagrams.mkdir(exist_ok=True)
     views = []
@@ -22,6 +30,7 @@ def render_report(run, output, *, replay=True):
                 'Recorded live responses; rendering this report does not send model requests.' if replay else 'Results from this live example run.',
                 '', f"Source revision: `{run['revision']}`. Captured: {run['captured_at']}.",
                 '', 'The highlighted path is reconstructed from recorded branches and answers.', '']
+    markdown.extend([review_meaning, '', 'Execution locations use placeholders such as `{repo}` and `{tmp}`; model response values are unchanged.', ''])
     diagnostics = run.get('diagnostics', [])
     if diagnostics:
         markdown.extend(['## Raptor import diagnostics', '',
@@ -45,8 +54,18 @@ def render_report(run, output, *, replay=True):
             if checked.returncode:
                 raise ValueError('D2 failed: ' + checked.stderr)
         svg_data = 'data:image/svg+xml;base64,' + base64.b64encode(svg.read_bytes()).decode('ascii')
-        rows = [{**a, 'confidence_label': f"{a['confidence']:.0%}", 'confidence_width': round(a['confidence'] * 100, 2)}
-                for a in view['answers']]
+        rows = []
+        for answer in view['answers']:
+            row = {**answer, 'confidence_label': f"{answer['confidence']:.0%}",
+                   'confidence_width': round(answer['confidence'] * 100, 2)}
+            if answer['question'] == 'which_part':
+                native = (view['raw'].get('boundaries', {}).get('stage2') or {}).get('value', {}).get('answers', {}).get('which_part', {})
+                p = native.get('probabilities', {})
+                if p.get('none', 0) > 0 and p.get(native.get('choice')) == p['none'] == max(p.values()):
+                    if native.get('choice') != 'none':
+                        row['choice'] = native['choice'] + ' (tied with none)'
+                        row['criterion'] = 'No term was localized: the model choice tied with none.'
+            rows.append(row)
         views.append({**view, 'svg_data': svg_data, 'path_label': ' → '.join(view['path']),
                       'answers': rows, 'raw_json': json.dumps(view['raw'], indent=2, ensure_ascii=False)})
         markdown.extend([f"## {view['id']} — {view['title']}", '', view['text'], '',
@@ -65,6 +84,7 @@ def render_report(run, output, *, replay=True):
                           'revision': run['revision'], 'mode': 'Recorded live results · offline replay' if replay else 'Live run',
                           'summary': ' · '.join(f'{number} {verdict}' for verdict, number in counts.items() if number),
                           'item_count': len(views), 'diagnostic_count': len(diagnostics),
+                          'review_meaning': review_meaning,
                           'policy': (f"Accepted gate choice and confidence ≥ {run['bar']:g}. Otherwise, ask which part and return review."
                                      if run.get('bar') is not None else
                                      'Shipped quality trees select branches from choices. Diagnostic questions and confidence do not change their verdicts.'),
