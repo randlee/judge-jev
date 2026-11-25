@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-quality-workflow
-version: 0.7.0
+version: 0.7.1
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -43,6 +43,12 @@ What fails an ADR: `context` is `background only` or `missing`; `alternatives` i
 `success: false` is a tool error, not a verdict: rerun once; if it fails again, report the code and message verbatim.
 
 A verdict of `yes` can still hold an unclear statement: an answer whose top choice is below the confidence gate (0.6 unless the repository states another value) means Jev found the wording unclear. `references/fix-strategy.md` lists those answers and asks Jev why, with `--questions <this skill's directory>/assets/questions/diag-<kind>.json`: the shipped tree with diagnostic `d_*` questions appended and the same verdict rules.
+
+### Find out why
+
+Read each failing or weak answer's choice, confidence and criterion (including `Fix:`), then its `runner_up` choice, probability and criterion. The verdict alone does not identify the problem; inspect the full JSON for weak answers even when the verdict is `yes`. Run the matching `diag-req.json`, `diag-nfr.json` or `diag-adr.json` tree and read its `d_*` answers alongside the original answer. For example, `d_ctx_gap` can distinguish a missing ADR problem from missing forces; `d_obligations_why` can distinguish a list from a condition.
+
+If the cause remains unclear, append focused multiple-choice questions to a copy of the diagnostic tree and rerun it as described in `fix-strategy.md`. Offer plausible alternatives, including none or other; a question that supplies the suspected answer can confirm a hypothesis but is not independent evidence of it. Report inconsistent or low-confidence answers as uncertain. Never guess which term or acronym Jev meant or invent a definition or alternative.
 
 ## 3. Fix a failing record
 

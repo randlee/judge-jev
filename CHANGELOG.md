@@ -2,6 +2,11 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.7.1 — 2026-11-24
+
+- Explain how to inspect Jev reasons and use diagnostic questions.
+- Repeat quality runs only when near-threshold uncertainty can change the result.
+
 ## 0.7.0 — 2026-11-23
 
 - Pin sc-decidr and regenerate the shared consumer for the 0.4.0 release.
