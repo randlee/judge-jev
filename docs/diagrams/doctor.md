@@ -6,11 +6,11 @@ wants to know it loads before any Jev call.
 ```mermaid
 flowchart LR
     S["Scope: shipped trees and question sets,<br/>.sc/judge-jev/ top level,<br/>and the PATH arguments (folders searched)"] --> F["Each file once"]
-    F --> EXT{".json or .ttl?"}
-    EXT -- no --> ERRV["error: VALIDATION.INPUT"]
-    EXT -- yes --> EX{"Exists?"}
+    F --> EX{"Exists?"}
     EX -- no --> ERR["error: INPUT.MISSING"]
-    EX -- yes --> K["By kind: tree (.json / .ttl), question set,<br/>definitions (.ttl): model and shapes"]
+    EX -- yes --> EXT{".json or .ttl?"}
+    EXT -- no --> ERRV["error: VALIDATION.INPUT"]
+    EXT -- yes --> K["By kind: tree (.json / .ttl), question set,<br/>definitions (.ttl): model and shapes"]
     K -. invalid .-> ERR2["error, naming file and rule"]
     K --> DUP{"One question IRI<br/>in several tree files?"}
     DUP -- yes --> ERR3["error: QUESTIONS.DUPLICATE_IRI"]

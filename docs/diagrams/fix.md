@@ -22,7 +22,7 @@ flowchart TD
     KEPT --> AP["Apply the kept candidates together, verify comb;<br/>drop the smallest-gain one while comb loses a gain;<br/>restore base if the gains do not hold"]
     AP --> V
     RJ --> RN{"Any candidate kept<br/>this round?"}
-    RN -- yes --> KEPT
+    RN -- "yes: others kept" --> KEPT
     RN -- no --> RD{"Two rounds in a row<br/>kept no candidate?"}
     RD -- no --> V
     RD -- yes --> UNR["Unresolved: keep best text;<br/>to write.md once"]
