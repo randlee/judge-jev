@@ -47,6 +47,10 @@ review, 2026-11-24):
 - Redaction of every key in the sc-decidr wheel's provider-key list
   (REQ-JEV-0010).
 
+Owner ruling 2026-11-24: `--model` takes any selector the sc-decidr
+wheel resolves, not only `haiku` and `luna`; the caller chooses one model
+per command.
+
 sc-agent's session log is adopted through the wheel's `Run`: each
 command opens one `Run` through the adopted client's `open_run`, sends through it and reads its `run_id` from
 it; the core mints no id. The `Run` owns the logger, cancellation,
