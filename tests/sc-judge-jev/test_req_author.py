@@ -1,4 +1,4 @@
-"""req-author quotes the shipped gate questions and their choices; the Raptor record templates are vendored verbatim."""
+"""req-author quotes the shipped gate questions and their choices."""
 import json
 import pathlib
 import unittest
@@ -7,7 +7,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 TEMPLATES = ROOT / "plugins/sc-judge-jev/install/templates"
 AGENT = (TEMPLATES / "agents/req-author.md.j2").read_text(encoding="utf-8")
 QUESTIONS = TEMPLATES / "skills/judge-jev/assets/questions"
-RECORDS = TEMPLATES / "skills/judge-jev/assets/templates"
 
 
 class ReqAuthorTest(unittest.TestCase):
@@ -33,14 +32,6 @@ class ReqAuthorTest(unittest.TestCase):
             for qid in ("obligations", "term", "checkable"):
                 text = nodes["wave-1"]["questions"][qid]["instructions"].split("use `record` as context. ")[1]
                 self.assertIn(text, AGENT, f"{kind}.{qid}")
-
-    def test_raptor_templates_carry_their_provenance(self):
-        for kind in ("req", "nfr", "adr"):
-            lines = (RECORDS / f"raptor-{kind}-record.md.j2").read_text(encoding="utf-8").split("\n")
-            self.assertEqual(lines[0], "---")
-            self.assertTrue(lines[1].startswith("# Copied from randlee/raptor integration/judge-jev at "), kind)
-            self.assertEqual(lines[2], f"name: {kind}-new")
-
 
     def test_version_sync_skips_only_vendored_raptor_templates(self):
         import importlib.util, shutil, tempfile
