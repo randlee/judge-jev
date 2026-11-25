@@ -2,6 +2,12 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## Unreleased
+
+- Docs: a diagram for every `jev_judge.py` subcommand (`batch`, `drift`, `doctor` added) and for the gate, fix and write workflows; `docs/diagrams/README.md` indexes them.
+- Docs: tree diagrams under `docs/diagrams/trees/` generated from the shipped quality and diagnostic trees by `scripts/gen_tree_diagrams.py`; `test_tree_diagrams.py` fails when they disagree.
+- Docs: `quality.md` no longer says the shipped trees hold wave 1 only, and shows the 0.7.0 to 0.8.0 tree change; `check` and `check --profile` are marked planned (no such subcommand).
+
 ## 0.8.0 — 2026-11-25
 
 - Gate questions (issue #137). REQ and NFR trees: `check` is replaced by `checkable` (yes / needs a measure / no); `term` becomes a yes/no question (common usage, defined in this record, or defined in a linked record); `joined_by` is asked in a second wave only of statements whose `obligations` is 2 or more. The old five-way questions stay as non-gating diagnostics `d_check_method` and `d_term_kind`. Verdicts: `checkable` needs a measure or no, or `term` no, gives no; `obligations` 2+ with `joined_by` and-list, alternatives or obligation+rationale gives no.
