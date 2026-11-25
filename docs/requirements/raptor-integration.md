@@ -152,7 +152,8 @@ multiple-choice question about a text with one choice and a confidence from
 0 to 1. A Jev request is one call to it. A live Jev call is a request sent
 to Jev, as opposed to a dry run or an answers file.
 `POLICY.REMOTE_JUDGE_DISABLED` is the typed error code for a refused live
-call.
+call. `allow_remote_judge` is consent to send to TypeSafe only. `haiku`
+and `luna` are the fast model names of REQ-JEV-0009.
 
 **MUST statements:**
 
@@ -163,10 +164,15 @@ call.
 **MUST NOT statements:**
 
 - judge-jev MUST NOT write that setting without the user's answer.
+- judge-jev MUST NOT refuse a `haiku` or `luna` request because
+  `allow_remote_judge` is absent or false.
 
 ### Rationale
 
 Text sent to Jev leaves the machine; the user decides once per repository.
+
+Owner ruling (2026-11-24, phase j plan review): `allow_remote_judge` is
+consent for TypeSafe only.
 
 ### Success Criteria
 
@@ -174,6 +180,8 @@ Text sent to Jev leaves the machine; the user decides once per repository.
 
 - [ ] With the setting absent or false, a live call exits with
   `POLICY.REMOTE_JUDGE_DISABLED` and sends nothing.
+- [ ] With the setting absent or false, a `--model haiku` request and a
+  `--model luna` request each reach sc-agent's loopback provider stub.
 
 ## REQ-JEV-0005: Marketplace and installer
 
@@ -321,11 +329,12 @@ judge-jev.
 
 ### Requirement Statement
 
-Definitions: `haiku` and `luna` are fast model names that the adopted
-sc-agent client sends to a provider other than TypeSafe. A provider key is
-the API key for that provider, read from `ANTHROPIC_API_KEY`,
-`OPENAI_API_KEY` or `OPENROUTER_API_KEY`. A live request is a request
-sent to a model, as opposed to a dry run or an answers file.
+Definitions: `haiku` and `luna` are fast model names. The sc-decidr
+wheel resolves each to a provider (the global model configuration
+`models.<alias>`, else the first provider whose key resolves) and
+resolves that provider's key; it reports a missing key. A live request
+is a request sent to a model, as opposed to a dry run or an answers
+file.
 
 **MUST statements:**
 
@@ -337,7 +346,10 @@ sent to a model, as opposed to a dry run or an answers file.
 **MUST NOT statements:**
 
 - judge-jev MUST NOT refuse a live `haiku` or `luna` request because
-  `TYPESAFE_API_KEY` is unset when that model's provider key is set.
+  `TYPESAFE_API_KEY` is unset when the wheel resolves a key for that
+  model.
+- judge-jev MUST NOT choose a provider for a model.
+- judge-jev MUST NOT check a provider's key itself.
 
 ### Rationale
 
@@ -345,12 +357,15 @@ Owner ruling (2026-11-24, phase j): every tool built on sc-agent works with
 `--model haiku` and `--model luna`, including when no `TYPESAFE_API_KEY`
 is set.
 
+Owner ruling (2026-11-24, phase j plan review): consumers pass only the
+model name; the wheel resolves the provider (sc-agent sprint j-5).
+
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] With `TYPESAFE_API_KEY` unset and the model's provider key set to a
-  test value, `--model haiku` and `--model luna` each send their request to
+- [ ] With `TYPESAFE_API_KEY` unset and the key of the provider the wheel
+  resolves for the model set to a test value, `--model haiku` and `--model luna` each send their request to
   sc-agent's loopback provider stub and write a result envelope.
 - [ ] No test uses a real key or the keyring, and no test sets `HOME`.
 
@@ -360,8 +375,9 @@ is set.
 
 ### Requirement Statement
 
-Definitions: A provider key is the value of `TYPESAFE_API_KEY`,
-`ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `OPENROUTER_API_KEY` in
+Definitions: The provider-key list is the list of key names the
+sc-decidr wheel exports, one or more for every provider it can send to,
+TypeSafe included. A provider key is the value of a name in that list in
 judge-jev's environment. An emitted value is any value judge-jev writes to
 stdout, to a file or to a log event.
 
@@ -371,18 +387,28 @@ stdout, to a file or to a log event.
   in every emitted value.
 - judge-jev MUST replace each bearer token with `<redacted>` in every
   emitted value.
+- judge-jev MUST redact provider keys through the adopted sc-agent
+  client's redaction.
+
+**MUST NOT statements:**
+
+- judge-jev MUST NOT keep its own list of provider key names.
 
 ### Rationale
 
 Owner ruling (2026-11-24, phase j): secret redaction covers every provider
 key, not only `TYPESAFE_API_KEY`.
 
+Owner ruling (2026-11-24, phase j plan review): the wheel owns the
+provider-key list; consumers keep no copy of it.
+
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] A canary value in each of the four variables, fed through a request's
-  text, is absent from stdout, the written files and the log events.
+- [ ] A canary value in each variable of the wheel's provider-key list,
+  fed through a request's text, is absent from stdout, the written files
+  and the log events.
 
 ### Implementation Notes
 

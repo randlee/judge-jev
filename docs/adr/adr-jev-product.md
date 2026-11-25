@@ -34,8 +34,24 @@ or its callers break when the replacement lands.
 
 The Jev core keeps its architecture and contracts unchanged. It changes
 only to fix a defect, to replace its run log with the sc-observability
-logger (REQ-JEV-0008), or to adopt sc-agent's session log and the
-`jev-batch-result/2` result line (owner ruling 2026-11-24).
+logger (REQ-JEV-0008), to adopt sc-agent's session log and the
+`jev-batch-result/2` result line (owner ruling 2026-11-24), or to make
+one of the three changes that follow (owner ruling at phase j plan
+review, 2026-11-24):
+
+- A `--no-cache` flag on the commands that make intentional identical
+  resends, which sends them with `cache=False`.
+- `--model haiku` and `--model luna`, sent through the sc-decidr wheel,
+  which resolves the model's provider and its key (REQ-JEV-0009).
+- Redaction of every key in the sc-decidr wheel's provider-key list
+  (REQ-JEV-0010).
+
+sc-agent's session log is adopted through the wheel's `Run`: each
+command opens one `Run`, sends through it and reads its `run_id` from
+it; the core mints no id. The `Run` owns the logger, cancellation,
+configuration resolution and test seams, so a call passes only its
+requests, the model when it varies, `cache=False` for an intentional
+resend and, for a batch, `on_result`.
 
 ### Rationale
 
