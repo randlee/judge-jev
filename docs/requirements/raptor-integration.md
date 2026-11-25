@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.1.0  
+**Version:** 0.2.0  
 
 ---
 
@@ -83,6 +83,10 @@ sc-observability package (version 1.5.0), which writes
   of the session-log row that holds the request and its answers.
 - The batch command MUST log every result envelope through the
   sc-observability logger (REQ-JEV-0008).
+- judge-jev's record of a result envelope MUST be that envelope's `result`
+  log event, which adds judge-jev's own ids (record id, `anchor_id`,
+  `candidate_id`, repeat) and carries the run's `run_id` as
+  `correlation_id`.
 
 **MUST NOT statements:**
 
@@ -99,6 +103,9 @@ replaces it (ADR-JEV-0001).
 Owner ruling (2026-11-24, phase j): every Jev query lands in sc-agent's
 session log, so a tool's own records reference the query's `session_id`
 and copy nothing the session row holds.
+
+Lead ruling (2026-11-24, phase j plan review): the `result` log event is judge-jev's record
+of a line; there is no third artifact beside the result line and the event.
 
 ### Success Criteria
 
@@ -125,6 +132,8 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 - The adopted sc-agent client MUST resolve the TypeSafe API key from the
   repository `.env` file first, then `TYPESAFE_API_KEY`, then its default
   platform credential entry (service `TYPESAFE_API_KEY`, current OS account).
+- A per-call model MUST be the wheel's typed model value obtained from the
+  command's `Run` (`run.model(...)`).
 
 **MUST NOT statements:**
 
@@ -133,6 +142,9 @@ Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
 ### Rationale
 
 Tools that call Jev share one stored key, saved once.
+
+Lead ruling (2026-11-24, phase j plan review, pending owner confirmation): the typed model value is `run.model(...)`; the
+wheel has no module-level `sc_agent.model`.
 
 ### Success Criteria
 
@@ -157,15 +169,20 @@ and `luna` are the fast model names of REQ-JEV-0009.
 
 **MUST statements:**
 
-- judge-jev MUST refuse every live Jev call with
-  `POLICY.REMOTE_JUDGE_DISABLED` unless the committed
-  `.sc/judge-jev/settings.yaml` sets `allow_remote_judge: true`.
+- judge-jev MUST refuse every live call whose model the sc-decidr wheel
+  resolves to the TypeSafe provider with `POLICY.REMOTE_JUDGE_DISABLED`
+  unless the committed `.sc/judge-jev/settings.yaml` sets
+  `allow_remote_judge: true`.
+- The consent check MUST be the adopted sc-agent client's gate, which
+  compares the resolved provider with the wheel's TypeSafe constant.
 
 **MUST NOT statements:**
 
 - judge-jev MUST NOT write that setting without the user's answer.
-- judge-jev MUST NOT refuse a `haiku` or `luna` request because
-  `allow_remote_judge` is absent or false.
+- judge-jev MUST NOT refuse a request resolved to any other provider, such
+  as a `haiku` or `luna` request, because `allow_remote_judge` is absent or
+  false.
+- judge-jev MUST NOT decide consent from the model name.
 
 ### Rationale
 
@@ -341,7 +358,8 @@ file.
 - Every judge-jev command that takes `--model` MUST accept `--model haiku`.
 - Every judge-jev command that takes `--model` MUST accept `--model luna`.
 - judge-jev MUST send each `haiku` or `luna` request through the adopted
-  sc-agent client.
+  sc-agent client, with the model value `run.model(...)` from the
+  command's `Run`.
 
 **MUST NOT statements:**
 
@@ -359,6 +377,8 @@ is set.
 
 Owner ruling (2026-11-24, phase j plan review): consumers pass only the
 model name; the wheel resolves the provider (sc-agent sprint j-3).
+
+Lead ruling (2026-11-24, phase j plan review, pending owner confirmation): the model value is `run.model(...)`.
 
 ### Success Criteria
 
@@ -383,16 +403,17 @@ stdout, to a file or to a log event.
 
 **MUST statements:**
 
-- judge-jev MUST replace each provider key's exact value with `<redacted>`
+- judge-jev MUST replace each provider key's exact value with `[redacted]`
   in every emitted value.
-- judge-jev MUST replace each bearer token with `<redacted>` in every
+- judge-jev MUST replace each bearer token with `[redacted]` in every
   emitted value.
-- judge-jev MUST redact provider keys through the adopted sc-agent
-  client's redaction.
+- judge-jev MUST redact provider keys and bearer tokens through the
+  adopted sc-agent client's redaction.
 
 **MUST NOT statements:**
 
 - judge-jev MUST NOT keep its own list of provider key names.
+- judge-jev MUST NOT keep its own redaction code.
 
 ### Rationale
 
@@ -413,7 +434,9 @@ provider-key list; consumers keep no copy of it.
 ### Implementation Notes
 
 Today `_redact_text` in `scripts/jev_errors.py.j2` reads only
-`TYPESAFE_API_KEY`.
+`TYPESAFE_API_KEY`; phase j deletes `jev_errors.py.j2` and its callers use
+the client's `redact_secrets`. The placeholder is the client's
+`[redacted]`.
 
 ## NFR-JEV-0001: Deterministic offline tests
 
@@ -426,6 +449,10 @@ Definitions: Jev is a judge model. Recorded Jev answers are an answers file.
 **MUST statements:**
 
 - judge-jev tests MUST run offline against recorded Jev answers.
+- A run from recorded answers (an answers file) MUST open no sc-agent
+  `Run` and write no result line or result event.
+- A recorded answer MUST be one answer or one error; an answers file
+  MUST NOT simulate send attempts.
 
 **MUST NOT statements:**
 
@@ -437,6 +464,9 @@ Definitions: Jev is a judge model. Recorded Jev answers are an answers file.
 
 Flaky tests are prohibited; live Jev calls are neither free nor
 repeatable.
+
+Lead ruling (2026-11-24, phase j plan review): a fixture run answers in process and
+writes nothing a live run would; retries belong to the sc-agent client.
 
 ### Success Criteria
 

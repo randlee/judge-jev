@@ -1,7 +1,7 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.1.0  
+**Version:** 0.2.0  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
@@ -39,19 +39,20 @@ logger (REQ-JEV-0008), to adopt sc-agent's session log and the
 one of the three changes that follow (owner ruling at phase j plan
 review, 2026-11-24):
 
-- A `--no-cache` flag on the commands that make intentional identical
-  resends, which sends them with `cache=False`.
+- A `--no-cache` flag on `quality`, which sends its requests with
+  `cache=False`; `batch --repeat N` above 1 sends all repeats in one
+  `cache=False` call.
 - `--model haiku` and `--model luna`, sent through the sc-decidr wheel,
   which resolves the model's provider and its key (REQ-JEV-0009).
 - Redaction of every key in the sc-decidr wheel's provider-key list
   (REQ-JEV-0010).
 
 sc-agent's session log is adopted through the wheel's `Run`: each
-command opens one `Run`, sends through it and reads its `run_id` from
+command opens one `Run` through the adopted client's `open_run`, sends through it and reads its `run_id` from
 it; the core mints no id. The `Run` owns the logger, cancellation,
 configuration resolution and test seams, so a call passes only its
 requests, the model when it varies (the wheel's typed model value,
-`sc_agent.model("haiku")`; the `Run` holds the default model and no call
+`run.model("haiku")`; the `Run` holds the default model and no call
 names a provider), `cache=False` for an intentional resend and, for a
 batch, `on_result`.
 
@@ -59,6 +60,12 @@ batch, `on_result`.
 
 An unchanged core lets the Rust implementation replace it with no change
 to its callers.
+
+Lead ruling (2026-11-24, phase j plan review, pending owner confirmation):
+the typed model value is spelled `run.model(...)`, because resolution
+reads the `Run`'s configuration and credential sources; the wheel has no
+module-level `sc_agent.model`. Consent is checked by the adopted client's
+gate on the resolved provider (REQ-JEV-0004).
 
 ### Consequences
 
@@ -399,8 +406,8 @@ judge-jev has two ports:
   holds generic fields only: `schema`, `tool`, `tool_version`, `run_id`,
   `session_id`, `request_id`, `project`, `agent_role`, `threshold`,
   `verdict`, `min_confidence`, `leaning`, `ok` and `error`. judge-jev's
-  record id lives in judge-jev's own records, which reference the
-  `session_id`. The Python core implements the port now; sc-agent's Jev
+  record id lives in judge-jev's own record of the line, its `result` log
+  event, which references the `session_id`. The Python core implements the port now; sc-agent's Jev
   tool implements it later.
 - **Graph store:** loads a tree, validates it with SHACL, compiles a wave
   to its JSON questions, records a run's triples and answers queries.
@@ -411,7 +418,10 @@ Only JSON crosses the transport. sc-agent's session log is the record of
 a run's queries: one row per Jev query, keyed by `session_id`, holding the
 request and Jev's answers. The result lines and judge-jev's own records
 hold only what judge-jev derived and reference those rows by `session_id`;
-they are not the record of a run's queries. A run's triples are a
+they are not the record of a run's queries. A rebuild reads answers
+through the adopted client's `answers_for`: `jev-batch-result/1` events
+give their inline answers and `/2` lines give answers from the session
+rows by `session_id`; judge-jev reads no session-log file. A run's triples are a
 projection of the session rows, judge-jev's records and the tree, so they
 can be rebuilt from them at any time. The tree walk (which wave next, which
 verdict) uses only the compiled waves and the answers, so it runs on either

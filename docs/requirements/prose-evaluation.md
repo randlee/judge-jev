@@ -5,7 +5,7 @@
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.1.0  
+**Version:** 0.2.0  
 
 ---
 
@@ -340,6 +340,8 @@ questions that judges whether a record is well written: waves of questions
 **MUST statements:**
 - `judge-jev quality` MUST accept `--dry-run`.
 - `judge-jev check` MUST accept `--dry-run`.
+- `judge-jev batch`, `judge-jev compare-definition` and `judge-jev drift`
+  MUST accept `--dry-run`.
 - A dry run MUST compose every request with no Jev call.
 - Each dry-run entry MUST report the record id.
 - Each dry-run entry MUST report the record's Raptor source.
@@ -368,6 +370,7 @@ questions that judges whether a record is well written: waves of questions
 - A dry run MUST NOT write a result envelope.
 - A dry run MUST NOT write a result, wave or verdict event to the
   sc-observability logger.
+- A dry run MUST NOT open an sc-agent `Run` or write a run link.
 
 ### Rationale
 
@@ -409,13 +412,22 @@ once.
 - `judge-jev quality` MUST judge each record with its kind's quality
   decision tree (REQ-JEV-0101).
 - All records of one `judge-jev quality` invocation MUST be logged under
-  one run name.
+  one run name: `--run-name` when given, else the `run_id` of the
+  invocation's `Run`.
+- `judge-jev quality --no-cache` MUST send every request with
+  `cache=False`.
+- `judge-jev batch --repeat N` with N above 1 MUST send all repeats in one
+  call with `cache=False`, keeping their order.
 
 ### Rationale
 
 Quality and compliance are separate questions about separate inputs. One
 run name per invocation groups a measurement over many records in the
-log.
+log. An intentional identical resend (a variance check, a repeat) would
+otherwise be answered from sc-agent's cache (ADR-JEV-0001).
+
+Lead ruling (2026-11-24, phase j plan review): all repeats go in one
+`cache=False` call; the default run name is the `Run`'s `run_id`.
 
 ### Success Criteria
 
@@ -515,7 +527,8 @@ sc-agent's rule.
 - `judge-jev` MUST refuse an invalid request stream before its first Jev
   request.
 - `judge-jev` MUST check that every log event judge-jev writes for a
-  request fits the event size limit before sending the request.
+  request (its result, statement, wave and verdict events) fits the event
+  size limit before sending the request.
 
 ### Rationale
 
