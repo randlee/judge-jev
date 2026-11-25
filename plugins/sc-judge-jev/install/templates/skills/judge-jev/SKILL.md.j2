@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-SKILL
-version: 0.7.0
+version: 0.7.1
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -86,7 +86,7 @@ You apply and measure every candidate; a proposer never edits a file or calls Je
 - Never delete a record or a statement to make a record pass.
 - Never answer for Jev. A failed call is rerun once, then reported with its code and verbatim message; it is never a verdict.
 - Never report a judged failure without Jev's reasons: quote each failing or weak answer's per-run choice, confidence, criterion, runner-up, probability and criterion (including `Fix:`), and the `d_*` answers. Mark missing fields unavailable; never guess the word.
-- A record passes only when three identical runs give at least two `yes` verdicts and every gate-answer median is at least `T` (default 0.6; `scripts/jev_gate.py`).
+- Use one run for a clear result. Repeat when an answer near `T` (default 0.6, approximately ±0.1) could change the outcome; evaluate three identical runs with `scripts/jev_gate.py`. See `references/fix-strategy.md` for the band and decisive-answer rule. Report how many runs support each result.
 - An accepted record is frozen: do not judge it again unless its text changes.
 - Keep the run files and `.sc/judge-jev/accepted.jsonl`. The log is `~/.sc-agent/logs/judge-jev.log.jsonl` and contains whole requests and record text. Pruning follows the sc-observability retention policy.
 

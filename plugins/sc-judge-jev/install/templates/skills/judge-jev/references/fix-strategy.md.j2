@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-fix-strategy
-version: 0.7.0
+version: 0.7.1
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -14,9 +14,9 @@ description: How to fix a REQ, NFR or ADR record that fails Jev or passes below 
 
 # Fix strategy
 
-Jev's answers say what is wrong. Ask Jev why before any edit; never reason about why. A low-confidence answer is unclear wording, not noise.
+Jev's answers say what is wrong. Ask Jev why before any edit; never reason about why. A low-confidence answer may reflect unclear wording or model uncertainty; inspect its runner-up and diagnostics.
 
-- **Gate.** Judge the record three times on identical text and take the middle (median) confidence of each gate answer. A record passes when its verdict is `yes` in at least two runs and every gate answer's median is at or above `T`. `T` is 0.6 unless the repository states another value. One run is not a pass: a score near `T` moves a few points between identical runs.
+- **Gate.** Start with one run. A clear `yes` with every gate-answer confidence at or above `T` passes; a clear `no` or a clearly sub-threshold answer fails. `T` is 0.6 unless the repository states another value. If an answer near `T` (approximately ±0.1) could change the result, run the identical text twice more and use a majority of verdicts plus the median confidence of each gate answer. Consider the answers that decide the result: a passing verdict needs all gate answers at or above `T`; a failing verdict needs only one decisive failure. Treat an answer from `T - 0.1` through `T + 0.1`, inclusive, as near the threshold. A `no` is clear when a failing choice (or the required combination of choices) is supported by decisive answers above the band; a confidence failure is clear when an answer is below the band. Do not repeat a clear failure just because another answer is near `T`. Report the number of runs and the basis for the result; confidence is not a compliance percentage.
 - **Unit of work.** One record. Jev judges each statement with the whole record as context, so an edit to one statement changes the input for all the others. Never give two agents the same record. Records are independent: run as many in parallel as you like.
 - **State.** `$W/state.jsonl` is your memory. Read its last line before every step and append one line after it. Do not track rounds, candidates or results in your head.
 
@@ -36,16 +36,16 @@ Start every later command with `. .sc/judge-jev/fix/<ID>/env`.
 
 Two commands do all the measuring. Each is one step: paste it whole.
 
-`verify <v>`: snapshot the file as variant `<v>`, judge it three times with the shipped tree, print the gate.
+`verify <v>`: snapshot the file as variant `<v>`, judge it once with the shipped tree, and print the gate. If the result is borderline as described above, run the two additional identical requests and pass all three files to the gate.
 
 ```bash
 cp "$F" "$W/<v>.md"
 "$RAPTOR/.venv/bin/python" "$RAPTOR/scripts/extract.py" --project-root . --output "$W/index-<v>.json" | jq '.issues'   # must print 0
-for r in 1 2 3; do uv run -q --script "$J" quality --$KIND "$ID" --index "$W/index-<v>.json" --run-name "$ID-<v>-r$r" > "$W/<v>-r$r.json" & done; wait
-python3 "$G" --threshold "$T" "$W"/<v>-r1.json "$W"/<v>-r2.json "$W"/<v>-r3.json | jq -r 'if .success | not then "ERROR \(.error.code): \(.error.message)" else .data.records[] | "\(.id) pass=\(.pass) verdicts=\(.verdicts | join(",")) lowest=\(.lowest.median // "n/a")", (.answers[] | "  s\(.statement // "-") \(.question)=\(.choice) median \(.median) runs=\(.runs | tojson)") end'
+uv run -q --script "$J" quality --$KIND "$ID" --index "$W/index-<v>.json" --run-name "$ID-<v>-r1" > "$W/<v>-r1.json"
+python3 "$G" --threshold "$T" "$W"/<v>-r1.json | jq -r 'if .success | not then "ERROR \(.error.code): \(.error.message)" else .data.records[] | "\(.id) pass=\(.pass) verdicts=\(.verdicts | join(",")) lowest=\(.lowest.median // "n/a")", (.answers[] | "  s\(.statement // "-") \(.question)=\(.choice) median \(.median) runs=\(.runs | tojson)") end'
 ```
 
-It prints each gate answer's median and per-run reasons (`runs`, with `runner_up`). Only `pass=true` passes; read failing verdicts' reasons in all three run files. On `ERROR`, rerun once, then report the code and message verbatim.
+For a borderline result, run the same `quality` command as `r2` and `r3` with the same index, then call the gate with all three run files. It prints each answer's median (the single confidence for one run) and per-run reasons (`runs`, with `runner_up`). Read all run files. On `ERROR`, rerun once, then report the code and message verbatim.
 
 `diagnose <v>`: ask Jev why, once, for the variant `verify` just snapshotted.
 
@@ -127,13 +127,13 @@ PY
 
 For each remaining candidate `c<n>`: apply it to `$F`, `verify c<n>`, then `cp "$W/base.md" "$F"`.
 
-Compare candidates with base using all `verify` medians. Reject other answers dropping over 0.05 or newly below `T`. Gain is the median rise of the candidate's own weak answer; a changed choice gains only with a present criterion lacking `Fix:` and median at least `T`, otherwise it worsens. Prefer changed-choice gains, then greatest median gain per statement. If any are kept, apply them; `verify comb`. While comb loses a gain, drop the smallest-gain candidate and reverify. If gains hold, copy `$W/comb.md` to `$W/base.md`; otherwise restore base to `$F`. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`.
+Compare candidates with base using the `verify` confidences (medians when repeated). When a candidate decision depends on a confidence difference around 0.05, repeat the same base and candidate text twice and compare their three-run medians; do not treat a single-run difference around 0.05 as decisive. Reject other answers dropping over 0.05 or newly below `T`. Gain is the confidence rise of the candidate's own weak answer; a changed choice gains only with a present criterion lacking `Fix:` and confidence at least `T`, otherwise it worsens. Prefer changed-choice gains, then greatest confidence gain per statement. If any are kept, apply them; `verify comb`. While comb loses a gain, drop the smallest-gain candidate and reverify. If gains hold, copy `$W/comb.md` to `$W/base.md`; otherwise restore base to `$F`. Append `{"round", "step": "measure", "kept": [...], "lowest": x}`.
 
 ## 5. Accept and freeze
 
 A record is accepted when `verify` prints `pass=true`. Otherwise start the next round at step 1 on the current text, with the rejected edits in `blocked`.
 
-When a record is accepted, run the guard on `$W/original.md` against `$F` and read `diff -u "$W/original.md" "$F"` against rule 1. Then append `{"id", "sha256": "<of the record text>", "runs": [...], "lowest": x}` to `.sc/judge-jev/accepted.jsonl`.
+When a record is accepted, run the guard on `$W/original.md` against `$F` and read `diff -u "$W/original.md" "$F"` against rule 1. Then append `{"id", "sha256": "<of the record text>", "runs": [...], "run_count": 1 or 3, "lowest": x}` to `.sc/judge-jev/accepted.jsonl`.
 
 Keep running rounds until the record passes, or until two rounds in a row keep no candidate. Then the record is unresolved: keep the best text reached and list it. An unresolved record goes to `references/write-records.md` once.
 
@@ -177,6 +177,6 @@ Result: lowest <before> to <after>
 
 ## Report
 
-One table: record, accepted or unresolved, lowest median before and after, strategies and statements changed. For each failing or weak answer, quote each run's choice, confidence, criterion, runner-up, probability and criterion, plus `d_*` answers; mark missing fields unavailable. Include tried edits, results, owner facts and rule 1 changes with both texts.
+One table: record, accepted or unresolved, lowest confidence before and after (median when repeated), with the run count, strategies and statements changed. For each failing or weak answer, quote each run's choice, confidence, criterion, runner-up, probability and criterion, plus `d_*` answers; mark missing fields unavailable. Include tried edits, results, owner facts and rule 1 changes with both texts.
 
 Leave `$W` and `.sc/judge-jev/accepted.jsonl` in place. Jev requests and answers are logged to `~/.sc-agent/logs/judge-jev.log.jsonl`; pruning follows the sc-observability retention policy.
