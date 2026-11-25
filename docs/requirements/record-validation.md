@@ -121,7 +121,9 @@ Logging goes through the sc-observability logger (REQ-JEV-0008). A
 per-statement node sets `"per": "statement"`, `statements` (the record
 field holding the statements) and `modals` (the modals judged); each
 statement is one request whose item text is `{statement, record}`. The
-shipped REQ and NFR trees ask, per statement, `obligations`, `joined_by`,
-`term` and `check`; the ADR tree asks, per record, `context`,
+shipped REQ and NFR trees ask, per statement, `obligations`, `term` and
+`checkable` (with diagnostics `d_term_kind` and `d_check_method`), then
+`joined_by` only of statements with 2 or more obligations
+(`"only_matched": true`); the ADR tree asks, per record, `context`,
 `alternatives` and `consequences`. Each option's criterion carries its fix
 hint, and the reason reports it.

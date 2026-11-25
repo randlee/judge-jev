@@ -171,7 +171,7 @@ class AdrRun(RunCase):
 class ReqRun(RunCase):
     def test_a_per_statement_run_has_one_wave_run_per_judged_statement(self):
         answers = {"*": tree_answers("quality-req.json"),
-                   "REQ-T-0001.s3/wave-1": tree_answers("quality-req.json", term="vague qualifier")}
+                   "REQ-T-0001.s3/wave-1": tree_answers("quality-req.json", term="no", d_term_kind="vague qualifier")}
         run_iri, store, result = self.check_projection("req", "--req", "REQ-T-0001", answers)
         self.assertEqual(result["verdict"], "no")
         run_node = ox.NamedNode(run_iri)
@@ -179,22 +179,24 @@ class ReqRun(RunCase):
         statements = sorted(q.object.value for w in wave_runs for q in store.quads_for_pattern(w, jn("statement"), None))
         self.assertEqual(statements, sorted(["The CLI MUST exit 2 on a missing file.", "The CLI MUST NOT write outside the worktree."]))
         self.assertEqual(len(wave_runs), 2)  # the SHOULD statement is not judged
-        # a rule fires only on the statements it matched: rule 2 matched the vague statement; the other matched nothing in the first-match rule
+        # a rule fires only on the statements it matched: rule 1 (term no) matched the vague statement; the other matched nothing in the first-match rule
         fired = {next(q.object.value for q in store.quads_for_pattern(w, jn("statement"), None)):
                  [q.object.value for q in store.quads_for_pattern(w, jn("fired"), None)] for w in wave_runs}
         self.assertEqual(fired, {"The CLI MUST exit 2 on a missing file.": [],
-                                 "The CLI MUST NOT write outside the worktree.": ["urn:judge-jev:tree:quality-req:wave-1:rule-2"]})
+                                 "The CLI MUST NOT write outside the worktree.": ["urn:judge-jev:tree:quality-req:wave-1:rule-1"]})
         rows = self.trace(store, run_iri, "REQ-T-0001")
-        self.assertIn(("no", "urn:judge-jev:tree:quality-req:wave-1:rule-2", "urn:judge-jev:question:req.term", "vague qualifier"),
+        self.assertIn(("no", "urn:judge-jev:tree:quality-req:wave-1:rule-1", "urn:judge-jev:question:req.term", "no"),
                       {r[:4] for r in rows})
-        self.assertEqual(len(rows), 4)  # four questions, answered for the one statement that fired
+        self.assertIn(("no", "urn:judge-jev:tree:quality-req:wave-1:rule-1", "urn:judge-jev:question:req.d_term_kind", "vague qualifier"),
+                      {r[:4] for r in rows})
+        self.assertEqual(len(rows), 5)  # wave-1's five questions, answered for the one statement that fired
 
     def test_a_passing_per_statement_run_fires_the_default_rule_for_every_statement(self):
         run_iri, store, result = self.check_projection("req", "--req", "REQ-T-0001", {"*": tree_answers("quality-req.json")})
         self.assertEqual(result["verdict"], "yes")
         rows = self.trace(store, run_iri, "REQ-T-0001")
-        self.assertEqual({r[1] for r in rows}, {"urn:judge-jev:tree:quality-req:wave-1:rule-3"})
-        self.assertEqual(len(rows), 8)  # four answers for each of two statements
+        self.assertEqual({r[1] for r in rows}, {"urn:judge-jev:tree:quality-req:wave-1:rule-4"})  # the default `goto yes` rule
+        self.assertEqual(len(rows), 10)  # wave-1's five answers for each of two statements
 
 
 def loaded(text, directory):

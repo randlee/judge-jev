@@ -2,6 +2,14 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.8.0 — 2026-11-25
+
+- Gate questions (issue #137). REQ and NFR trees: `check` is replaced by `checkable` (yes / needs a measure / no); `term` becomes a yes/no question (common usage, defined in this record, or defined in a linked record); `joined_by` is asked in a second wave only of statements whose `obligations` is 2 or more. The old five-way questions stay as non-gating diagnostics `d_check_method` and `d_term_kind`. Verdicts: `checkable` needs a measure or no, or `term` no, gives no; `obligations` 2+ with `joined_by` and-list, alternatives or obligation+rationale gives no.
+- Trees: a per-statement wave may set `only_matched` (TTL `jj:onlyMatched`) to ask only the statements the branch rule that led to it matched.
+- `jev_gate.py`: an answer only some runs asked (wave-2 `joined_by`) is scored over the runs that asked it, carries `asked`, and gates only when more than half of the runs asked it; a flipping `obligations` answer no longer makes a record incomparable.
+- The failing gate choices (`term` no, `checkable` needs a measure / no) carry no `Fix:` line; the fix hint is in the same wave's `d_term_kind` and `d_check_method` answers.
+- Diagnostic trees and `fix-strategy.md` triggers follow the new names. Evidence and prototype files: `docs/evidence/issue-137-gate-fix/`.
+
 ## 0.7.0 — 2026-11-23
 
 - Pin sc-decidr and regenerate the shared consumer for the 0.4.0 release.
