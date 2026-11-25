@@ -22,7 +22,7 @@ compare VERSION with the base branch.
 
 Every other version number is locked too, with no exclusions: each template's
 own header `version:` (every *.j2) equals VERSION;
-Raptor's templates, copied verbatim as assets/templates/raptor-*.md.j2, keep their own, and every integer version
+Raptor's templates, copied verbatim as assets/templates/raptor-*.md.j2, keep their own. Every integer version
 (a question set's or tree's `version` / `jj:version`, every `schema_version`)
 equals 1.
 
