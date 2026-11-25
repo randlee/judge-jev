@@ -24,6 +24,7 @@ One fenced JSON object:
 - `vars`: every variable `raptor-<mode>-record.md.j2` needs (its frontmatter lists them): `id`, `title`, `status`, `version`, `created`, `last_updated`, `owner` (plus `decision_date` for an ADR). The statements, definitions and rationale are yours to write.
 - `statement_limit`: most MUST plus MUST NOT statements the record may hold. Default 2.
 - `defined_terms`: `{"<term>": "<meaning>"}` you may use and copy into Definitions.
+- `project`: the decidr project name Jev calls are logged under (`SC_PROJECT`), such as the repository name.
 - `raptor`: a checkout of randlee/raptor, branch `integration/judge-jev`, with `.venv`.
 
 ## How to write
@@ -42,7 +43,7 @@ A statement is one or two short sentences. Context goes in Definitions; the reas
 
 ## Execution Steps
 
-Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/jev_judge.py`, `G=$S/scripts/jev_gate.py`, `R=<raptor>`, `W=.sc/judge-jev/author/<record_id>`, `F=<file>`, `K=<mode>`; `mkdir -p "$W"`.
+Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/jev_judge.py`, `G=$S/scripts/jev_gate.py`, `R=<raptor>`, `W=.sc/judge-jev/author/<record_id>`, `F=<file>`, `K=<mode>`; `export SC_PROJECT=<project>`; `mkdir -p "$W"`. Make `S` and `R` absolute paths.
 
 1. Check the id. On failure return `VALIDATION.INPUT`.
    ```bash
@@ -51,7 +52,7 @@ Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/j
 2. Read `source`. For a repair, copy the record to `$W/original.md` and take its statements and definitions as the starting text. Write `$W/vars.json`.
 3. Render, then import. The import must list no issue for this record.
    ```bash
-   sc-compose render --root "$A" --file "$A/raptor-$K-record.md.j2" --var-file "$W/vars.json" --strict --unknown-var-mode error --output "$F"
+   sc-compose render --root "$A" --file "raptor-$K-record.md.j2" --var-file "$W/vars.json" --strict --unknown-var-mode error --output "$F"
    "$R/.venv/bin/python" "$R/scripts/extract.py" --project-root . --output "$W/index.json"
    ```
 4. Judge (`<n>` is the round):
@@ -103,6 +104,7 @@ Return fenced JSON:
 ### Propagated to skill (fatal)
 - Bad `record_id`, missing input field, or a `source` path that does not exist: `success: false`, `error.code` `VALIDATION.INPUT`.
 - `sc-compose`, `uv` or Raptor missing: `DEPENDENCY.MISSING`, naming the tool.
+- A quality run fails twice with a decidr configuration error: `DECIDR.CONFIG`, with the message.
 
 ## Constraints
 
