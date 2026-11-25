@@ -1,7 +1,7 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.3.0  
+**Version:** 0.4.0  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
@@ -36,8 +36,8 @@ The Jev core keeps its architecture and contracts unchanged. It changes
 only to fix a defect, to replace its run log with the sc-observability
 logger (REQ-JEV-0008), to adopt sc-agent's session log and the
 `jev-batch-result/2` result line (owner ruling 2026-11-24), or to make
-one of the three changes that follow (owner ruling at phase j plan
-review, 2026-11-24):
+one of the four changes that follow (the first three by owner ruling at
+phase j plan review, 2026-11-24; the fourth by lead amendment):
 
 - A `--no-cache` flag on `quality`, which sends its requests with
   `cache=False`; `batch --repeat N` above 1 sends all repeats in one
@@ -46,6 +46,11 @@ review, 2026-11-24):
   which resolves the model's provider and its key (REQ-JEV-0009).
 - Redaction of every key in the sc-decidr wheel's provider-key list
   (REQ-JEV-0010).
+- `batch --answers-file` fixture runs answer through the adopted client's
+  `run_batch` with no Run, and the fixture retry simulation is removed: a
+  fixture entry is one answer or one error, and an entry that carries an
+  attempts list is a validation error (lead amendment at phase j plan
+  review, 2026-11-24; NFR-JEV-0001).
 
 Owner ruling 2026-11-24: `--model` takes any selector the sc-decidr
 wheel resolves, not only `haiku` and `luna`; the caller chooses one model
@@ -403,13 +408,19 @@ judge-jev has two ports:
 - **Transport:** sends the request lines of one wave and returns their
   result lines. Its contract is the batch request schema
   (`assets/schemas/jev-batch-request.schema.json`) and the shared
-  `jev-batch-result/2` result line (`jev-batch-result.schema.json`), which
+  `jev-batch-result/2` result line, which
   holds generic fields only: `schema`, `tool`, `tool_version`, `run_id`,
   `session_id`, `request_id`, `project`, `agent_role`, `threshold`,
   `verdict`, `min_confidence`, `leaning`, `ok` and `error`. judge-jev's
   record id lives in judge-jev's own record of the line, its `result` log
   event, which references the `session_id`. The Python core implements the port now; sc-agent's Jev
-  tool implements it later.
+  tool implements it later. The canonical `jev-batch-result/2` schema is
+  the one the sc-decidr wheel ships as package data
+  (`sc_agent/templates/jev-batch-result.schema.json`, read through
+  `importlib.resources`); judge-jev keeps no copy, so
+  `assets/schemas/jev-batch-result.schema.json` is removed and judge-jev
+  checks its `/2` lines against the wheel's schema (amended at phase j plan
+  review, 2026-11-24).
 - **Graph store:** loads a tree, validates it with SHACL, compiles a wave
   to its JSON questions, records a run's triples and answers queries.
   judge-jev implements it now with `pyoxigraph` and a SHACL validator; a
