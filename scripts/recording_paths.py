@@ -12,8 +12,13 @@ WINDOWS_HOME = re.compile(r'[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s"<>]+')
 
 
 def portable_recording(value, *, repo=ROOT, locations=()):
-    replacements = [(str(Path(repo)), '{repo}'), (str(Path(repo).resolve()), '{repo}')]
+    # Captures may come from another OS: keep the supplied spelling before
+    # pathlib applies the publishing host's separator and resolution rules.
+    replacements = [(str(repo), '{repo}'), (str(Path(repo)), '{repo}'),
+                    (str(Path(repo).resolve()), '{repo}')]
     replacements.extend((str(path), label) for path, label in locations if path is not None)
+    replacements.extend((path.replace('\\', '/'), label)
+                        for path, label in list(replacements) if '\\' in path)
     replacements.extend((path.replace('\\', '\\\\'), label)
                         for path, label in list(replacements) if '\\' in path)
     replacements = sorted(set(replacements), key=lambda item: len(item[0]), reverse=True)

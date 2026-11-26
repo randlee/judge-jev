@@ -9,7 +9,11 @@ metadata:
 
 ## Step 1 — Verify dependencies
 
+The shell pipeline requires a POSIX environment with Bash (macOS or Linux).
+On Windows use WSL with Linux Python and CLIs; native Windows is unsupported.
+
 ```bash
+command -v bash && bash --version
 command -v decidr && decidr --version
 command -v jq && jq --version
 command -v python3 && python3 --version

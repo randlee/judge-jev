@@ -14,6 +14,9 @@ SCRIPTS = ROOT / 'plugins/sc-judge-jev/skills/walking-decidr-trees/scripts'
 sys.path.insert(0, str(ROOT / 'scripts'))
 import decision_examples as examples
 
+posix_pipeline = unittest.skipUnless(os.name == 'posix',
+    'The Bash pipeline requires POSIX paths and executables; use Linux Python in WSL on Windows')
+
 
 @unittest.skipUnless(shutil.which('bash') and shutil.which('jq'), 'Bash and jq are required for the pipeline helpers')
 class SkillHelpers(unittest.TestCase):
@@ -53,6 +56,7 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
         return subprocess.run(['jq', '-c', '-f', str(SCRIPTS / 'verdict.jq')],
                               input=json.dumps(value), text=True, capture_output=True, env=self.env)
 
+    @posix_pipeline
     def test_empty_and_leaf_inputs_make_zero_decidr_calls_including_no_newline(self):
         leaf = {'verdict': 'yes', 'stage': 'gates', 'item': 'REQ-T.s1'}
         for text in ('', json.dumps(leaf), json.dumps(leaf) + '\n'):
@@ -62,6 +66,7 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
                 self.assertEqual(json.loads(completed.stdout) if completed.stdout else None, leaf if text else None)
                 self.assertEqual(self.calls(), [])
 
+    @posix_pipeline
     def test_newline_free_request_is_sent_once_with_argument_overrides(self):
         self.env.update(SC_PROJECT='env-project', DECIDR_AGENT_ROLE='env-role')
         request = {'questions': {'q': {'type': 'choice'}}, 'state': {'item': 'controlled'}}
@@ -69,6 +74,7 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(self.calls(), [{'argv': ['send', '--project', 'chosen-project', '--agent-role', 'chosen-role', '--model', 'haiku'], 'request': request}])
 
+    @posix_pipeline
     def test_request_uses_environment_and_preserves_native_error_and_exit(self):
         self.env.update(SC_PROJECT='env-project', DECIDR_AGENT_ROLE='env-role', STUB_EXIT='1',
                         STUB_RESPONSE='{"ok":false,"error":{"id":"controlled.failure"}}')
@@ -77,6 +83,7 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
         self.assertEqual(json.loads(completed.stdout)['error']['id'], 'controlled.failure')
         self.assertEqual(self.calls()[0]['argv'], ['send', '--project', 'env-project', '--agent-role', 'env-role', '--model', 'jev'])
 
+    @posix_pipeline
     def test_missing_request_configuration_and_malformed_routes_make_no_calls(self):
         for text in ('{"questions":{}}', '{"unexpected":true}', 'not JSON'):
             with self.subTest(text=text):
@@ -85,6 +92,7 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
                 self.assertTrue(completed.stderr)
                 self.assertEqual(self.calls(), [])
 
+    @posix_pipeline
     def test_actual_example_pipeline_uses_two_models_and_the_configured_guard(self):
         gates = {key: {'type': 'choice', 'choice': choice, 'confidence': confidence}
                  for key, choice, confidence in (('obligations', '1', .9), ('term', 'yes', .7), ('checkable', 'yes', .9))}

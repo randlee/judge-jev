@@ -25,6 +25,15 @@ class PortableRecordings(unittest.TestCase):
         self.assertTrue(value['argv'][0].startswith('/Users/'), 'normalization must not mutate the capture')
         self.assertEqual(portable_recording(result, repo='/Users/operator/project'), result)
 
+    def test_windows_repo_paths_match_native_forward_slash_and_json_spellings(self):
+        repo = r'C:\Users\operator\project'
+        value = {'argv': [repo + r'\scripts\run.py', repo.replace('\\', '/') + '/scripts/run.py'],
+                 'stdout': json.dumps({'path': repo + r'\tree.json'})}
+        result = portable_recording(value, repo=repo)
+        self.assertEqual(result['argv'], [r'{repo}\scripts\run.py', '{repo}/scripts/run.py'])
+        self.assertEqual(json.loads(result['stdout']), {'path': r'{repo}\tree.json'})
+        self.assertEqual(portable_recording(result, repo=repo), result)
+
     def test_published_recordings_and_reports_have_no_personal_absolute_paths(self):
         for example in ('decidr-pipeline', 'judge-jev-quality'):
             for name in ('recorded.json', 'report.html'):
