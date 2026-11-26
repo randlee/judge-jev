@@ -5,6 +5,7 @@
 ## 0.10.0 — 2026-11-26
 
 - No request size limit (phase-j ANC-004; owner: "Input is limited by model context."). Removed the 24000-byte (`--gate plan`) and 64000-byte (`--gate dev`) request caps, the `--max-request-bytes` flag of `batch` and `validate --requests`, `JEV.CONTEXT_EXCEEDED`, and the dry-run `max_request_bytes` field; `request_bytes` is still reported. A provider size error stays `DECIDR.CONTEXT_EXCEEDED`, and an sc-observability size error is returned unchanged. REQ-JEV-0002, REQ-JEV-0208 and REQ-JEV-0212 drop the limit clauses.
+- Removed the per-field caps (term, definition text, source, location, `__error__` code; batch schema `maxLength`) and the tree-file and definitions-file byte caps (owner, 2026-11-26).
 
 ## 0.9.0 — 2026-11-25
 

@@ -1,7 +1,7 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.4.2  
+**Version:** 0.4.3  
 **Status:** Draft  
 **Created:** 2026-11-07  
 **Last Updated:** 2026-11-24  
@@ -53,6 +53,7 @@ phase j plan review, 2026-11-24; the fourth by owner approval, 2026-11-24):
   fixture entry is one answer or one error, and an entry that carries an
   attempts list is a validation error (owner approval, 2026-11-24;
   NFR-JEV-0001).
+- Every request, per-field and file size cap is removed (owner ruling, 2026-11-26; phase-j ANC-004).
 
 Owner ruling 2026-11-24: `--model` takes any selector the sc-decidr
 wheel resolves, not only `haiku` and `luna`; the caller chooses one model

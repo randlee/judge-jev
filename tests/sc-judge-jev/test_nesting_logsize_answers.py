@@ -310,6 +310,17 @@ class AnswersEnvelope(unittest.TestCase):
                 code, out, sent = self.batch({key: plan_answers()})
                 self.assertEqual((code, sent), (0, 1), out)
 
+    def test_a_request_over_64000_bytes_is_sent_whole(self):
+        text = "x" * 70000
+        sent = []
+        src = write(self.d, "big.jsonl", jsonl([request_line(text=text)]))
+        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
+            code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, "b.json", {"*": plan_answers()})])
+        self.assertEqual(code, 0, out)
+        self.assertGreater(os.path.getsize(src), 64000)
+        self.assertEqual(len(sent), 1)
+        self.assertIn(text, json.dumps(sent[0], default=str))
+
     def test_an_error_fails_the_wave_with_its_code_and_logs_cleanly(self):
         code_text = "J" * 64
         code, out, sent = self.quality({"*": {"__error__": code_text}})
