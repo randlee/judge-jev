@@ -1,4 +1,4 @@
-"""REQ-JEV-0216: guidance that mentions definitions links to references/definitions.md, and the definitions syntax lives only there."""
+"""REQ-JEV-0216: every guidance file links to references/definitions.md, and the definitions syntax lives only there."""
 import pathlib
 import re
 import unittest
@@ -15,12 +15,10 @@ def guidance():
 
 
 class DefinitionsSsotTest(unittest.TestCase):
-    def test_guidance_that_mentions_definitions_links_the_page(self):
+    def test_every_guidance_file_links_the_page(self):
         for f in guidance():
-            text = f.read_text(encoding="utf-8")
-            if re.search(r"definition", text, re.I):
-                with self.subTest(f.name):
-                    self.assertRegex(text, LINK)
+            with self.subTest(f.name):
+                self.assertRegex(f.read_text(encoding="utf-8"), LINK)
 
     def test_definition_syntax_is_only_on_the_page(self):
         for f in guidance():
