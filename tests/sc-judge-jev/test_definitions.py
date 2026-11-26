@@ -128,10 +128,6 @@ class HostileFiles(DefinitionCase):
     def test_non_utf8(self):
         self.refused(b"\xff\xfe\x00 not utf-8", "INPUT.MALFORMED")
 
-    def test_oversized_file(self):
-        message = self.refused(b"#" + b"x" * (jev_graph.MAX_DEFINITIONS_BYTES + 1), "DEFINITIONS.INVALID")
-        self.assertIn(str(jev_graph.MAX_DEFINITIONS_BYTES), message)
-
     def test_blank_node_definition(self):
         self.refused((PREFIXES + '[] a jj:Definition ; jj:term "t" ; jj:text "x" ; jj:source "docs/r.md" .\n').encode(), "DEFINITIONS.INVALID")
 
@@ -144,8 +140,7 @@ class HostileFiles(DefinitionCase):
 
     def test_values_the_body_model_refuses(self):
         base = definition("x", "t", "x", "docs/r.md", (ADR, None))
-        cases = {"term too long": base.replace('jj:term "t"', 'jj:term "' + "t" * 200 + '"'),
-                 "absolute source": base.replace("docs/r.md", "/etc/passwd"),
+        cases = {"absolute source": base.replace("docs/r.md", "/etc/passwd"),
                  "parent source": base.replace("docs/r.md", "../x.md"),
                  "multi-line term": base.replace('jj:term "t"', 'jj:term """a\nb"""'),
                  "record not a Raptor IRI": base.replace(f"<{ADR}>", "<urn:other>"),

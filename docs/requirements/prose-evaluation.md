@@ -357,8 +357,7 @@ questions that judges whether a record is well written: waves of questions
 - For `quality`, the dry run MUST report the decision tree.
 - For `quality`, the dry run MUST report the composed wave-1 request.
 - A dry run MUST fail with a typed error on anything that would make the
-  live request wrong: an unresolved record or location, a render failure,
-  or an oversize request.
+  live request wrong: an unresolved record or location or a render failure.
 - A dry run MUST report its entries only in the result it prints on stdout.
 
 **MUST NOT statements:**
@@ -506,11 +505,7 @@ with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a
 `suggested_action`. A tree is a quality decision tree file, a question set a
 file of questions, an index a Raptor import index, a request stream the
 request lines of the batch command. An input is a tree, question set,
-index or request stream. A log event is one event written through the
-sc-observability logger. The event size limit is the largest event the
-installed sc-observability package accepts; it is that package's limit,
-not a judge-jev rule. Whether a request fits a session-log row is
-sc-agent's rule.
+index or request stream.
 
 **MUST statements:**
 - For every input, every `judge-jev` command MUST print exactly one JSON
@@ -523,9 +518,6 @@ sc-agent's rule.
 - `judge-jev` MUST refuse an invalid index before its first Jev request.
 - `judge-jev` MUST refuse an invalid request stream before its first Jev
   request.
-- `judge-jev` MUST check that every log event judge-jev writes for a
-  request (its result, statement, wave and verdict events) fits the event
-  size limit before sending the request.
 
 ### Rationale
 
@@ -567,9 +559,6 @@ judge-jev's own record of that request's result; it carries the request's
 
 **MUST NOT statements:**
 - `judge-jev` MUST NOT truncate a definition.
-- `judge-jev` MUST NOT refuse a request for the size its definitions add:
-  the request is sent whole, so the selected model's context is the only
-  input limit (REQ-JEV-0002).
 
 ### Rationale
 

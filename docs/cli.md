@@ -115,7 +115,7 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
 - `--requests` also takes `--gate`, as `batch` does, so a stream is
   checked against the same question set.
 - `--tree` checks the tree alone; the checks that need a record (its
-  statements, log-event size) run in `quality`, before the
+  statements) run in `quality`, before the
   first call and in `--dry-run`.
 - `--answers` checks the envelope only, the same one `--answers-file` checks
   before the first request in `batch` and `quality`: an object of string keys,
@@ -169,8 +169,7 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
   `.sc/judge-jev/` (directly in that folder, not in a subfolder). They load as their own named graph: a tree's digest
   never changes because a definitions file exists. The same definition IRI
   in two files is `DEFINITIONS.INVALID` naming both.
-- Definitions are never truncated, and judge-jev sets no request size
-  limit; they count toward the log-event size check, before any call.
+- Definitions are never truncated.
 - Every request, answer, result, wave and verdict event, and each record's
   result, carries `definitions: [{iri, term, digest}]` (the digest is the
   SHA-256 of term, text and source); the run's triples link the run to each
@@ -399,8 +398,7 @@ request a live run would send:
 Typed errors on an unresolved record or location or a render failure.
 
 Every input yields one JSON object, its result or a typed error. An invalid
-tree, question set, index or request stream, and a log event that exceeds the
-logger's size limit, are refused before the first Jev request (REQ-JEV-0211).
+tree, question set, index or request stream is refused before the first Jev request (REQ-JEV-0211).
 
 ## Open
 

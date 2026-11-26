@@ -132,7 +132,6 @@ REQUIRED_ROLES = ("relevance", "compliance", "conflict")
 MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
 ATTEMPT_MESSAGE_LIMIT = 500         # characters of an error message recorded in a result line: bounds its log events
-FIXTURE_CODE_LIMIT = 64             # characters of an answers-file {"__error__": code}: the code is logged unclipped, so it is bounded at load
 
 
 # --------------------------------------------------------------------------- #
@@ -467,7 +466,6 @@ def _check_role_map(questions: dict, roles: dict, required: tuple) -> None:
         raise PydanticCustomError("roles", "maps role 'evidence' to '{evidence}', which is not a question in the set", {"evidence": evidence})
 
 
-MAX_TERM, MAX_DEFINITION_TEXT, MAX_SOURCE, MAX_LOCATION = 128, 2000, 512, 512  # characters; a definition is short, never truncated
 IRI_TEXT = re.compile(r"[A-Za-z][A-Za-z0-9+.-]+:\S+")  # two or more scheme characters: "C:/x" is a drive path, not an IRI
 RECORD_IRI = re.compile(r"[^#\s]+#[^#\s]+")  # <repository URN>#<record id>
 
@@ -497,7 +495,7 @@ def _record_iri_text(value: str) -> str:
     return value
 
 
-LocationText = Annotated[str, AfterValidator(_non_blank), AfterValidator(_repo_relative), Field(max_length=MAX_LOCATION)]
+LocationText = Annotated[str, AfterValidator(_non_blank), AfterValidator(_repo_relative)]
 
 
 class LocationBody(RootModel[LocationText]):
@@ -507,7 +505,7 @@ class LocationBody(RootModel[LocationText]):
 class AttachmentBody(Closed):
     """One ``jj:Attachment`` of a definition: the record (a Raptor record IRI) and optionally one location."""
 
-    record: Annotated[str, AfterValidator(_record_iri_text), Field(max_length=MAX_SOURCE)]
+    record: Annotated[str, AfterValidator(_record_iri_text)]
     location: Optional[LocationText] = None
 
 
@@ -515,17 +513,17 @@ class DefinitionBody(Closed):
     """The body of a ``jj:Definition`` (ADR-JEV-0008): a non-blank one-line term, a non-blank text, and the source
     (a repo-relative path or a record IRI as a string); the attachments are the graph's edges, checked again here."""
 
-    term: Annotated[str, AfterValidator(_non_blank), AfterValidator(_single_line), Field(max_length=MAX_TERM)]
-    text: Annotated[str, AfterValidator(_non_blank), Field(max_length=MAX_DEFINITION_TEXT)]
-    source: Annotated[str, AfterValidator(_non_blank), AfterValidator(_source_text), Field(max_length=MAX_SOURCE)]
+    term: Annotated[str, AfterValidator(_non_blank), AfterValidator(_single_line)]
+    text: Annotated[str, AfterValidator(_non_blank)]
+    source: Annotated[str, AfterValidator(_non_blank), AfterValidator(_source_text)]
     attachments: list[AttachmentBody] = []
 
 
 class DefinitionEntry(Closed):
     """A definition as a request carries it in its state: the term and its text, nothing else."""
 
-    term: Annotated[str, AfterValidator(_non_blank), AfterValidator(_single_line), Field(max_length=MAX_TERM)]
-    text: Annotated[str, AfterValidator(_non_blank), Field(max_length=MAX_DEFINITION_TEXT)]
+    term: Annotated[str, AfterValidator(_non_blank), AfterValidator(_single_line)]
+    text: Annotated[str, AfterValidator(_non_blank)]
 
 
 class BatchItem(Open):
@@ -568,7 +566,7 @@ class RequestLine(Closed):
 
     item: BatchItem
     anchor: BatchAnchor = None
-    location: Annotated[str, AfterValidator(_non_blank), Field(max_length=MAX_LOCATION)] = None
+    location: Annotated[str, AfterValidator(_non_blank)] = None
     definitions: Annotated[list[DefinitionEntry], Field(min_length=1)] = None
     questions: Annotated[list[BatchCandidate], Field(min_length=1)]
 
@@ -602,12 +600,12 @@ class RaptorIndex(Open):
 
 
 class FixtureError(Closed):
-    code: str = Field(alias="__error__", min_length=1, max_length=FIXTURE_CODE_LIMIT)  # BATCH_FIXTURE_ERROR: the attempt fails with this code
+    code: str = Field(alias="__error__", min_length=1)  # BATCH_FIXTURE_ERROR: the attempt fails with this code
 
 
 def _fixture_problems(entries: dict) -> list:
     """Each envelope problem of an answers file as ``path: rule``. The envelope is what is decidable before any request: an
-    entry is an object, {"__error__": code} (a string code of 1 to FIXTURE_CODE_LIMIT characters, nothing else), or a non-empty list of
+    entry is an object, {"__error__": code} (a non-empty string code, nothing else), or a non-empty list of
     those (successive attempts). What an answer object holds (its questions, choices, probabilities) is Jev's response and is
     interpreted through the shared typed-answer boundary after fixture loading, so a test can feed an invalid answer on purpose."""
     problems = []
@@ -629,7 +627,7 @@ def _fixture_problems(entries: dict) -> list:
 class AnswersFile(RootModel[dict[str, Any]]):
     """The envelope of an answers file, the one model `validate --answers` and every command that reads --answers-file apply
     before the first request: an object of string keys, each an object or a non-empty list of objects, an object with
-    {"__error__": code} holding only a string code of 1 to FIXTURE_CODE_LIMIT characters."""
+    {"__error__": code} holding only a non-empty string code."""
 
     model_config = ConfigDict(strict=True)
 
@@ -791,7 +789,7 @@ def answers_envelope_error(data, where: str) -> Optional[ClientError]:
         return None
     return ClientError("INPUT.MALFORMED", f"{where}: {parsed.error.text}",
                       action="An answers file maps a request key to Jev's answers (an object), a non-empty list of them, or "
-                             "an __error__ object with a string code of 1 to " + str(FIXTURE_CODE_LIMIT) + " characters and nothing else.")
+                             "an __error__ object with a non-empty string code and nothing else.")
 
 
 def check_threshold(value: float, name: str = "--threshold") -> Result[float, ClientError]:
@@ -1411,8 +1409,8 @@ def quality_fields(tree: QualityTree, record_id: str, kind: str, definitions=(),
 
 def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: BatchSettings, definitions=None,
                     location=None, extra_fields=None) -> Result[tuple, ClientError]:
-    """Load (once per kind) the tree, the record and its wave-1 jobs, one per statement for a per-statement wave (the size
-    check). Every wave's statements, request sizes and log events are checked here, before any call, with the record's
+    """Load (once per kind) the tree, the record and its wave-1 jobs, one per statement for a per-statement wave.
+    Every wave's statements and log events are checked here, before any call, with the record's
     definitions in every request and log event (``definitions``: a DefinitionSet or None; ``location``: the location
     under evaluation, None for ``quality``).
     Ok((tree, record, refs, [(statement or None, job)], carried definitions))."""
@@ -1481,7 +1479,7 @@ def trusted_install_error(args) -> Optional[ClientError]:
 def cmd_quality(args) -> Result[Any, ClientError]:
     """Every record named by a repeated --req/--adr/--nfr (REQs, then ADRs, then NFRs, each in the order given), under one
     run name and one run log. Every record is
-    loaded and size-checked before the first call; a wave without an answer stops the run with the results so far."""
+    loaded before the first call; a wave without an answer stops the run with the results so far."""
     wanted = [(kind, rid) for kind in ("req", "adr", "nfr") for rid in (getattr(args, kind) or [])]
     if not wanted or any(not rid for _, rid in wanted):
         return fail("VALIDATION.INPUT", "a record id is missing or empty: pass one or more non-empty --req, --adr or --nfr ids")
@@ -2516,7 +2514,7 @@ def build_parser() -> argparse.ArgumentParser:
     bt.add_argument("--input", default="-", help="request stream, one JSON object per line (assets/schemas/jev-batch-request.schema.json); - or omitted reads stdin")
     add_stream_options(bt)
     bt.add_argument("--anchors", default="", help="anchors.json")
-    bt.add_argument("--gate", choices=("plan", "dev"), default="plan", help="default roles and request cap when a candidate carries no roles")
+    bt.add_argument("--gate", choices=("plan", "dev"), default="plan", help="default roles when a candidate carries no roles")
     bt.set_defaults(func=cmd_batch)
     q = sub.add_parser("quality", help="judge whether each named REQ, ADR or NFR is well written with its kind's decision tree, one Jev request per wave")
     for kind in ("req", "adr", "nfr"):

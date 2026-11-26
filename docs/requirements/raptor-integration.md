@@ -110,12 +110,10 @@ Lead ruling (2026-11-24, phase j plan review): the `result` log event is judge-j
 of a line; there is no third artifact beside the result line and the event.
 
 Rand Lee, 2026-11-26 (phase j, ANC-004): "These limits are clearly
-over-specified. Input is limited by model context. If sc-obs 1m limit is
-exceeded, that is sc-obs concern & error is returned." The 24000-byte and
+over-specified. Input is limited by model context." The 24000-byte and
 64000-byte request caps and `--max-request-bytes` are removed. Scope: every
 request the batch command sends. Purpose: the selected model's context is
-the only input limit; a provider's or the sc-observability logger's size
-error is returned unchanged as that request's typed error.
+the only input limit.
 
 ### Success Criteria
 

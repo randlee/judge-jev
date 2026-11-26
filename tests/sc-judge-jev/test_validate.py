@@ -1,5 +1,5 @@
-"""`jev_judge.py validate` (REQ-JEV-0210), the field paths of model refusals (ADR-JEV-0005), invalid UTF-8 on stdin, and
-the log-event size check made before any request (REQ-JEV-0211). Jev is never called; nothing here sleeps or times."""
+"""`jev_judge.py validate` (REQ-JEV-0210), the field paths of model refusals (ADR-JEV-0005) and invalid UTF-8 on stdin
+(REQ-JEV-0211). Jev is never called; nothing here sleeps or times."""
 import copy
 import hashlib
 import io

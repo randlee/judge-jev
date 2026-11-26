@@ -4,7 +4,7 @@
 
 ## 0.10.0 — 2026-11-26
 
-- No request size limit (phase-j ANC-004; owner: "Input is limited by model context. If sc-obs 1m limit is exceeded, that is sc-obs concern & error is returned."). Removed the 24000-byte (`--gate plan`) and 64000-byte (`--gate dev`) request caps, the `--max-request-bytes` flag of `batch` and `validate --requests`, `JEV.CONTEXT_EXCEEDED`, and the dry-run `max_request_bytes` field; `request_bytes` is still reported. A provider size error stays `DECIDR.CONTEXT_EXCEEDED`, and an sc-observability size error is returned unchanged. REQ-JEV-0002, REQ-JEV-0208 and REQ-JEV-0212 drop the limit clauses.
+- No request size limit (phase-j ANC-004; owner: "Input is limited by model context."). Removed the 24000-byte (`--gate plan`) and 64000-byte (`--gate dev`) request caps, the `--max-request-bytes` flag of `batch` and `validate --requests`, `JEV.CONTEXT_EXCEEDED`, and the dry-run `max_request_bytes` field; `request_bytes` is still reported. A provider size error stays `DECIDR.CONTEXT_EXCEEDED`, and an sc-observability size error is returned unchanged. REQ-JEV-0002, REQ-JEV-0208 and REQ-JEV-0212 drop the limit clauses.
 
 ## 0.9.0 — 2026-11-25
 

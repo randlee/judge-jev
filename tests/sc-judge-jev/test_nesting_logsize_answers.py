@@ -1,5 +1,5 @@
 """No input crashes the script (REQ-JEV-0210, REQ-JEV-0211): arbitrarily deep nesting never reaches a recursion limit,
-the log-size measure models an escaped (non-ASCII) attempt message at its real size, and the answers-file envelope is
+and the answers-file envelope is
 checked before any request by `validate --answers` and by every command that reads --answers-file alike.
 Every case is an enumerated input; nothing here sleeps or times."""
 import contextlib
@@ -202,8 +202,6 @@ class AnswersEnvelope(unittest.TestCase):
         "error code is an int": {"*": {"__error__": 5}},
         "error code is null": {"*": {"__error__": None}},
         "error code is a list": {"*": {"__error__": ["X"]}},
-        "error code over the bound": {"*": {"__error__": "J" * (jj.FIXTURE_CODE_LIMIT + 1)}},
-        "error code far over the bound": {"*": {"__error__": "J" * 70000}},
         "error with another field": {"*": {"__error__": "X", "why": 1}},
         "error code is empty": {"*": {"__error__": ""}},
         "empty error code in a list": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": ""}]},
@@ -216,7 +214,6 @@ class AnswersEnvelope(unittest.TestCase):
         "list with a bad error entry": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": 7}]},
     }
     ENVELOPE_ACCEPTED = {
-        "error at the bound": {"*": {"__error__": "J" * jj.FIXTURE_CODE_LIMIT}},
         "error of one character": {"*": {"__error__": "J"}},
         "short error": {"*": {"__error__": "DECIDR.NETWORK"}},
         "empty answers object": {"*": {}},
@@ -313,14 +310,8 @@ class AnswersEnvelope(unittest.TestCase):
                 code, out, sent = self.batch({key: plan_answers()})
                 self.assertEqual((code, sent), (0, 1), out)
 
-    def test_a_long_error_code_never_reaches_the_log(self):
-        code, out, sent = self.quality({"*": {"__error__": "J" * 70000}})
-        self.assertEqual((code, out["error"]["code"], sent), (2, "INPUT.MALFORMED", 0))
-        self.assertIn(f"at most {jj.FIXTURE_CODE_LIMIT} characters", out["error"]["message"])
-        self.assertFalse((self.d / "logs").exists())
-
-    def test_an_error_at_the_bound_fails_the_wave_with_its_code_and_logs_cleanly(self):
-        code_text = "J" * jj.FIXTURE_CODE_LIMIT
+    def test_an_error_fails_the_wave_with_its_code_and_logs_cleanly(self):
+        code_text = "J" * 64
         code, out, sent = self.quality({"*": {"__error__": code_text}})
         self.assertEqual((code, out["error"]["code"], sent), (2, code_text, 1), out)
         events = tq.read_log(self.d / "logs")

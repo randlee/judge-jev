@@ -266,11 +266,9 @@ class Errors(DoctorCase):
         cases = {
             "malformed": (b"d:one a jj:Definition ; ;; .", "INPUT.MALFORMED"),
             "non-utf8": (b"\xff\xfe\x00bad", "INPUT.MALFORMED"),
-            "oversized": (b"#" + b"x" * 200_000, "DEFINITIONS.INVALID"),
             "blank node": ((ttl() + '[] a jj:Definition ; jj:term "t" ; jj:text "x" ; jj:source "docs/r.md" .\n').encode(), "DEFINITIONS.INVALID"),
             "literal record": (ttl(definition("x", "t", "x", "docs/r.md", (ADR, None))).replace(f"<{ADR}>", '"ADR-T-0001"').encode(), "DEFINITIONS.INVALID"),
             "two records": ((ttl(definition("x", "t", "x", "docs/r.md", (ADR, None))) + f"a:x0 jj:record <{OTHER}> .\n").encode(), "DEFINITIONS.INVALID"),
-            "long term": (ttl(definition("x", "t" * 200, "x", "docs/r.md", (ADR, None))).encode(), "DEFINITIONS.INVALID"),
         }
         valid = self.defs(definition("ok", "fine", "t", "docs/r.md", (ADR, None)), name="ok.definitions.ttl")
         for name, (data, code) in cases.items():
