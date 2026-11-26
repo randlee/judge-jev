@@ -78,7 +78,7 @@ def example_tree(kind, item, bar):
               for qid, q in questions.items()]
     splitter = module('decidr_terms', SKILL / 'scripts/terms.py')
     terms = splitter.terms(item)
-    noun = 'section' if kind == 'adr' else 'literal term'
+    noun = 'section' if kind == 'adr' else 'phrase'
     question = {'type': 'choice', 'instructions':
         f"The failed gate and its answer are in state.gate. Which {noun} of the "
         "item accounts for that answer or uncertainty? Use the whole record as context. "

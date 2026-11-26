@@ -35,11 +35,11 @@ else
            instructions: ("`item.text` is JSON with statement and record. The gate "
              + ($failed | tojson)
              + " did not meet the bar. Which part of the statement accounts for that answer or uncertainty? "
-             + "Select one literal term; choose none if no listed term accounts for it. "
+             + "Select one phrase; choose none if no listed phrase accounts for it. "
              + "Use record as context; do not invent an explanation."),
            criteria: ($terms[0] | map({key: ., value:
              (if . == "none" then "No listed term accounts for the gate answer or uncertainty."
-              else "The literal term `" + . + "` accounts for the gate answer or uncertainty." end)}) | from_entries)
+              else "The phrase `" + . + "` accounts for the gate answer or uncertainty." end)}) | from_entries)
          }})}
     end
 end

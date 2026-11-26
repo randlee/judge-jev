@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Split item.text's statement into literal lexical terms, preserving code names."""
+"""Offer phrases between stopwords, preserving whole backticked names."""
 import json
 from pathlib import Path
 import re
 import sys
 
-STOPWORDS = frozenset('''a an and are as at be been being by can could for from
+STOPWORDS = frozenset('''a against an and are as at be been being by can could for from
     if in into is it its must of on or shall should that the their then there
-    these this those to was were when which will with would'''.split())
+    these this those through to was were when which will with would'''.split())
 
 
 def terms(item):
@@ -18,12 +18,28 @@ def terms(item):
         return [key for key in ("context", "decision", "rationale", "alternatives", "consequences")
                 if key in payload] + ["none"]
     statement = payload["statement"]["text"]
-    tokens = re.findall(r"`([^`]+)`|([\w]+(?:[-'][\w]+)*)", statement)
-    # Keep the original case: Cancel (the type) differs from cancel (the verb).
-    # Keep code identifiers and negation, even when they look like prose stopwords.
-    selected = (code or word for code, word in tokens
-                if code or word.casefold() not in STOPWORDS)
-    return [term for term in dict.fromkeys(selected) if term != "none"] + ["none"]
+    phrases, words = [], []
+
+    def flush():
+        if words:
+            phrases.append(" ".join(words))
+            words.clear()
+
+    end = 0
+    for token in re.finditer(r"`([^`]+)`|([\w]+(?:[-'’][\w]+)*)", statement):
+        # Punctuation ends a run, but punctuation inside a code span does not.
+        if statement[end:token.start()].strip():
+            flush()
+        code, word = token.groups()
+        if code:
+            words.append(code)
+        elif word.casefold() in STOPWORDS:
+            flush()
+        else:
+            words.append(word)
+        end = token.end()
+    flush()
+    return [phrase for phrase in dict.fromkeys(phrases) if phrase != "none"] + ["none"]
 
 
 if __name__ == "__main__":

@@ -93,7 +93,7 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
                   'probabilities': {'Cancel': .5, 'none': .5}}
         self.env['STUB_DIAGNOSTIC'] = json.dumps({'ok': True, 'value': {'model': 'controlled-model', 'answers': {'which_part': answer}}})
         source = {'id': 'REQ-T-0001', 'title': 'Cancel', 'requirement_statement': {
-            'statements': [{'modal': 'Must', 'text': 'The CLI MUST cancel Cancel.'}]}}
+            'statements': [{'modal': 'Must', 'text': 'The CLI MUST cancel the `Cancel`.'}]}}
         with mock.patch.dict(os.environ, self.env, clear=True):
             views, commands, code = examples.pipeline_views([('req', source)], self.root, .8, 'haiku', 'jev')
         self.assertEqual(code, 0, commands)
@@ -104,6 +104,7 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
         self.assertEqual([call['argv'][call['argv'].index('--model') + 1] for call in calls], ['haiku', 'jev'])
         self.assertTrue(all(call['argv'][call['argv'].index('--project') + 1] == 'decidr-question-tree' for call in calls))
         self.assertEqual(set(calls[1]['request']['questions']), {'which_part'})
+        self.assertIn(answer['choice'], calls[1]['request']['questions']['which_part']['criteria'])
 
     def test_verdict_passes_a_leaf_and_surfaces_second_stage_errors(self):
         leaf = {'verdict': 'yes', 'stage': 'gates', 'item': 'REQ-T.s1'}
@@ -149,13 +150,28 @@ sys.exit(int(os.environ.get('STUB_EXIT','0')))
         self.assertNotEqual(subprocess.run(argv, capture_output=True, env=self.env).returncode, 0)
         self.assertFalse((self.root / 'invalid').exists())
 
-    def test_terms_cli_removes_stopwords_but_keeps_code_names_negation_and_hyphens(self):
-        text = 'When the CLI MUST not send to `When` and `Cancel` or cancel; a command-line tool is on the path.'
+    def term_choices(self, text):
         item = self.root / 'item.json'
         item.write_text(json.dumps({'text': json.dumps({'statement': {'text': text}})}))
         completed = subprocess.run([sys.executable, str(SCRIPTS / 'terms.py'), str(item)], text=True, capture_output=True, env=self.env)
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(json.loads(completed.stdout), ['CLI', 'not', 'send', 'When', 'Cancel', 'cancel', 'command-line', 'tool', 'path', 'none'])
+        return json.loads(completed.stdout)
+
+    def test_terms_cli_groups_words_and_keeps_names_negation_and_hyphens(self):
+        text = 'When the CLI MUST not send to `When` and `Cancel` or cancel; a command-line tool is on the path.'
+        self.assertEqual(self.term_choices(text), ['CLI', 'not send', 'When', 'Cancel', 'cancel', 'command-line tool', 'path', 'none'])
+
+    def test_terms_cli_keeps_stopwords_inside_backticked_names(self):
+        text = 'The tool MUST inspect `state and events` for `Cancel Token` or cancel operation.'
+        self.assertEqual(self.term_choices(text), ['tool', 'inspect state and events', 'Cancel Token', 'cancel operation', 'none'])
+
+    def test_terms_cli_splits_punctuation_and_deduplicates_complete_phrases(self):
+        text = 'Systems MUST read logs, check flags; emit events and read logs or `read logs`.'
+        self.assertEqual(self.term_choices(text), ['Systems', 'read logs', 'check flags', 'emit events', 'none'])
+
+    def test_terms_cli_uses_prepositions_as_phrase_boundaries(self):
+        text = "The CLI MUST obtain records through Raptor's query interface against recorded Jev answers."
+        self.assertEqual(self.term_choices(text), ['CLI', 'obtain records', "Raptor's query interface", 'recorded Jev answers', 'none'])
 
     def test_next_default_req_policy_uses_file_item_and_all_three_gates(self):
         item = {'id': 'REQ-T.s1', 'text': json.dumps({'statement': {'text': 'The CLI MUST send.'}})}

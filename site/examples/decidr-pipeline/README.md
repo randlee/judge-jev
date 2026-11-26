@@ -47,8 +47,9 @@ others. Replace `--raptor` with `--index /path/to/index.json` for an existing
 Raptor export. A selected record with import diagnostics is refused.
 
 The [runner](../../../scripts/decision_examples.py) executes
-`decidr send | jq | guarded decidr send | jq`. REQ/NFR diagnostic choices
-omit prose stopwords; ADR choices are section names. The guard accepts
+`decidr send | jq | guarded decidr send | jq`. REQ/NFR diagnostic choices are
+phrases between stopwords, with backticked names kept whole; ADR choices are
+section names. The guard accepts
 `--project` / `--agent-role` or `SC_PROJECT` / `DECIDR_AGENT_ROLE`.
 For Haiku in stage one, pass `--first-model haiku` and supply its credential.
 

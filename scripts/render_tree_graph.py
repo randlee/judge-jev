@@ -75,7 +75,7 @@ def graph(tree, result=None):
         for qid, question in node['questions'].items():
             choices = list(question.get('criteria', {}))
             if qid == 'which_part':
-                rows.append('which_part: literal term / section or none')
+                rows.append('which_part: phrase / section or none')
             elif qid.startswith('d_'):
                 rows.append(qid + ' (diagnostic)')
             else:

@@ -50,8 +50,8 @@ are `1`, `yes`, `yes`, each with confidence at least the supplied bar.
 One wave is one decidr call containing all that wave's questions. `next.jq`
 uses `.value.answers`, not an assumed echo of the request. Its next request
 gets the original item from `--slurpfile item`. `terms.py` splits the
-statement into literal terms, removes prose stopwords, preserves backtick
-identifiers and negation, and adds `none`. ADR examples instead offer actual
+statement into runs of words between stopwords and punctuation, preserves
+whole backticked names and negation, and adds `none`. ADR examples offer actual
 section names. An optional `--slurpfile tree` supplies the example's ADR/NFR
 policy; omitting it uses the default three REQ gates.
 
