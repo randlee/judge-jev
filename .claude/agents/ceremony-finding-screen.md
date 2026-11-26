@@ -63,7 +63,7 @@ Fenced or raw JSON:
         "id": "RBQA-F001",
         "verdict": "not_applicable | keep | ceremony | concern_valid_remedy_ceremony",
         "missing": ["consumer", "observed_defect"],
-        "existing_coverage": "e.g. the MetricValue type change is compiler-enforced",
+        "existing_coverage": "e.g. a changed return type is already enforced by pyright",
         "reason": "One sentence."
       }
     ]

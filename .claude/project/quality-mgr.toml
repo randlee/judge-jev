@@ -10,7 +10,7 @@ default_branch = "develop"
 unit = "python -m unittest discover -s tests/sc-judge-jev"
 version = "python scripts/check_version_sync.py"
 types = "pyright"                      # run on the changed .py files
-phase_end_proof = "GitHub Actions check: tests (tests.yml)"
+phase_end_proof = ["unit", "dependency-floor", "installer"]   # tests.yml jobs; each must be SUCCESS
 
 # One entry per reviewer. `modes` lists the review types it runs in.
 # `when` is a condition the quality-mgr evaluates from the assignment:

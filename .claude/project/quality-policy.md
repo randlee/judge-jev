@@ -69,7 +69,7 @@ same unit suite, `check_version_sync.py` and the installer jobs.
 ## Versioning
 
 Every PR that changes code or a published skill raises `VERSION` and adds a
-`CHANGELOG.md` entry; `check_version_sync.py` requires the 21 declarations to
+`CHANGELOG.md` entry; `check_version_sync.py` requires every version declaration to
 agree. A docs-only change does not bump.
 
 ## Reviewer discipline

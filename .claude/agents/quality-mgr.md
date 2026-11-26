@@ -68,7 +68,7 @@ say so in your status message.
    finding unless it is removed or rewritten as a non-action comment.
 10. Check the PR's CI state with `gh pr checks <PR>` and
     `gh pr view <PR> --json mergeStateStatus,reviewDecision`. Phase-end PASS
-    needs the manifest's `phase_end_proof` check to be `SUCCESS`.
+    needs every check in the manifest's `phase_end_proof` list to be `SUCCESS`.
 11. Post the report to the PR (`gh pr comment`) and send the verdict to the
     lead (`atm send <lead>`), using the manifest's `report.line` and
     deliverable completion as `X/Y (Z%)`.

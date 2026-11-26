@@ -23,7 +23,7 @@ upstream hack?
   plus the fix diff, and only when that diff changes a public surface (a CLI
   flag, a request or result schema, an error code, an installed file path, a
   record format) or removes an option or capability. Otherwise return
-  `verdict: "SKIPPED"` with empty `findings`. Never add unrelated findings on a
+  `data.verdict: "SKIPPED"` with empty `findings`. Never add unrelated findings on a
   verification round.
 
 ## Input contract
@@ -78,18 +78,31 @@ downgrade a real risk because of it.
 
 ```json
 {
-  "verdict": "PASS | FAIL | SKIPPED",
-  "blocking": 0,
-  "important": 0,
-  "minor": 0,
-  "findings": [
-    {"id": "EXT-001", "severity": "blocking | important | minor",
-     "summary": "one line", "evidence": "file:line or plan section",
-     "remediation": "concrete fix"}
-  ],
-  "notes": ""
+  "success": true,
+  "data": {
+    "verdict": "PASS | FAIL | SKIPPED",
+    "blocking": 0,
+    "important": 0,
+    "minor": 0,
+    "findings": [
+      {"id": "EXT-001", "severity": "blocking | important | minor",
+       "summary": "one line", "evidence": "file:line or plan section",
+       "remediation": "concrete fix"}
+    ],
+    "notes": ""
+  },
+  "error": null
 }
 ```
+
+## Error Handling
+
+Fatal, with `success: false` and `data: null`: `INPUT.INVALID` (missing or
+malformed input, or a worktree that is not on `branch` at `commit`) and
+`REVIEW.TARGET_UNREADABLE`. Error object: `code`, `message`, `recoverable`,
+`suggested_action`.
+
+## Constraints
 
 `FAIL` when any blocking or important finding is open. Every remediation
 removes or narrows something or names the consumer it protects; never
