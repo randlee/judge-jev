@@ -11,7 +11,7 @@
 - Docs: tree diagrams under `docs/diagrams/trees/` generated from the shipped quality and diagnostic trees by `scripts/gen_tree_diagrams.py`; `test_tree_diagrams.py` fails when they disagree.
 - Docs: `quality.md` no longer says the shipped trees hold wave 1 only, and shows the 0.7.0 to 0.8.0 tree change; `check` and `check --profile` are marked planned (no such subcommand).
 
-- Add the published `walking-decidr-trees` skill for one-wave-per-call decidr and jq pipelines, including deterministic early-stop, error, and which-part routing.
+- Add the published `walking-decidr-trees` skill for one-wave-per-call decidr and jq pipelines, including deterministic early-stop, error, and which-part routing; which-part choices are phrases between stopwords, backticked names kept whole.
 - Add runnable REQ/ADR/NFR examples under `site/examples/`, with recorded live responses, offline replay, D2 diagrams, Mermaid output and sc-compose XHTML reports linked from the Pages diagrams index.
 - Make the second-stage project and agent role configurable, handle newline-free input, report ties with `none`, and omit stopwords from diagnostic term choices.
 - Normalize local execution paths in published recordings and reports; explain that an example `review` calls for follow-up and is not a quality failure.
