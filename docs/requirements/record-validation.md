@@ -62,8 +62,6 @@ answers.
 - A per-statement request that gets no answer MUST fail with an error that
   names its statement.
 - A wave after the first MUST refine the answers of the wave before it.
-- A wave after the first MUST be designed from the observed live results
-  of the wave before it.
 - A wave with no next wave MUST end the walk, with its verdict given by a
   rule in the tree file over that wave's answers.
 - The tree MUST ship with the tool as a data file a consumer can override
@@ -78,8 +76,6 @@ answers.
 **MUST NOT statements:**
 
 - The mode MUST NOT check structure that Raptor's import checks.
-- A wave's log events MUST NOT carry its composed requests, Jev's answers
-  or the choices and confidences its reason reports.
 
 ### Rationale
 
@@ -118,8 +114,7 @@ wave's reason is rebuilt from the rows it references.
 - [ ] Every wave's result lists each of its questions with id, text,
   choice and confidence.
 - [ ] A live run's log holds each wave's `session_id`s and selected
-  branch or verdict, and no composed request, Jev answer, choice or
-  confidence.
+  branch or verdict.
 - [ ] A REQ with two MUST statements and one SHOULD statement sends two
   wave-1 requests, one per MUST statement.
 - [ ] A REQ whose third statement answers `check: none` reports `no`, names
@@ -129,7 +124,7 @@ wave's reason is rebuilt from the rows it references.
 
 ### Implementation Notes
 
-Logging goes through the sc-observability logger (REQ-JEV-0008). A
+A
 per-statement node sets `"per": "statement"`, `statements` (the record
 field holding the statements) and `modals` (the modals judged); each
 statement is one request whose item text is `{statement, record}`. The

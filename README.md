@@ -87,7 +87,7 @@ Out of scope:
   (ADR-JEV-0002).
 - Structure checks that Raptor's import already makes (ADR-JEV-0003).
 - Changes to the Jev core other than defect fixes or the logger move
-  (ADR-JEV-0001, REQ-JEV-0008).
+  (ADR-JEV-0001).
 
 ## Install
 

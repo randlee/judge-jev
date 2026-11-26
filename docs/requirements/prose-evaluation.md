@@ -353,7 +353,6 @@ questions that judges whether a record is well written: waves of questions
 - In `task` mode, each dry-run entry MUST report the vars file.
 - In `task` mode, each dry-run entry MUST report the rendered text.
 - Each dry-run entry MUST report the full composed request.
-- Each dry-run entry MUST report the composed request's size in bytes.
 - For `quality`, the dry run MUST report the decision tree.
 - For `quality`, the dry run MUST report the composed wave-1 request.
 - A dry run MUST fail with a typed error on anything that would make the
@@ -366,7 +365,6 @@ questions that judges whether a record is well written: waves of questions
 - A dry run MUST NOT write a result envelope.
 - A dry run MUST NOT write a result, wave or verdict event to the
   sc-observability logger.
-- A dry run MUST NOT open an sc-agent `Run` or write a run link.
 
 ### Rationale
 
@@ -408,8 +406,7 @@ once.
 - `judge-jev quality` MUST judge each record with its kind's quality
   decision tree (REQ-JEV-0101).
 - All records of one `judge-jev quality` invocation MUST be logged under
-  one run name: `--run-name` when given, else the `run_id` of the
-  invocation's `Run`.
+  one run name: `--run-name` when given.
 - `judge-jev quality --no-cache` MUST send every request with
   `cache=False`.
 - `judge-jev batch --repeat N` with N above 1 MUST send all repeats in one
@@ -421,9 +418,6 @@ Quality and compliance are separate questions about separate inputs. One
 run name per invocation groups a measurement over many records in the
 log. An intentional identical resend (a variance check, a repeat) would
 otherwise be answered from sc-agent's cache (ADR-JEV-0001).
-
-Lead ruling (2026-11-24, phase j plan review): all repeats go in one
-`cache=False` call; the default run name is the `Run`'s `run_id`.
 
 ### Success Criteria
 
@@ -442,7 +436,7 @@ Lead ruling (2026-11-24, phase j plan review): all repeats go in one
 Definitions: Jev is TypeSafe's hosted judge model: it answers each
 multiple-choice question about a text with one choice and a confidence from
 0 to 1. A Jev request is one call to it. The model for an input kind is the
-Pydantic model (a typed schema class) judge-jev validates that input with
+model judge-jev validates that input with
 (ADR-JEV-0005). A field path is the dotted path of keys and list indexes to
 the refused field, such as `nodes.wave-1.questions.context.criteria`. An
 answers file is a JSON file of Jev's answers, keyed by request, that
@@ -557,9 +551,6 @@ judge-jev's own record of that request's result; it carries the request's
 - Every request's result record MUST carry the digest of each definition
   the request carried.
 
-**MUST NOT statements:**
-- `judge-jev` MUST NOT truncate a definition.
-
 ### Rationale
 
 Rand Lee, 2026-11-08: "we can NOT write a single definition file and add it
@@ -572,10 +563,6 @@ requires clarification".
 Owner ruling (2026-11-24, phase j): judge-jev writes no per-request log
 event; the request itself is in sc-agent's session log under its
 `session_id`, so the digests go in the request's result record.
-
-Rand Lee, 2026-11-26 (phase j, ANC-004): "These limits are clearly
-over-specified. Input is limited by model context." The 24000-byte limit
-on a request with definitions is removed.
 
 ### Success Criteria
 

@@ -119,7 +119,7 @@ class BatchTests(BatchCase):
         self.assertEqual([e["action"] for e in events], ["request", "answer", "result"] * 6)
         self.assertEqual({e["fields"]["run"] for e in events}, {"r1"})
         self.assertEqual([e["correlation_id"] for e in events if e["action"] == "result"], [x["run_id"] for x in self.parsed(from_file.stdout)])
-        self.assertEqual(list((self.d / "a").rglob("tournament-*.jsonl")), [])  # REQ-JEV-0008: no own log format
+        self.assertEqual(list((self.d / "a").rglob("tournament-*.jsonl")), [])
         # the log is append-only: a second run with the same name adds its events after the first run's
         again = self.subprocess_batch("a", "--input", str(self.d / "in.jsonl"))
         self.assertEqual(self.log("a"), self.parsed(from_file.stdout) + self.parsed(again.stdout))
