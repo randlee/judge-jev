@@ -8,7 +8,6 @@ not a judge-jev quality failure.
 [report.html](report.html) shows D2 diagrams and selectable results;
 [recorded.json](recorded.json) contains the captured requests and responses
 with execution locations replaced by placeholders.
-Recorded before which-part choices became phrases; a live run offers phrases.
 The site publishes both examples in place and links them from the [diagrams index](https://randlee.github.io/judge-jev/diagrams/index.html).
 
 ## Replay
