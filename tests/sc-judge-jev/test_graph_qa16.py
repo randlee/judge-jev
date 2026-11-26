@@ -1,14 +1,12 @@
 """Hostile and malformed tree inputs never crash the graph layer (ADR-JEV-0006, ADR-JEV-0007; qa16 findings F1 to F9).
 
 The ontology defines the graph and validates its edges (closed shapes); the pydantic models verify the body of a node.
-Every bad input is a typed error. Every case is enumerated: no sleeps, no timing, no randomness. The slow cases of the
-reviewer's probes (a 20000-deep blank-node chain, a 900 KiB wide wave) are asserted as refusals, never run to completion.
+Every bad input is a typed error. Every case is enumerated: no sleeps, no timing, no randomness.
 """
 import contextlib
 import io
 import json
 import logging
-import os
 import re
 import unittest
 from pathlib import Path

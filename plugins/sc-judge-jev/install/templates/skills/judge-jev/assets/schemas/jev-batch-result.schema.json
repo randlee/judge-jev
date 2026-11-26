@@ -45,18 +45,18 @@
     },
     "item_id": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
     },
     "anchor_id": {
       "type": [
         "string",
         "null"
       ],
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
     },
     "candidate_id": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
     },
     "repeat": {
       "type": "integer",

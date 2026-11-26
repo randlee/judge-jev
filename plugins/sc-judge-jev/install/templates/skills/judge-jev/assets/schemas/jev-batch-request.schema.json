@@ -19,7 +19,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
         },
         "title": {
           "type": "string"
@@ -40,7 +40,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
         },
         "statement": {
           "type": "string",
@@ -101,7 +101,7 @@
         "properties": {
           "candidate_id": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
           },
           "questions": {
             "type": "object",

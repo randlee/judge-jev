@@ -286,7 +286,7 @@ def _non_blank(value: str) -> str:
 
 def _safe_id_text(value: str) -> str:
     if not re.fullmatch(BATCH_ID_RE, value):
-        raise ValueError("must be letters, digits and _.:- only, starting with a letter or digit, at most 128 characters")
+        raise ValueError("must be letters, digits and _.:- only, starting with a letter or digit")
     return value
 
 
@@ -1410,7 +1410,7 @@ def quality_fields(tree: QualityTree, record_id: str, kind: str, definitions=(),
 def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: BatchSettings, definitions=None,
                     location=None, extra_fields=None) -> Result[tuple, ClientError]:
     """Load (once per kind) the tree, the record and its wave-1 jobs, one per statement for a per-statement wave.
-    Every wave's statements and log events are checked here, before any call, with the record's
+    Every wave's statements are checked here, before any call, with the record's
     definitions in every request and log event (``definitions``: a DefinitionSet or None; ``location``: the location
     under evaluation, None for ``quality``).
     Ok((tree, record, refs, [(statement or None, job)], carried definitions))."""

@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 import test_quality as tq
-from test_jev_judge import env, jsonl, plan_answers, request_line, run_cli, write
+from test_jev_judge import consented, env, jsonl, plan_answers, request_line, run_cli, write
 from test_validate import validate
 
 jj = tq.jj
@@ -311,18 +311,27 @@ class AnswersEnvelope(unittest.TestCase):
                 self.assertEqual((code, sent), (0, 1), out)
 
     def test_a_request_over_64000_bytes_is_sent_whole(self):
+        """No --answers-file: the live path runs to sc_agent.send_batch (stubbed), which must receive the whole item text."""
+        import sc_agent
         text = "x" * 70000
-        sent = []
+        captured = []
+
+        def send_batch(requests, **kwargs):
+            captured.extend(json.loads(request) for request in requests)
+            lines = [{"ok": True, "value": {"answers": plan_answers(), "session_id": f"s{i}"}} for i in range(len(requests))]
+            for index, line in enumerate(lines):
+                kwargs["on_result"](index, line)
+            return {"ok": True, "value": [{"index": i, "result": line} for i, line in enumerate(lines)]}
+
         src = write(self.d, "big.jsonl", jsonl([request_line(text=text)]))
-        with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), mock.patch.object(jj, "judge_batch", counting_pump(sent)):
-            code, out = run_cli(["batch", "--input", src, "--answers-file", write(self.d, "b.json", {"*": plan_answers()})])
+        with env(), consented(), mock.patch.object(sc_agent, "send_batch", send_batch):
+            code, out = run_cli(["batch", "--input", src])
         self.assertEqual(code, 0, out)
-        self.assertGreater(os.path.getsize(src), 64000)
-        self.assertEqual(len(sent), 1)
-        self.assertIn(text, json.dumps(sent[0], default=str))
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["state"]["item"]["text"], text)
 
     def test_an_error_fails_the_wave_with_its_code_and_logs_cleanly(self):
-        code_text = "J" * 64
+        code_text = "J"
         code, out, sent = self.quality({"*": {"__error__": code_text}})
         self.assertEqual((code, out["error"]["code"], sent), (2, code_text, 1), out)
         events = tq.read_log(self.d / "logs")

@@ -120,7 +120,7 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
 - `--answers` checks the envelope only, the same one `--answers-file` checks
   before the first request in `batch` and `quality`: an object of string keys,
   each an object or a non-empty list of objects; an `__error__` object holds a
-  string code of at most 64 characters and nothing else (`INPUT.MALFORMED`
+  string code and nothing else (`INPUT.MALFORMED`
   otherwise). An answer's own body (its choice, probabilities, extra keys) is
   Jev's response stand-in and is checked after the send
   (`DECIDR.RESPONSE_INVALID` from the shared client), so a test can feed an invalid answer on purpose.
@@ -155,8 +155,8 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
     jj:location "docs/requirements/perf.md#Fast" .
 ```
 
-- A definition has exactly one `jj:term` (one line, at most 128 characters),
-  `jj:text` (at most 2000 characters) and `jj:source` (a path relative to the
+- A definition has exactly one `jj:term` (one line),
+  `jj:text` and `jj:source` (a path relative to the
   repository), and zero or more `jj:attachedTo` attachments. One with none is
   valid but unused: `doctor` warns.
 - An attachment has exactly one IRI `jj:record` (the Raptor record IRI,
@@ -176,8 +176,8 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
   definition IRI with `jj:carriedDefinition`.
 - A bad file is a typed error before the first request, never a traceback:
   `INPUT.MISSING`, `INPUT.MALFORMED` (not Turtle, not UTF-8), or
-  `DEFINITIONS.INVALID` (oversize, a blank-node definition, a literal
-  record, an attachment with two records, a term over its limit, an
+  `DEFINITIONS.INVALID` (a blank-node definition, a literal
+  record, an attachment with two records, an
   absolute or `..` path, any shape violation).
 
 Locations use the forms in Locations below.

@@ -468,7 +468,7 @@ questions, choices or probabilities do not match the request.
 - The answers-file envelope MUST require each key's value to be an object
   or a non-empty list of objects.
 - The answers-file envelope MUST require an object with `__error__` to hold
-  only a string code of at most 64 characters.
+  only a string code.
 
 **MUST NOT statements:**
 - `judge-jev validate` MUST NOT call Jev.

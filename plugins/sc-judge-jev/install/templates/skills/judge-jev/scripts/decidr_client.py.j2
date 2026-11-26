@@ -342,7 +342,7 @@ BATCH_MAX_WORKERS = 4
 BATCH_RETRIES = 1
 BATCH_FIXTURE_ERROR = "__error__"
 
-BATCH_ID_RE = r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+BATCH_ID_RE = r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
 
 
 class BatchSettings(NamedTuple):

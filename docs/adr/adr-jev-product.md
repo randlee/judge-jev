@@ -4,7 +4,7 @@
 **Version:** 0.4.3  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-24  
+**Last Updated:** 2026-11-26  
 **Decision Date:** 2026-11-07  
 **Owner:** Rand Lee  
 
@@ -38,7 +38,7 @@ The Jev core keeps its architecture and contracts unchanged. It changes
 only to fix a defect, to replace its run log with the sc-observability
 logger (REQ-JEV-0008), to adopt sc-agent's session log and the
 `jev-batch-result/2` result line (owner ruling 2026-11-24), or to make
-one of the four changes that follow (the first three by owner ruling at
+one of the five changes that follow (the first three by owner ruling at
 phase j plan review, 2026-11-24; the fourth by owner approval, 2026-11-24):
 
 - A `--no-cache` flag on `quality`, which sends its requests with
