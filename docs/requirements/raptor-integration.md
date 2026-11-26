@@ -57,8 +57,7 @@ multiple-choice question about a text with one choice and a confidence from
 0 to 1. A Jev request is one call to it. The batch command is `jev_judge.py
 batch`: it reads request lines (one JSON request per line), sends each through
 the adopted sc-agent client to Jev and writes a result line. A result
-envelope is the `jev-batch-result/2` JSON result line for one request
-(the sc-decidr wheel's `sc_agent/templates/jev-batch-result.schema.json`): it holds the verdict derived from Jev's answers, or its error. The request
+envelope is the `jev-batch-result/2` JSON result line for one request: it holds the verdict derived from Jev's answers, or its error. The request
 size limit is the `--max-request-bytes` value, at most 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
 `--gate dev`.
 
@@ -90,7 +89,7 @@ Definitions: `allow_remote_judge` is consent to send to TypeSafe only.
 
 **MUST NOT statements:**
 
-- judge-jev MUST NOT write that setting without the user's answer.
+- judge-jev MUST NOT write `allow_remote_judge` in the committed `.sc/judge-jev/settings.yaml` without the user's answer.
 
 ### Rationale
 
