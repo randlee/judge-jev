@@ -1,12 +1,14 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.1.0  
+**Version:** 0.4.2  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-08  
+**Last Updated:** 2026-11-24  
 **Decision Date:** 2026-11-07  
 **Owner:** Rand Lee  
+
+The header Status is the file's. Each ADR's own Status governs that ADR.
 
 ## Context
 
@@ -33,13 +35,45 @@ or its callers break when the replacement lands.
 ### Decision
 
 The Jev core keeps its architecture and contracts unchanged. It changes
-only to fix a defect, or to replace its run log with the sc-observability
-logger (REQ-JEV-0008).
+only to fix a defect, to replace its run log with the sc-observability
+logger (REQ-JEV-0008), to adopt sc-agent's session log and the
+`jev-batch-result/2` result line (owner ruling 2026-11-24), or to make
+one of the four changes that follow (the first three by owner ruling at
+phase j plan review, 2026-11-24; the fourth by owner approval, 2026-11-24):
+
+- A `--no-cache` flag on `quality`, which sends its requests with
+  `cache=False`; `batch --repeat N` above 1 sends all repeats in one
+  `cache=False` call.
+- `--model haiku` and `--model luna`, sent through the sc-decidr wheel,
+  which resolves the model's provider and its key (REQ-JEV-0009).
+- Redaction of every key in the sc-decidr wheel's provider-key list
+  (REQ-JEV-0010).
+- `batch --answers-file` fixture runs answer through the adopted client's
+  `run_batch` with no Run, and the fixture retry simulation is removed: a
+  fixture entry is one answer or one error, and an entry that carries an
+  attempts list is a validation error (owner approval, 2026-11-24;
+  NFR-JEV-0001).
+
+Owner ruling 2026-11-24: `--model` takes any selector the sc-decidr
+wheel resolves, not only `haiku` and `luna`; the caller chooses one model
+per command.
+
+sc-agent's session log is adopted through the wheel's `Run`: each
+command opens one `Run` through the adopted client's `open_run`, sends through it and reads its `run_id` from
+it; the core mints no id. The `Run` owns the logger, cancellation,
+configuration resolution, test seams and the one model the caller chose
+with `--model`, so no call names a model or a provider, and a call passes only its
+requests, `cache=False` for an intentional resend and, for a
+batch, `on_result`.
 
 ### Rationale
 
 An unchanged core lets the Rust implementation replace it with no change
 to its callers.
+
+Owner ruling (2026-11-24, phase j plan review): no model name is
+hard-coded in a call; one model per command, chosen by the caller. Consent is checked by the adopted client's
+gate on the resolved provider (REQ-JEV-0004).
 
 ### Consequences
 
@@ -374,26 +408,45 @@ later takes over graph work without judge-jev changing its callers.
 judge-jev has two ports:
 
 - **Transport:** sends the request lines of one wave and returns their
-  result lines. Its contract is the existing batch request and result
-  schemas (`assets/schemas/jev-batch-request.schema.json`,
-  `jev-batch-result.schema.json`), unchanged. The Python core implements it
-  now; sc-agent's Jev tool implements it later.
+  result lines. Its contract is the batch request schema
+  (`assets/schemas/jev-batch-request.schema.json`) and the shared
+  `jev-batch-result/2` result line, which
+  holds generic fields only: `schema`, `tool`, `tool_version`, `run_id`,
+  `session_id`, `request_id`, `project`, `agent_role`, `threshold`,
+  `verdict`, `min_confidence`, `leaning`, `ok` and `error`. judge-jev's
+  record id lives in judge-jev's own record of the line, its `result` log
+  event, which references the `session_id`. The Python core implements the port now; sc-agent's Jev
+  tool implements it later. The canonical `jev-batch-result/2` schema is
+  the one the sc-decidr wheel ships as package data
+  (`sc_agent/templates/jev-batch-result.schema.json`, read through
+  `importlib.resources`); judge-jev keeps no copy, so
+  `assets/schemas/jev-batch-result.schema.json` is removed and judge-jev
+  checks its `/2` lines against the wheel's schema (amended at phase j plan
+  review, 2026-11-24).
 - **Graph store:** loads a tree, validates it with SHACL, compiles a wave
   to its JSON questions, records a run's triples and answers queries.
   judge-jev implements it now with `pyoxigraph` and a SHACL validator; a
   Jev tool with Oxigraph may implement it later.
 
-Only JSON crosses the transport. The result lines in the sc-observability
-log are the record of a run; a run's triples are a projection of those
-lines and the tree, so they can be rebuilt from the log at any time. The
-tree walk (which wave next, which verdict) uses only the compiled waves and
-the answers, so it runs on either side of the seam.
+Only JSON crosses the transport. sc-agent's session log is the record of
+a run's queries: one row per Jev query, keyed by `session_id`, holding the
+request and Jev's answers. The result lines and judge-jev's own records
+hold only what judge-jev derived and reference those rows by `session_id`;
+they are not the record of a run's queries. A rebuild reads answers
+through the adopted client's `answers_for`: `jev-batch-result/1` events
+give their inline answers and `/2` lines give answers from the session
+rows by `session_id`; judge-jev reads no session-log file. A run's triples are a
+projection of the session rows, judge-jev's records and the tree, so they
+can be rebuilt from them at any time. The tree walk (which wave next, which
+verdict) uses only the compiled waves and the answers, so it runs on either
+side of the seam.
 
 ### Rationale
 
 A Jev tool without a graph store needs only the JSON contract it already
-has. Because the triples are rebuilt from the log, no run is lost when the
-store moves to the other side of the seam.
+has. Because the triples are rebuilt from the session log and judge-jev's
+records, no run is lost when the store moves to the other side of the
+seam.
 
 ### Consequences
 
@@ -406,8 +459,8 @@ store moves to the other side of the seam.
 **Negative:**
 
 - Until sc-agent hosts the store, judge-jev carries the graph dependencies.
-- The projection from result lines to triples must stay in step with the
-  ontology.
+- The projection from session rows and judge-jev's records to triples
+  must stay in step with the ontology.
 
 ### Alternatives Considered
 
