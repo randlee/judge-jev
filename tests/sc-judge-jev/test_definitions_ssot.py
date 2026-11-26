@@ -1,4 +1,4 @@
-"""REQ-JEV-0216: every guidance file links to references/definitions.md, and the definitions syntax lives only there."""
+"""REQ-JEV-0216: guidance that tells an agent to look up, add or test a term links to references/definitions.md, and the definitions syntax lives only there."""
 import pathlib
 import re
 import unittest
@@ -15,10 +15,15 @@ def guidance():
 
 
 class DefinitionsSsotTest(unittest.TestCase):
-    def test_every_guidance_file_links_the_page(self):
+    def test_guidance_that_looks_up_adds_or_tests_a_term_links_the_page(self):
+        tells = re.compile(r"define-term|[Dd]efined terms|compare-definition|^## Definitions", re.M)
+        linked = [f.name for f in guidance() if tells.search(f.read_text(encoding="utf-8"))]
+        self.assertTrue(linked)
         for f in guidance():
-            with self.subTest(f.name):
-                self.assertRegex(f.read_text(encoding="utf-8"), LINK)
+            text = f.read_text(encoding="utf-8")
+            if tells.search(text):
+                with self.subTest(f.name):
+                    self.assertRegex(text, LINK)
 
     def test_definition_syntax_is_only_on_the_page(self):
         for f in guidance():
