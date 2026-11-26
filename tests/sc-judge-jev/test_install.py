@@ -136,8 +136,9 @@ class RenderingTests(unittest.TestCase):
         self.assertIsInstance(out, inst.Ok, getattr(out, "error", None))
         return out.value
 
-    def test_plugin_ships_only_the_installer_skill_and_no_rendered_tree(self):
-        self.assertEqual(sorted(p.name for p in (PLUGIN / "skills").iterdir()), ["judge-jev-installer"])
+    def test_plugin_ships_installer_and_tree_walking_skill_and_no_rendered_tree(self):
+        self.assertEqual(sorted(p.name for p in (PLUGIN / "skills").iterdir()),
+                         ["judge-jev-installer", "walking-decidr-trees"])
         for gone in (".claude", ".codex", ".cursor", "skills/judge-jev", "install/manifest.json"):
             self.assertFalse((PLUGIN / gone).exists(), gone)
 
@@ -151,7 +152,7 @@ class RenderingTests(unittest.TestCase):
                      if p.name.endswith(".j2")}
         self.assertTrue({"scripts/result.py", "scripts/judge_jev_paths.py", "scripts/judge_jev_settings.py"} <= expected)
         self.assertEqual(set(self.package.rendered), expected)
-        self.assertEqual(self.package.agents, ("jev-fix-proposer.md",))
+        self.assertEqual(set(self.package.agents), {"jev-fix-proposer.md", "req-author.md"})
 
     def test_every_template_renders_strictly(self):
         templates = [t for t in sorted(TEMPLATES.rglob("*.j2")) if inst.is_install_template(t)]

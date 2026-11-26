@@ -13,7 +13,7 @@ Consistency:
   or reference cannot escape. CHANGELOG.md has a "## Unreleased" section or a
   "## X.Y.Z" entry. Registry
   paths, manifest identities and marketplace sources are checked too, and the
-  plugin must expose only the judge-jev-installer skill.
+  plugin must expose exactly the installer and decidr tree-walking skills.
 
 Every PR raises VERSION by at least a patch and changes every declaration with
 it (CONTRIBUTING.md). This script checks that the declarations agree and that
@@ -21,7 +21,8 @@ CHANGELOG.md has a "## <VERSION>" entry (or "## Unreleased"); it does not yet
 compare VERSION with the base branch.
 
 Every other version number is locked too, with no exclusions: each template's
-own header `version:` (every *.j2) equals VERSION, and every integer version
+own header `version:` (every *.j2) equals VERSION;
+Raptor's templates, copied verbatim as assets/templates/raptor-*.md.j2, keep their own. Every integer version
 (a question set's or tree's `version` / `jj:version`, every `schema_version`)
 equals 1.
 
@@ -40,6 +41,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PLUGIN = ROOT / "plugins" / "sc-judge-jev"
 INSTALLER_SKILL = "judge-jev-installer"
+EXPOSED_SKILLS = (INSTALLER_SKILL, "walking-decidr-trees")
 SKILL_NAME = "judge-jev"
 HARNESS = PLUGIN / "install" / "harness"
 TEMPLATES = PLUGIN / "install" / "templates"
@@ -137,12 +139,15 @@ INT_VERSION_RES = (
     re.compile(r"\bjj:version\s+([0-9]+)\b"),
 )
 LOCKED_INT_VERSION = "1"
+VENDORED_PREFIX = "raptor-"  # assets/templates/raptor-*.md.j2, copied verbatim from Raptor
 
 
 def locked_drift(root: pathlib.Path, want: str) -> list:
     """Template header versions that are not VERSION, and integer versions that are not 1."""
     drift = []
     for template in sorted(root.glob("plugins/**/*.j2")):
+        if template.name.startswith(VENDORED_PREFIX):
+            continue  # copied from Raptor: its own template version, not ours
         head = FRONT_RE.match(template.read_text(encoding="utf-8"))
         for v in VER_RE.findall(head.group(1)) if head else []:
             if v != want:
@@ -253,8 +258,8 @@ def release_checks(want: str, drift: list) -> int:
         if data and data.get("skills") != "./skills/":
             drift.append(f"{_rel(manifest)}: skills must be ./skills/")
     exposed = sorted(p.name for p in (PLUGIN / "skills").iterdir() if p.is_dir()) if (PLUGIN / "skills").is_dir() else []
-    if exposed != [INSTALLER_SKILL]:
-        drift.append(f"plugins/sc-judge-jev/skills: exposes {exposed}; must be exactly [{INSTALLER_SKILL!r}]")
+    if exposed != sorted(EXPOSED_SKILLS):
+        drift.append(f"plugins/sc-judge-jev/skills: exposes {exposed}; must be exactly {sorted(EXPOSED_SKILLS)}")
     catalogs = [
         ROOT / ".claude-plugin" / "marketplace.json",
         ROOT / ".agents" / "plugins" / "marketplace.json",

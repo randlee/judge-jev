@@ -1,5 +1,7 @@
 # `judge-jev check --profile`: fan-out and aggregation
 
+> **Planned, not in this release.** `check` (compliance: does code or a prompt meet its record) has no subcommand in `jev_judge.py`; this diagram is its design.
+
 ```mermaid
 flowchart LR
     PF["--profile &lt;profile.toml&gt;<br/>[--questions &lt;file&gt;]"] --> E["[[location]]:<br/>loc, mode, records, vars"]

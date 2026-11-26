@@ -37,9 +37,13 @@ class DiagnosticTreeTests(unittest.TestCase):
                 self.assertEqual(sorted(diag["nodes"]), sorted(gate["nodes"]))
                 for name, node in gate["nodes"].items():
                     other = diag["nodes"][name]
-                    self.assertEqual(other["verdict_rules"], node["verdict_rules"])
-                    self.assertEqual({k: v for k, v in other.items() if k not in ("questions", "verdict_rules")},
-                                     {k: v for k, v in node.items() if k not in ("questions", "verdict_rules")})
+                    if "questions" not in node:  # a leaf: identical
+                        self.assertEqual(other, node)
+                        continue
+                    for rules in ("verdict_rules", "next"):  # a wave has one of the two; the diagnostic tree keeps it
+                        self.assertEqual(other.get(rules), node.get(rules))
+                    self.assertEqual({k: v for k, v in other.items() if k != "questions"},
+                                     {k: v for k, v in node.items() if k != "questions"})
                     for qid, question in node["questions"].items():
                         self.assertEqual(other["questions"][qid], question)
 
@@ -49,7 +53,7 @@ class DiagnosticTreeTests(unittest.TestCase):
                 gate, diag = load(f"quality-{kind}.json"), load(f"diag-{kind}.json")
                 added = 0
                 for name, node in diag["nodes"].items():
-                    for qid, question in node["questions"].items():
+                    for qid, question in node.get("questions", {}).items():
                         if qid in gate["nodes"][name]["questions"]:
                             continue
                         added += 1
@@ -62,7 +66,9 @@ class DiagnosticTreeTests(unittest.TestCase):
         for kind in ("req", "nfr", "adr"):
             with self.subTest(kind=kind):
                 for node in load(f"diag-{kind}.json")["nodes"].values():
-                    self.assertNotIn('"d_', json.dumps(node["verdict_rules"]))
+                    # neither a verdict rule nor a branch rule may read a diagnostic answer
+                    self.assertNotIn('"d_', json.dumps(node.get("verdict_rules", [])))
+                    self.assertNotIn('"d_', json.dumps(node.get("next", [])))
 
     def test_diagnostic_tree_is_not_marked_approved(self):
         for kind in ("req", "nfr", "adr"):
@@ -81,7 +87,7 @@ class StrategyTableTests(unittest.TestCase):
         ids = set()
         for kind in ("req", "nfr", "adr"):
             for node in load(f"diag-{kind}.json")["nodes"].values():
-                ids.update(node["questions"])
+                ids.update(node.get("questions", {}))
         text = FIX_STRATEGY.read_text(encoding="utf-8")
         table = text[text.index("| Strategy |"):text.index("Fix `term` answers first")]
         for name in set(re.findall(r"`(d_[a-z_]+)`", table)):

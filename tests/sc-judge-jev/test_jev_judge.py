@@ -312,7 +312,7 @@ class ErrorHandlingTests(unittest.TestCase):
             self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), flag)
             self.assertIn(f"argument {flag}: invalid", out["error"]["message"])
         self.assertEqual((jj.DEFAULT_MODEL, jj.DEFAULT_THRESHOLD, jj.DEFAULT_MAX_REQUEST_BYTES, jj.DEFAULT_MAX_REQUEST_BYTES_DEV),
-                         ("jev", 0.6, 24000, 64000))
+                         ("jev-latest", 0.6, 24000, 64000))
         self.assertEqual(jj.BATCH_MAX_WORKERS, 4)
 
     def test_out_of_range_values_are_validation_input(self):
