@@ -14,7 +14,7 @@
 
 ### Requirement Statement
 
-Definitions: The judge-jev skill is the skill at `.claude/skills/judge-jev`. The definitions reference page is the file `references/definitions.md` in the judge-jev skill. A file describes how definitions work when it says where a term is defined, or how an agent looks a term up, adds a term or tests a term. A skill is a directory under `.claude/skills`; an agent is a file under `.claude/agents`; a reference is a file in a skill's `references` directory. A guidance file is any skill, agent or reference file other than the definitions reference page. A file links to the definitions reference page when it holds a Markdown link whose target is that page.
+Definitions: The judge-jev skill is the skill named `judge-jev` that `install.py` installs for each harness, as `.claude/skills/judge-jev`, `.codex/skills/judge-jev` or `.cursor/skills/judge-jev`. The definitions reference page is the file `references/definitions.md` in the judge-jev skill. A file describes how definitions work when it says where a term is defined, or how an agent looks a term up, adds a term or tests a term. A skill is a directory under a harness's `skills` folder (`.claude/skills`, `.codex/skills` or `.cursor/skills`); an agent is a file under that harness's `agents` folder; a reference is a file in a skill's `references` directory. A guidance file is any skill, agent or reference file other than the definitions reference page. A file links to the definitions reference page when it holds a Markdown link whose target is that page.
 
 **MUST statements:**
 

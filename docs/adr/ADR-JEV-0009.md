@@ -23,6 +23,8 @@ ADR-JEV-0008 (Definitions are graph nodes targeted at records) names a definitio
 
 ### Context
 
+Owner statement, 2026-11-25 (verbatim): "both the judge-jev record-author skill AND skills related to evaluating results OR jev-fix related agents/skills MUST have the solutions in a easily referenced SSOT". Its subject is definitions: where a term is defined, how an agent looks one up, adds one and tests one.
+
 A beta tester reported "no definition" as a problem on 2026-11-25: a record used a term that neither it nor anything it links defines.
 
 Today the guidance on definitions is spread over three references of the judge-jev skill (fix-strategy, quality-workflow and jev-api), and quality-workflow says the default fix is the record's own Definitions paragraph. A term used by several records is therefore defined in several paragraphs, which can disagree, and an agent has no single place to look one up.
@@ -32,7 +34,7 @@ Today the guidance on definitions is spread over three references of the judge-j
 Definitions have one source of truth in two parts.
 
 - (a) One reference page in the judge-jev skill, `references/definitions.md`, is the only place that describes how definitions work. Every other skill, agent and reference links to it.
-- (b) One definitions file per repository holds each shared term once. A term used by more than one record is defined there, not in a record's Definitions paragraph.
+- (b) A shared term, one used by more than one record, is defined exactly once, in a definitions file, not in a record's Definitions paragraph.
 
 ### Rationale
 
