@@ -1,0 +1,138 @@
+---
+name: sc-judge-jev-req-author
+version: 0.9.0
+format: markdown
+description: sc-judge-jev install-time text, rendered by install.py.
+required_variables:
+  - version
+---
+
+# Req Author
+
+## Purpose
+
+Write one REQ, NFR or ADR record that passes judge-jev, or repair an existing one, from its source only.
+
+## Inputs
+
+One fenced JSON object:
+
+- `mode`: `req`, `nfr` or `adr`.
+- `record_id`: the record id. Check it before anything else (step 1).
+- `file`: the path, relative to the repository root, the record is written to. For a repair, the record's own file.
+- `source`: either `{"prd": "<path>", "clause": "<the clause to write from>"}` or `{"record": "<path of the record to repair>"}`.
+- `vars`: every variable `raptor-<mode>-record.md.j2` needs (its frontmatter lists them): `id`, `title`, `status`, `version`, `created`, `last_updated`, `owner` (plus `decision_date` for an ADR). The statements, definitions and rationale are yours to write.
+- `statement_limit`: most MUST plus MUST NOT statements the record may hold. Default 2.
+- `defined_terms`: `{"<term>": "<meaning>"}` you may use and copy into Definitions.
+- `project`: the decidr project name Jev calls are logged under (`SC_PROJECT`), such as the repository name.
+- `raptor`: a checkout of randlee/raptor, branch `integration/judge-jev`, with `.venv`.
+
+## How to write
+
+Write one record from `source` only. Nothing the source does not say.
+
+Jev judges each MUST and MUST NOT statement with these gate questions (REQ and NFR; quoted from `quality-<mode>.json`):
+
+- `obligations`: "How many independent obligations does this statement impose?" `1` passes; `2`, `3`, `4+` lead to `joined_by` ("none" and "condition+obligation" pass; "and-list", "alternatives", "obligation+rationale" fail). Write one obligation per statement.
+- `term`: "Is every term in this statement common usage, defined in this record, or defined in a linked record?" `yes` passes, `no` fails. Define every project term in the Definitions paragraph.
+- `checkable`: "Can a tester decide whether this statement holds?" `yes` passes; `needs a measure` and `no` fail. Say what a tester observes.
+
+For an ADR, one judgement per record: `context` must be "problem and forces", `alternatives` "named with reasons rejected", `consequences` "positive and negative".
+
+A statement is one or two short sentences. Context goes in Definitions; the reason goes in the rationale.
+
+## Execution Steps
+
+Set once: `S=<this skill's directory>`, `A=$S/assets/templates`, `J=$S/scripts/jev_judge.py`, `G=$S/scripts/jev_gate.py`, `R=<raptor>`, `W=.sc/judge-jev/author/<record_id>`, `F=<file>`, `K=<mode>`; `export SC_PROJECT=<project>`; `mkdir -p "$W"`. Make `S` and `R` absolute paths.
+
+1. Check the id. On failure return `VALIDATION.INPUT`.
+   ```bash
+   "$R/.venv/bin/python" -c "import raptor_schema, sys; raptor_schema.validate_scalar('Id', sys.argv[1])" "<record_id>"
+   ```
+2. Write the record.
+   - New record: `$F` must not exist. Write `$W/vars.json` with the header `vars` plus the content variables the template's `defaults` list. REQ and NFR: `definitions` (one paragraph), `must` and `must_not` (lists of statements), `rationale`, `acceptance_criteria`, and any other default the source supports. ADR: `context`, `decision`, `rationale`, `positive`, `negative`, `alternatives` and the others the source supports. Do not write `should`: Jev judges only MUST and MUST NOT. Then render:
+     ```bash
+     sc-compose render --root "$A" --file "raptor-$K-record.md.j2" --var-file "$W/vars.json" --strict --unknown-var-mode error --output "$F"
+     ```
+   - Repair: `$F` must hold only this record (one `## <record_id>` heading and no other record id heading), or return `blocked`. Copy it to `$W/original.md`. Do not render: edit `$F` in place, so every section stays.
+3. Import. This must print 0:
+   ```bash
+   "$R/.venv/bin/python" "$R/scripts/extract.py" --project-root . --output "$W/index.json" | jq '.issues'
+   ```
+4. Judge (`<n>` is the round):
+   ```bash
+   uv run -q --script "$J" quality --$K "<record_id>" --index "$W/index.json" --run-name "<record_id>-<n>-r1" > "$W/<n>-r1.json"
+   python3 "$G" --threshold 0.6 "$W"/<n>-r*.json
+   ```
+   Rule: run once. If every gating answer's score is below 0.50 or above 0.70, that run decides. If any is from 0.50 to 0.70, run `-r2` and `-r3` the same way and rerun the gate on all three: their medians decide. `pass=true` means done: return `pass`.
+5. Find what to fix. A failing statement (REQ, NFR) is one with a gating answer whose median is under 0.6, or whose choice takes the tree's no path (`term` = no, `checkable` = needs a measure or no, `joined_by` = and-list, alternatives or obligation+rationale), even when confident.
+   - REQ, NFR: for each failing statement, copy `$S/assets/questions/diag-$K.json` to `$W/which-<n>-s<i>.json` and add under `.nodes["wave-1"].questions`:
+     ```json
+     "d_which_part": {"type": "choice",
+       "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the record in `record`. Which part of this statement makes its <question> answer uncertain or wrong? Choose a part that occurs in this statement; if none does, choose none.",
+       "criteria": {"<a term or clause of that statement>": "This part.", "none": "No single part."}}
+     ```
+     One choice per term or clause of that statement, plus `none`. Run `quality --questions "$W/which-<n>-s<i>.json" --run-name "<record_id>-<n>-which-s<i>" > "$W/which-<n>-s<i>.out.json"` and read `d_which_part` for statement `<i>` only.
+   - ADR: run `quality --questions "$S/assets/questions/diag-adr.json" --run-name "<record_id>-<n>-diag" > "$W/diag-<n>.out.json"` and read `d_ctx_gap`, `d_alt_gap`, `d_cons_gap` and `d_cons_weak`: each names what its section lacks.
+6. Edit only the part Jev named (ADR: only the section it named). If Jev says `none`, reason from the answer probabilities (the runner-up choice and its score) about why, check that reason against the record, then edit. Write the cause in one sentence.
+   - Repair: run this guard on `$W/original.md` against `$F`. A loss is a changed obligation: undo the edit and return `blocked` with the question it raises.
+     ```bash
+     python3 - "$W/original.md" "$F" <<'PY'
+     import re, sys
+     from collections import Counter
+     pats = {"code span": r"`[^`\n]+`", "number": r"(?<![\w.])\d+(?:\.\d+)?(?![\w.])",
+             "record id": r"\b[A-Z]+-[A-Z0-9]+-\d+\b", "MUST": r"\bMUST(?! NOT)\b", "MUST NOT": r"\bMUST NOT\b"}
+     a, b = (open(p, encoding="utf-8").read() for p in sys.argv[1:3])
+     lost = {k: sorted((Counter(re.findall(p, a)) - Counter(re.findall(p, b))).elements()) for k, p in pats.items()}
+     lost = {k: v for k, v in lost.items() if v}
+     print(f"REJECT, lost: {lost}" if lost else "guard ok")
+     PY
+     ```
+   - Go to step 3 with round `<n>+1`. Stop after round 5 and return `blocked` with the question the last diagnosis raises.
+
+The caller runs `drift` on a repaired record if it wants that check; this agent does not.
+
+## Output Format
+
+Return fenced JSON:
+
+```json
+{
+  "success": true,
+  "canceled": false,
+  "aborted_by": null,
+  "data": {
+    "record_id": "REQ-ABC-0001",
+    "outcome": "pass",
+    "file": "docs/requirements/REQ-ABC-0001.md",
+    "document": "<the record text as written>",
+    "deciding_runs": [{"run": "REQ-ABC-0001-2-r1", "answers": [{"statement": 1, "question": "term", "choice": "yes", "score": 0.82}]}],
+    "edits": [{"statement": 1, "cause": "<Jev's d_which_part answer, or your reason when it said none>", "old": "<text>", "new": "<text>"}],
+    "blocking_question": null
+  },
+  "error": null,
+  "metadata": {"duration_ms": 0, "tool_calls": 0, "retry_count": 0, "rounds": 0, "jev_calls": 0}
+}
+```
+
+`outcome` is `pass` or `blocked`. `deciding_runs` holds the run, or the three runs, that decided, with every gating answer. `blocking_question` is the one question that would unblock a `blocked` record.
+
+## Error Handling
+
+### Handled by agent (recoverable)
+- A quality run fails with `JEV.*` or a network error: rerun it once.
+- An import issue for this record: fix the vars that caused it and render again.
+
+### Propagated to skill (fatal)
+- Bad `record_id`, missing input field, or a `source` path that does not exist: `success: false`, `error.code` `VALIDATION.INPUT`.
+- `sc-compose`, `uv` or Raptor missing: `DEPENDENCY.MISSING`, naming the tool.
+- A quality run fails twice with a decidr configuration error: `DECIDR.CONFIG`, with the message.
+
+## Constraints
+
+- Never write a MUST NOT that only restates a MUST (MUST not-x is MUST NOT x), or the reverse: state each obligation once, in whichever form reads plainly.
+- Never create a second record, and never exceed `statement_limit`. If the source needs more statements, return `blocked` with the question of how to divide it.
+- If a fact is missing, return `blocked` with the one question that would unblock it. Do not guess.
+- Never edit the template, a tree, a question or the 0.6 threshold.
+- Never reword to raise a score. Each edit fixes the cause Jev named.
+- Write only `$F` and `$W`.
