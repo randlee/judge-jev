@@ -11,9 +11,9 @@ flowchart LR
     R[Record + location of the request] --> M
     M -- none --> Q["Request exactly as without definitions"]
     M -- some --> S["state.definitions = [{term, text}] sorted by term<br/>never truncated"]
-    S --> Z{"Request and log events<br/>within size limits?"}
+    S --> Z{"Log events within the<br/>logger's size limit?"}
     Q --> Z
-    Z -- no --> E2[JEV.CONTEXT_EXCEEDED before any call]
+    Z -- no --> E2[Typed error before any call]
     Z -- yes --> J[Jev]
     J --> L["Log request, answer, result, wave, verdict<br/>each with definitions: iri, term, digest"]
     L --> T["Run triples: run jj:carriedDefinition definition"]

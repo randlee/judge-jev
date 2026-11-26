@@ -243,18 +243,12 @@ class Composition(DefinitionCase):
         for r in requests:
             self.assertEqual(r["request"]["state"]["definitions"], [{"term": "fast", "text": "t"}])
 
-    def test_definitions_are_never_truncated_and_count_toward_the_size_limit(self):
+    def test_definitions_are_never_truncated(self):
         text = "w" * 1900
         many = [definition(f"d{i:02d}", f"term{i:02d}", text, "docs/r.md", (ADR, None)) for i in range(12)]
         path = self.definitions(*many)
-        for flags in (("--dry-run",), ()):
-            code, out = self.quality("--adr", "ADR-T-0001", "--definitions", path, *flags, answers=None if flags else {"*": tree_answers("quality-adr.json")})
-            self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"), out)
-        self.assertFalse((self.d / "logs").exists())
-        # under the limit every definition is whole in the request
-        path = self.definitions(*many[:3])
         request, _ = self.adr_state("--definitions", path)
-        self.assertEqual([d["text"] for d in request["state"]["definitions"]], [text] * 3)
+        self.assertEqual([d["text"] for d in request["state"]["definitions"]], [text] * 12)
 
     def test_the_request_events_hold_each_definitions_digest(self):
         path = self.definitions(definition("b", "beta", "Second.", "docs/b.md", (ADR, None)),

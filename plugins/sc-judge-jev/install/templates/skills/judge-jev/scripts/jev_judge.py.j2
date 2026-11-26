@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_judge
-version: 0.9.0
+version: 0.10.0
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -124,8 +124,6 @@ except ImportError as _exc:  # before any model exists: print the typed error by
 
 DEFAULT_MODEL = "jev-latest"
 DEFAULT_THRESHOLD = 0.6
-DEFAULT_MAX_REQUEST_BYTES = 24000  # plan gate: what Jev reads reliably (a planted contradiction 28k deep scored 0.46 vs 0.79 near the top)
-DEFAULT_MAX_REQUEST_BYTES_DEV = 64000  # dev gate: evidence is long; Jev accepted 107k bytes in one attempt, halving never fired in 245 requests
 PROBABILITY_ROUNDING = 0.01        # Jev rounds each probability; the sum may be off by this per option
 HERE = pathlib.Path(__file__).resolve().parent
 QUESTIONS_DIR = HERE.parent / "assets" / "questions"
@@ -826,7 +824,7 @@ def request_line_error(refused: Refused, where: str) -> ClientError:
 
 
 def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict) -> Result[list, ClientError]:
-    """Validate request shapes and model request-byte caps, then author the jobs."""
+    """Validate request shapes, then author the jobs."""
     where = f"request line {number}"
     anchored = isinstance(line, dict) and "anchor" in line
     parsed = validate_model(RequestLine, line, {"anchored": anchored, "base_roles": base_roles})
@@ -845,11 +843,6 @@ def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict) -> 
     anchor_id = anchor.id if anchored else None
     for cand in request.questions:
         body = {"model": settings.model, "state": state, "questions": cand.questions}
-        size = len(json.dumps(body).encode("utf-8"))
-        if size > settings.max_request_bytes:
-            return fail("JEV.CONTEXT_EXCEEDED", f"{where}: the request for {item.id}/{cand.candidate_id} is {size} bytes, over --max-request-bytes {settings.max_request_bytes}",
-                        action="Shorten the item (see references/plan-size-and-shape.md); never raise the cap to make it fit.")
-
         for r in range(1, settings.repeat + 1):
             rid = batch_request_id(settings.prefix, item.id, anchor_id, cand.candidate_id, r)
             jobs.append(BatchJob(item.id, anchor_id, cand.candidate_id, r, rid, body, cand.questions, cand.effective_roles, kind))
@@ -923,10 +916,6 @@ def read_request_lines(path: str) -> Result[list, ClientError]:
     if isinstance(raw, Err):
         return raw
     return parse_request_lines(raw.value, path)
-
-
-def request_cap(gate: str, requested) -> Result[int, ClientError]:
-    return Ok(requested or (DEFAULT_MAX_REQUEST_BYTES if gate == "plan" else DEFAULT_MAX_REQUEST_BYTES_DEV))
 
 
 LOG_SERVICE = "judge-jev"
@@ -1021,7 +1010,7 @@ def judge_batch(lines, settings, fixture, log, echo, fields=None, *, repository_
 def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
     """The shared CLI path for `batch` and `bead-batch`: validate, consent, stream, log. Stdout carries only result lines."""
     _checked = decidr_client.batch_settings(args, args.request_prefix,
-        check_threshold=check_threshold, request_cap=request_cap)
+        check_threshold=check_threshold)
     if not _checked["ok"]:
         return Err(_checked["error"])
     else:
@@ -1089,7 +1078,6 @@ def add_stream_options(parser) -> None:
     parser.add_argument("--request-prefix", default="batch", help="request ids are <prefix>/<item>/<anchor>/<candidate>/r<n>")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="confidence threshold of each line's verdict")
     parser.add_argument("--max-workers", type=int, default=BATCH_MAX_WORKERS, help=f"parallel Jev calls, 1 to {BATCH_MAX_WORKERS}")
-    parser.add_argument("--max-request-bytes", type=int, default=None, help="refuse any request over this before sending; default the gate's cap")
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--dry-run", action="store_true", help="emit the result lines with the requests only; call nothing")
@@ -1399,7 +1387,7 @@ def wave_lines(record: dict, node_id: str, node: Wave, definitions=(), location=
 
 
 def quality_settings(dry_run: bool) -> BatchSettings:
-    return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, DEFAULT_MAX_REQUEST_BYTES, dry_run)
+    return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, dry_run)
 
 
 def _with_refs(failed: Err, refs: dict) -> Err:
@@ -1456,7 +1444,7 @@ def _prepare_record(args, kind: str, record_id: str, trees: dict, settings: Batc
             return _with_refs(lines, refs)
         wave_jobs = []
         for line, statement in zip(*lines.value):
-            first = batch_jobs(line, 1, settings, {})  # the size check: JEV.CONTEXT_EXCEEDED
+            first = batch_jobs(line, 1, settings, {})
             if isinstance(first, Err):
                 return _with_refs(first, refs)
             wave_jobs.append((statement, first.value[0]))
@@ -1475,7 +1463,7 @@ def dry_run_wave(tree: QualityTree, jobs: list, settings: BatchSettings) -> dict
     else:
         (_s, job), = jobs
         wave = {"node": tree.start, "request": job.body, "request_bytes": len(json.dumps(job.body).encode("utf-8"))}
-    return {**wave, "max_request_bytes": settings.max_request_bytes}
+    return wave
 
 
 def trusted_install_error(args) -> Optional[ClientError]:
@@ -1689,10 +1677,7 @@ def validate_input(kind: str, raw: str, path: str, args) -> Result[None, ClientE
         lines = parse_request_lines(raw, path)
         if isinstance(lines, Err):
             return lines
-        cap = request_cap(args.gate, args.max_request_bytes)
-        if isinstance(cap, Err):
-            return cap
-        settings = BatchSettings(args.gate, DEFAULT_MODEL, 1, "batch", DEFAULT_THRESHOLD, 30.0, 1, cap.value, True)
+        settings = BatchSettings(args.gate, DEFAULT_MODEL, 1, "batch", DEFAULT_THRESHOLD, 30.0, 1, True)
         base = load_question_set(settings.gate)
         if isinstance(base, Err):
             return base
@@ -1918,7 +1903,6 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
 # --------------------------------------------------------------------------- #
 DRIFT_PREFIX = "drift"
 DRIFT_CANDIDATE = "drift"
-DRIFT_MAX_REQUEST_BYTES = DEFAULT_MAX_REQUEST_BYTES_DEV
 DRIFT_FORMS = ("diff", "full")
 DRIFT_INTRO_FULL = ("`item.text` is JSON with `original` and `candidate`: two versions of the normative text of one requirements "
                     "record. A reason or explanation is not a requirement; rewording, splitting a statement and moving a reason "
@@ -2199,7 +2183,7 @@ def cmd_drift(args) -> Result[Any, ClientError]:
             questions = drift_questions(m["obligations"], m["table"], args.form, drift_verbatim(m["obligations"], cand), args.question_set)
             lines.append(drift_line(f"{rid}.ctl-drop-{k}", "", m["original"], cand, questions, args.form))
             controls.append({"item": f"{rid}.ctl-drop-{k}", "record": rid, "expect": "drift", "drops": k, "obligations": m["obligations"]})
-    settings = BatchSettings("plan", DEFAULT_MODEL, 1, DRIFT_PREFIX, threshold, 60.0, BATCH_MAX_WORKERS, DRIFT_MAX_REQUEST_BYTES, args.dry_run)
+    settings = BatchSettings("plan", DEFAULT_MODEL, 1, DRIFT_PREFIX, threshold, 60.0, BATCH_MAX_WORKERS, args.dry_run)
     total = 0
     for number, line in enumerate(lines, 1):
         jobs = batch_jobs(line, number, settings, {})
@@ -2553,8 +2537,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--answers", metavar="FILE", default=None, help="an answers file (--answers-file); - is stdin")
     group.add_argument("--index", metavar="FILE", default=None, help="a Raptor import index (Raptor's scripts/extract.py --output); - is stdin")
     group.add_argument("--requests", metavar="FILE", default=None, help="a batch request stream (assets/schemas/jev-batch-request.schema.json); - is stdin")
-    v.add_argument("--gate", choices=("plan", "dev"), default="plan", help="with --requests: the gate whose roles and request cap apply, as for batch")
-    v.add_argument("--max-request-bytes", type=int, default=None, help="with --requests: refuse any request over this, as for batch")
+    v.add_argument("--gate", choices=("plan", "dev"), default="plan", help="with --requests: the gate whose roles apply, as for batch")
     v.set_defaults(func=cmd_validate)
     cd = sub.add_parser("compare-definition", help="run the requests one or more candidate definitions reach without them and with them; report each answer's choice and confidence on both sides and whether they are material")
     for kind in ("req", "adr", "nfr"):

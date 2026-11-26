@@ -122,15 +122,17 @@ class DeepInputIsATypedError(unittest.TestCase):
 
 
 
-    def test_a_deep_record_field_is_a_typed_size_refusal(self):
-        for depth in (300, 900):
+    def test_a_deep_record_field_is_composed_or_typed_refusal(self):
+        # judge-jev sets no request size limit (ANC-004): a deep-but-parseable field is composed; one too deep to parse is a typed refusal
+        for depth, expected in ((300, 0), (900, 2)):
             index = copy.deepcopy(tq.INDEX)
             index["decisions"][0]["x"] = nested(depth)
             with self.subTest(depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
-                self.assertEqual(code, 2)
-                self.assertNotEqual(out["error"]["code"], "SCRIPT.INTERNAL")
+                self.assertEqual(code, expected, out)
+                if expected:
+                    self.assertNotEqual(out["error"]["code"], "SCRIPT.INTERNAL")
 
 
 def counting_pump(sent):

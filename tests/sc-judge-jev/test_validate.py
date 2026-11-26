@@ -87,15 +87,12 @@ class ValidateKinds(unittest.TestCase):
         self.assertEqual((code, out["data"]["kind"], out["data"]["path"], out["data"]["sha256"]),
                          (0, "tree", "-", hashlib.sha256(text.encode("utf-8")).hexdigest()), out)
 
-    def test_requests_use_the_gate_and_cap_batch_uses(self):
+    def test_requests_use_the_gate_batch_uses(self):
         big = write(self.d, "big.jsonl", jsonl([request_line(text="x" * 30000)]))
-        self.assertIn("over --max-request-bytes 24000", self.refused("--requests", big, "JEV.CONTEXT_EXCEEDED"))
         dev = write(self.d, "dev.jsonl", jsonl([request_line(text="x" * 30000, questions=jj.load_question_set("dev").value.questions)]))
-        code, out = validate("--requests", dev, "--gate", "dev")  # the dev gate's cap is larger
+        code, out = validate("--requests", dev, "--gate", "dev")
         self.assertEqual(code, 0, out)
         self.assertEqual(validate("--requests", big, "--gate", "dev")[1]["error"]["code"], "QUESTIONS.ROLES")  # plan questions, dev roles
-        code, out = validate("--requests", big, "--max-request-bytes", "70000")
-        self.assertEqual(code, 0, out)
 
     def test_raw_json_no_value_can_express_is_input_malformed(self):
         tree_text = (tq.QUESTIONS / "quality-adr.json").read_text(encoding="utf-8")

@@ -11,7 +11,7 @@ from test_jev_judge import plan_answers, request_line, wheel_record  # noqa: E40
 
 class ConsumerErrorContracts(unittest.TestCase):
     def test_batch_uses_records_default_credentials_and_attempt_count(self):
-        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, False)
         detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
         record = wheel_record((json.dumps({"error": detail, "sends": 4}), "DECIDR.OVERLOADED"))
         log = mock.Mock()
@@ -41,7 +41,7 @@ class ConsumerErrorContracts(unittest.TestCase):
             self.assertNotIn(name, call.call_args.kwargs)
 
     def test_callback_persists_completion_order_and_returns_input_order(self):
-        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, False)
         records = [wheel_record((json.dumps({"response": {"model": model, "answers": plan_answers()},
                                              "position": pos, "sends": 1}), None), pos)
                    for pos, model in enumerate(("first", "second"))]

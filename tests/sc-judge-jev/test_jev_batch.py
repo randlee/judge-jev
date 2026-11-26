@@ -153,7 +153,7 @@ class BatchTests(BatchCase):
     def test_native_callbacks_persist_finish_order_and_match_input_indices(self):
         from test_jev_judge import wheel_record
         line = request_line("s1", "text", ("c1", PLAN_QS["questions"]), ("c2", PLAN_QS["questions"]), ("c3", PLAN_QS["questions"]))
-        settings = jj.BatchSettings("plan", "fixture-model", 1, "p", 0.6, 30.0, 3, 24000, False)
+        settings = jj.BatchSettings("plan", "fixture-model", 1, "p", 0.6, 30.0, 3, False)
         records = [wheel_record((json.dumps({"response": {"answers": plan_answers()}, "sends": 1}), None), i) for i in range(3)]
         persisted = []
         def native_batch(requests, **kwargs):

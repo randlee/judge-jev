@@ -128,14 +128,14 @@ class DryRun(QualityCase):
         self.assertEqual(wave["request"]["questions"], tree_node("quality-adr.json")["questions"])
         self.assertEqual(wave["request"]["state"], {"item": {"id": "ADR-T-0001", "title": "Use SQLite",
                                                              "text": json.dumps(INDEX["decisions"][0], indent=2, ensure_ascii=False)}})
-        self.assertEqual((wave["request_bytes"], wave["max_request_bytes"]), (len(json.dumps(wave["request"]).encode("utf-8")), 24000))
+        self.assertEqual(wave["request_bytes"], len(json.dumps(wave["request"]).encode("utf-8")))
         self.assertFalse((self.d / "logs").exists())
 
     def test_dry_run_of_a_per_statement_wave_shows_every_statements_request(self):
         code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
         self.assertEqual(code, 0, out)
         wave = out["data"]["results"][0]["wave"]
-        self.assertEqual((wave["node"], wave["per"], wave["max_request_bytes"]), ("wave-1", "statement", 24000))
+        self.assertEqual((wave["node"], wave["per"]), ("wave-1", "statement"))
         # one request per MUST / MUST NOT statement (the SHOULD at index 2 is not judged), each with all the wave's questions
         self.assertEqual([r["statement"] for r in wave["requests"]], JUDGED)
         record = INDEX["requirements"][0]
@@ -154,12 +154,6 @@ class DryRun(QualityCase):
             self.assertEqual((code, data["tree"]["id"], data["record"]["id"]), (0, tree_id, rid), out)
         code, out = self.quality("--adr", "REQ-T-0001", "--dry-run")
         self.assertEqual((code, out["error"]["code"]), (2, "RECORD.NOT_FOUND"))
-
-    def test_oversize_request_is_a_typed_error(self):
-        big = {**INDEX, "requirements": [requirement("REQ-T-0001", "x" * 30000)]}
-        self.index = write(self.d, "big.json", big)
-        code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
-        self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"))
 
     def test_at_least_one_record_flag(self):
         code, out = run_cli(["quality", "--index", self.index, "--dry-run"])
@@ -368,10 +362,6 @@ class QaFindings(QualityCase):
         self.assertEqual({k: out["data"][k] for k in ("record", "tree")}, refs("REQ-T-0002"))
         code, out = self.quality("--req", "REQ-T-9999", "--dry-run")
         self.assertEqual((code, out["error"]["code"], out["data"]), (2, "RECORD.NOT_FOUND", refs("REQ-T-9999")))
-        self.index = write(self.d, "big.json", {**INDEX, "requirements": [requirement("REQ-T-0001", "x" * 30000)]})
-        code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
-        self.assertEqual((code, out["error"]["code"], out["data"]), (2, "JEV.CONTEXT_EXCEEDED", refs("REQ-T-0001")))
-        self.index = write(self.d, "index.json", INDEX)
         refused = jj.fail("LOG.WRITE", "the sc-observability logger could not start")
         with mock.patch.object(jj, "open_run_log", return_value=refused):
             code, out = self.quality("--req", "REQ-T-0001", answers={"*": tree_answers("quality-req.json")})

@@ -532,8 +532,7 @@ A definition is a node in the judge-jev graph (ADR-JEV-0006):
   record-only definitions plus those attached to this record and this
   location. A request with no matching definition is the same as before.
   `quality` evaluates the record alone, so it uses record-only definitions. Definitions are never
-  truncated. A request that the definitions push over the size limit is
-  refused before it is sent. Every request and its log event record the
+  truncated, and judge-jev sets no request size limit on them. Every request and its log event record the
   digest of each definition carried, and a run's triples link the run to
   them.
 

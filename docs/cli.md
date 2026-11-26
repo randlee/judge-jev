@@ -112,10 +112,10 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
 - Kinds: `--tree` (quality tree), `--questions` (question set), `--answers`
   (answers file), `--index` (Raptor import index), `--requests` (batch
   request stream). Exactly one.
-- `--requests` also takes `--gate` and `--max-request-bytes`, as `batch`
-  does, so a stream is checked against the same set and size limit.
+- `--requests` also takes `--gate`, as `batch` does, so a stream is
+  checked against the same question set.
 - `--tree` checks the tree alone; the checks that need a record (its
-  statements, request size, log-event size) run in `quality`, before the
+  statements, log-event size) run in `quality`, before the
   first call and in `--dry-run`.
 - `--answers` checks the envelope only, the same one `--answers-file` checks
   before the first request in `batch` and `quality`: an object of string keys,
@@ -169,9 +169,8 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
   `.sc/judge-jev/` (directly in that folder, not in a subfolder). They load as their own named graph: a tree's digest
   never changes because a definitions file exists. The same definition IRI
   in two files is `DEFINITIONS.INVALID` naming both.
-- Definitions are never truncated. They count toward the 24000-byte request
-  limit and the log-event size check, before any call
-  (`JEV.CONTEXT_EXCEEDED`).
+- Definitions are never truncated, and judge-jev sets no request size
+  limit; they count toward the log-event size check, before any call.
 - Every request, answer, result, wave and verdict event, and each record's
   result, carries `definitions: [{iri, term, digest}]` (the digest is the
   SHA-256 of term, text and source); the run's triples link the run to each
@@ -395,10 +394,9 @@ request a live run would send:
 - question set: shipped id or override path;
 - `task` mode: vars file and rendered text (the sc-compose strict render is
   the variable validation);
-- the full composed request and its size against the request limit.
+- the full composed request and its size in bytes.
 
-Typed errors on an unresolved record or location, a render failure or an
-oversize request.
+Typed errors on an unresolved record or location or a render failure.
 
 Every input yields one JSON object, its result or a typed error. An invalid
 tree, question set, index or request stream, and a log event that exceeds the
