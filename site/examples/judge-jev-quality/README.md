@@ -7,8 +7,8 @@ and highlights the paths recorded by quality. REQ/NFR waves ask each MUST /
 MUST NOT statement; ADR waves ask the whole record. Diagnostic questions are
 shown but never gate the quality verdict.
 
-Review [report.html](report.html) for D2 diagrams and all question results,
-or [report.md](report.md) for the same trees in embedded Mermaid. The actual
+Review [report.html](report.html) for D2 diagrams and all question results.
+The runner also generates `report.md` with embedded Mermaid. The actual
 quality command, stdout, stderr, and result envelopes (with portable execution
 path placeholders) are in
 [recorded.json](recorded.json). Its three recorded verdicts are `yes`.

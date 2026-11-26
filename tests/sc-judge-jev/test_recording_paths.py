@@ -27,7 +27,7 @@ class PortableRecordings(unittest.TestCase):
 
     def test_published_recordings_and_reports_have_no_personal_absolute_paths(self):
         for example in ('decidr-pipeline', 'judge-jev-quality'):
-            for name in ('recorded.json', 'report.html', 'report.md'):
+            for name in ('recorded.json', 'report.html'):
                 path = ROOT / 'site/examples' / example / name
                 with self.subTest(path=str(path)):
                     self.assertNotRegex(path.read_text(), r'/Users/|/home/[^/\s]+/|/private/(?:var|tmp)/|[A-Za-z]:\\Users\\')

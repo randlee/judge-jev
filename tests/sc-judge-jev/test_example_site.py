@@ -44,8 +44,7 @@ class ExamplePages(unittest.TestCase):
             for example in ('decidr-pipeline', 'judge-jev-quality'):
                 destination = site / 'examples' / example
                 destination.mkdir(parents=True)
-                for name in ('report.html', 'report.md'):
-                    shutil.copyfile(ROOT / 'site/examples' / example / name, destination / name)
+                shutil.copyfile(ROOT / 'site/examples' / example / 'report.html', destination / 'report.html')
             with mock.patch.object(site_builder, 'ROOT', root), mock.patch.object(site_builder, 'SITE', site), \
                  mock.patch.object(subprocess, 'run', side_effect=AssertionError('Pages must not invoke model or rendering tools')), \
                  contextlib.redirect_stdout(io.StringIO()):
@@ -66,7 +65,6 @@ class ExamplePages(unittest.TestCase):
             for example in ('decidr-pipeline', 'judge-jev-quality'):
                 self.assertEqual((site / 'examples' / example / 'report.html').read_bytes(),
                                  (ROOT / 'site/examples' / example / 'report.html').read_bytes())
-                self.assertTrue((site / 'examples' / example / 'report.md').is_file())
             self.assertFalse((site / 'diagrams/examples').exists(), 'reports publish in place, without stale copies')
 
 
