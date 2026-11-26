@@ -41,7 +41,6 @@ one of the changes that follow:
 - A `--no-cache` flag on `quality`, which sends its requests with
   `cache=False`; `batch --repeat N` above 1 sends all repeats in one
   `cache=False` call.
-- Every request, per-field and file size cap is removed (owner ruling, 2026-11-26; phase-j ANC-004).
 
 ### Rationale
 
@@ -393,8 +392,7 @@ judge-jev has two ports:
   the one the sc-decidr wheel ships as package data
   (`sc_agent/templates/jev-batch-result.schema.json`); judge-jev keeps no copy, so
   `assets/schemas/jev-batch-result.schema.json` is removed and judge-jev
-  checks its `/2` lines against the wheel's schema (amended at phase j plan
-  review, 2026-11-24).
+  checks its `/2` lines against the wheel's schema.
 - **Graph store:** loads a tree, validates it with SHACL, compiles a wave
   to its JSON questions, records a run's triples and answers queries.
   judge-jev implements it now with `pyoxigraph` and a SHACL validator; a
