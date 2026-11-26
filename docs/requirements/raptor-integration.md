@@ -3,9 +3,9 @@
 **ID Range:** REQ-JEV-0001 through REQ-JEV-0010, NFR-JEV-0001  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-24  
+**Last Updated:** 2026-11-26  
 **Owner:** Rand Lee  
-**Version:** 0.5.0  
+**Version:** 0.6.0  
 
 ---
 
@@ -64,9 +64,12 @@ envelope is the `jev-batch-result/2` JSON result line for one request
 `session_id` and the verdict derived from Jev's answers, or its error. A
 typed error code is a stable dotted code naming a failure, such as
 `DECIDR.NETWORK` or `DECIDR.RATE_LIMITED`. The retry policy belongs to the
-adopted sc-agent client; judge-jev does not resend requests. The request
-size limit is the `--max-request-bytes` value, at most 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
-`--gate dev`. The sc-observability logger is the JSON-lines logger of the
+adopted sc-agent client; judge-jev does not resend requests. The selected
+model's context is the most input the Jev model named in the request
+accepts; it is the provider's limit, not a judge-jev rule. Query content is
+the request text, Jev's response, Jev's answers, the answering model and the
+send count. judge-jev's own ids are the record id, `anchor_id`,
+`candidate_id` and repeat. The sc-observability logger is the JSON-lines logger of the
 sc-observability package (version 1.5.0), which writes
 `logs/judge-jev.log.jsonl` under the wheel's log root (`JUDGE_JEV_LOG_ROOT`,
 else `~/.sc-agent`; sc-agent REQ-SAG-0022).
@@ -77,24 +80,22 @@ else `~/.sc-agent`; sc-agent REQ-SAG-0022).
 - The batch command MUST read request lines.
 - The batch command MUST write one result envelope per request.
 - The batch command MUST use typed error codes.
-- The batch command MUST use the adopted sc-agent client's retry policy
-  without resending requests itself.
-- The batch command MUST enforce request size limits.
+- The batch command MUST use the adopted sc-agent client's retry policy.
 - Each result envelope of an answered request MUST carry the `session_id`
   of the session-log row that holds the request and its answers.
 - The batch command MUST log every result envelope through the
   sc-observability logger (REQ-JEV-0008).
 - judge-jev's record of a result envelope MUST be that envelope's `result`
-  log event, which adds judge-jev's own ids (record id, `anchor_id`,
-  `candidate_id`, repeat) and carries the run's `run_id` as
-  `correlation_id`.
+  log event.
+- Each `result` log event MUST add judge-jev's own ids.
+- Each `result` log event MUST carry the run's `run_id` as `correlation_id`.
 
 **MUST NOT statements:**
 
-- The batch command MUST NOT write the request text, Jev's response, Jev's
-  answers, the answering model or a send count into a result envelope.
-- The batch command MUST NOT log the request text, Jev's response, Jev's
-  answers, the answering model or a send count.
+- The batch command MUST NOT resend a request itself.
+- The batch command MUST NOT write query content into a result envelope.
+- The batch command MUST NOT log query content.
+- The batch command MUST NOT refuse a request for its size.
 
 ### Rationale
 
@@ -107,6 +108,12 @@ and copy nothing the session row holds.
 
 Lead ruling (2026-11-24, phase j plan review): the `result` log event is judge-jev's record
 of a line; there is no third artifact beside the result line and the event.
+
+Rand Lee, 2026-11-26 (phase j, ANC-004): "These limits are clearly
+over-specified. Input is limited by model context." The 24000-byte and
+64000-byte request caps and `--max-request-bytes` are removed. Scope: every
+request the batch command sends. Purpose: the selected model's context is
+the only input limit.
 
 ### Success Criteria
 

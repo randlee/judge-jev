@@ -1,10 +1,10 @@
 # adr-jev-product - judge-jev Product Decisions
 
 **ID Range:** ADR-JEV-0001 through ADR-JEV-0008  
-**Version:** 0.4.2  
+**Version:** 0.4.3  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-24  
+**Last Updated:** 2026-11-26  
 **Decision Date:** 2026-11-07  
 **Owner:** Rand Lee  
 
@@ -38,7 +38,7 @@ The Jev core keeps its architecture and contracts unchanged. It changes
 only to fix a defect, to replace its run log with the sc-observability
 logger (REQ-JEV-0008), to adopt sc-agent's session log and the
 `jev-batch-result/2` result line (owner ruling 2026-11-24), or to make
-one of the four changes that follow (the first three by owner ruling at
+one of the five changes that follow (the first three by owner ruling at
 phase j plan review, 2026-11-24; the fourth by owner approval, 2026-11-24):
 
 - A `--no-cache` flag on `quality`, which sends its requests with
@@ -53,6 +53,7 @@ phase j plan review, 2026-11-24; the fourth by owner approval, 2026-11-24):
   fixture entry is one answer or one error, and an entry that carries an
   attempts list is a validation error (owner approval, 2026-11-24;
   NFR-JEV-0001).
+- Every request, per-field and file size cap is removed (owner ruling, 2026-11-26; phase-j ANC-004).
 
 Owner ruling 2026-11-24: `--model` takes any selector the sc-decidr
 wheel resolves, not only `haiku` and `luna`; the caller chooses one model
@@ -532,8 +533,7 @@ A definition is a node in the judge-jev graph (ADR-JEV-0006):
   record-only definitions plus those attached to this record and this
   location. A request with no matching definition is the same as before.
   `quality` evaluates the record alone, so it uses record-only definitions. Definitions are never
-  truncated. A request that the definitions push over the size limit is
-  refused before it is sent. Every request and its log event record the
+  truncated, and judge-jev sets no request size limit on them. Every request and its log event record the
   digest of each definition carried, and a run's triples link the run to
   them.
 

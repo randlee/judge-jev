@@ -14,7 +14,7 @@ flowchart LR
     P -- yes --> WS["One request per MUST / MUST NOT statement<br/>statement + record + this wave's questions"]
     WS --> DR
     W --> DR{"--dry-run?"}
-    DR -- yes --> AU["Audit: record id, Raptor source,<br/>tree (shipped id or override path),<br/>wave-1 request(s), size vs limit"]
+    DR -- yes --> AU["Audit: record id, Raptor source,<br/>tree (shipped id or override path),<br/>wave-1 request(s) and size"]
     DR -- no --> J[Jev] --> A["Wave reason: every question's<br/>id, text, choice, criterion, confidence<br/>(per statement: index + text)"]
     A --> L["Log wave: request, answers, reason,<br/>branch or verdict (sc-observability)"]
     L --> N{Next wave?}

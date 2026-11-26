@@ -112,15 +112,15 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
 - Kinds: `--tree` (quality tree), `--questions` (question set), `--answers`
   (answers file), `--index` (Raptor import index), `--requests` (batch
   request stream). Exactly one.
-- `--requests` also takes `--gate` and `--max-request-bytes`, as `batch`
-  does, so a stream is checked against the same set and size limit.
+- `--requests` also takes `--gate`, as `batch` does, so a stream is
+  checked against the same question set.
 - `--tree` checks the tree alone; the checks that need a record (its
-  statements, request size, log-event size) run in `quality`, before the
+  statements) run in `quality`, before the
   first call and in `--dry-run`.
 - `--answers` checks the envelope only, the same one `--answers-file` checks
   before the first request in `batch` and `quality`: an object of string keys,
   each an object or a non-empty list of objects; an `__error__` object holds a
-  string code of at most 64 characters and nothing else (`INPUT.MALFORMED`
+  string code and nothing else (`INPUT.MALFORMED`
   otherwise). An answer's own body (its choice, probabilities, extra keys) is
   Jev's response stand-in and is checked after the send
   (`DECIDR.RESPONSE_INVALID` from the shared client), so a test can feed an invalid answer on purpose.
@@ -155,8 +155,8 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
     jj:location "docs/requirements/perf.md#Fast" .
 ```
 
-- A definition has exactly one `jj:term` (one line, at most 128 characters),
-  `jj:text` (at most 2000 characters) and `jj:source` (a path relative to the
+- A definition has exactly one `jj:term` (one line),
+  `jj:text` and `jj:source` (a path relative to the
   repository), and zero or more `jj:attachedTo` attachments. One with none is
   valid but unused: `doctor` warns.
 - An attachment has exactly one IRI `jj:record` (the Raptor record IRI,
@@ -169,17 +169,15 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
   `.sc/judge-jev/` (directly in that folder, not in a subfolder). They load as their own named graph: a tree's digest
   never changes because a definitions file exists. The same definition IRI
   in two files is `DEFINITIONS.INVALID` naming both.
-- Definitions are never truncated. They count toward the 24000-byte request
-  limit and the log-event size check, before any call
-  (`JEV.CONTEXT_EXCEEDED`).
+- Definitions are never truncated.
 - Every request, answer, result, wave and verdict event, and each record's
   result, carries `definitions: [{iri, term, digest}]` (the digest is the
   SHA-256 of term, text and source); the run's triples link the run to each
   definition IRI with `jj:carriedDefinition`.
 - A bad file is a typed error before the first request, never a traceback:
   `INPUT.MISSING`, `INPUT.MALFORMED` (not Turtle, not UTF-8), or
-  `DEFINITIONS.INVALID` (oversize, a blank-node definition, a literal
-  record, an attachment with two records, a term over its limit, an
+  `DEFINITIONS.INVALID` (a blank-node definition, a literal
+  record, an attachment with two records, an
   absolute or `..` path, any shape violation).
 
 Locations use the forms in Locations below.
@@ -395,14 +393,12 @@ request a live run would send:
 - question set: shipped id or override path;
 - `task` mode: vars file and rendered text (the sc-compose strict render is
   the variable validation);
-- the full composed request and its size against the request limit.
+- the full composed request and its size in bytes.
 
-Typed errors on an unresolved record or location, a render failure or an
-oversize request.
+Typed errors on an unresolved record or location or a render failure.
 
 Every input yields one JSON object, its result or a typed error. An invalid
-tree, question set, index or request stream, and a log event that exceeds the
-logger's size limit, are refused before the first Jev request (REQ-JEV-0211).
+tree, question set, index or request stream is refused before the first Jev request (REQ-JEV-0211).
 
 ## Open
 

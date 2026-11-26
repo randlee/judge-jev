@@ -1,14 +1,12 @@
 """Hostile and malformed tree inputs never crash the graph layer (ADR-JEV-0006, ADR-JEV-0007; qa16 findings F1 to F9).
 
 The ontology defines the graph and validates its edges (closed shapes); the pydantic models verify the body of a node.
-Every bad input is a typed error. Every case is enumerated: no sleeps, no timing, no randomness. The slow cases of the
-reviewer's probes (a 20000-deep blank-node chain, a 900 KiB wide wave) are asserted as refusals, never run to completion.
+Every bad input is a typed error. Every case is enumerated: no sleeps, no timing, no randomness.
 """
 import contextlib
 import io
 import json
 import logging
-import os
 import re
 import unittest
 from pathlib import Path
@@ -53,20 +51,6 @@ class ClosedGraphTests(GraphCase):
             jev_graph.compile_wave(tree, "wave-1")
         with self.assertRaises(jev_graph.TreeInvalid):
             jev_graph.iri_index(tree)
-
-    def test_the_reviewers_20000_deep_file_is_refused_by_the_size_limit_before_it_is_parsed(self):
-        path = write(self.dir, ADR_TTL + chain(20000))
-        self.assertGreater(os.path.getsize(path), jev_graph.MAX_TREE_BYTES)
-        with mock.patch.object(jev_graph.ox.Store, "load", side_effect=AssertionError("parsed")):
-            result = jev_graph.load_tree(path)
-        self.assertEqual(result.error.code, "QUALITY.TREE")
-        self.assertIn(str(jev_graph.MAX_TREE_BYTES), result.error.message)
-
-    def test_a_file_of_exactly_the_limit_loads_and_one_byte_more_does_not(self):
-        text = ADR_TTL + "\n#" + "x" * (jev_graph.MAX_TREE_BYTES - len(ADR_TTL.encode("utf-8")) - 2)
-        self.assertEqual(len(text.encode("utf-8")), jev_graph.MAX_TREE_BYTES)
-        self.assertIsInstance(jev_graph.load_tree(write(self.dir, text, "exact.ttl")), Ok)
-        self.assertEqual(jev_graph.load_tree(write(self.dir, text + "x", "over.ttl")).error.code, "QUALITY.TREE")
 
     def test_conditions_chained_through_their_type_triples_are_refused(self):
         """qa18: closed shapes ignore rdf:type, so `_:i a jj:Condition, _:i+1` chains valid conditions; refused, and the

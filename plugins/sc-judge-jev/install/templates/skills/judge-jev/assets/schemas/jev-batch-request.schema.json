@@ -19,7 +19,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
         },
         "title": {
           "type": "string"
@@ -40,7 +40,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
         },
         "statement": {
           "type": "string",
@@ -61,7 +61,6 @@
     "location": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 512,
       "pattern": "\\S",
       "description": "The location under evaluation, as the location string of judge-jev check (path, path#Heading or path::Symbol). Goes into the state as location. Optional."
     },
@@ -79,12 +78,10 @@
         "properties": {
           "term": {
             "type": "string",
-            "maxLength": 128,
             "pattern": "\\S"
           },
           "text": {
             "type": "string",
-            "maxLength": 2000,
             "pattern": "\\S"
           }
         }
@@ -104,7 +101,7 @@
         "properties": {
           "candidate_id": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$"
           },
           "questions": {
             "type": "object",

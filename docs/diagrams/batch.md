@@ -5,8 +5,8 @@ Reader: anyone sending Jev requests that are not quality, drift or compare
 
 ```mermaid
 flowchart LR
-    IN["JSONL request lines<br/>(--input or stdin)<br/>jev-batch-request.schema.json"] --> V{"Each line valid?<br/>size within the gate's cap?"}
-    V -- no --> E["Typed error<br/>(shorten the item; never raise the cap)"]
+    IN["JSONL request lines<br/>(--input or stdin)<br/>jev-batch-request.schema.json"] --> V{"Each line valid?"}
+    V -- no --> E["Typed error"]
     V -- yes --> JOBS["Jobs: one per (item, candidate, repeat);<br/>roles from the candidate,<br/>else from --gate plan | dev question set"]
     ANC["--anchors anchors.json"] --> JOBS
     JOBS --> DR{"--dry-run?"}

@@ -19,9 +19,8 @@ flowchart LR
     MD -. unresolved .-> E
     TS -. unresolved .-> E
     SC -. render fails .-> E
-    P -. oversize .-> E
     P --> DR{"--dry-run?"}
-    DR -- yes --> AU["Audit: record id + Raptor source,<br/>location + text digest, mode + class,<br/>question set, vars + rendered text,<br/>full request, size vs limit"]
+    DR -- yes --> AU["Audit: record id + Raptor source,<br/>location + text digest, mode + class,<br/>question set, vars + rendered text,<br/>full request and size"]
     DR -- no --> J[Jev] --> L["Log request, answers, verdict<br/>(sc-observability)"]
     L --> V["Verdict per (record, location), 2 in task;<br/>names override if used"]
 ```

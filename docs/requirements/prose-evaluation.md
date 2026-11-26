@@ -3,9 +3,9 @@
 **ID Range:** REQ-JEV-0201 through REQ-JEV-0215  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-24  
+**Last Updated:** 2026-11-26  
 **Owner:** Rand Lee  
-**Version:** 0.3.0  
+**Version:** 0.4.0  
 
 ---
 
@@ -332,8 +332,7 @@ mode) names what a location holds: `prompt` (prompt text), `skill` (a skill
 file), `task` (a task template) or `code` (source code). A question set is
 the data file of questions sent to Jev; its shipped id is the `id` of a set
 shipped with the tool, its override path the file given with `--questions`.
-A vars file holds the values of a task template's variables. The request
-limit is 24000 bytes by default. A quality decision tree is the data file of
+A vars file holds the values of a task template's variables. A quality decision tree is the data file of
 questions that judges whether a record is well written: waves of questions
 (REQ-JEV-0101). The wave-1 request is the request for its first wave.
 
@@ -354,13 +353,11 @@ questions that judges whether a record is well written: waves of questions
 - In `task` mode, each dry-run entry MUST report the vars file.
 - In `task` mode, each dry-run entry MUST report the rendered text.
 - Each dry-run entry MUST report the full composed request.
-- Each dry-run entry MUST report the composed request's size against the
-  request limit.
+- Each dry-run entry MUST report the composed request's size in bytes.
 - For `quality`, the dry run MUST report the decision tree.
 - For `quality`, the dry run MUST report the composed wave-1 request.
 - A dry run MUST fail with a typed error on anything that would make the
-  live request wrong: an unresolved record or location, a render failure,
-  or an oversize request.
+  live request wrong: an unresolved record or location or a render failure.
 - A dry run MUST report its entries only in the result it prints on stdout.
 
 **MUST NOT statements:**
@@ -471,7 +468,7 @@ questions, choices or probabilities do not match the request.
 - The answers-file envelope MUST require each key's value to be an object
   or a non-empty list of objects.
 - The answers-file envelope MUST require an object with `__error__` to hold
-  only a string code of at most 64 characters.
+  only a string code.
 
 **MUST NOT statements:**
 - `judge-jev validate` MUST NOT call Jev.
@@ -508,11 +505,7 @@ with a stable `code` (such as `INPUT.MALFORMED`), a `message` and a
 `suggested_action`. A tree is a quality decision tree file, a question set a
 file of questions, an index a Raptor import index, a request stream the
 request lines of the batch command. An input is a tree, question set,
-index or request stream. A log event is one event written through the
-sc-observability logger. The event size limit is the largest event the
-installed sc-observability package accepts; it is that package's limit,
-not a judge-jev rule. Whether a request fits a session-log row is
-sc-agent's rule.
+index or request stream.
 
 **MUST statements:**
 - For every input, every `judge-jev` command MUST print exactly one JSON
@@ -525,9 +518,6 @@ sc-agent's rule.
 - `judge-jev` MUST refuse an invalid index before its first Jev request.
 - `judge-jev` MUST refuse an invalid request stream before its first Jev
   request.
-- `judge-jev` MUST check that every log event judge-jev writes for a
-  request (its result, statement, wave and verdict events) fits the event
-  size limit before sending the request.
 
 ### Rationale
 
@@ -552,8 +542,7 @@ after a paid call wastes the call; a crash loses its answer.
 ### Requirement Statement
 
 Definitions: A definition is attached to a record, or to a record and a
-location. A request's state is the data it sends. The size limit is 24000
-bytes. A definition's digest is the SHA-256. A request's result record is
+location. A request's state is the data it sends. A definition's digest is the SHA-256. A request's result record is
 judge-jev's own record of that request's result; it carries the request's
 `session_id`.
 
@@ -565,8 +554,6 @@ judge-jev's own record of that request's result; it carries the request's
   that record and the request's location.
 - A request with no matching definition MUST be identical to the request
   sent without definitions.
-- `judge-jev` MUST refuse, before sending, a request whose definitions take
-  it over the size limit.
 - Every request's result record MUST carry the digest of each definition
   the request carried.
 
@@ -585,6 +572,10 @@ requires clarification".
 Owner ruling (2026-11-24, phase j): judge-jev writes no per-request log
 event; the request itself is in sc-agent's session log under its
 `session_id`, so the digests go in the request's result record.
+
+Rand Lee, 2026-11-26 (phase j, ANC-004): "These limits are clearly
+over-specified. Input is limited by model context." The 24000-byte limit
+on a request with definitions is removed.
 
 ### Success Criteria
 

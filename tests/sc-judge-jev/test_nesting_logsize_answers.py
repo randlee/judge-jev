@@ -1,5 +1,5 @@
 """No input crashes the script (REQ-JEV-0210, REQ-JEV-0211): arbitrarily deep nesting never reaches a recursion limit,
-the log-size measure models an escaped (non-ASCII) attempt message at its real size, and the answers-file envelope is
+and the answers-file envelope is
 checked before any request by `validate --answers` and by every command that reads --answers-file alike.
 Every case is an enumerated input; nothing here sleeps or times."""
 import contextlib
@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest import mock
 
 import test_quality as tq
-from test_jev_judge import env, jsonl, plan_answers, request_line, run_cli, write
+from test_jev_judge import consented, env, jsonl, plan_answers, request_line, run_cli, write
 from test_validate import validate
 
 jj = tq.jj
@@ -122,15 +122,17 @@ class DeepInputIsATypedError(unittest.TestCase):
 
 
 
-    def test_a_deep_record_field_is_a_typed_size_refusal(self):
-        for depth in (300, 900):
+    def test_a_deep_record_field_is_composed_or_typed_refusal(self):
+        # judge-jev sets no request size limit (ANC-004): a deep-but-parseable field is composed; one too deep to parse is a typed refusal
+        for depth, expected in ((300, 0), (900, 2)):
             index = copy.deepcopy(tq.INDEX)
             index["decisions"][0]["x"] = nested(depth)
             with self.subTest(depth=depth), env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called):
                 code, out = run_cli(["quality", "--adr", "ADR-T-0001", "--index", write(self.d, "i.json", index), "--dry-run"])
                 self.assertIsInstance(out, dict, out)
-                self.assertEqual(code, 2)
-                self.assertNotEqual(out["error"]["code"], "SCRIPT.INTERNAL")
+                self.assertEqual(code, expected, out)
+                if expected:
+                    self.assertNotEqual(out["error"]["code"], "SCRIPT.INTERNAL")
 
 
 def counting_pump(sent):
@@ -200,8 +202,6 @@ class AnswersEnvelope(unittest.TestCase):
         "error code is an int": {"*": {"__error__": 5}},
         "error code is null": {"*": {"__error__": None}},
         "error code is a list": {"*": {"__error__": ["X"]}},
-        "error code over the bound": {"*": {"__error__": "J" * (jj.FIXTURE_CODE_LIMIT + 1)}},
-        "error code far over the bound": {"*": {"__error__": "J" * 70000}},
         "error with another field": {"*": {"__error__": "X", "why": 1}},
         "error code is empty": {"*": {"__error__": ""}},
         "empty error code in a list": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": ""}]},
@@ -214,7 +214,6 @@ class AnswersEnvelope(unittest.TestCase):
         "list with a bad error entry": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": 7}]},
     }
     ENVELOPE_ACCEPTED = {
-        "error at the bound": {"*": {"__error__": "J" * jj.FIXTURE_CODE_LIMIT}},
         "error of one character": {"*": {"__error__": "J"}},
         "short error": {"*": {"__error__": "DECIDR.NETWORK"}},
         "empty answers object": {"*": {}},
@@ -311,14 +310,28 @@ class AnswersEnvelope(unittest.TestCase):
                 code, out, sent = self.batch({key: plan_answers()})
                 self.assertEqual((code, sent), (0, 1), out)
 
-    def test_a_long_error_code_never_reaches_the_log(self):
-        code, out, sent = self.quality({"*": {"__error__": "J" * 70000}})
-        self.assertEqual((code, out["error"]["code"], sent), (2, "INPUT.MALFORMED", 0))
-        self.assertIn(f"at most {jj.FIXTURE_CODE_LIMIT} characters", out["error"]["message"])
-        self.assertFalse((self.d / "logs").exists())
+    def test_a_request_over_64000_bytes_is_sent_whole(self):
+        """No --answers-file: the live path runs to sc_agent.send_batch (stubbed), which must receive the whole item text."""
+        import sc_agent
+        text = "x" * 70000
+        captured = []
 
-    def test_an_error_at_the_bound_fails_the_wave_with_its_code_and_logs_cleanly(self):
-        code_text = "J" * jj.FIXTURE_CODE_LIMIT
+        def send_batch(requests, **kwargs):
+            captured.extend(json.loads(request) for request in requests)
+            lines = [{"ok": True, "value": {"answers": plan_answers(), "session_id": f"s{i}"}} for i in range(len(requests))]
+            for index, line in enumerate(lines):
+                kwargs["on_result"](index, line)
+            return {"ok": True, "value": [{"index": i, "result": line} for i, line in enumerate(lines)]}
+
+        src = write(self.d, "big.jsonl", jsonl([request_line(text=text)]))
+        with env(), consented(), mock.patch.object(sc_agent, "send_batch", send_batch):
+            code, out = run_cli(["batch", "--input", src])
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(captured), 1)
+        self.assertEqual(captured[0]["state"]["item"]["text"], text)
+
+    def test_an_error_fails_the_wave_with_its_code_and_logs_cleanly(self):
+        code_text = "J"
         code, out, sent = self.quality({"*": {"__error__": code_text}})
         self.assertEqual((code, out["error"]["code"], sent), (2, code_text, 1), out)
         events = tq.read_log(self.d / "logs")

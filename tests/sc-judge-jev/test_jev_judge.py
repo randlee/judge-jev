@@ -306,13 +306,12 @@ class ErrorHandlingTests(unittest.TestCase):
 
     def test_numeric_flags_are_checked(self):
         for flag, value in (("--threshold", "high"), ("--max-workers", "2.5"), ("--repeat", "lots"),
-                            ("--max-request-bytes", "big"), ("--timeout", "soon")):
+                            ("--timeout", "soon")):
             with env():
                 code, out = run_cli(["batch", "--input", "x", "--dry-run", flag, value])
             self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"), flag)
             self.assertIn(f"argument {flag}: invalid", out["error"]["message"])
-        self.assertEqual((jj.DEFAULT_MODEL, jj.DEFAULT_THRESHOLD, jj.DEFAULT_MAX_REQUEST_BYTES, jj.DEFAULT_MAX_REQUEST_BYTES_DEV),
-                         ("jev-latest", 0.6, 24000, 64000))
+        self.assertEqual((jj.DEFAULT_MODEL, jj.DEFAULT_THRESHOLD), ("jev-latest", 0.6))
         self.assertEqual(jj.BATCH_MAX_WORKERS, 4)
 
     def test_out_of_range_values_are_validation_input(self):
@@ -324,21 +323,6 @@ class ErrorHandlingTests(unittest.TestCase):
             code, out = run_cli(["batch", "--input", src, "--dry-run", "--run-name", "bad name"])
             self.assertEqual((code, out["error"]["code"]), (2, "VALIDATION.INPUT"))
             self.assertFalse((Path(d) / "runs").exists())
-
-    def test_request_over_the_cap_is_refused_before_any_call(self):
-        with tempfile.TemporaryDirectory() as d:
-            src = write(d, "in.jsonl", jsonl([request_line(text="x" * 30000)]))
-            t = BatchTransport()
-            with env(**LIVE_ENV), consented(), mock.patch.object(jj.decidr_client, "call_batch_results", t):
-                code, out = run_cli(["batch", "--input", src])
-                self.assertEqual((code, out["error"]["code"]), (2, "JEV.CONTEXT_EXCEEDED"))
-                self.assertIn("over --max-request-bytes 24000", out["error"]["message"])
-            self.assertEqual(t.bodies, [])
-            self.assertFalse((Path(d) / "runs").exists())
-            # the dev gate's default cap is 64000 bytes: the same item fits there
-            dev = write(d, "dev.jsonl", jsonl([request_line(text="x" * 30000, questions=ok(jj.load_question_set("dev")).questions)]))
-            code, out = run_cli(["batch", "--input", dev, "--gate", "dev", "--dry-run"])
-            self.assertEqual((code, out["dry_run"]), (0, True))
 
     def test_exit_codes(self):
         # A command that ran exits 0; only a failure to run is nonzero, and never 1.

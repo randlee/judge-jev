@@ -80,7 +80,7 @@ class JevPropagationTests(unittest.TestCase):
     """A single client result travels into the batch line with retry counts from typed wheel detail."""
 
     def job(self):
-        settings = jj.BatchSettings("plan", "m", 1, "p", 0.6, 1.0, 1, 24000, False)
+        settings = jj.BatchSettings("plan", "m", 1, "p", 0.6, 1.0, 1, False)
         base = jj.load_question_set("plan").value
         line = {"item": {"id": "ex-42", "title": "", "text": "Sprint 2 copies the legacy runtime crates."},
                 "anchor": {"id": "ANC-001", "statement": STATEMENT},
