@@ -13,7 +13,6 @@ quality command, stdout, stderr, and result envelopes (with portable execution
 path placeholders) are in
 [recorded.json](recorded.json). Its three recorded verdicts are `yes`.
 Confidence is displayed; the shipped tree's choice rules determine verdicts.
-Recorded before which-part choices became phrases; a live run offers phrases.
 
 ## Replay without provider calls
 
