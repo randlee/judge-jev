@@ -68,7 +68,9 @@ say so in your status message.
    finding unless it is removed or rewritten as a non-action comment.
 10. Check the PR's CI state with `gh pr checks <PR>` and
     `gh pr view <PR> --json mergeStateStatus,reviewDecision`. Phase-end PASS
-    needs every check in the manifest's `phase_end_proof` list to be `SUCCESS`.
+    needs, for every job in the manifest's `phase_end_proof` list, at least one
+    check run named exactly that job or starting with `<job> (` (a matrix job),
+    and every such check run `SUCCESS`. A job with no check run is not a pass.
 11. Post the report to the PR (`gh pr comment`) and send the verdict to the
     lead (`atm send <lead>`), using the manifest's `report.line` and
     deliverable completion as `X/Y (Z%)`.
