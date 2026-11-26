@@ -1,0 +1,1137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>judge-jev-quality — decision report</title>
+  <style>
+    :root { color-scheme: light; --ink:#20334b; --muted:#53677b; --green:#23755c; --line:#dce4e9; --surface:#f4f7f8; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--surface); color:var(--ink); font:16px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif; }
+    header.hero { background:#142c3d; color:#f4faf8; padding:48px max(24px,calc((100vw - 1160px)/2)) 40px; }
+    .eyebrow { margin:0 0 14px; text-transform:uppercase; letter-spacing:.16em; font-size:12px; font-weight:700; color:#a2d4c0; }
+    h1 { margin:0 0 12px; font:500 clamp(32px,5vw,58px)/1.1 Georgia,serif; letter-spacing:-.025em; }
+    .hero p { margin:0; max-width:850px; } .meta { margin-top:20px!important; color:#bdd0da; font-size:13px; }
+    main { max-width:1208px; margin:auto; padding:24px; } .topline { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; align-items:center; margin-bottom:22px; }
+    .outcomes { color:var(--green); font-weight:650; } .count { color:var(--muted); font-size:14px; }
+    .notice { margin:0 0 20px; padding:14px 18px; background:#fff5df; border-left:3px solid #b47b21; color:#715315; font-size:14px; }
+    label { font-size:13px; font-weight:600; display:block; margin:0 0 6px; } select { max-width:100%; width:100%; padding:12px; background:white; border:1px solid #bccbd5; border-radius:7px; color:var(--ink); font:inherit; }
+    .selector { margin-bottom:24px; } article { background:white; border:1px solid var(--line); border-radius:12px; overflow:hidden; } article[hidden] { display:none; }
+    .record { padding:24px 28px; border-bottom:1px solid var(--line); } h2 { margin:6px 0 10px; font-size:24px; line-height:1.3; font-weight:600; }
+    .record-id { font:600 12px ui-monospace,monospace; letter-spacing:.06em; color:var(--green); } .statement { margin:0; white-space:pre-line; max-width:920px; }
+    .route { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:18px 0 0; color:var(--muted); font-size:14px; }
+    .badge { padding:4px 10px; border-radius:20px; background:#e8f4ee; color:#24684f; font-weight:650; text-transform:uppercase; font-size:12px; }
+    .badge.review,.badge.no { background:#fff0d8; color:#785318; } .badge.error { background:#fbe9e8; color:#8a3434; }
+    .content { display:grid; grid-template-columns:1fr; } .diagram { padding:24px; background:#fbfcfd; border-bottom:1px solid var(--line); }
+    h3 { margin:0 0 14px; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; } .diagram img { width:100%; max-width:920px; height:auto; display:block; margin:auto; }
+    .answers { padding:24px; min-width:0; } .answer { padding:14px 0; border-bottom:1px solid #e9eef1; } .answer:last-child { border:0; }
+    .answer-meta { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--muted); overflow-wrap:anywhere; }
+    .answer-top { display:flex; justify-content:space-between; gap:12px; margin:4px 0 7px; } .choice { font-weight:650; } .probability { font-variant-numeric:tabular-nums; }
+    .track { height:4px; background:#e8edf1; border-radius:4px; overflow:hidden; } .fill { height:100%; background:#438b72; } .under-bar .fill { background:#c9953b; }
+    .criterion { font-size:13px; color:var(--muted); margin:8px 0 0; } .diagnostic .fill { background:#7186a2; }
+    details { padding:20px 28px; border-top:1px solid var(--line); } summary { cursor:pointer; font-size:14px; font-weight:600; } pre { overflow:auto; padding:18px; background:#f3f6f8; font:12px/1.6 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+    footer { color:var(--muted); font-size:12px; padding:20px 0; overflow-wrap:anywhere; } footer code { font-size:11px; }
+    @media(max-width:850px) { .content { grid-template-columns:1fr; } .diagram { border-right:0; border-bottom:1px solid var(--line); } main { padding:16px; } .record { padding:22px; } }
+    @media print { article[hidden] { display:block; break-before:page; } .selector { display:none; } .hero { padding:20px!important; } }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">judge-jev / judge-jev-quality</p>
+    <h1>The quality tree, observed.</h1>
+    <p>Shipped quality trees select branches from choices. Diagnostic questions and confidence do not change their verdicts.</p>
+    <p>This report uses quality&#x27;s yes/no verdicts. In the companion CLI example, review means an answer under its 0.8 confidence bar needs follow-up, not a quality failure.</p>
+    <p class="meta">Recorded live results · offline replay · 2026-11-25T19:59:16.734522+00:00</p>
+  </header>
+  <main>
+    <div class="topline"><span class="outcomes">3 yes</span><span class="count">3 recorded items · REQ / ADR / NFR</span></div>
+    <aside class="notice">Raptor reported 1 import diagnostic(s) on unselected records. Those records were not sent. Details are in the Markdown report and recording.</aside>
+    <div class="selector">
+      <label for="record-select">Inspect a statement or record</label>
+      <select id="record-select">
+        <option value="panel-1">REQ-JEV-0001 · Records come from Raptor · yes</option>
+        <option value="panel-2">ADR-JEV-0001 · Keep the Jev core unchanged until its Rust replacement · yes</option>
+        <option value="panel-3">NFR-JEV-0001 · Deterministic offline tests · yes</option>
+      </select>
+    </div>
+    <article id="panel-1">
+      <div class="record">
+        <span class="record-id">REQ-JEV-0001 / req</span>
+        <h2>Records come from Raptor</h2>
+        <p class="statement">judge-jev MUST obtain records through Raptor&#x27;s query interface.
+judge-jev MUST NOT parse record Markdown itself.
+judge-jev MUST NOT run SQL (Structured Query Language) against the record
+store itself.</p>
+        <p class="route"><span class="badge yes">yes</span><span>wave-1 → yes</span></p>
+      </div>
+      <div class="content">
+        <section class="diagram"><h3>Decision tree · observed path in green</h3><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIGRhdGEtZDItdmVyc2lvbj0idjAuOS4wIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWluWU1pbiBtZWV0IiB2aWV3Qm94PSIwIDAgNzkzIDE3MDUiPjxzdmcgY2xhc3M9ImQyLTI5MjUwOTU4NDYgZDItc3ZnIiB3aWR0aD0iNzkzIiBoZWlnaHQ9IjE3MDUiIHZpZXdCb3g9Ii04OSAtMjk0IDc5MyAxNzA1Ij48cmVjdCB4PSItODkiIHk9Ii0yOTQiIHdpZHRoPSI3OTMiIGhlaWdodD0iMTcwNSIgcng9IjAiIGZpbGw9IiNGRkZGRkYiIGNsYXNzPSIgZmlsbC1ONyIgc3Ryb2tlLXdpZHRoPSIwIiAvPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbCi5kMi0yOTI1MDk1ODQ2IC50ZXh0LWJvbGQgewoJZm9udC1mYW1pbHk6ICJkMi0yOTI1MDk1ODQ2LWZvbnQtYm9sZCI7Cn0KQGZvbnQtZmFjZSB7Cglmb250LWZhbWlseTogZDItMjkyNTA5NTg0Ni1mb250LWJvbGQ7CglzcmM6IHVybCgiZGF0YTphcHBsaWNhdGlvbi9mb250LXdvZmY7YmFzZTY0LGQwOUdSZ0FCQUFBQUFCRE1BQW9BQUFBQUdVQUFBZ3VGQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFCUFV5OHlBQUFBOUFBQUFHQUFBQUJnWHhIWHJtTnRZWEFBQUFGVUFBQUF1QUFBQVA0RlRRWU1aMng1WmdBQUFnd0FBQW5YQUFBTlBJSys1ZWRvWldGa0FBQUw1QUFBQURZQUFBQTJHMzhlMUdob1pXRUFBQXdjQUFBQUpBQUFBQ1FLZndYeGFHMTBlQUFBREVBQUFBQzBBQUFBeUYyZkIxTnNiMk5oQUFBTTlBQUFBR1lBQUFCbVgvSmN2bTFoZUhBQUFBMWNBQUFBSUFBQUFDQUFTZ0QzYm1GdFpRQUFEWHdBQUFNdkFBQUlLZ2p3VmtGd2IzTjBBQUFRckFBQUFDQUFBQUFnLzlFQU1nQURBaW9DdkFBRkFBQUNpZ0pZQUFBQVN3S0tBbGdBQUFGZUFESUJLUUFBQWdzSEF3TUVBd0lDQkdBQUF2Y0FBQUFEQUFBQUFBQUFBQUJCUkVKUEFDQUFJUC8vQXU3L0JnQUFBOWdCRVNBQUFaOEFBQUFBQWZBQ2xBQUFBQ0FBQTNpY2hNNDNTZ1JoSE1iaFozYkh2T2FjUDllMFpnUXJaWTRnRm9MdFlDRzJZaU1leUZBTDNzRnIyRm9vQ0JaaThSZW5zRjNlOW9IM2gweGRob2JjSjVxU1hFMnlZY3VPWFhzT0hDbWNPRk82Y09YR2JRU1Mxci9aZDZodzdGVHAzS1hyUHhPdkVOL3hGVC94SG0veEVjL3hGQy94R0E5eEgzZlZjN3RsV2xYTG1tV2JGaVZMbWxhczJsWlRsK3ZRcVV1M2RUMTY5V25vTjJEUWtHRWpSbzBaTjJIU2xHa3paczJadDhBdkFBQUEvLzhEQUQrL0swRjRuSVJXYTJ6YjFoVSs5NG9tWTBWK1NCUkZTZGFiRmluNUlWbWlTZm90cTVibHhMSDh5TU54R3o4U0EwMmNPSEd5eHAzZE5tMEtMRTIzem1tM09jdlNkbHV6b3NNZVNJWVUyWUNzbXp1czZHTkJNMkJZMmdVWXVtYkRpcXdvc0ZidGpLSWRiSEc0dEpQWStiTWY1Q1V1N2ozbk85LzV6am1FSXVnSHdPUDROSmlnR01yQUJoeUFiQTFhdzdJa0NZd21hNXJBbXpRSldabCtiQ3Y4K0NVcFNrV2pWRlhnclAvaHNUR1VHOFdubHcvdXlvMlBmejdXM0Z6NDRhOWZLWnhDUjE4QlFKQUR3QmZ3SFBpSlBabDFPSGhaVlRWV3RncEt2YXBxQXNNSWtpVDRNTWZsZnJUZmJETlRacXQ1MzdtVFRMR0pVa1lHUnVvcGFnT0Q1d3J2ZTlwOHZqWVBDaTFQZnhMbzYvYy8vK1dYei92Nyt3S2YzUExSZytlQVhmSEJ5NktvS0xKVk1FbUN3OEZ4dWUvOXZKMmlTdWZJVWxTQzV3cS8vVmI5NDAwM2w2ZFI1OVBxc2FaL0FRQ0dtTDZJSDhObm9Rd3FBSXBDb2tqZ3lVbUhnN1BUdEpSVWxYcFJDTkdjM1lFR2g1N1lzdVdKb1pWM1IyOXZSMGR2cjJYcnN3Y212OXZYZCtiQWdXZTNIcDhlSDUrYUdoK2ZKdGdFZlJHYjhWbW9NcXhLbXNNaEc4WWtLWVpYWGZDTXVHcWI1MWY4SVh2NzhlUjJZVEFTcTVXcmR3UmJ4T2I5bVlZalZWc0M3WkpZMjFpMXZUbmJOR1dwaTkzdkUwTmV2OWRXV1JyUHh0V2grcHFxRVZlRjMrUHpXVVBPN1ozcWNBTWdjQUZnRnM4QlE3Z1JsQ0FuV0s5ZVF2KzloTXVQSFZ2T0F4Q01tL1ZGM0lmbndHcGdWS3l5MVc2Z0pCODA2ajErOG5TVHByVTgvVFhMbVpmUWFHRitkMC9QYm5TbzhPSkxad0RwWHdKZ0djOUJDWUJzV3BOZjA2dHZmTCszakMralNwMmx1VE92NDduQ241UzlxcnBYUVhYTDA0Q2hTbDlFNzZBbGNJRUF3SWNJM1pwQkF5TVpwSEJXUVJKb1drdXFta0lUM2wvTjlKK1l4MExVMzE2cHhDZWJ4dmJPbWlsLzF3WlhtTzF0OFZ0MnBucUh5b0tTazl2anJaeDZvUENCN0JFZTRObWQ1bXF2a3pmeW05WVhzUU12Z0owb2tXUkNZQVNyekRGM0pWa0lNWnpEZ1RxREhWN0tjblNlOG1aQ0xVUHhsckVoVVIyc2lkb2psbUJBd1F2bmU5emV0cS8wN0hnb05adnRPVm43dHEzVTRMRlNYMFFMYUFuYzZ4VEVNNnZabFpPcXh0TTBjblVlVG0vNmFpYlc1ZWtVQWtvcVZlZU1zVTNoUVV2cmcxdTNUYmY2K0RGdlQ3bzl4NVh0RGxTUS9HQ1E5RVcwaEJlQWhjQXRyZ2hxWGxMa05TemRFdEZudzRlYngrcWpEUzU2ZnRaTXViUFlLZG5ZYXJ1Z3hpM2ZmR2pnd1RhUHMrZG55eDBKdHpCcmQ3MXRLKzNvMnR3SjJNRCtEN1FFVHZDdlEwLzB5QVNKYWdsMmsyeVVBZkozUFhCUHg4SG1ycEU0aFF2WHpkbUVvaWJFMGVjdVNUVWgxZEkydlhWZ09wV2F6TERoWWxVTzN1djJvYWFvRWlleG1DQ2sxMklHTFVFY21xSGJpRVpVNmpYRjhMZTZxSEtTbHpsU3VuYWFGa0lTQ1VvbWtyRFR0R2xOSmJJcjMwSklOSTU4MWpUYTBNVldCSnp1YU5Pb1VoUDhWUjlUWEQra2VmMjJVTFIvZUUvbVdMZFhrcnhlU1lvbTI2V3c3QXBhS2xxdnVSdHFXaUpVU2NSZmtTeW5iSm5xbHI2SVpYSmp5TjdZWFdrdWM3QzI1ZzU1SUlhdVZFV2xhQ1FTclNyTVY3cjRjcFBKNmZKNFNUd0kwaVJCaHE1QXZxMG56aXBZRGFJWWEzcWU4V3hKRG15ZTl3WThFU2RlT0grdnEzcHlwSEFWQmRXSWl5KzhETG9PR2dEOERWL0RJdFFDQUFNeGVBcEExL1UvNmkxd3c5aVByKzdQM2ZicHd3dGdJVFV0VzJWTlpsaEJZcmowTTlRUHp2M2lOeThjU2VHRnd0UWJWd3Z2L2I3cllYSmVYMFEydkFCbEJ0KzM2NXNrOUE4OXpmUFc0aUtHdGxuQ2xsMWJzTEI4bmJjaGRLaUlJZmNBVEY2MEJFSEREeWxzb3JwMUVUSzMxelNweDJ4Q1NiUEI3a1QvbG5sdklGeEhYbkdVYi9mWFZrZENpVnRoMXhWZVhsMXU4WWVXd0w3V3gxcitaczFVSUhlYlFKUlArV3JYOGJlaVhVTlQvNzkzTzFLSE01bkRxZFJVSmpPVnFvM0ZhbU8xdGF0MTF6cTliZXVEclRPNTluUVBLVDhDSzYxdndnNjBCQ3o0QVBnNzZBeFppaExQc1hkYUJnbmZ1MW02YjZKbFRBMjB1SXY2UkhXd3Vzb2V1WXgvbW5BTDN6aTZZelpWNGVyN05xcTgzVENNMk5FemFBbHM2L2hseER1UlYvU0luTWZzTEhHVmUxcnRLTDh6bVNncU9rNVIwV1RoNzRDQTB4ZlJDMmdKSkNPdmQyYUx1REpiYmhzams4V0hPVHQ5TGJGUHZDZVU4Z2Q5M3BqYjF4elp2Nk54cC84ZWQ3MjdzVkVNdEVZbkxLSi8yRlhCczFZSGE3WlVOa1k3QnlYbmtOMGhPVjJsRzRYR1dNZklpdWF0K2lLYXd0UEFHNTFDVVFSRjAyUk81b1ExVFE2Ryt6STkxb2RuWmdTdnhXWG1XYzF5WVBES0lmckVpYU52VllWcGFwSzJyTmhxMFJmUkZ5Z1A5cnUwYVYxdGJYOFoyRHp2QzNoRXgvenNScE8vMnpJNWd1b0xONVNvMjRzMkZjbzd3eldBU0IwZ0hlVlhaeEMvT29NMDJYVHBKNmZiemF5WkttYk42Vk12b3Z4SDRad2s1Y0lmRmNvTjMwNEFuRWQ1Q041MWI0MEZRUkpGMG1FWjV2U3g3OVRSWnBwaVNvcTE0dzNGWlF6RkZEUHhyOCtjcjJWS0dJclp5TlNnL00zd0psSHNGbTRhNjZid3pVTDVtMEkyRXNrS2J4citMSG9iV2taNXFGaWJMMDFiQjdrVXp6cUNaVzdHdGlFY01UTy9POTIxMFdhbU5saUxXMDZkNXh2NlhxT3BJNmlvMHV0Ry8zdzNsQTBMWGNLN2hZMXRPNnBXdU13Q29ML2lSd2dmTWhrTmlxcHFwQ2xsbjVxcDN4UTZPRE9ERHU4eWUrekxTek1yNTMwQTZBUDhKSGpJK1RhczFLK1p2NGJLeVhTVXVmREFvOWxFTktRNSsrUGptZFNvMGp4YzcyeHhQTDQ5OStqKzJuaENjdmNsNWVTdVZ1WHdZZFZVZEl6WWRlaUw2QVorRXFKMzYxSlFrdW82TDV5ZEpzVkRmUDBuZDBqSWVMT1JlSU9udTNPd1BTS0dORjkzelhqVCtFT2FySFdsSnkzSnlJaW5VcXIwUkIwVGNURVk5cm52RTZ0M2JVdGtIVlI1cnExNVd6V0pDWk4vUVBRRmZnU0tpYUpZbVV3VmtqNVdDU29zNFVMZ3pwMHNRcFRGWFpvcy9QdkRYMjdlakRiczh3LzQzR3BGWWVycy9laXh3cWtqWjBrTXJmb2lmQUlYWU9PdGlidUM5b3dveTZJb3l4WkZpaWhLUkZKSS96Yk9vayt4UlA1bFVBWm9zdW82eFBRMkJPdjI2d3plcStFS0NxSUVtQUEwUmVhcVA3OHlNVUgyTGZvMCtsQi9pK3p6U3BDem9QZm10bTBEQkp2MEhJcmdHMFRmdkRFaFNZV1JvcjZhNnV4TURXdkpwSFpwMy9zblRyeS9UOXh6ZmZMQTlYRkFVS2ZuVVBucUhVa2xySlArd05ucHVlR0daTEpoT05YWmVVa2N2MzVnOHZvZTBiZ0xDRXIwM1VqRmJ4citXZGxVY21YM2xYT212VXZQRVd3aEdFVWZZNVh3b1NtQ0lpc3JCZi9uaXhjUFhydzRlbm5pOHVXSnk0U0xFTHlJUGthZllSRVNNQTAwSk83TUxIZ0g1WWx0TXJQUzh5aGZLQWVrWDhDTnNBMWZJM2F0YTNnT3gyTGhjQ3lHRzZzRW9ZbzhwTVRKUEh3WDVhRjhuYTVJeTZEcFNuKzB6RzFtelY1K1BwQjdmUU45MEVSSlVmUnBnVlh2MHdoK0l4ZHdnZlJhWGxKVktSUVMxcmpyOFRVMElVeGhRVlhGWlAzd2E3MzJkTGc2SXNhNjAxdG5pYTRRaEpBRGZZd2VJL2haSmNpRjBGWGttSmdBZ1A4QkFBRC8vd01BVTVIVkN3QUFBUUFBQUFJTGhmNG16MWxmRHp6MUFBRUQ2QUFBQUFEWVhhQ0VBQUFBQU4xbUx6YitOLzdFQ0cwRDhRQUJBQU1BQWdBQUFBQUFBQUFCQUFBRDJQN3ZBQUFJbVA0My9qY0liUUFCQUFBQUFBQUFBQUFBQUFBQUFBQUFNbmljTE0weFNzUlFGRWJoYy8rQUtFWjhZZ3phcElnQndUeUNuWUpKY1J0Uk1DRFl4Tlc0QS92c1FSdGJOMkF6MVd4bG1wa21RNFlwdnU3QTBTOXYvSU0yOUJycDlVMmp5TFVpVnhwNVVaeldPdVZXSFc1TEtuWGM2SUJLT2FVZWNjdTR0M3hhcU1LdHdKTVBYQzJ1ZXRlNmZlSDJ4NFY5Y3FZSFdoMlRKb2RjNm9oVWdTY0ZDZ1Z5QmM0dDB1MDE5a3B0SzFJYmVMYUJPM3ZuUklGeVpoa08wOC84dFVpalFMa0ZBQUQvL3dNQVk0Z2RPd0FBQUN3QUxBQmVBSUFBckFEc0FQNEJIQUU0QVhBQm9nSE9BZ0FDTkFLY0FyNEN5Z0xXQXU0RENnTThBMTREaWdPNkE5b0VGZ1E4QkY0RWVnU3lCT0lFK2dVbUJXUUZpQVdlQmFvRnRnWENCYzRGNkFZQ0JoQUdKQVl3Qmp3R1VnWndCcEFHbmdBQUFBRUFBQUF5QUpBQURBQmpBQWNBQVFBQUFBQUFBQUFBQUFBQUFBQUVBQU40bkp5VXoyNGJaUlRGZjA1czB3ckJBa1ZWdW9tK0JZc2l0V05USlZYYnJDYWtWa1pFY2ZDNElDU0VOTFludHVYeHpNZ3pkaHFlZ0RWdndWdDB4VVB3SElnMXV0ZlhybDBRQlN1S2RXYm0vam5mdWVkK3dBRi9zaytsZWgvNHJaNGFybkJVdnphOHg3MzZoZUY5V3ZVOXcxVWUxWDQzWEdOUVd4aXU4M210WS9najNsWi9NWHlQNCtxUGh1OXpXRzBaL3BpbjFRUERuK3c3L2pEOEtjZThYZUlLUE9kbnd4VU95UTN2Y2NBUGh2ZDVnTldzVkhsQTAzQ056emd5WE9jSTZES21KR0ZNeWhESERXT0d6SmtSVXhBU00yUE1EVEVESEFFK0NhVytUWWtVT1liLytEWWlwR1JHcEJWSGxEZ1NRaElpQ2taVzhTZk55cmpXanRKbnBraTYrWlNNaU9ocHhvU0lGRWZHa0l5VW1JbldLU25KZVVtREJnVjk1WnRUVXVCUk1DYkJJMlBHa0FadFdselNaY1NZQWtkTEt3bXprSXdiU202SnRMK3pDRkdtVDB4S1lhem1wQXlVcDFOK3NXWUhYT0pvazJ2c1p1WExyUXFQY1h5cjJjSk5ZaHhmNHVtLzIyQzIzWGZGSm1LaGVvcUdQUkxsZWFzVEhLbmkwdGZuRzhVbEwzRTc2YlBONU1NYURaU2R6SHBNajduT1grWW5lY0lreGJsRGZFSjFVT2dlNGpqVDU0QlFGZm1PZ0M0WHRIbE5WNTk5T25Ud3VhSkx3Q3ZOYmRQQjhSVnRyampYakVEeDhsdExIWFBGOXppK0p0QVlxUjJiUHFLNVBMMGhOM2NMZDNHR25HTktybHNnTTViemkvUGpuU1lzTzVSdHVhTlFWL1IxanlSUzlrQlVrVDJMR0pvcmNuWEZWTFZjZWFNdy9RYm1DUGxhNm16ZmZaZHRXTmp1cmJiNGpreDMyREUzVGpLNUphTVBUZFY3enpPMyt1Y1JNU0NqcHhGOU1xWTBLTG5UczEwVE1TZkJjYTQrdnRBdEtmSFhPZExuVGwwU00xVUdBYW5XbVpIcmIyUytDWTE3Zjh2M3p1NFMyYnlwN3Voa2ZhcGR1a2psZEdOR3IxVzkxYmZRVkk0M0p0Q3dxV2FXSXhPV3lzdVRpdmNsMnR2aUg2cjdDNzNkTXA1d1JrYkM0Rzgzd0ZNOG1oeHp3aWtqN1NDVlV4WjJPelQxaG1qeWdsTTkvWVJZbytTK2ZLTTZTWVVUUEo1eHdna3ZlUGFlamlzbXpyaTROWmZOM2o3bm5OSG05RCtkWWhuZjVveFg2M2YvM3ZWWFpkclVzemllckorZTd6ekZSLy9EclYvd2VPdSs3T2d0SUp1enNHcnZ0dUtLaUtsd2NZZWJXcmlIZUg4QkFBRC8vd01BOUxkUFVRQUFBd0FBQUFBQUFQL09BRElBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE9PSIpOwp9Ci5kMi0yOTI1MDk1ODQ2IC50ZXh0LWl0YWxpYyB7Cglmb250LWZhbWlseTogImQyLTI5MjUwOTU4NDYtZm9udC1pdGFsaWMiOwp9CkBmb250LWZhY2UgewoJZm9udC1mYW1pbHk6IGQyLTI5MjUwOTU4NDYtZm9udC1pdGFsaWM7CglzcmM6IHVybCgiZGF0YTphcHBsaWNhdGlvbi9mb250LXdvZmY7YmFzZTY0LGQwOUdSZ0FCQUFBQUFBZkVBQW9BQUFBQURLd0FBUmhSQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFCUFV5OHlBQUFBOUFBQUFHQUFBQUJnVzFTVmVHTnRZWEFBQUFGVUFBQUFVQUFBQUZBQkd3RXlaMng1WmdBQUFhUUFBQUl3QUFBQ1dNb3lBYUJvWldGa0FBQUQxQUFBQURZQUFBQTJHN1VyMm1ob1pXRUFBQVFNQUFBQUpBQUFBQ1FMZUFpcWFHMTBlQUFBQkRBQUFBQVlBQUFBR0F1NUFFMXNiMk5oQUFBRVNBQUFBQTRBQUFBT0FsUUJ2RzFoZUhBQUFBUllBQUFBSUFBQUFDQUFIZ0QyYm1GdFpRQUFCSGdBQUFNckFBQUlNZ250VnpOd2IzTjBBQUFIcEFBQUFDQUFBQUFnLzhZQU1nQURBZUVCa0FBRkFBQUNpZ0pZLy9FQVN3S0tBbGdBUkFGZUFESUJJd0FBQWdzRkF3TUVBd2tDQkNBQUFIY0FBQUFEQUFBQUFBQUFBQUJCUkVKUEFBRUFJUC8vQXU3L0JnQUFBOWdCRVNBQUFaTUFBQUFBQWVZQ2xBQUFBQ0FBQXdBQUFBRUFBd0FCQUFBQURBQUVBRVFBQUFBS0FBZ0FBZ0FDQUdVQWJ3QnpBSG4vL3dBQUFHVUFiZ0J6QUhuLy8vK2MvNVQva2YrTUFBRUFBQUFBQUFBQUFBQUFBQUVBQWdBREFBUUFCUUFBZUp4TWtNdFBFMUVVaDgrZEtYTkJTd256cEUzcDBKbk9uYlpPQnpwM0hoQ2hVQjd5YUFrUGd5WWlWUllrYW93aGNXMVFWaTVjc3RHVmlSdU5mNFNKY1dIY21SaGo0czRITGpBeE5teE1aTVpNMmJnNXk5OTN2Zys2b0FEQTNHRU9nSVVlNkFNZUpBQXE1Rm1XQm9HdXNOUTBkWXdEVXhCd1lSKzkzWCtTbUxueXZmajBqNlVtNWgrOGFQeTgvcEk1T0xtTjdtL3Q3WVdiRDNkMkxoOGRoV1gwOFFnQWdBRWpPa2F2VUJzeVlBQW9HdkhjR2tNZFdaWkVEdWM1V2FhT0h5Z2N4MUxmOTF4Q2RJMzdkdWxtcFhGMUpLam5rbDNobTU2aG1mTGdtSkliWEhzY01TeGYwcjFXOHRiMjNPNjZaYTg2V1pxYVhEWFMvVlJTa1hGMm9EZGJWVGNBZ1FxQVBxRTJETVFlRkZQZnA0NHNpWmpWaFppaWF4eG0xZTFKbkNpdDJ6V3Z1OVljVHlRV3NndjJIRHBjTEZUcm8yb2hmSWNzY2FDM1ViYkQ1NmNlWm5TTVBxTTI5TUhnL3g2U21HSk1KMTRsdXNaeGtpaC9XR2xaU3kxbjVaclZhSlVyYTlSMzRwTzhzVGwzZDhNK3ZWUFR1N1BUOHpPN3M5TVhBQUJGZjZOamRBKzF3ZXdzbTBHbml1Y1NreERQN1R5djRFNGFTWlNWVGpydVdYVXJQYUpNa2ZKRWFkUWVzeFl0ZXlsckN6UlBxdjVRelIxWlQ3cEZvaFp0UFdPcW1WcnBYTjBvNUlwaXBxTG1DSytOVzVWWkkrYStqb2JSVjNRSUdRQ3NFVE9Jc1VIQVVrR1dGZXI3Z1VCUml1SE9ES1hTUEcvVTAvekZKdW5xWmhQOUJ2K29HWDVKbjE5NGovRll6NFNqb3gvaHIveXlyamMxMUgveWUzalpBb0IvQUFBQS8vOERBTUw0Z2o0QUFRQUFBQUVZVWRvK0tzVmZEenoxQUFFRDZBQUFBQURZWGFETUFBQUFBTjFtTHpmK3ZmN2RDQjBEeVFBQ0FBTUFBZ0FBQUFBQUFBQUJBQUFEMlA3dkFBQUlRUDY5L2J3SUhRUG9BTUwvMFFBQUFBQUFBQUFBQUFBQUJnSjBBQ1FCNFFBbEFnMEFId0lEQUNjQmt2LzhBY0Qvd2dBQUFDNEFhQUNTQU1BQS9BRXNBQUFBQVFBQUFBWUFqQUFNQUdZQUJ3QUJBQUFBQUFBQUFBQUFBQUFBQUFRQUEzaWNuSlRkYmhwWEZJVS9ZcUJOL3k0cUszSnVySE9aU3M3Z1JuR1V4RmZqT2xaR1JaQXlwRDlTVldtQU1TQmdac1FNT000VDlMcHYwYmZJVlIralQxSDF1dHFiRFdFaXExWlFGR3NOWi8rc3MvYmFCOWpuWC9hb1ZPOENmOVdYaGlzYzFuODJmSWN2NmszRGU1elZQek5jNWFqMnQrRWFnOXBidzNVZTFEcUdQK0ZkOVEvRG4vSzQrcHZodXh4VUx3eC96cVBxdnVFdjl4ei9HUDZLeDd4YjRRbzg1WGZERlE3SUROOWhuMThONzNFUHExbXBjbzlqd3pXKzV0QnduVU9neTVpQ0tXTVNoamd1R1ROa3daeVluSkNZT1dNdWlSbmdDUENaVXVpdkNaRWl4L0RHWHlOQ0N1WkVXbkZFZ1dOS3lKU0luSkZWZkt0WkthKzBvL1NaSzVKdVBnVWpJbnFhTVNFaXdaRXlKQ1VoWnFKMUNnb3ludE9nUVU1ZitXWVU1SGprakpuaWtUSm5TSU0yRnpUcE1tSk1qdU5DS3dtemtKUkxDcTZJdEwrekNGR21UMHhDYnF3V0pBeVVwMU4rc1dZSE5IRzB5VFIydTNLelZPRUl4NCthTGR3a3h2RXRudjUzVzh6S2ZkZHNJcGFxcDJqWVk2bzhyM1NDSTFWYyt2cjhvTGpnT1c0bmZjcE1idGRvb094azFtTjZMSFQrTWovSkV5WUp6aDNnRTZxRFFuY2Z4NWwrQjRTcXlFOEVkSGxKbTlkMDlkdW5Rd2VmRmwwQ1htaHVtdzZPNzJqVDRsd3pBc1dyc3d0MVRJdGZjSHhQb0RGU096WjlSSFA1ZWtObTdoYnU0Z3k1eDR4TXQwQm1MUGNYNThjN1RWaDJLQzI1STFkWDlIV1BKRkwyUUZTUlBZc1ltaXN5ZGNWTXRWeDdJemY5QnVZSU9TMTB0dS9QWlJ1V3RudnJMYjRtMVIxMkxJeVRURzdGNkxhcGVoOTQ1a3IvZVVRTVNPbHBSSitVR1EwS3J2VnVyNGhZTU1WeHJqNStxVnRTNEc5eXBNKzF1aVJtcGd3Q0VxMHpKOU8va2ZrbU5PNzlrdStkdlNXeWVUUGQwY25tVnJ0MGtjckoxb3hlcTNycnM5QlVqcmNtMExDcHBwWWpFNWJLcTV1Szl5WGFLL0VQMWYyNXZtNHBEd20wcmt5eWYrTXJjTXd6VGpobHBGMmtlc0p5Y3lhdmhFU2NxZ0lUWW8yU04vT05hdlVJanhNOG5uRENDYzk0OG9HV2F6Yk8rTGdTbiszK1B1ZWMwZWIwMXR1c1l0dWM4YUpVN2Y4Ny82bHNqL1Uram9lYnI2YzdUL1BCUjdqMkc0NUs3MlpIWHdQWm9LVlZlNzhkTFNKbXdzVWRiR3ZoN3VQOUJ3QUEvLzhEQUhLaFVVQUFBQU1BQVAvMUFBRC96Z0F5QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIpOwp9XV0+PC9zdHlsZT48c3R5bGUgdHlwZT0idGV4dC9jc3MiPjwhW0NEQVRBWy5zaGFwZSB7CiAgc2hhcGUtcmVuZGVyaW5nOiBnZW9tZXRyaWNQcmVjaXNpb247CiAgc3Ryb2tlLWxpbmVqb2luOiByb3VuZDsKfQouY29ubmVjdGlvbiB7CiAgc3Ryb2tlLWxpbmVjYXA6IHJvdW5kOwogIHN0cm9rZS1saW5lam9pbjogcm91bmQ7Cn0KLmJsZW5kIHsKICBtaXgtYmxlbmQtbW9kZTogbXVsdGlwbHk7CiAgb3BhY2l0eTogMC41Owp9CgoJCS5kMi0yOTI1MDk1ODQ2IC5maWxsLU4xe2ZpbGw6IzBBMEYyNTt9CgkJLmQyLTI5MjUwOTU4NDYgLmZpbGwtTjd7ZmlsbDojRkZGRkZGO30KCQkuZDItMjkyNTA5NTg0NiAuZmlsbC1CNXtmaWxsOiNFREYwRkQ7fQoJCS5kMi0yOTI1MDk1ODQ2IC5zdHJva2UtQjF7c3Ryb2tlOiMwRDMyQjI7fQoJCS5kMi0yOTI1MDk1ODQ2IC5zdHJva2UtQjJ7c3Ryb2tlOiMwRDMyQjI7fS5hcHBlbmRpeCB0ZXh0LnRleHR7ZmlsbDojMEEwRjI1fS5tZHstLWNvbG9yLWZnLWRlZmF1bHQ6IzBBMEYyNTstLWNvbG9yLWZnLW11dGVkOiM2NzZDN0U7LS1jb2xvci1mZy1zdWJ0bGU6Izk0OTlBQjstLWNvbG9yLWNhbnZhcy1kZWZhdWx0OiNGRkZGRkY7LS1jb2xvci1jYW52YXMtc3VidGxlOiNFRUYxRjg7LS1jb2xvci1ib3JkZXItZGVmYXVsdDojMEQzMkIyOy0tY29sb3ItYm9yZGVyLW11dGVkOiMwRDMyQjI7LS1jb2xvci1uZXV0cmFsLW11dGVkOiNFRUYxRjg7LS1jb2xvci1hY2NlbnQtZmc6IzBEMzJCMjstLWNvbG9yLWFjY2VudC1lbXBoYXNpczojMEQzMkIyOy0tY29sb3ItYXR0ZW50aW9uLXN1YnRsZTojNjc2QzdFOy0tY29sb3ItZGFuZ2VyLWZnOnJlZDt9LmxpZ2h0LWNvZGV7ZGlzcGxheTogYmxvY2t9LmRhcmstY29kZXtkaXNwbGF5OiBub25lfV1dPjwvc3R5bGU+PGcgY2xhc3M9ImJqQT0gd2F2ZSB2aXNpdGVkIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIzNiIgeT0iMTIiIHdpZHRoPSIzMDkiIGhlaWdodD0iMTYyIiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9IiNmMGY0ZmEiIHN0eWxlPSJzdHJva2Utd2lkdGg6MzsiIC8+PC9nPjx0ZXh0IHg9IjE5MC41IiB5PSI1MC41IiBmaWxsPSIjMjMzMTQ3IiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij48dHNwYW4geD0iMTkwLjUiIGR5PSIwIj53YXZlLTE8L3RzcGFuPjx0c3BhbiB4PSIxOTAuNSIgZHk9IjE2LjcxNDI4NiI+cGVyIE1VU1QgLyBNVVNUIE5PVCBzdGF0ZW1lbnQ8L3RzcGFuPjx0c3BhbiB4PSIxOTAuNSIgZHk9IjE2LjcxNDI4NiI+b2JsaWdhdGlvbnM6IDEgLyAyIC8gMyAvIDQrPC90c3Bhbj48dHNwYW4geD0iMTkwLjUiIGR5PSIxNi43MTQyODYiPnRlcm06IHllcyAvIG5vPC90c3Bhbj48dHNwYW4geD0iMTkwLjUiIGR5PSIxNi43MTQyODYiPmNoZWNrYWJsZTogeWVzIC8gbmVlZHMgYSBtZWFzdXJlIC8gbm88L3RzcGFuPjx0c3BhbiB4PSIxOTAuNSIgZHk9IjE2LjcxNDI4NiI+ZF90ZXJtX2tpbmQgKGRpYWdub3N0aWMpPC90c3Bhbj48dHNwYW4geD0iMTkwLjUiIGR5PSIxNi43MTQyODYiPmRfY2hlY2tfbWV0aG9kIChkaWFnbm9zdGljKTwvdHNwYW4+PC90ZXh0PjwvZz48ZyBjbGFzcz0iYmpFPSBjb25kaXRpb24gdmlzaXRlZCI+PGcgY2xhc3M9InNoYXBlIiA+PHBhdGggZD0iTSAxOTEgMzM2IEMgMTkwIDMzNiAxOTAgMzM2IDE4OSAzMzYgTCA5NCAyOTEgQyA5MyAyOTEgOTMgMjkwIDk0IDI4OSBMIDE4OSAyNDQgQyAxOTAgMjQ0IDE5MiAyNDQgMTkzIDI0NCBMIDI4OCAyODkgQyAyODkgMjg5IDI4OSAyOTAgMjg4IDI5MSBMIDE5MyAzMzYgQyAxOTIgMzM2IDE5MiAzMzYgMTkxIDMzNiBaIiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9IiNmOWZhZmMiIHN0eWxlPSJzdHJva2Utd2lkdGg6MzsiIC8+PC9nPjx0ZXh0IHg9IjE5MSIgeT0iMjk1LjUiIGZpbGw9IiMzOTQ3NWQiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPjEuIHRlcm0gPSBubzwvdGV4dD48L2c+PGcgY2xhc3M9ImJqST0gY29uZGl0aW9uIHZpc2l0ZWQiPjxnIGNsYXNzPSJzaGFwZSIgPjxwYXRoIGQ9Ik0gMzMwIDU0MCBDIDMyOCA1NDAgMzI3IDU0MCAzMjYgNTQwIEwgOTYgNDc5IEMgOTQgNDc4IDk0IDQ3NyA5NiA0NzcgTCAzMjYgNDE2IEMgMzI4IDQxNSAzMzIgNDE1IDMzNSA0MTYgTCA1NjUgNDc2IEMgNTY3IDQ3NyA1NjcgNDc4IDU2NSA0NzggTCAzMzQgNTQwIEMgMzMzIDU0MCAzMzIgNTQwIDMzMCA1NDAgWiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZjlmYWZjIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSIzMzAiIHk9IjQ3NS41IiBmaWxsPSIjMzk0NzVkIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij48dHNwYW4geD0iMzMwIiBkeT0iMCI+Mi4gY2hlY2thYmxlID0gbmVlZHMgYSBtZWFzdXJlPC90c3Bhbj48dHNwYW4geD0iMzMwIiBkeT0iMTguNSI+LyBubzwvdHNwYW4+PC90ZXh0PjwvZz48ZyBjbGFzcz0iYmpNPSBjb25kaXRpb24gdmlzaXRlZCI+PGcgY2xhc3M9InNoYXBlIiA+PHBhdGggZD0iTSA0MDggNzEyIEMgNDA3IDcxMiA0MDYgNzEyIDQwNSA3MTIgTCAyMjUgNjY3IEMgMjIzIDY2NyAyMjMgNjY2IDIyNSA2NjUgTCA0MDUgNjIwIEMgNDA3IDYyMCA0MTAgNjIwIDQxMiA2MjAgTCA1OTEgNjY1IEMgNTkzIDY2NSA1OTMgNjY2IDU5MSA2NjcgTCA0MTEgNzEyIEMgNDEwIDcxMiA0MDkgNzEyIDQwOCA3MTIgWiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZjlmYWZjIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSI0MDgiIHk9IjY3MS41IiBmaWxsPSIjMzk0NzVkIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij4zLiBvYmxpZ2F0aW9ucyA9IDIgLyAzIC8gNCs8L3RleHQ+PC9nPjxnIGNsYXNzPSJialE9IHdhdmUiPjxnIGNsYXNzPSJzaGFwZSIgPjxyZWN0IHg9IjEwNiIgeT0iNzkyIiB3aWR0aD0iMzQ3IiBoZWlnaHQ9IjE0NiIgc3Ryb2tlPSIjYmFjN2Q4IiBmaWxsPSIjZjBmNGZhIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjI7IiAvPjwvZz48dGV4dCB4PSIyNzkuNSIgeT0iODMwLjUiIGZpbGw9IiMyMzMxNDciIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPjx0c3BhbiB4PSIyNzkuNSIgZHk9IjAiPndhdmUtMjwvdHNwYW4+PHRzcGFuIHg9IjI3OS41IiBkeT0iMTYuODMzMzMzIj5wZXIgTVVTVCAvIE1VU1QgTk9UIHN0YXRlbWVudDsgbWF0Y2hlZDwvdHNwYW4+PHRzcGFuIHg9IjI3OS41IiBkeT0iMTYuODMzMzMzIj5zdGF0ZW1lbnRzIG9ubHk8L3RzcGFuPjx0c3BhbiB4PSIyNzkuNSIgZHk9IjE2LjgzMzMzMyI+am9pbmVkX2J5OiBub25lIC8gYW5kLWxpc3QgLzwvdHNwYW4+PHRzcGFuIHg9IjI3OS41IiBkeT0iMTYuODMzMzMzIj5jb25kaXRpb24rb2JsaWdhdGlvbiAvIGFsdGVybmF0aXZlcyAvPC90c3Bhbj48dHNwYW4geD0iMjc5LjUiIGR5PSIxNi44MzMzMzMiPm9ibGlnYXRpb24rcmF0aW9uYWxlPC90c3Bhbj48L3RleHQ+PC9nPjxnIGNsYXNzPSJialU9IHJldmlldyI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iMTQ1IiB5PSIxMjQ0IiB3aWR0aD0iMTIzIiBoZWlnaHQ9IjY2IiBzdHJva2U9IiNkN2JkOTEiIGZpbGw9IiNmZmY2ZTciIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIC8+PC9nPjx0ZXh0IHg9IjIwNi41IiB5PSIxMjgyLjUiIGZpbGw9IiM3NjU3MjEiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPlZlcmRpY3Q6IG5vPC90ZXh0PjwvZz48ZyBjbGFzcz0iYmpZPSBjb25kaXRpb24iPjxnIGNsYXNzPSJzaGFwZSIgPjxwYXRoIGQ9Ik0gMjc5IDExNjQgQyAyNzggMTE2NCAyNzcgMTE2NCAyNzYgMTE2MyBMIDEwMSAxMDg4IEMgOTkgMTA4NyA5OSAxMDg2IDEwMSAxMDg1IEwgMjc2IDEwMDkgQyAyNzggMTAwOCAyODEgMTAwOCAyODMgMTAwOSBMIDQ1NyAxMDg1IEMgNDU5IDEwODYgNDU5IDEwODcgNDU3IDEwODggTCAyODIgMTE2MyBDIDI4MSAxMTY0IDI4MCAxMTY0IDI3OSAxMTY0IFoiIHN0cm9rZT0iI2M2Y2VkOSIgZmlsbD0iI2Y5ZmFmYyIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgLz48L2c+PHRleHQgeD0iMjc5IiB5PSIxMDc1LjUiIGZpbGw9IiMzOTQ3NWQiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPjx0c3BhbiB4PSIyNzkiIGR5PSIwIj4xLiBqb2luZWRfYnkgPSBhbmQtbGlzdCAvPC90c3Bhbj48dHNwYW4geD0iMjc5IiBkeT0iMTcuNjY2NjY3Ij5hbHRlcm5hdGl2ZXMgLzwvdHNwYW4+PHRzcGFuIHg9IjI3OSIgZHk9IjE3LjY2NjY2NyI+b2JsaWdhdGlvbityYXRpb25hbGU8L3RzcGFuPjwvdGV4dD48L2c+PGcgY2xhc3M9ImJqYz0gcGFzcyI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iMjg4IiB5PSIxMjQ0IiB3aWR0aD0iMTI5IiBoZWlnaHQ9IjY2IiBzdHJva2U9IiNhNWNiYmIiIGZpbGw9IiNlZGY3ZjIiIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIC8+PC9nPjx0ZXh0IHg9IjM1Mi41IiB5PSIxMjgyLjUiIGZpbGw9IiMyODVjNDkiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPlZlcmRpY3Q6IHllczwvdGV4dD48L2c+PGcgY2xhc3M9ImJqZz0gcGFzcyB2aXNpdGVkIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSI0NzMiIHk9Ijc5MiIgd2lkdGg9IjEyOSIgaGVpZ2h0PSI2NiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZWRmN2YyIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSI1MzcuNSIgeT0iODMwLjUiIGZpbGw9IiMyODVjNDkiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPlZlcmRpY3Q6IHllczwvdGV4dD48L2c+PGcgY2xhc3M9ImJqaz0gcmV2aWV3Ij48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIxMiIgeT0iNjIwIiB3aWR0aD0iMTIzIiBoZWlnaHQ9IjY2IiBzdHJva2U9IiNkN2JkOTEiIGZpbGw9IiNmZmY2ZTciIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIC8+PC9nPjx0ZXh0IHg9IjczLjUiIHk9IjY1OC41IiBmaWxsPSIjNzY1NzIxIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij5WZXJkaWN0OiBubzwvdGV4dD48L2c+PGcgY2xhc3M9ImJHVm5aVzVrIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSI4MyIgeT0iLTE5NCIgd2lkdGg9IjQ0OCIgaGVpZ2h0PSIxODYiIHN0cm9rZT0iIzBEMzJCMiIgZmlsbD0idHJhbnNwYXJlbnQiIGNsYXNzPSIgc3Ryb2tlLUIxIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjA7IiAvPjwvZz48L2c+PGcgY2xhc3M9ImJHVm5aVzVrTG5ObFpXND0gdmlzaXRlZCI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iMTQzIiB5PSItMTM0IiB3aWR0aD0iMTQ5IiBoZWlnaHQ9IjY2IiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9IiNFREYwRkQiIGNsYXNzPSIgZmlsbC1CNSIgc3R5bGU9InN0cm9rZS13aWR0aDozOyIgLz48L2c+PHRleHQgeD0iMjE3LjUiIHk9Ii05NS41IiBmaWxsPSIjMEEwRjI1IiBjbGFzcz0idGV4dC1ib2xkIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPk9ic2VydmVkIHBhdGg8L3RleHQ+PC9nPjxnIGNsYXNzPSJiR1ZuWlc1a0xuVnVjMlZsYmc9PSB3YXZlIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIzMzIiIHk9Ii0xMzQiIHdpZHRoPSIxMzkiIGhlaWdodD0iNjYiIHN0cm9rZT0iI2JhYzdkOCIgZmlsbD0iI2YwZjRmYSIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgLz48L2c+PHRleHQgeD0iNDAxLjUiIHk9Ii05NS41IiBmaWxsPSIjMjMzMTQ3IiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij5PdGhlciBicmFuY2g8L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR3SUMwbVozUTdJRzR4S1Zzd1hRPT0iPjxtYXJrZXIgaWQ9Im1rLWQyLTI5MjUwOTU4NDYtMzY5NDYyMjQ0NCIgbWFya2VyV2lkdGg9IjEzIiBtYXJrZXJIZWlnaHQ9IjE2IiByZWZYPSI4LjUiIHJlZlk9IjgiIHZpZXdCb3g9IjAgMCAxMyAxNiIgb3JpZW50PSJhdXRvIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPiA8cG9seWdvbiBwb2ludHM9IjAsMCAxMyw4IDAsMTYiIGZpbGw9IiMyMzc1NWMiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHJva2Utd2lkdGg9IjMiIC8+IDwvbWFya2VyPjxwYXRoIGQ9Ik0gMTkxLjUyMDQ2NCAxNzYuOTk5OTIzIEwgMTkxLjk1NzA1OCAyMzguMDAwMTU0IiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9Im5vbmUiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiBtYXJrZXItZW5kPSJ1cmwoI21rLWQyLTI5MjUwOTU4NDYtMzY5NDYyMjQ0NCkiIG1hc2s9InVybCgjZDItMjkyNTA5NTg0NikiIC8+PC9nPjxnIGNsYXNzPSJLRzR4SUMwbVozUTdJRzQ1S1Zzd1hRPT0iPjxtYXJrZXIgaWQ9Im1rLWQyLTI5MjUwOTU4NDYtMjE4OTU5NzM4OSIgbWFya2VyV2lkdGg9IjEwIiBtYXJrZXJIZWlnaHQ9IjEyIiByZWZYPSI3IiByZWZZPSI2IiB2aWV3Qm94PSIwIDAgMTAgMTIiIG9yaWVudD0iYXV0byIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIj4gPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAsNiAwLDEyIiBmaWxsPSIjYjNiZWNiIiBjbGFzcz0iY29ubmVjdGlvbiIgc3Ryb2tlLXdpZHRoPSIyIiAvPiA8L21hcmtlcj48cGF0aCBkPSJNIDE1OC45OTI0MDkgMzIzLjQ5OTk4OCBMIDE1OC44NjMzNTcgMzY2LjAwMDA0NiBTIDE1OC44MzI5OTMgMzc2IDE0OC44MzI5OTMgMzc2IEwgNjMgMzc2IFMgNTMgMzc2IDUzIDM4NiBMIDUzIDYxNiIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjcyLjUiIHk9IjYxMCIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPnllczwvdGV4dD48L2c+PGcgY2xhc3M9IktHNHhJQzBtWjNRN0lHNHlLVnN3WFE9PSI+PHBhdGggZD0iTSAyMjQgMzI0IEwgMjI0IDQzNyIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDozOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTM2OTQ2MjI0NDQpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjI0MyIgeT0iNDMzIiBmaWxsPSIjMEEwRjI1IiBjbGFzcz0idGV4dC1pdGFsaWMgZmlsbC1OMSIgc3R5bGU9InRleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MTZweCI+bm88L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR5SUMwbVozUTdJRzQ1S1Zzd1hRPT0iPjxwYXRoIGQ9Ik0gMjUxLjAxMzg3NCA1MjIuNDk5OTYxIEwgMjUxLjI3NzQ5NSA1NzAuMDAwMTU0IFMgMjUxLjMzMjk5MyA1ODAgMjQxLjMzMjk5MyA1ODAgTCAxMDQgNTgwIFMgOTQgNTgwIDk0IDU5MCBMIDk0IDYxNiIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjExMy41IiB5PSI2MTAiIGZpbGw9IiMwQTBGMjUiIGNsYXNzPSJ0ZXh0LWl0YWxpYyBmaWxsLU4xIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij55ZXM8L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR5SUMwbVozUTdJRzR6S1Zzd1hRPT0iPjxwYXRoIGQ9Ik0gNDA5IDUyMyBMIDQwOSA2MTQiIHN0cm9rZT0iIzIzNzU1YyIgZmlsbD0ibm9uZSIgY2xhc3M9ImNvbm5lY3Rpb24iIHN0eWxlPSJzdHJva2Utd2lkdGg6MzsiIG1hcmtlci1lbmQ9InVybCgjbWstZDItMjkyNTA5NTg0Ni0zNjk0NjIyNDQ0KSIgbWFzaz0idXJsKCNkMi0yOTI1MDk1ODQ2KSIgLz48dGV4dCB4PSI0MjgiIHk9IjYxMCIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPm5vPC90ZXh0PjwvZz48ZyBjbGFzcz0iS0c0eklDMG1aM1E3SUc0MEtWc3dYUT09Ij48cGF0aCBkPSJNIDI3OS45OTI1NDQgNjgyLjQ5OTk4OSBMIDI3OS42Nzc5MTQgNzg4LjAwMDAxOCIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjI5OS40OTk5OTEiIHk9Ijc4Mi4wMDU5NjUiIGZpbGw9IiMwQTBGMjUiIGNsYXNzPSJ0ZXh0LWl0YWxpYyBmaWxsLU4xIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij55ZXM8L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR6SUMwbVozUTdJRzQ0S1Zzd1hRPT0iPjxwYXRoIGQ9Ik0gNTM3Ljk5MTA1NCA2ODIuOTk5OTg3IEwgNTM3LjY4MzkwOCA3ODYuMDAwMDI3IiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9Im5vbmUiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiBtYXJrZXItZW5kPSJ1cmwoI21rLWQyLTI5MjUwOTU4NDYtMzY5NDYyMjQ0NCkiIG1hc2s9InVybCgjZDItMjkyNTA5NTg0NikiIC8+PHRleHQgeD0iNTU1Ljk5OTk4NCIgeT0iNzgyLjAxMDQzNyIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPm5vPC90ZXh0PjwvZz48ZyBjbGFzcz0iS0c0MElDMG1aM1E3SUc0MktWc3dYUT09Ij48cGF0aCBkPSJNIDI3OS42NzU1MjggOTM5Ljk5OTk3NyBMIDI3OS45ODA5MTQgMTAwNC4wMDAwNDYiIHN0cm9rZT0iI2IzYmVjYiIgZmlsbD0ibm9uZSIgY2xhc3M9ImNvbm5lY3Rpb24iIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIG1hcmtlci1lbmQ9InVybCgjbWstZDItMjkyNTA5NTg0Ni0yMTg5NTk3Mzg5KSIgbWFzaz0idXJsKCNkMi0yOTI1MDk1ODQ2KSIgLz48L2c+PGcgY2xhc3M9IktHNDJJQzBtWjNRN0lHNDFLVnN3WFE9PSI+PHBhdGggZD0iTSAyMDYuOTkzOTgyIDExMzQuOTk5OTkxIEwgMjA2LjY3ODAzNiAxMjQwLjAwMDAxOCIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjIyNi40OTk5OTEiIHk9IjEyMzQuMDA2MDE4IiBmaWxsPSIjMEEwRjI1IiBjbGFzcz0idGV4dC1pdGFsaWMgZmlsbC1OMSIgc3R5bGU9InRleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MTZweCI+eWVzPC90ZXh0PjwvZz48ZyBjbGFzcz0iS0c0MklDMG1aM1E3SUc0M0tWc3dYUT09Ij48cGF0aCBkPSJNIDM1Mi45OTM5ODIgMTEzNC45OTk5OTEgTCAzNTIuNjc4MDIyIDEyNDAuMDAwMDE4IiBzdHJva2U9IiNiM2JlY2IiIGZpbGw9Im5vbmUiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjI7IiBtYXJrZXItZW5kPSJ1cmwoI21rLWQyLTI5MjUwOTU4NDYtMjE4OTU5NzM4OSkiIG1hc2s9InVybCgjZDItMjkyNTA5NTg0NikiIC8+PHRleHQgeD0iMzY5LjQ5OTk5MSIgeT0iMTIzNC4wMDYwMTgiIGZpbGw9IiMwQTBGMjUiIGNsYXNzPSJ0ZXh0LWl0YWxpYyBmaWxsLU4xIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij5ubzwvdGV4dD48L2c+PG1hc2sgaWQ9ImQyLTI5MjUwOTU4NDYiIG1hc2tVbml0cz0idXNlclNwYWNlT25Vc2UiIHg9Ii04OSIgeT0iLTI5NCIgd2lkdGg9Ijc5MyIgaGVpZ2h0PSIxNzA1Ij4KPHJlY3QgeD0iLTg5IiB5PSItMjk0IiB3aWR0aD0iNzkzIiBoZWlnaHQ9IjE3MDUiIGZpbGw9IndoaXRlIj48L3JlY3Q+Cgo8L21hc2s+PC9zdmc+PC9zdmc+Cg==" alt="D2 decision tree for REQ-JEV-0001. Observed path: wave-1 → yes." /></section>
+        <section class="answers"><h3>Observed answers</h3>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s1 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">99%</span></div>
+            <div class="track"><div class="fill" style="width:99.0%"></div></div>
+<p class="criterion">One obligation.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s1 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">28%</span></div>
+            <div class="track"><div class="fill" style="width:28.0%"></div></div>
+<p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s1 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">96%</span></div>
+            <div class="track"><div class="fill" style="width:96.0%"></div></div>
+<p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>REQ-JEV-0001.s1 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_term_kind: <span class="choice">none</span></span><span class="probability">64%</span></div>
+            <div class="track"><div class="fill" style="width:64.0%"></div></div>
+<p class="criterion">Every term is common usage or defined in the record.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>REQ-JEV-0001.s1 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_check_method: <span class="choice">inspection or grep</span></span><span class="probability">70%</span></div>
+            <div class="track"><div class="fill" style="width:70.0%"></div></div>
+<p class="criterion">Reading or searching files or output.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s2 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">100%</span></div>
+            <div class="track"><div class="fill" style="width:100.0%"></div></div>
+<p class="criterion">One obligation.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s2 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">32%</span></div>
+            <div class="track"><div class="fill" style="width:32.0%"></div></div>
+<p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s2 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">98%</span></div>
+            <div class="track"><div class="fill" style="width:98.0%"></div></div>
+<p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>REQ-JEV-0001.s2 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_term_kind: <span class="choice">none</span></span><span class="probability">77%</span></div>
+            <div class="track"><div class="fill" style="width:77.0%"></div></div>
+<p class="criterion">Every term is common usage or defined in the record.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>REQ-JEV-0001.s2 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_check_method: <span class="choice">inspection or grep</span></span><span class="probability">99%</span></div>
+            <div class="track"><div class="fill" style="width:99.0%"></div></div>
+<p class="criterion">Reading or searching files or output.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s3 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">97%</span></div>
+            <div class="track"><div class="fill" style="width:97.0%"></div></div>
+<p class="criterion">One obligation.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s3 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">40%</span></div>
+            <div class="track"><div class="fill" style="width:40.0%"></div></div>
+<p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>REQ-JEV-0001.s3 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">98%</span></div>
+            <div class="track"><div class="fill" style="width:98.0%"></div></div>
+<p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>REQ-JEV-0001.s3 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_term_kind: <span class="choice">none</span></span><span class="probability">66%</span></div>
+            <div class="track"><div class="fill" style="width:66.0%"></div></div>
+<p class="criterion">Every term is common usage or defined in the record.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>REQ-JEV-0001.s3 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_check_method: <span class="choice">inspection or grep</span></span><span class="probability">100%</span></div>
+            <div class="track"><div class="fill" style="width:100.0%"></div></div>
+<p class="criterion">Reading or searching files or output.</p>          </div>
+        </section>
+      </div>
+      <details><summary>Recorded evidence</summary><pre>{
+  &quot;record&quot;: {
+    &quot;id&quot;: &quot;REQ-JEV-0001&quot;,
+    &quot;kind&quot;: &quot;req&quot;,
+    &quot;source&quot;: {
+      &quot;raptor_index&quot;: &quot;{tmp}/decidr-repo-example.n7y7yg/index.json&quot;
+    }
+  },
+  &quot;tree&quot;: {
+    &quot;id&quot;: &quot;quality-req&quot;,
+    &quot;sha256&quot;: &quot;36c00a0d3d318e065ececdb6d1fae1a291dd833552ae93a662802ab02769081c&quot;,
+    &quot;source&quot;: &quot;shipped&quot;,
+    &quot;path&quot;: &quot;{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-req.json&quot;
+  },
+  &quot;verdict&quot;: &quot;yes&quot;,
+  &quot;path&quot;: [
+    &quot;wave-1&quot;,
+    &quot;yes&quot;
+  ],
+  &quot;waves&quot;: [
+    {
+      &quot;node&quot;: &quot;wave-1&quot;,
+      &quot;per&quot;: &quot;statement&quot;,
+      &quot;request_ids&quot;: [
+        &quot;quality/REQ-JEV-0001.s1/wave-1/r1&quot;,
+        &quot;quality/REQ-JEV-0001.s2/wave-1/r1&quot;,
+        &quot;quality/REQ-JEV-0001.s3/wave-1/r1&quot;
+      ],
+      &quot;reason&quot;: [
+        {
+          &quot;statement&quot;: {
+            &quot;index&quot;: 1,
+            &quot;modal&quot;: &quot;Must&quot;,
+            &quot;text&quot;: &quot;judge-jev MUST obtain records through Raptor&#x27;s query interface.&quot;
+          },
+          &quot;answers&quot;: [
+            {
+              &quot;id&quot;: &quot;obligations&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?&quot;,
+              &quot;choice&quot;: &quot;1&quot;,
+              &quot;criterion&quot;: &quot;One obligation.&quot;,
+              &quot;confidence&quot;: 0.99,
+              &quot;probabilities&quot;: {
+                &quot;1&quot;: 0.99,
+                &quot;2&quot;: 0.01,
+                &quot;3&quot;: 0.0,
+                &quot;4+&quot;: 0.0
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;2&quot;,
+                &quot;probability&quot;: 0.01,
+                &quot;criterion&quot;: &quot;Two independent obligations.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;term&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage, defined in this record, or defined in a linked record.&quot;,
+              &quot;confidence&quot;: 0.28,
+              &quot;probabilities&quot;: {
+                &quot;no&quot;: 0.36,
+                &quot;yes&quot;: 0.64
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;no&quot;,
+                &quot;probability&quot;: 0.36,
+                &quot;criterion&quot;: &quot;At least one term is none of these.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;checkable&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Yes, by a test, a command run, or reading files.&quot;,
+              &quot;confidence&quot;: 0.96,
+              &quot;probabilities&quot;: {
+                &quot;needs a measure&quot;: 0.02,
+                &quot;no&quot;: 0.01,
+                &quot;yes&quot;: 0.97
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;needs a measure&quot;,
+                &quot;probability&quot;: 0.02,
+                &quot;criterion&quot;: &quot;A check exists only once a measure is stated.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_term_kind&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?&quot;,
+              &quot;choice&quot;: &quot;none&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage or defined in the record.&quot;,
+              &quot;confidence&quot;: 0.64,
+              &quot;probabilities&quot;: {
+                &quot;none&quot;: 0.71,
+                &quot;project term defined in a linked record&quot;: 0.02,
+                &quot;project term defined nowhere&quot;: 0.13,
+                &quot;undefined acronym&quot;: 0.14,
+                &quot;vague qualifier&quot;: 0.0
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;undefined acronym&quot;,
+                &quot;probability&quot;: 0.14,
+                &quot;criterion&quot;: &quot;An acronym that is never expanded or defined. Fix: define the acronym.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_check_method&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?&quot;,
+              &quot;choice&quot;: &quot;inspection or grep&quot;,
+              &quot;criterion&quot;: &quot;Reading or searching files or output.&quot;,
+              &quot;confidence&quot;: 0.7,
+              &quot;probabilities&quot;: {
+                &quot;CLI run&quot;: 0.02,
+                &quot;inspection or grep&quot;: 0.76,
+                &quot;needs a measure&quot;: 0.0,
+                &quot;none&quot;: 0.04,
+                &quot;unit test&quot;: 0.18
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;unit test&quot;,
+                &quot;probability&quot;: 0.18,
+                &quot;criterion&quot;: &quot;A unit or integration test.&quot;
+              }
+            }
+          ]
+        },
+        {
+          &quot;statement&quot;: {
+            &quot;index&quot;: 2,
+            &quot;modal&quot;: &quot;MustNot&quot;,
+            &quot;text&quot;: &quot;judge-jev MUST NOT parse record Markdown itself.&quot;
+          },
+          &quot;answers&quot;: [
+            {
+              &quot;id&quot;: &quot;obligations&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?&quot;,
+              &quot;choice&quot;: &quot;1&quot;,
+              &quot;criterion&quot;: &quot;One obligation.&quot;,
+              &quot;confidence&quot;: 1.0,
+              &quot;probabilities&quot;: {
+                &quot;1&quot;: 1.0,
+                &quot;2&quot;: 0.0,
+                &quot;3&quot;: 0.0,
+                &quot;4+&quot;: 0.0
+              },
+              &quot;runner_up&quot;: null
+            },
+            {
+              &quot;id&quot;: &quot;term&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage, defined in this record, or defined in a linked record.&quot;,
+              &quot;confidence&quot;: 0.32,
+              &quot;probabilities&quot;: {
+                &quot;no&quot;: 0.34,
+                &quot;yes&quot;: 0.66
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;no&quot;,
+                &quot;probability&quot;: 0.34,
+                &quot;criterion&quot;: &quot;At least one term is none of these.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;checkable&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Yes, by a test, a command run, or reading files.&quot;,
+              &quot;confidence&quot;: 0.98,
+              &quot;probabilities&quot;: {
+                &quot;needs a measure&quot;: 0.01,
+                &quot;no&quot;: 0.0,
+                &quot;yes&quot;: 0.99
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;needs a measure&quot;,
+                &quot;probability&quot;: 0.01,
+                &quot;criterion&quot;: &quot;A check exists only once a measure is stated.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_term_kind&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?&quot;,
+              &quot;choice&quot;: &quot;none&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage or defined in the record.&quot;,
+              &quot;confidence&quot;: 0.77,
+              &quot;probabilities&quot;: {
+                &quot;none&quot;: 0.82,
+                &quot;project term defined in a linked record&quot;: 0.01,
+                &quot;project term defined nowhere&quot;: 0.09,
+                &quot;undefined acronym&quot;: 0.04,
+                &quot;vague qualifier&quot;: 0.04
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;project term defined nowhere&quot;,
+                &quot;probability&quot;: 0.09,
+                &quot;criterion&quot;: &quot;A project term defined neither here nor in a linked record. Fix: define it or link the record.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_check_method&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?&quot;,
+              &quot;choice&quot;: &quot;inspection or grep&quot;,
+              &quot;criterion&quot;: &quot;Reading or searching files or output.&quot;,
+              &quot;confidence&quot;: 0.99,
+              &quot;probabilities&quot;: {
+                &quot;CLI run&quot;: 0.0,
+                &quot;inspection or grep&quot;: 0.99,
+                &quot;needs a measure&quot;: 0.0,
+                &quot;none&quot;: 0.0,
+                &quot;unit test&quot;: 0.01
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;unit test&quot;,
+                &quot;probability&quot;: 0.01,
+                &quot;criterion&quot;: &quot;A unit or integration test.&quot;
+              }
+            }
+          ]
+        },
+        {
+          &quot;statement&quot;: {
+            &quot;index&quot;: 3,
+            &quot;modal&quot;: &quot;MustNot&quot;,
+            &quot;text&quot;: &quot;judge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself.&quot;
+          },
+          &quot;answers&quot;: [
+            {
+              &quot;id&quot;: &quot;obligations&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?&quot;,
+              &quot;choice&quot;: &quot;1&quot;,
+              &quot;criterion&quot;: &quot;One obligation.&quot;,
+              &quot;confidence&quot;: 0.97,
+              &quot;probabilities&quot;: {
+                &quot;1&quot;: 0.98,
+                &quot;2&quot;: 0.02,
+                &quot;3&quot;: 0.0,
+                &quot;4+&quot;: 0.0
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;2&quot;,
+                &quot;probability&quot;: 0.02,
+                &quot;criterion&quot;: &quot;Two independent obligations.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;term&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage, defined in this record, or defined in a linked record.&quot;,
+              &quot;confidence&quot;: 0.4,
+              &quot;probabilities&quot;: {
+                &quot;no&quot;: 0.3,
+                &quot;yes&quot;: 0.7
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;no&quot;,
+                &quot;probability&quot;: 0.3,
+                &quot;criterion&quot;: &quot;At least one term is none of these.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;checkable&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Yes, by a test, a command run, or reading files.&quot;,
+              &quot;confidence&quot;: 0.98,
+              &quot;probabilities&quot;: {
+                &quot;needs a measure&quot;: 0.01,
+                &quot;no&quot;: 0.0,
+                &quot;yes&quot;: 0.99
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;needs a measure&quot;,
+                &quot;probability&quot;: 0.01,
+                &quot;criterion&quot;: &quot;A check exists only once a measure is stated.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_term_kind&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?&quot;,
+              &quot;choice&quot;: &quot;none&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage or defined in the record.&quot;,
+              &quot;confidence&quot;: 0.66,
+              &quot;probabilities&quot;: {
+                &quot;none&quot;: 0.73,
+                &quot;project term defined in a linked record&quot;: 0.01,
+                &quot;project term defined nowhere&quot;: 0.15,
+                &quot;undefined acronym&quot;: 0.1,
+                &quot;vague qualifier&quot;: 0.01
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;project term defined nowhere&quot;,
+                &quot;probability&quot;: 0.15,
+                &quot;criterion&quot;: &quot;A project term defined neither here nor in a linked record. Fix: define it or link the record.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_check_method&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?&quot;,
+              &quot;choice&quot;: &quot;inspection or grep&quot;,
+              &quot;criterion&quot;: &quot;Reading or searching files or output.&quot;,
+              &quot;confidence&quot;: 1.0,
+              &quot;probabilities&quot;: {
+                &quot;CLI run&quot;: 0.0,
+                &quot;inspection or grep&quot;: 1.0,
+                &quot;needs a measure&quot;: 0.0,
+                &quot;none&quot;: 0.0,
+                &quot;unit test&quot;: 0.0
+              },
+              &quot;runner_up&quot;: null
+            }
+          ]
+        }
+      ],
+      &quot;matched_statements&quot;: [
+        1,
+        2,
+        3
+      ],
+      &quot;next&quot;: &quot;yes&quot;,
+      &quot;verdict&quot;: null,
+      &quot;models&quot;: [
+        &quot;jev-1.14.0&quot;
+      ]
+    }
+  ]
+}</pre></details>
+    </article>
+    <article id="panel-2" hidden="hidden">
+      <div class="record">
+        <span class="record-id">ADR-JEV-0001 / adr</span>
+        <h2>Keep the Jev core unchanged until its Rust replacement</h2>
+        <p class="statement">The Jev core keeps its architecture and contracts unchanged. It changes
+only to fix a defect, or to replace its run log with the sc-observability
+logger (REQ-JEV-0008).</p>
+        <p class="route"><span class="badge yes">yes</span><span>wave-1</span></p>
+      </div>
+      <div class="content">
+        <section class="diagram"><h3>Decision tree · observed path in green</h3><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIGRhdGEtZDItdmVyc2lvbj0idjAuOS4wIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWluWU1pbiBtZWV0IiB2aWV3Qm94PSIwIDAgNjYyIDEwMTIiPjxzdmcgY2xhc3M9ImQyLTI0NjAzNzkzMCBkMi1zdmciIHdpZHRoPSI2NjIiIGhlaWdodD0iMTAxMiIgdmlld0JveD0iLTkwIC0yOTQgNjYyIDEwMTIiPjxyZWN0IHg9Ii05MCIgeT0iLTI5NCIgd2lkdGg9IjY2MiIgaGVpZ2h0PSIxMDEyIiByeD0iMCIgZmlsbD0iI0ZGRkZGRiIgY2xhc3M9IiBmaWxsLU43IiBzdHJva2Utd2lkdGg9IjAiIC8+PHN0eWxlIHR5cGU9InRleHQvY3NzIj48IVtDREFUQVsKLmQyLTI0NjAzNzkzMCAudGV4dC1ib2xkIHsKCWZvbnQtZmFtaWx5OiAiZDItMjQ2MDM3OTMwLWZvbnQtYm9sZCI7Cn0KQGZvbnQtZmFjZSB7Cglmb250LWZhbWlseTogZDItMjQ2MDM3OTMwLWZvbnQtYm9sZDsKCXNyYzogdXJsKCJkYXRhOmFwcGxpY2F0aW9uL2ZvbnQtd29mZjtiYXNlNjQsZDA5R1JnQUJBQUFBQUE1Y0FBb0FBQUFBRmlBQUFndUZBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUJQVXk4eUFBQUE5QUFBQUdBQUFBQmdYeEhYcm1OdFlYQUFBQUZVQUFBQWlBQUFBTG9ET1FOSloyeDVaZ0FBQWR3QUFBZk5BQUFLcEdvMVY0aG9aV0ZrQUFBSnJBQUFBRFlBQUFBMkczOGUxR2hvWldFQUFBbmtBQUFBSkFBQUFDUUtmd1htYUcxMGVBQUFDZ2dBQUFDVUFBQUFuRWR6QlRoc2IyTmhBQUFLbkFBQUFGQUFBQUJRT1p3OHdtMWhlSEFBQUFyc0FBQUFJQUFBQUNBQVB3RDNibUZ0WlFBQUN3d0FBQU12QUFBSUtnandWa0Z3YjNOMEFBQU9QQUFBQUNBQUFBQWcvOUVBTWdBREFpb0N2QUFGQUFBQ2lnSllBQUFBU3dLS0FsZ0FBQUZlQURJQktRQUFBZ3NIQXdNRUF3SUNCR0FBQXZjQUFBQURBQUFBQUFBQUFBQkJSRUpQQUNBQUlQLy9BdTcvQmdBQUE5Z0JFU0FBQVo4QUFBQUFBZkFDbEFBQUFDQUFBM2ljYk13cGNzSUFHRURoTDAyYWJtbWJidWtPQVE4TWxobk9nTU56RE02REJzT0pFSEVJQmc3d000UE9QUGZFaDBRcVFTR3pRYVdVeXRVR2hrYkdKcVptNXBZUnRQeEZST3ppRkljNHhqNmFhR0liNjFoZDFMWVN0WTZlZjExOVYxS1phN2tidCs3Y2UxQjQ5T1JaNmNXck4rOCtWRDU5K2ZiajF4OW5BQUFBLy84REFBSUVIbkI0bklSVldXd2IxOW45N3VWd1JxSkdDem1jR1M2aXVBdzVRMnFobHRITVdOWkNVYUlXeTlxc3dMSzh5dEdEZjhXeTVmeTJYQ2x1R2ovVUtkclVodHZTZGUyZ2RZS2dSVnZBS1JBRUJkSVVTdEVpY1N2RUJRbzRib0NpUlZvMDhFTWVYTm9nZ2hhZ09NVWRhdlZMSHppWEdOejV2dk9kZTg2NVlJZEpBRHlIYjRBTnlxRWFYTUFEcU02d002WXFpc1FZcW1GSW9zMVFrSk9aeEs3aVQzNnNKS2hFZ3FvUDNRcGVtcDFGWXlmd2pmVXpSOGZtNXI2Yzdld3Mzdm5WKzhWcjZNTDdBQmlTWmg2L2dtOUJOZmdCN0JGWjF0cDFYVzBUQk41TjAwcWJyclhMVW9UbTNRS2FubmwxLy81WFowclAvdkh4L3Y3eGNYYnE5dW1GNzA5TTNEeDkrdmJVNWFXNXVjWEZ1YmtsQUdUK0J3Q3IrQ3BVQXFnMmxSTUVVZFYxZzFOdEgzejB3L0Zxc1pxcThsU04zZndRWHkzK1NUdWw2NmMwMUxLK0JCanF6VHo2QkJYQUN4S0FHQ0Z3REpsQVlCUUxGKytVRkltbWpUYmQwR2lDNjRQTTVKVXNsaExCM3FqV3ZMQjM5dFNLZ3dvT2xYbGozSGhYa0QyVUdwK3BEaXNlL3ZsQWRQRjg4WE8xVmpvdmNvY2NEUUdQQ0dUK3RKbkhBbDRGTndTdCtSV0prWndxenp4RGdoUmhlRUZBQStIK0FNVmV5RktCVEtScnBybHJka2JXcHhzVDdqZ2JEbWw0OWU2b0w5RHovNk1IWDBxdERJNStvK2xqVnhVQUlJaWFlYlNLQ3VEYnhiREliRENydHVtR1NOUElPM0F1UGZ5VlRIS29ka0FLYWFsVWl5Zko3WTFOczkwWHA1NWI2cTRUWndPajZkNHh2dnBreUE4V2RzWE1vd0plQlE1Q20xd1IxS0tpcVR0WWtqZmFQRDEycm5PMlBiSEhTMmRYSEpSdkVIc1VGOWZnbHZSbTl0c3ZIYmpZVStzWi9mbDZmNnRQV25GN1AzWlY5US90R3dCc1lmOEhLb0FIZ3J2UUUzMHdZVUZRMndoMm0yckpCQVdIenZmMW4ra2NPdDVNNGVLbmpzRldUVytWVDd6K3J0SVkwZG1lcGFrRFM2blVRb2FMbGV0cStMQ3ZEdTFOYU0xa0ZnUWVBTFNFMThpcU9pWE4ySnlGS2NIblZWNXlIdW5yaTA3MkI5dHIvSlUrMWw5MytERDYybG03WDV0dVora3pkbnRZcnJ0US9EcUFEU0ptRTJaUUFacWhFMFlzWm1TdDNkQXM3QnVMcnJhSktpK1ZUbGlLS0lRZ2xjakxUZE8ySGFyblN2K2xpR3h0ZWJyM3hKNGh6aC95K0JKN1QyaU40VjlPTU9YdE0wWWc2SW9rSm84OW4zbDVKS0FvZ1lDaUpOcDZsWmpxRGJQKzdnZStQWTFkY2FveUh2UzMxVkN1VEVQWFJKeGRxSWk0TzBhaWptcUJjM1gycXdlU2FLMCtvU1RpOFVSOU1SdjFpalUybThkYkd5aHhreWFIYldrVTFDMXQ4azdKYVpIT09OTlpwblovMjRGOTJVQ29OdTdCcTNjUGV4c1dqaGZ2bzdBZTk0ckZkOEEwd1FDQXYrRUhXQ2ErQWdhaThCcUFhWnAvTkx2Z00rdDliT1A5MWEyZWRYZ1ZXSEllcWxNMVZJYVRGSVpQWDZkKzlPWXZmdjNHaXltOFdsejg2SDd4cjc4ZHVrVDJtM25rd3F0UWJmR3RPVlhubHJEL01OcVpkWmJiR2RyRnh0aWorN0cwL3Fub1F1aXNuU0hmQWRnQ3FBQmhxdzhKQ1hMcXV5Wmt0dFkwOGZaZ3E1Ym13aU90ay91emdWQ3NoVHlhVWE0MzJOUVFqN1J1anQxU2ZHZGoyZVFQRmNDOXM4ZE8vbFljVkdoc2kwQ1VTOVUxN2VLdjVBTkxVLzg3SjRYVXVVem1YQ3ExbU1rc3BwcVN5YVprVTlPR2g3dVhucHU2MkwwODFwc2VKVlltc05MbU1CWlFBVGlvQXhDMzBWbXlsQldSNTdiamg0d2YyS2NjbWUrYTFVTmRQdnVFckU4MzFMdmo3K0dmdGZxa2IxMDR1Skx5ZXllK2k2SmI0WU5CTVlkUndhb2ZBckJyaGxWMjAxeXFvVHB0T3pNQ3ZVQjcreUtsb09naFNmZjVWa2k4OTROUlQ5QUtpa0NvZFgwR1JiZFRZa012NkRvcWdHdlhPVEx5TnNQK1VabXZkWGdxdlRXMTNXNlVPOVRXYXJkZnBxaEVXL0h2Z0lBMzgrZ05WQURGMG85aWtHUWgxcE9WSk5iYXQ0dnhia0dzdzd5YmZ0RDZmM0pmSkJVTTF3V1N2cnJPK0FzSE93NEYrM3p0dm80T09kU2RtR2ZsNERHdlgrU2NBdWRnb3gySmdXbkZNK01XRkkrM3FrTHFTUFlmTDNuTGFlYlJJbDRDMFVvM1RaTTB3MUJKMnV3SVpqZzJrUmwxWGxwZWxnS3MxeUZ5Qm50NmV1MHNmZVhLaGQvWHgyaHFnV1pMdGJyTVBQbzN5b0g3R1E4NE4rTDR6d2YyWmV0Q3RiS1FYYW13QlVmWWhlT292ZmlabHZBRjBIQ3haaURXQ0lqNERaa290M0Z2aWh2M3BxSGEzdjNwalY0SDU2REtPVWY2MmxzbzkwVnNURkhHWWw4VWF6YnpFK2RRRHNMUGZMZWpncVRJTXJrVkdPYkd5OTlyb1IwMHhWU1dHNWYzbEZjekZGUE9OSDl6K1c0VFU4bFFUQVhUaUhLUFlzT3lQQ0k5c3RiaDJLTml6VDFwTUI0ZmxPNVovYW9BVUI3bHdBdWdjc3FPaG95NDNhZnExdlU3alE3QlFaVzV5aUszdm5QN1Rnc3JzbFM1dTF4QitQRWszOER6RGZ5aytXU0tiK1Q1Qm1HSzFHWE5IclNPY3VEZnFRUEQyRVZGRlY0Und0VSt4bFVXaXp1WTM5d1lxbkE1cURKbmVkZTF1K0tlaWQvUjFJdklIZzM0MEQ4ZlJnWmowcEQwc0ZqUmM3QytkRWFEQU9nditLdUVaNVZjazVxdUd5UlVCMTliYmgrT25GbGVSdWVPT21yZDY0WGwwdjV1TXcvL2dyZWhZdk9HTFpuenBxeXFzcXlxcktiRU5TMnVhQ1JqcmIzb0NWYUlsMUVHYUxJQ2dnWllRMkhVQ2pZQVExUDVoaS9YNXVkSjdVcnpKTkx4UGZKZTVGUmI1ZHJKdFRkdHB3cXZrMW9SZUFzOVJrK3hERElzQVEzeWRpN0RKeWhIdmlHNW5NNmlYTEVHa1BrMjdvRG44QU9DMDdrRFp5eVpqTVdTU2R4UkwwbjE1RWZrUlRML0ljcEJ6UzZ2RWJuU2REU1lxUFk1T0VkQXpJYkdQaXlqejlnb0pZR2VGRG45aUVINlI1Q0FIcU5YU0g5T0MvTVJkQjhKOC9NQThGOEFBQUQvL3dNQVpMbzI3d0FBQUFBQkFBQUFBZ3VGckh4T1AxOFBQUFVBQVFQb0FBQUFBTmhkb0lRQUFBQUEzV1l2TnY0My9zUUliUVB4QUFFQUF3QUNBQUFBQUFBQUFBRUFBQVBZL3U4QUFBaVkvamYrTndodEFBRUFBQUFBQUFBQUFBQUFBQUFBQUFBbmVKd2N5NkhLd21BWVIvSHovQWNmbnpoMXdoeExoakVRM0xBcXVJV25tQXlDR0x3YTc4QXIwV0wxQml4TFhvM3BGUmRPT3o4OU9QQUMzVmlwRGg5TldLckY3VTJwbG9YK0tPMUVyb3hDVzl4UzFwYUZUaVZ1Y3p3NjQycHdWZjN2UDJOWDNKN003TUpVR3hvTmlhTi9jb214QnNSSzJGbE4yN2Vuc2lNakpSU1c0aER1bG9WT0NjVVhBQUQvL3dNQWQvSVc0Z0FBQUN3QUxBQllBSFFBckFEZUFRb0JQQUZ3QVpZQi9nSWdBaXdDT0FKUUFtd0NuZ0xBQXV3REhBTlFBM0FEckFQU0EvUUVFQVJJQkhRRXBBUzhCTklFM2dUcUJQZ0ZCQVVRQlNZRlJBVlNBQUVBQUFBbkFKQUFEQUJqQUFjQUFRQUFBQUFBQUFBQUFBQUFBQUFFQUFONG5KeVV6MjRiWlJURmYwNXMwd3JCQWtWVnVvbStCWXNpdFdOVEpWWGJyQ2FrVmtaRWNmQzRJQ1NFTkxZbnR1WHh6TWd6ZGhxZWdEVnZ3VnQweFVQd0hJZzF1dGZYcmwwUUJTdUtkV2JtL2puZnVlZCt3QUYvc2srbGVoLzRyWjRhcm5CVXZ6YTh4NzM2aGVGOVd2VTl3MVVlMVg0M1hHTlFXeGl1ODNtdFkvZ2ozbFovTVh5UDQrcVBodTl6V0cwWi9waW4xUVBEbit3Ny9qRDhLY2U4WGVJS1BPZG53eFVPeVEzdmNjQVBodmQ1Z05Xc1ZIbEEwM0NOenpneVhPY0k2REttSkdGTXloREhEV09HekprUlV4QVNNMlBNRFRFREhBRStDYVcrVFlrVU9ZYi8rRFlpcEdSR3BCVkhsRGdTUWhJaUNrWlc4U2ZOeXJqV2p0Sm5wa2k2K1pTTWlPaHB4b1NJRkVmR2tJeVVtSW5XS1NuSmVVbURCZ1Y5NVp0VFV1QlJNQ2JCSTJQR2tBWnRXbHpTWmNTWUFrZExLd216a0l3YlNtNkp0TCt6Q0ZHbVQweEtZYXptcEF5VXAxTitzV1lIWE9Kb2sydnNadVhMclFxUGNYeXIyY0pOWWh4ZjR1bS8yMkMyM1hmRkptS2hlb3FHUFJMbGVhc1RIS25pMHRmbkc4VWxMM0U3NmJQTjVNTWFEWlNkekhwTWo3bk9YK1luZWNJa3hibERmRUoxVU9nZTRqalQ1NEJRRmZtT2dDNFh0SGxOVjU5OU9uVHd1YUpMd0N2TmJkUEI4UlZ0cmpqWGpFRHg4bHRMSFhQRjl6aStKdEFZcVIyYlBxSzVQTDBoTjNjTGQzR0duR05LcmxzZ001YnppL1BqblNZc081UnR1YU5RVi9SMWp5UlM5a0JVa1QyTEdKb3JjblhGVkxWY2VhTXcvUWJtQ1BsYTZtemZmWmR0V05qdXJiYjRqa3gzMkRFM1RqSzVKYU1QVGRWN3p6TzMrdWNSTVNDanB4RjlNcVkwS0xuVHMxMFRNU2ZCY2E0K3Z0QXRLZkhYT2RMblRsMFNNMVVHQWFuV21aSHJiMlMrQ1kxN2Y4djN6dTRTMmJ5cDd1aGtmYXBkdWtqbGRHTkdyMVc5MWJmUVZJNDNKdEN3cVdhV0l4T1d5c3VUaXZjbDJ0dmlINnI3QzczZE1wNXdSa2JDNEc4M3dGTThtaHh6d2lrajdTQ1ZVeFoyT3pUMWhtanlnbE05L1lSWW8rUytmS002U1lVVFBKNXh3Z2t2ZVBhZWppc216cmk0TlpmTjNqN25uTkhtOUQrZFlobmY1b3hYNjNmLzN2VlhaZHJVc3ppZXJKK2U3enpGUi8vRHJWL3dlT3UrN09ndElKdXpzR3J2dHVLS2lLbHdjWWViV3JpSGVIOEJBQUQvL3dNQTlMZFBVUUFBQXdBQUFBQUFBUC9PQURJQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPT0iKTsKfQouZDItMjQ2MDM3OTMwIC50ZXh0LWl0YWxpYyB7Cglmb250LWZhbWlseTogImQyLTI0NjAzNzkzMC1mb250LWl0YWxpYyI7Cn0KQGZvbnQtZmFjZSB7Cglmb250LWZhbWlseTogZDItMjQ2MDM3OTMwLWZvbnQtaXRhbGljOwoJc3JjOiB1cmwoImRhdGE6YXBwbGljYXRpb24vZm9udC13b2ZmO2Jhc2U2NCxkMDlHUmdBQkFBQUFBQWZFQUFvQUFBQUFES3dBQVJoUkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQlBVeTh5QUFBQTlBQUFBR0FBQUFCZ1cxU1ZlR050WVhBQUFBRlVBQUFBVUFBQUFGQUJHd0V5WjJ4NVpnQUFBYVFBQUFJd0FBQUNXTW95QWFCb1pXRmtBQUFEMUFBQUFEWUFBQUEyRzdVcjJtaG9aV0VBQUFRTUFBQUFKQUFBQUNRTGVBaXFhRzEwZUFBQUJEQUFBQUFZQUFBQUdBdTVBRTFzYjJOaEFBQUVTQUFBQUE0QUFBQU9BbFFCdkcxaGVIQUFBQVJZQUFBQUlBQUFBQ0FBSGdEMmJtRnRaUUFBQkhnQUFBTXJBQUFJTWdudFZ6TndiM04wQUFBSHBBQUFBQ0FBQUFBZy84WUFNZ0FEQWVFQmtBQUZBQUFDaWdKWS8vRUFTd0tLQWxnQVJBRmVBRElCSXdBQUFnc0ZBd01FQXdrQ0JDQUFBSGNBQUFBREFBQUFBQUFBQUFCQlJFSlBBQUVBSVAvL0F1Ny9CZ0FBQTlnQkVTQUFBWk1BQUFBQUFlWUNsQUFBQUNBQUF3QUFBQUVBQXdBQkFBQUFEQUFFQUVRQUFBQUtBQWdBQWdBQ0FHVUFid0J6QUhuLy93QUFBR1VBYmdCekFIbi8vLytjLzVUL2tmK01BQUVBQUFBQUFBQUFBQUFBQUFFQUFnQURBQVFBQlFBQWVKeE1rTXRQRTFFVWg4K2RLWE5CU3duenBFM3AwSm5PbmJaT0J6cDNIaENoVUI3eWFBa1BneVlpVlJZa2Fvd2hjVzFRVmk1Y3N0R1ZpUnVOZjRTSmNXSGNtUmhqNHM0SExqQXhObXhNWk1aTTJiZzV5OTkzdmcrNm9BREEzR0VPZ0lVZTZBTWVKQUFxNUZtV0JvR3VzTlEwZFl3RFV4QndZUis5M1grU21Mbnl2ZmowajZVbTVoKzhhUHk4L3BJNU9MbU43bS90N1lXYkQzZDJMaDhkaFdYMDhRZ0FnQUVqT2thdlVCc3lZQUFvR3ZIY0drTWRXWlpFRHVjNVdhYU9IeWdjeDFMZjkxeENkSTM3ZHVsbXBYRjFKS2pua2wzaG01NmhtZkxnbUpJYlhIc2NNU3hmMHIxVzh0YjIzTzY2WmE4NldacWFYRFhTL1ZSU2tYRjJvRGRiVlRjQWdRcUFQcUUyRE1RZUZGUGZwNDRzaVpqVmhaaWlheHhtMWUxSm5DaXQyeld2dTlZY1R5UVdzZ3YySERwY0xGVHJvMm9oZkljc2NhQzNVYmJENTZjZVpuU01QcU0yOU1IZy94NlNtR0pNSjE0bHVzWnhraWgvV0dsWlN5MW41WnJWYUpVcmE5UjM0cE84c1RsM2Q4TSt2VlBUdTdQVDh6TzdzOU1YQUFCRmY2TmpkQSsxd2V3c20wR25pdWNTa3hEUDdUeXY0RTRhU1pTVlRqcnVXWFVyUGFKTWtmSkVhZFFlc3hZdGV5bHJDelJQcXY1UXpSMVpUN3BGb2hadFBXT3FtVnJwWE4wbzVJcGlwcUxtQ0srTlc1VlpJK2Eram9iUlYzUUlHUUNzRVRPSXNVSEFVa0dXRmVyN2dVQlJpdUhPREtYU1BHL1UwL3pGSnVucVpoUDlCditvR1g1Sm4xOTRqL0ZZejRTam94L2hyL3l5cmpjMTFIL3llM2paQW9CL0FBQUEvLzhEQU1MNGdqNEFBUUFBQUFFWVVkbytLc1ZmRHp6MUFBRUQ2QUFBQUFEWVhhRE1BQUFBQU4xbUx6Zit2ZjdkQ0IwRHlRQUNBQU1BQWdBQUFBQUFBQUFCQUFBRDJQN3ZBQUFJUVA2OS9id0lIUVBvQU1MLzBRQUFBQUFBQUFBQUFBQUFCZ0owQUNRQjRRQWxBZzBBSHdJREFDY0Jrdi84QWNEL3dnQUFBQzRBYUFDU0FNQUEvQUVzQUFBQUFRQUFBQVlBakFBTUFHWUFCd0FCQUFBQUFBQUFBQUFBQUFBQUFBUUFBM2ljbkpUZGJocFhGSVUvWXFCTi95NHFLM0p1ckhPWlNzN2dSbkdVeEZmak9sWkdSWkF5cEQ5U1ZXbUFNU0JnWnNRTU9NNFQ5THB2MGJmSVZSK2pUMUgxdXRxYkRXRWlxMVpRRkdzTlovK3NzL2JhQjlqblgvYW9WTzhDZjlXWGhpc2MxbjgyZkljdjZrM0RlNXpWUHpOYzVhajJ0K0VhZzlwYnczVWUxRHFHUCtGZDlRL0RuL0s0K3B2aHV4eFVMd3gvenFQcXZ1RXY5eHovR1A2S3g3eGI0UW84NVhmREZRN0lETjlobjE4TjczRVBxMW1wY285and6Vys1dEJ3blVPZ3k1aUNLV01TaGpndUdUTmt3WnlZbkpDWU9XTXVpUm5nQ1BDWlV1aXZDWkVpeC9ER1h5TkNDdVpFV25GRWdXTkt5SlNJbkpGVmZLdFpLYSswby9TWks1SnVQZ1VqSW5xYU1TRWl3WkV5SkNVaFpxSjFDZ295bnRPZ1FVNWYrV1lVNUhqa2pKbmlrVEpuU0lNMkZ6VHBNbUpNanVOQ0t3bXprSlJMQ3E2SXRMK3pDRkdtVDB4Q2Jxd1dKQXlVcDFOK3NXWUhOSEcweVRSMnUzS3pWT0VJeDQrYUxkd2t4dkV0bnY1M1c4ektmZGRzSXBhcXAyallZNm84cjNTQ0kxVmMrdnI4b0xqZ09XNG5mY3BNYnRkb29PeGsxbU42TEhUK01qL0pFeVlKemgzZ0U2cURRbmNmeDVsK0I0U3F5RThFZEhsSm05ZDA5ZHVuUXdlZkZsMENYbWh1bXc2TzcyalQ0bHd6QXNXcnN3dDFUSXRmY0h4UG9ERlNPelo5UkhQNWVrTm03aGJ1NGd5NXg0eE10MEJtTFBjWDU4YzdUVmgyS0MyNUkxZFg5SFdQSkZMMlFGU1JQWXNZbWlzeWRjVk10Vng3SXpmOUJ1WUlPUzEwdHUvUFpSdVd0bnZyTGI0bTFSMTJMSXlUVEc3RjZMYXBlaDk0NWtyL2VVUU1TT2xwUkorVUdRMEtydlZ1cjRoWU1NVnhyajUrcVZ0UzRHOXlwTSsxdWlSbXBnd0NFcTB6SjlPL2tma21OTzc5a3UrZHZTV3llVFBkMGNubVZydDBrY3JKMW94ZXEzcnJzOUJVanJjbTBMQ3BwcFlqRTViS3E1dUs5eVhhSy9FUDFmMjV2bTRwRHdtMHJreXlmK01yY013elRqaGxwRjJrZXNKeWN5YXZoRVNjcWdJVFlvMlNOL09OYXZVSWp4TThubkRDQ2M5NDhvR1dhemJPK0xnU24rMytQdWVjMGViMDF0dXNZdHVjOGFKVTdmODcvNmxzai9VK2pvZWJyNmM3VC9QQlI3ajJHNDVLNzJaSFh3UFpvS1ZWZTc4ZExTSm13c1VkYkd2aDd1UDlCd0FBLy84REFIS2hVVUFBQUFNQUFQLzFBQUQvemdBeUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQT0iKTsKfV1dPjwvc3R5bGU+PHN0eWxlIHR5cGU9InRleHQvY3NzIj48IVtDREFUQVsuc2hhcGUgewogIHNoYXBlLXJlbmRlcmluZzogZ2VvbWV0cmljUHJlY2lzaW9uOwogIHN0cm9rZS1saW5lam9pbjogcm91bmQ7Cn0KLmNvbm5lY3Rpb24gewogIHN0cm9rZS1saW5lY2FwOiByb3VuZDsKICBzdHJva2UtbGluZWpvaW46IHJvdW5kOwp9Ci5ibGVuZCB7CiAgbWl4LWJsZW5kLW1vZGU6IG11bHRpcGx5OwogIG9wYWNpdHk6IDAuNTsKfQoKCQkuZDItMjQ2MDM3OTMwIC5maWxsLU4xe2ZpbGw6IzBBMEYyNTt9CgkJLmQyLTI0NjAzNzkzMCAuZmlsbC1ON3tmaWxsOiNGRkZGRkY7fQoJCS5kMi0yNDYwMzc5MzAgLmZpbGwtQjV7ZmlsbDojRURGMEZEO30KCQkuZDItMjQ2MDM3OTMwIC5zdHJva2UtQjF7c3Ryb2tlOiMwRDMyQjI7fQoJCS5kMi0yNDYwMzc5MzAgLnN0cm9rZS1CMntzdHJva2U6IzBEMzJCMjt9LmFwcGVuZGl4IHRleHQudGV4dHtmaWxsOiMwQTBGMjV9Lm1key0tY29sb3ItZmctZGVmYXVsdDojMEEwRjI1Oy0tY29sb3ItZmctbXV0ZWQ6IzY3NkM3RTstLWNvbG9yLWZnLXN1YnRsZTojOTQ5OUFCOy0tY29sb3ItY2FudmFzLWRlZmF1bHQ6I0ZGRkZGRjstLWNvbG9yLWNhbnZhcy1zdWJ0bGU6I0VFRjFGODstLWNvbG9yLWJvcmRlci1kZWZhdWx0OiMwRDMyQjI7LS1jb2xvci1ib3JkZXItbXV0ZWQ6IzBEMzJCMjstLWNvbG9yLW5ldXRyYWwtbXV0ZWQ6I0VFRjFGODstLWNvbG9yLWFjY2VudC1mZzojMEQzMkIyOy0tY29sb3ItYWNjZW50LWVtcGhhc2lzOiMwRDMyQjI7LS1jb2xvci1hdHRlbnRpb24tc3VidGxlOiM2NzZDN0U7LS1jb2xvci1kYW5nZXItZmc6cmVkO30ubGlnaHQtY29kZXtkaXNwbGF5OiBibG9ja30uZGFyay1jb2Rle2Rpc3BsYXk6IG5vbmV9XV0+PC9zdHlsZT48ZyBjbGFzcz0iYmpBPSB3YXZlIHZpc2l0ZWQiPjxnIGNsYXNzPSJzaGFwZSIgPjxyZWN0IHg9IjUzIiB5PSIxMiIgd2lkdGg9IjM3NiIgaGVpZ2h0PSIxNzgiIHN0cm9rZT0iIzIzNzU1YyIgZmlsbD0iI2YwZjRmYSIgc3R5bGU9InN0cm9rZS13aWR0aDozOyIgLz48L2c+PHRleHQgeD0iMjQxIiB5PSI1MC41IiBmaWxsPSIjMjMzMTQ3IiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij48dHNwYW4geD0iMjQxIiBkeT0iMCI+d2F2ZS0xPC90c3Bhbj48dHNwYW4geD0iMjQxIiBkeT0iMTYuNjI1Ij5wZXIgcmVjb3JkPC90c3Bhbj48dHNwYW4geD0iMjQxIiBkeT0iMTYuNjI1Ij5jb250ZXh0OiBwcm9ibGVtIGFuZCBmb3JjZXMgLyBiYWNrZ3JvdW5kIG9ubHk8L3RzcGFuPjx0c3BhbiB4PSIyNDEiIGR5PSIxNi42MjUiPi8gbWlzc2luZzwvdHNwYW4+PHRzcGFuIHg9IjI0MSIgZHk9IjE2LjYyNSI+YWx0ZXJuYXRpdmVzOiBuYW1lZCB3aXRoIHJlYXNvbnMgcmVqZWN0ZWQgLzwvdHNwYW4+PHRzcGFuIHg9IjI0MSIgZHk9IjE2LjYyNSI+bmFtZWQgb25seSAvIG5vbmU8L3RzcGFuPjx0c3BhbiB4PSIyNDEiIGR5PSIxNi42MjUiPmNvbnNlcXVlbmNlczogcG9zaXRpdmUgYW5kIG5lZ2F0aXZlIC8gcG9zaXRpdmU8L3RzcGFuPjx0c3BhbiB4PSIyNDEiIGR5PSIxNi42MjUiPm9ubHkgLyBtaXNzaW5nPC90c3Bhbj48L3RleHQ+PC9nPjxnIGNsYXNzPSJiakU9IHJldmlldyI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iMTAzIiB5PSI1NTAiIHdpZHRoPSIxMjMiIGhlaWdodD0iNjYiIHN0cm9rZT0iI2Q3YmQ5MSIgZmlsbD0iI2ZmZjZlNyIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgLz48L2c+PHRleHQgeD0iMTY0LjUiIHk9IjU4OC41IiBmaWxsPSIjNzY1NzIxIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij5WZXJkaWN0OiBubzwvdGV4dD48L2c+PGcgY2xhc3M9ImJqST0gY29uZGl0aW9uIHZpc2l0ZWQiPjxnIGNsYXNzPSJzaGFwZSIgPjxwYXRoIGQ9Ik0gMjQxIDQ4MCBDIDIzOSA0ODAgMjM4IDQ4MCAyMzcgNDc5IEwgMTQgMzcyIEMgMTIgMzcxIDEyIDM2OSAxNCAzNjggTCAyMzcgMjYxIEMgMjM5IDI2MCAyNDMgMjYwIDI0NSAyNjEgTCA0NjggMzY4IEMgNDcwIDM2OSA0NzAgMzcxIDQ2OCAzNzIgTCAyNDUgNDc5IEMgMjQ0IDQ4MCAyNDMgNDgwIDI0MSA0ODAgWiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZjlmYWZjIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSIyNDEiIHk9IjM0My41IiBmaWxsPSIjMzk0NzVkIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij48dHNwYW4geD0iMjQxIiBkeT0iMCI+MS4gY29udGV4dCA9IGJhY2tncm91bmQgb25seSAvPC90c3Bhbj48dHNwYW4geD0iMjQxIiBkeT0iMTciPm1pc3Npbmcgb3IgYWx0ZXJuYXRpdmVzID08L3RzcGFuPjx0c3BhbiB4PSIyNDEiIGR5PSIxNyI+bmFtZWQgb25seSAvIG5vbmUgb3I8L3RzcGFuPjx0c3BhbiB4PSIyNDEiIGR5PSIxNyI+Y29uc2VxdWVuY2VzID0gcG9zaXRpdmUgb25seSAvPC90c3Bhbj48dHNwYW4geD0iMjQxIiBkeT0iMTciPm1pc3Npbmc8L3RzcGFuPjwvdGV4dD48L2c+PGcgY2xhc3M9ImJqTT0gcGFzcyB2aXNpdGVkIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIyNTIiIHk9IjU1MCIgd2lkdGg9IjEyOSIgaGVpZ2h0PSI2NiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZWRmN2YyIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSIzMTYuNSIgeT0iNTg4LjUiIGZpbGw9IiMyODVjNDkiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPlZlcmRpY3Q6IHllczwvdGV4dD48L2c+PGcgY2xhc3M9ImJHVm5aVzVrIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIxNyIgeT0iLTE5NCIgd2lkdGg9IjQ0OCIgaGVpZ2h0PSIxODYiIHN0cm9rZT0iIzBEMzJCMiIgZmlsbD0idHJhbnNwYXJlbnQiIGNsYXNzPSIgc3Ryb2tlLUIxIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjA7IiAvPjwvZz48L2c+PGcgY2xhc3M9ImJHVm5aVzVrTG5ObFpXND0gdmlzaXRlZCI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iNzciIHk9Ii0xMzQiIHdpZHRoPSIxNDkiIGhlaWdodD0iNjYiIHN0cm9rZT0iIzIzNzU1YyIgZmlsbD0iI0VERjBGRCIgY2xhc3M9IiBmaWxsLUI1IiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSIxNTEuNSIgeT0iLTk1LjUiIGZpbGw9IiMwQTBGMjUiIGNsYXNzPSJ0ZXh0LWJvbGQgZmlsbC1OMSIgc3R5bGU9InRleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MTZweCI+T2JzZXJ2ZWQgcGF0aDwvdGV4dD48L2c+PGcgY2xhc3M9ImJHVm5aVzVrTG5WdWMyVmxiZz09IHdhdmUiPjxnIGNsYXNzPSJzaGFwZSIgPjxyZWN0IHg9IjI2NiIgeT0iLTEzNCIgd2lkdGg9IjEzOSIgaGVpZ2h0PSI2NiIgc3Ryb2tlPSIjYmFjN2Q4IiBmaWxsPSIjZjBmNGZhIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjI7IiAvPjwvZz48dGV4dCB4PSIzMzUuNSIgeT0iLTk1LjUiIGZpbGw9IiMyMzMxNDciIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPk90aGVyIGJyYW5jaDwvdGV4dD48L2c+PGcgY2xhc3M9IktHNHdJQzBtWjNRN0lHNHlLVnN3WFE9PSI+PG1hcmtlciBpZD0ibWstZDItMjQ2MDM3OTMwLTM2OTQ2MjI0NDQiIG1hcmtlcldpZHRoPSIxMyIgbWFya2VySGVpZ2h0PSIxNiIgcmVmWD0iOC41IiByZWZZPSI4IiB2aWV3Qm94PSIwIDAgMTMgMTYiIG9yaWVudD0iYXV0byIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIj4gPHBvbHlnb24gcG9pbnRzPSIwLDAgMTMsOCAwLDE2IiBmaWxsPSIjMjM3NTVjIiBjbGFzcz0iY29ubmVjdGlvbiIgc3Ryb2tlLXdpZHRoPSIzIiAvPiA8L21hcmtlcj48cGF0aCBkPSJNIDI0MSAxOTMgTCAyNDEgMjU0IiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9Im5vbmUiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiBtYXJrZXItZW5kPSJ1cmwoI21rLWQyLTI0NjAzNzkzMC0zNjk0NjIyNDQ0KSIgbWFzaz0idXJsKCNkMi0yNDYwMzc5MzApIiAvPjwvZz48ZyBjbGFzcz0iS0c0eUlDMG1aM1E3SUc0eEtWc3dYUT09Ij48bWFya2VyIGlkPSJtay1kMi0yNDYwMzc5MzAtMjE4OTU5NzM4OSIgbWFya2VyV2lkdGg9IjEwIiBtYXJrZXJIZWlnaHQ9IjEyIiByZWZYPSI3IiByZWZZPSI2IiB2aWV3Qm94PSIwIDAgMTAgMTIiIG9yaWVudD0iYXV0byIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIj4gPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAsNiAwLDEyIiBmaWxsPSIjYjNiZWNiIiBjbGFzcz0iY29ubmVjdGlvbiIgc3Ryb2tlLXdpZHRoPSIyIiAvPiA8L21hcmtlcj48cGF0aCBkPSJNIDE2NSA0NDYuNSBMIDE2NSA1NDYiIHN0cm9rZT0iI2IzYmVjYiIgZmlsbD0ibm9uZSIgY2xhc3M9ImNvbm5lY3Rpb24iIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIG1hcmtlci1lbmQ9InVybCgjbWstZDItMjQ2MDM3OTMwLTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI0NjAzNzkzMCkiIC8+PHRleHQgeD0iMTg0LjUiIHk9IjU0MCIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPnllczwvdGV4dD48L2c+PGcgY2xhc3M9IktHNHlJQzBtWjNRN0lHNHpLVnN3WFE9PSI+PHBhdGggZD0iTSAzMTcgNDQ3IEwgMzE3IDU0NCIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDozOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yNDYwMzc5MzAtMzY5NDYyMjQ0NCkiIG1hc2s9InVybCgjZDItMjQ2MDM3OTMwKSIgLz48dGV4dCB4PSIzMzYiIHk9IjU0MCIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPm5vPC90ZXh0PjwvZz48bWFzayBpZD0iZDItMjQ2MDM3OTMwIiBtYXNrVW5pdHM9InVzZXJTcGFjZU9uVXNlIiB4PSItOTAiIHk9Ii0yOTQiIHdpZHRoPSI2NjIiIGhlaWdodD0iMTAxMiI+CjxyZWN0IHg9Ii05MCIgeT0iLTI5NCIgd2lkdGg9IjY2MiIgaGVpZ2h0PSIxMDEyIiBmaWxsPSJ3aGl0ZSI+PC9yZWN0PgoKPC9tYXNrPjwvc3ZnPjwvc3ZnPgo=" alt="D2 decision tree for ADR-JEV-0001. Observed path: wave-1." /></section>
+        <section class="answers"><h3>Observed answers</h3>
+          <div class="answer gate">
+            <div class="answer-meta"><span>ADR-JEV-0001 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>context: <span class="choice">problem and forces</span></span><span class="probability">98%</span></div>
+            <div class="track"><div class="fill" style="width:98.0%"></div></div>
+<p class="criterion">Names the problem and the forces or constraints that shaped the decision.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>ADR-JEV-0001 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>alternatives: <span class="choice">named with reasons rejected</span></span><span class="probability">100%</span></div>
+            <div class="track"><div class="fill" style="width:100.0%"></div></div>
+<p class="criterion">Names alternatives and why each was rejected.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>ADR-JEV-0001 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>consequences: <span class="choice">positive and negative</span></span><span class="probability">100%</span></div>
+            <div class="track"><div class="fill" style="width:100.0%"></div></div>
+<p class="criterion">Names benefits and costs.</p>          </div>
+        </section>
+      </div>
+      <details><summary>Recorded evidence</summary><pre>{
+  &quot;record&quot;: {
+    &quot;id&quot;: &quot;ADR-JEV-0001&quot;,
+    &quot;kind&quot;: &quot;adr&quot;,
+    &quot;source&quot;: {
+      &quot;raptor_index&quot;: &quot;{tmp}/decidr-repo-example.n7y7yg/index.json&quot;
+    }
+  },
+  &quot;tree&quot;: {
+    &quot;id&quot;: &quot;quality-adr&quot;,
+    &quot;sha256&quot;: &quot;2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1&quot;,
+    &quot;source&quot;: &quot;shipped&quot;,
+    &quot;path&quot;: &quot;{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-adr.json&quot;
+  },
+  &quot;verdict&quot;: &quot;yes&quot;,
+  &quot;path&quot;: [
+    &quot;wave-1&quot;
+  ],
+  &quot;waves&quot;: [
+    {
+      &quot;node&quot;: &quot;wave-1&quot;,
+      &quot;request_id&quot;: &quot;quality/ADR-JEV-0001/wave-1/r1&quot;,
+      &quot;reason&quot;: [
+        {
+          &quot;id&quot;: &quot;context&quot;,
+          &quot;text&quot;: &quot;`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?&quot;,
+          &quot;choice&quot;: &quot;problem and forces&quot;,
+          &quot;criterion&quot;: &quot;Names the problem and the forces or constraints that shaped the decision.&quot;,
+          &quot;confidence&quot;: 0.98,
+          &quot;probabilities&quot;: {
+            &quot;background only&quot;: 0.01,
+            &quot;missing&quot;: 0.0,
+            &quot;problem and forces&quot;: 0.99
+          },
+          &quot;runner_up&quot;: {
+            &quot;choice&quot;: &quot;background only&quot;,
+            &quot;probability&quot;: 0.01,
+            &quot;criterion&quot;: &quot;Gives background but no problem. Fix: state the problem.&quot;
+          }
+        },
+        {
+          &quot;id&quot;: &quot;alternatives&quot;,
+          &quot;text&quot;: &quot;`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?&quot;,
+          &quot;choice&quot;: &quot;named with reasons rejected&quot;,
+          &quot;criterion&quot;: &quot;Names alternatives and why each was rejected.&quot;,
+          &quot;confidence&quot;: 1.0,
+          &quot;probabilities&quot;: {
+            &quot;named only&quot;: 0.0,
+            &quot;named with reasons rejected&quot;: 1.0,
+            &quot;none&quot;: 0.0
+          },
+          &quot;runner_up&quot;: null
+        },
+        {
+          &quot;id&quot;: &quot;consequences&quot;,
+          &quot;text&quot;: &quot;`item.text` is one architecture decision record as JSON. Does it name the decision&#x27;s consequences?&quot;,
+          &quot;choice&quot;: &quot;positive and negative&quot;,
+          &quot;criterion&quot;: &quot;Names benefits and costs.&quot;,
+          &quot;confidence&quot;: 1.0,
+          &quot;probabilities&quot;: {
+            &quot;missing&quot;: 0.0,
+            &quot;positive and negative&quot;: 1.0,
+            &quot;positive only&quot;: 0.0
+          },
+          &quot;runner_up&quot;: null
+        }
+      ],
+      &quot;next&quot;: null,
+      &quot;verdict&quot;: &quot;yes&quot;,
+      &quot;models&quot;: [
+        &quot;jev-1.14.0&quot;
+      ]
+    }
+  ]
+}</pre></details>
+    </article>
+    <article id="panel-3" hidden="hidden">
+      <div class="record">
+        <span class="record-id">NFR-JEV-0001 / nfr</span>
+        <h2>Deterministic offline tests</h2>
+        <p class="statement">judge-jev tests MUST run offline against recorded Jev answers.
+judge-jev tests MUST NOT depend on timing.
+judge-jev tests MUST NOT depend on sleeps.
+judge-jev tests MUST NOT depend on ordering.</p>
+        <p class="route"><span class="badge yes">yes</span><span>wave-1 → yes</span></p>
+      </div>
+      <div class="content">
+        <section class="diagram"><h3>Decision tree · observed path in green</h3><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIGRhdGEtZDItdmVyc2lvbj0idjAuOS4wIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWluWU1pbiBtZWV0IiB2aWV3Qm94PSIwIDAgNzkzIDE3MDUiPjxzdmcgY2xhc3M9ImQyLTI5MjUwOTU4NDYgZDItc3ZnIiB3aWR0aD0iNzkzIiBoZWlnaHQ9IjE3MDUiIHZpZXdCb3g9Ii04OSAtMjk0IDc5MyAxNzA1Ij48cmVjdCB4PSItODkiIHk9Ii0yOTQiIHdpZHRoPSI3OTMiIGhlaWdodD0iMTcwNSIgcng9IjAiIGZpbGw9IiNGRkZGRkYiIGNsYXNzPSIgZmlsbC1ONyIgc3Ryb2tlLXdpZHRoPSIwIiAvPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PCFbQ0RBVEFbCi5kMi0yOTI1MDk1ODQ2IC50ZXh0LWJvbGQgewoJZm9udC1mYW1pbHk6ICJkMi0yOTI1MDk1ODQ2LWZvbnQtYm9sZCI7Cn0KQGZvbnQtZmFjZSB7Cglmb250LWZhbWlseTogZDItMjkyNTA5NTg0Ni1mb250LWJvbGQ7CglzcmM6IHVybCgiZGF0YTphcHBsaWNhdGlvbi9mb250LXdvZmY7YmFzZTY0LGQwOUdSZ0FCQUFBQUFCRE1BQW9BQUFBQUdVQUFBZ3VGQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFCUFV5OHlBQUFBOUFBQUFHQUFBQUJnWHhIWHJtTnRZWEFBQUFGVUFBQUF1QUFBQVA0RlRRWU1aMng1WmdBQUFnd0FBQW5YQUFBTlBJSys1ZWRvWldGa0FBQUw1QUFBQURZQUFBQTJHMzhlMUdob1pXRUFBQXdjQUFBQUpBQUFBQ1FLZndYeGFHMTBlQUFBREVBQUFBQzBBQUFBeUYyZkIxTnNiMk5oQUFBTTlBQUFBR1lBQUFCbVgvSmN2bTFoZUhBQUFBMWNBQUFBSUFBQUFDQUFTZ0QzYm1GdFpRQUFEWHdBQUFNdkFBQUlLZ2p3VmtGd2IzTjBBQUFRckFBQUFDQUFBQUFnLzlFQU1nQURBaW9DdkFBRkFBQUNpZ0pZQUFBQVN3S0tBbGdBQUFGZUFESUJLUUFBQWdzSEF3TUVBd0lDQkdBQUF2Y0FBQUFEQUFBQUFBQUFBQUJCUkVKUEFDQUFJUC8vQXU3L0JnQUFBOWdCRVNBQUFaOEFBQUFBQWZBQ2xBQUFBQ0FBQTNpY2hNNDNTZ1JoSE1iaFozYkh2T2FjUDllMFpnUXJaWTRnRm9MdFlDRzJZaU1leUZBTDNzRnIyRm9vQ0JaaThSZW5zRjNlOW9IM2gweGRob2JjSjVxU1hFMnlZY3VPWFhzT0hDbWNPRk82Y09YR2JRU1Mxci9aZDZodzdGVHAzS1hyUHhPdkVOL3hGVC94SG0veEVjL3hGQy94R0E5eEgzZlZjN3RsV2xYTG1tV2JGaVZMbWxhczJsWlRsK3ZRcVV1M2RUMTY5V25vTjJEUWtHRWpSbzBaTjJIU2xHa3paczJadDhBdkFBQUEvLzhEQUQrL0swRjRuSVJXYTJ6YjFoVSs5NG9tWTBWK1NCUkZTZGFiRmluNUlWbWlTZm90cTVibHhMSDh5TU54R3o4U0EwMmNPSEd5eHAzZE5tMEtMRTIzem1tM09jdlNkbHV6b3NNZVNJWVUyWUNzbXp1czZHTkJNMkJZMmdVWXVtYkRpcXdvc0ZidGpLSWRiSEc0dEpQWStiTWY1Q1V1N2ozbk85LzV6am1FSXVnSHdPUDROSmlnR01yQUJoeUFiQTFhdzdJa0NZd21hNXJBbXpRSldabCtiQ3Y4K0NVcFNrV2pWRlhnclAvaHNUR1VHOFdubHcvdXlvMlBmejdXM0Z6NDRhOWZLWnhDUjE4QlFKQUR3QmZ3SFBpSlBabDFPSGhaVlRWV3RncEt2YXBxQXNNSWtpVDRNTWZsZnJUZmJETlRacXQ1MzdtVFRMR0pVa1lHUnVvcGFnT0Q1d3J2ZTlwOHZqWVBDaTFQZnhMbzYvYy8vK1dYei92Nyt3S2YzUExSZytlQVhmSEJ5NktvS0xKVk1FbUN3OEZ4dWUvOXZKMmlTdWZJVWxTQzV3cS8vVmI5NDAwM2w2ZFI1OVBxc2FaL0FRQ0dtTDZJSDhObm9Rd3FBSXBDb2tqZ3lVbUhnN1BUdEpSVWxYcFJDTkdjM1lFR2g1N1lzdVdKb1pWM1IyOXZSMGR2cjJYcnN3Y212OXZYZCtiQWdXZTNIcDhlSDUrYUdoK2ZKdGdFZlJHYjhWbW9NcXhLbXNNaEc4WWtLWVpYWGZDTXVHcWI1MWY4SVh2NzhlUjJZVEFTcTVXcmR3UmJ4T2I5bVlZalZWc0M3WkpZMjFpMXZUbmJOR1dwaTkzdkUwTmV2OWRXV1JyUHh0V2grcHFxRVZlRjMrUHpXVVBPN1ozcWNBTWdjQUZnRnM4QlE3Z1JsQ0FuV0s5ZVF2KzloTXVQSFZ2T0F4Q01tL1ZGM0lmbndHcGdWS3l5MVc2Z0pCODA2ajErOG5TVHByVTgvVFhMbVpmUWFHRitkMC9QYm5TbzhPSkxad0RwWHdKZ0djOUJDWUJzV3BOZjA2dHZmTCszakMralNwMmx1VE92NDduQ241UzlxcnBYUVhYTDA0Q2hTbDlFNzZBbGNJRUF3SWNJM1pwQkF5TVpwSEJXUVJKb1drdXFta0lUM2wvTjlKK1l4MExVMzE2cHhDZWJ4dmJPbWlsLzF3WlhtTzF0OFZ0MnBucUh5b0tTazl2anJaeDZvUENCN0JFZTRObWQ1bXF2a3pmeW05WVhzUU12Z0owb2tXUkNZQVNyekRGM0pWa0lNWnpEZ1RxREhWN0tjblNlOG1aQ0xVUHhsckVoVVIyc2lkb2psbUJBd1F2bmU5emV0cS8wN0hnb05adnRPVm43dHEzVTRMRlNYMFFMYUFuYzZ4VEVNNnZabFpPcXh0TTBjblVlVG0vNmFpYlc1ZWtVQWtvcVZlZU1zVTNoUVV2cmcxdTNUYmY2K0RGdlQ3bzl4NVh0RGxTUS9HQ1E5RVcwaEJlQWhjQXRyZ2hxWGxMa05TemRFdEZudzRlYngrcWpEUzU2ZnRaTXViUFlLZG5ZYXJ1Z3hpM2ZmR2pnd1RhUHMrZG55eDBKdHpCcmQ3MXRLKzNvMnR3SjJNRCtEN1FFVHZDdlEwLzB5QVNKYWdsMmsyeVVBZkozUFhCUHg4SG1ycEU0aFF2WHpkbUVvaWJFMGVjdVNUVWgxZEkydlhWZ09wV2F6TERoWWxVTzN1djJvYWFvRWlleG1DQ2sxMklHTFVFY21xSGJpRVpVNmpYRjhMZTZxSEtTbHpsU3VuYWFGa0lTQ1VvbWtyRFR0R2xOSmJJcjMwSklOSTU4MWpUYTBNVldCSnp1YU5Pb1VoUDhWUjlUWEQra2VmMjJVTFIvZUUvbVdMZFhrcnhlU1lvbTI2V3c3QXBhS2xxdnVSdHFXaUpVU2NSZmtTeW5iSm5xbHI2SVpYSmp5TjdZWFdrdWM3QzI1ZzU1SUlhdVZFV2xhQ1FTclNyTVY3cjRjcFBKNmZKNFNUd0kwaVJCaHE1QXZxMG56aXBZRGFJWWEzcWU4V3hKRG15ZTl3WThFU2RlT0grdnEzcHlwSEFWQmRXSWl5KzhETG9PR2dEOERWL0RJdFFDQUFNeGVBcEExL1UvNmkxd3c5aVByKzdQM2ZicHd3dGdJVFV0VzJWTlpsaEJZcmowTTlRUHp2M2lOeThjU2VHRnd0UWJWd3Z2L2I3cllYSmVYMFEydkFCbEJ0KzM2NXNrOUE4OXpmUFc0aUtHdGxuQ2xsMWJzTEI4bmJjaGRLaUlJZmNBVEY2MEJFSEREeWxzb3JwMUVUSzMxelNweDJ4Q1NiUEI3a1QvbG5sdklGeEhYbkdVYi9mWFZrZENpVnRoMXhWZVhsMXU4WWVXd0w3V3gxcitaczFVSUhlYlFKUlArV3JYOGJlaVhVTlQvNzkzTzFLSE01bkRxZFJVSmpPVnFvM0ZhbU8xdGF0MTF6cTliZXVEclRPNTluUVBLVDhDSzYxdndnNjBCQ3o0QVBnNzZBeFppaExQc1hkYUJnbmZ1MW02YjZKbFRBMjB1SXY2UkhXd3Vzb2V1WXgvbW5BTDN6aTZZelpWNGVyN05xcTgzVENNMk5FemFBbHM2L2hseER1UlYvU0luTWZzTEhHVmUxcnRLTDh6bVNncU9rNVIwV1RoNzRDQTB4ZlJDMmdKSkNPdmQyYUx1REpiYmhzams4V0hPVHQ5TGJGUHZDZVU4Z2Q5M3BqYjF4elp2Nk54cC84ZWQ3MjdzVkVNdEVZbkxLSi8yRlhCczFZSGE3WlVOa1k3QnlYbmtOMGhPVjJsRzRYR1dNZklpdWF0K2lLYXd0UEFHNTFDVVFSRjAyUk81b1ExVFE2Ryt6STkxb2RuWmdTdnhXWG1XYzF5WVBES0lmckVpYU52VllWcGFwSzJyTmhxMFJmUkZ5Z1A5cnUwYVYxdGJYOFoyRHp2QzNoRXgvenNScE8vMnpJNWd1b0xONVNvMjRzMkZjbzd3eldBU0IwZ0hlVlhaeEMvT29NMDJYVHBKNmZiemF5WkttYk42Vk12b3Z4SDRad2s1Y0lmRmNvTjMwNEFuRWQ1Q041MWI0MEZRUkpGMG1FWjV2U3g3OVRSWnBwaVNvcTE0dzNGWlF6RkZEUHhyOCtjcjJWS0dJclp5TlNnL00zd0psSHNGbTRhNjZid3pVTDVtMEkyRXNrS2J4citMSG9iV2taNXFGaWJMMDFiQjdrVXp6cUNaVzdHdGlFY01UTy9POTIxMFdhbU5saUxXMDZkNXh2NlhxT3BJNmlvMHV0Ry8zdzNsQTBMWGNLN2hZMXRPNnBXdU13Q29ML2lSd2dmTWhrTmlxcHFwQ2xsbjVxcDN4UTZPRE9ERHU4eWUrekxTek1yNTMwQTZBUDhKSGpJK1RhczFLK1p2NGJLeVhTVXVmREFvOWxFTktRNSsrUGptZFNvMGp4YzcyeHhQTDQ5OStqKzJuaENjdmNsNWVTdVZ1WHdZZFZVZEl6WWRlaUw2QVorRXFKMzYxSlFrdW82TDV5ZEpzVkRmUDBuZDBqSWVMT1JlSU9udTNPd1BTS0dORjkzelhqVCtFT2FySFdsSnkzSnlJaW5VcXIwUkIwVGNURVk5cm52RTZ0M2JVdGtIVlI1cnExNVd6V0pDWk4vUVBRRmZnU0tpYUpZbVV3VmtqNVdDU29zNFVMZ3pwMHNRcFRGWFpvcy9QdkRYMjdlakRiczh3LzQzR3BGWWVycy9laXh3cWtqWjBrTXJmb2lmQUlYWU9PdGlidUM5b3dveTZJb3l4WkZpaWhLUkZKSS96Yk9vayt4UlA1bFVBWm9zdW82eFBRMkJPdjI2d3plcStFS0NxSUVtQUEwUmVhcVA3OHlNVUgyTGZvMCtsQi9pK3p6U3BDem9QZm10bTBEQkp2MEhJcmdHMFRmdkRFaFNZV1JvcjZhNnV4TURXdkpwSFpwMy9zblRyeS9UOXh6ZmZMQTlYRkFVS2ZuVVBucUhVa2xySlArd05ucHVlR0daTEpoT05YWmVVa2N2MzVnOHZvZTBiZ0xDRXIwM1VqRmJ4citXZGxVY21YM2xYT212VXZQRVd3aEdFVWZZNVh3b1NtQ0lpc3JCZi9uaXhjUFhydzRlbm5pOHVXSnk0U0xFTHlJUGthZllSRVNNQTAwSk83TUxIZ0g1WWx0TXJQUzh5aGZLQWVrWDhDTnNBMWZJM2F0YTNnT3gyTGhjQ3lHRzZzRW9ZbzhwTVRKUEh3WDVhRjhuYTVJeTZEcFNuKzB6RzFtelY1K1BwQjdmUU45MEVSSlVmUnBnVlh2MHdoK0l4ZHdnZlJhWGxKVktSUVMxcmpyOFRVMElVeGhRVlhGWlAzd2E3MzJkTGc2SXNhNjAxdG5pYTRRaEpBRGZZd2VJL2haSmNpRjBGWGttSmdBZ1A4QkFBRC8vd01BVTVIVkN3QUFBUUFBQUFJTGhmNG16MWxmRHp6MUFBRUQ2QUFBQUFEWVhhQ0VBQUFBQU4xbUx6YitOLzdFQ0cwRDhRQUJBQU1BQWdBQUFBQUFBQUFCQUFBRDJQN3ZBQUFJbVA0My9qY0liUUFCQUFBQUFBQUFBQUFBQUFBQUFBQUFNbmljTE0weFNzUlFGRWJoYy8rQUtFWjhZZ3phcElnQndUeUNuWUpKY1J0Uk1DRFl4Tlc0QS92c1FSdGJOMkF6MVd4bG1wa21RNFlwdnU3QTBTOXYvSU0yOUJycDlVMmp5TFVpVnhwNVVaeldPdVZXSFc1TEtuWGM2SUJLT2FVZWNjdTR0M3hhcU1LdHdKTVBYQzJ1ZXRlNmZlSDJ4NFY5Y3FZSFdoMlRKb2RjNm9oVWdTY0ZDZ1Z5QmM0dDB1MDE5a3B0SzFJYmVMYUJPM3ZuUklGeVpoa08wOC84dFVpalFMa0ZBQUQvL3dNQVk0Z2RPd0FBQUN3QUxBQmVBSUFBckFEc0FQNEJIQUU0QVhBQm9nSE9BZ0FDTkFLY0FyNEN5Z0xXQXU0RENnTThBMTREaWdPNkE5b0VGZ1E4QkY0RWVnU3lCT0lFK2dVbUJXUUZpQVdlQmFvRnRnWENCYzRGNkFZQ0JoQUdKQVl3Qmp3R1VnWndCcEFHbmdBQUFBRUFBQUF5QUpBQURBQmpBQWNBQVFBQUFBQUFBQUFBQUFBQUFBQUVBQU40bkp5VXoyNGJaUlRGZjA1czB3ckJBa1ZWdW9tK0JZc2l0V05USlZYYnJDYWtWa1pFY2ZDNElDU0VOTFludHVYeHpNZ3pkaHFlZ0RWdndWdDB4VVB3SElnMXV0ZlhybDBRQlN1S2RXYm0vam5mdWVkK3dBRi9zaytsZWgvNHJaNGFybkJVdnphOHg3MzZoZUY5V3ZVOXcxVWUxWDQzWEdOUVd4aXU4M210WS9najNsWi9NWHlQNCtxUGh1OXpXRzBaL3BpbjFRUERuK3c3L2pEOEtjZThYZUlLUE9kbnd4VU95UTN2Y2NBUGh2ZDVnTldzVkhsQTAzQ056emd5WE9jSTZES21KR0ZNeWhESERXT0d6SmtSVXhBU00yUE1EVEVESEFFK0NhVytUWWtVT1liLytEWWlwR1JHcEJWSGxEZ1NRaElpQ2taVzhTZk55cmpXanRKbnBraTYrWlNNaU9ocHhvU0lGRWZHa0l5VW1JbldLU25KZVVtREJnVjk1WnRUVXVCUk1DYkJJMlBHa0FadFdselNaY1NZQWtkTEt3bXprSXdiU202SnRMK3pDRkdtVDB4S1lhem1wQXlVcDFOK3NXWUhYT0pvazJ2c1p1WExyUXFQY1h5cjJjSk5ZaHhmNHVtLzIyQzIzWGZGSm1LaGVvcUdQUkxsZWFzVEhLbmkwdGZuRzhVbEwzRTc2YlBONU1NYURaU2R6SHBNajduT1grWW5lY0lreGJsRGZFSjFVT2dlNGpqVDU0QlFGZm1PZ0M0WHRIbE5WNTk5T25Ud3VhSkx3Q3ZOYmRQQjhSVnRyampYakVEeDhsdExIWFBGOXppK0p0QVlxUjJiUHFLNVBMMGhOM2NMZDNHR25HTktybHNnTTViemkvUGpuU1lzTzVSdHVhTlFWL1IxanlSUzlrQlVrVDJMR0pvcmNuWEZWTFZjZWFNdy9RYm1DUGxhNm16ZmZaZHRXTmp1cmJiNGpreDMyREUzVGpLNUphTVBUZFY3enpPMyt1Y1JNU0NqcHhGOU1xWTBLTG5UczEwVE1TZkJjYTQrdnRBdEtmSFhPZExuVGwwU00xVUdBYW5XbVpIcmIyUytDWTE3Zjh2M3p1NFMyYnlwN3Voa2ZhcGR1a2psZEdOR3IxVzkxYmZRVkk0M0p0Q3dxV2FXSXhPV3lzdVRpdmNsMnR2aUg2cjdDNzNkTXA1d1JrYkM0Rzgzd0ZNOG1oeHp3aWtqN1NDVlV4WjJPelQxaG1qeWdsTTkvWVJZbytTK2ZLTTZTWVVUUEo1eHdna3ZlUGFlamlzbXpyaTROWmZOM2o3bm5OSG05RCtkWWhuZjVveFg2M2YvM3ZWWFpkclVzemllckorZTd6ekZSLy9EclYvd2VPdSs3T2d0SUp1enNHcnZ0dUtLaUtsd2NZZWJXcmlIZUg4QkFBRC8vd01BOUxkUFVRQUFBd0FBQUFBQUFQL09BRElBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUE9PSIpOwp9Ci5kMi0yOTI1MDk1ODQ2IC50ZXh0LWl0YWxpYyB7Cglmb250LWZhbWlseTogImQyLTI5MjUwOTU4NDYtZm9udC1pdGFsaWMiOwp9CkBmb250LWZhY2UgewoJZm9udC1mYW1pbHk6IGQyLTI5MjUwOTU4NDYtZm9udC1pdGFsaWM7CglzcmM6IHVybCgiZGF0YTphcHBsaWNhdGlvbi9mb250LXdvZmY7YmFzZTY0LGQwOUdSZ0FCQUFBQUFBZkVBQW9BQUFBQURLd0FBUmhSQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFCUFV5OHlBQUFBOUFBQUFHQUFBQUJnVzFTVmVHTnRZWEFBQUFGVUFBQUFVQUFBQUZBQkd3RXlaMng1WmdBQUFhUUFBQUl3QUFBQ1dNb3lBYUJvWldGa0FBQUQxQUFBQURZQUFBQTJHN1VyMm1ob1pXRUFBQVFNQUFBQUpBQUFBQ1FMZUFpcWFHMTBlQUFBQkRBQUFBQVlBQUFBR0F1NUFFMXNiMk5oQUFBRVNBQUFBQTRBQUFBT0FsUUJ2RzFoZUhBQUFBUllBQUFBSUFBQUFDQUFIZ0QyYm1GdFpRQUFCSGdBQUFNckFBQUlNZ250VnpOd2IzTjBBQUFIcEFBQUFDQUFBQUFnLzhZQU1nQURBZUVCa0FBRkFBQUNpZ0pZLy9FQVN3S0tBbGdBUkFGZUFESUJJd0FBQWdzRkF3TUVBd2tDQkNBQUFIY0FBQUFEQUFBQUFBQUFBQUJCUkVKUEFBRUFJUC8vQXU3L0JnQUFBOWdCRVNBQUFaTUFBQUFBQWVZQ2xBQUFBQ0FBQXdBQUFBRUFBd0FCQUFBQURBQUVBRVFBQUFBS0FBZ0FBZ0FDQUdVQWJ3QnpBSG4vL3dBQUFHVUFiZ0J6QUhuLy8vK2MvNVQva2YrTUFBRUFBQUFBQUFBQUFBQUFBQUVBQWdBREFBUUFCUUFBZUp4TWtNdFBFMUVVaDgrZEtYTkJTd256cEUzcDBKbk9uYlpPQnpwM0hoQ2hVQjd5YUFrUGd5WWlWUllrYW93aGNXMVFWaTVjc3RHVmlSdU5mNFNKY1dIY21SaGo0czRITGpBeE5teE1aTVpNMmJnNXk5OTN2Zys2b0FEQTNHRU9nSVVlNkFNZUpBQXE1Rm1XQm9HdXNOUTBkWXdEVXhCd1lSKzkzWCtTbUxueXZmajBqNlVtNWgrOGFQeTgvcEk1T0xtTjdtL3Q3WVdiRDNkMkxoOGRoV1gwOFFnQWdBRWpPa2F2VUJzeVlBQW9HdkhjR2tNZFdaWkVEdWM1V2FhT0h5Z2N4MUxmOTF4Q2RJMzdkdWxtcFhGMUpLam5rbDNobTU2aG1mTGdtSkliWEhzY01TeGYwcjFXOHRiMjNPNjZaYTg2V1pxYVhEWFMvVlJTa1hGMm9EZGJWVGNBZ1FxQVBxRTJETVFlRkZQZnA0NHNpWmpWaFppaWF4eG0xZTFKbkNpdDJ6V3Z1OVljVHlRV3NndjJIRHBjTEZUcm8yb2hmSWNzY2FDM1ViYkQ1NmNlWm5TTVBxTTI5TUhnL3g2U21HSk1KMTRsdXNaeGtpaC9XR2xaU3kxbjVaclZhSlVyYTlSMzRwTzhzVGwzZDhNK3ZWUFR1N1BUOHpPN3M5TVhBQUJGZjZOamRBKzF3ZXdzbTBHbml1Y1NreERQN1R5djRFNGFTWlNWVGpydVdYVXJQYUpNa2ZKRWFkUWVzeFl0ZXlsckN6UlBxdjVRelIxWlQ3cEZvaFp0UFdPcW1WcnBYTjBvNUlwaXBxTG1DSytOVzVWWkkrYStqb2JSVjNRSUdRQ3NFVE9Jc1VIQVVrR1dGZXI3Z1VCUml1SE9ES1hTUEcvVTAvekZKdW5xWmhQOUJ2K29HWDVKbjE5NGovRll6NFNqb3gvaHIveXlyamMxMUgveWUzalpBb0IvQUFBQS8vOERBTUw0Z2o0QUFRQUFBQUVZVWRvK0tzVmZEenoxQUFFRDZBQUFBQURZWGFETUFBQUFBTjFtTHpmK3ZmN2RDQjBEeVFBQ0FBTUFBZ0FBQUFBQUFBQUJBQUFEMlA3dkFBQUlRUDY5L2J3SUhRUG9BTUwvMFFBQUFBQUFBQUFBQUFBQUJnSjBBQ1FCNFFBbEFnMEFId0lEQUNjQmt2LzhBY0Qvd2dBQUFDNEFhQUNTQU1BQS9BRXNBQUFBQVFBQUFBWUFqQUFNQUdZQUJ3QUJBQUFBQUFBQUFBQUFBQUFBQUFRQUEzaWNuSlRkYmhwWEZJVS9ZcUJOL3k0cUszSnVySE9aU3M3Z1JuR1V4RmZqT2xaR1JaQXlwRDlTVldtQU1TQmdac1FNT000VDlMcHYwYmZJVlIralQxSDF1dHFiRFdFaXExWlFGR3NOWi8rc3MvYmFCOWpuWC9hb1ZPOENmOVdYaGlzYzFuODJmSWN2NmszRGU1elZQek5jNWFqMnQrRWFnOXBidzNVZTFEcUdQK0ZkOVEvRG4vSzQrcHZodXh4VUx3eC96cVBxdnVFdjl4ei9HUDZLeDd4YjRRbzg1WGZERlE3SUROOWhuMThONzNFUHExbXBjbzlqd3pXKzV0QnduVU9neTVpQ0tXTVNoamd1R1ROa3daeVluSkNZT1dNdWlSbmdDUENaVXVpdkNaRWl4L0RHWHlOQ0N1WkVXbkZFZ1dOS3lKU0luSkZWZkt0WkthKzBvL1NaSzVKdVBnVWpJbnFhTVNFaXdaRXlKQ1VoWnFKMUNnb3ludE9nUVU1ZitXWVU1SGprakpuaWtUSm5TSU0yRnpUcE1tSk1qdU5DS3dtemtKUkxDcTZJdEwrekNGR21UMHhDYnF3V0pBeVVwMU4rc1dZSE5IRzB5VFIydTNLelZPRUl4NCthTGR3a3h2RXRudjUzVzh6S2ZkZHNJcGFxcDJqWVk2bzhyM1NDSTFWYyt2cjhvTGpnT1c0bmZjcE1idGRvb094azFtTjZMSFQrTWovSkV5WUp6aDNnRTZxRFFuY2Z4NWwrQjRTcXlFOEVkSGxKbTlkMDlkdW5Rd2VmRmwwQ1htaHVtdzZPNzJqVDRsd3pBc1dyc3d0MVRJdGZjSHhQb0RGU096WjlSSFA1ZWtObTdoYnU0Z3k1eDR4TXQwQm1MUGNYNThjN1RWaDJLQzI1STFkWDlIV1BKRkwyUUZTUlBZc1ltaXN5ZGNWTXRWeDdJemY5QnVZSU9TMTB0dS9QWlJ1V3RudnJMYjRtMVIxMkxJeVRURzdGNkxhcGVoOTQ1a3IvZVVRTVNPbHBSSitVR1EwS3J2VnVyNGhZTU1WeHJqNStxVnRTNEc5eXBNKzF1aVJtcGd3Q0VxMHpKOU8va2ZrbU5PNzlrdStkdlNXeWVUUGQwY25tVnJ0MGtjckoxb3hlcTNycnM5QlVqcmNtMExDcHBwWWpFNWJLcTV1Szl5WGFLL0VQMWYyNXZtNHBEd20wcmt5eWYrTXJjTXd6VGpobHBGMmtlc0p5Y3lhdmhFU2NxZ0lUWW8yU04vT05hdlVJanhNOG5uRENDYzk0OG9HV2F6Yk8rTGdTbiszK1B1ZWMwZWIwMXR1c1l0dWM4YUpVN2Y4Ny82bHNqL1Uram9lYnI2YzdUL1BCUjdqMkc0NUs3MlpIWHdQWm9LVlZlNzhkTFNKbXdzVWRiR3ZoN3VQOUJ3QUEvLzhEQUhLaFVVQUFBQU1BQVAvMUFBRC96Z0F5QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBPSIpOwp9XV0+PC9zdHlsZT48c3R5bGUgdHlwZT0idGV4dC9jc3MiPjwhW0NEQVRBWy5zaGFwZSB7CiAgc2hhcGUtcmVuZGVyaW5nOiBnZW9tZXRyaWNQcmVjaXNpb247CiAgc3Ryb2tlLWxpbmVqb2luOiByb3VuZDsKfQouY29ubmVjdGlvbiB7CiAgc3Ryb2tlLWxpbmVjYXA6IHJvdW5kOwogIHN0cm9rZS1saW5lam9pbjogcm91bmQ7Cn0KLmJsZW5kIHsKICBtaXgtYmxlbmQtbW9kZTogbXVsdGlwbHk7CiAgb3BhY2l0eTogMC41Owp9CgoJCS5kMi0yOTI1MDk1ODQ2IC5maWxsLU4xe2ZpbGw6IzBBMEYyNTt9CgkJLmQyLTI5MjUwOTU4NDYgLmZpbGwtTjd7ZmlsbDojRkZGRkZGO30KCQkuZDItMjkyNTA5NTg0NiAuZmlsbC1CNXtmaWxsOiNFREYwRkQ7fQoJCS5kMi0yOTI1MDk1ODQ2IC5zdHJva2UtQjF7c3Ryb2tlOiMwRDMyQjI7fQoJCS5kMi0yOTI1MDk1ODQ2IC5zdHJva2UtQjJ7c3Ryb2tlOiMwRDMyQjI7fS5hcHBlbmRpeCB0ZXh0LnRleHR7ZmlsbDojMEEwRjI1fS5tZHstLWNvbG9yLWZnLWRlZmF1bHQ6IzBBMEYyNTstLWNvbG9yLWZnLW11dGVkOiM2NzZDN0U7LS1jb2xvci1mZy1zdWJ0bGU6Izk0OTlBQjstLWNvbG9yLWNhbnZhcy1kZWZhdWx0OiNGRkZGRkY7LS1jb2xvci1jYW52YXMtc3VidGxlOiNFRUYxRjg7LS1jb2xvci1ib3JkZXItZGVmYXVsdDojMEQzMkIyOy0tY29sb3ItYm9yZGVyLW11dGVkOiMwRDMyQjI7LS1jb2xvci1uZXV0cmFsLW11dGVkOiNFRUYxRjg7LS1jb2xvci1hY2NlbnQtZmc6IzBEMzJCMjstLWNvbG9yLWFjY2VudC1lbXBoYXNpczojMEQzMkIyOy0tY29sb3ItYXR0ZW50aW9uLXN1YnRsZTojNjc2QzdFOy0tY29sb3ItZGFuZ2VyLWZnOnJlZDt9LmxpZ2h0LWNvZGV7ZGlzcGxheTogYmxvY2t9LmRhcmstY29kZXtkaXNwbGF5OiBub25lfV1dPjwvc3R5bGU+PGcgY2xhc3M9ImJqQT0gd2F2ZSB2aXNpdGVkIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIzNiIgeT0iMTIiIHdpZHRoPSIzMDkiIGhlaWdodD0iMTYyIiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9IiNmMGY0ZmEiIHN0eWxlPSJzdHJva2Utd2lkdGg6MzsiIC8+PC9nPjx0ZXh0IHg9IjE5MC41IiB5PSI1MC41IiBmaWxsPSIjMjMzMTQ3IiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij48dHNwYW4geD0iMTkwLjUiIGR5PSIwIj53YXZlLTE8L3RzcGFuPjx0c3BhbiB4PSIxOTAuNSIgZHk9IjE2LjcxNDI4NiI+cGVyIE1VU1QgLyBNVVNUIE5PVCBzdGF0ZW1lbnQ8L3RzcGFuPjx0c3BhbiB4PSIxOTAuNSIgZHk9IjE2LjcxNDI4NiI+b2JsaWdhdGlvbnM6IDEgLyAyIC8gMyAvIDQrPC90c3Bhbj48dHNwYW4geD0iMTkwLjUiIGR5PSIxNi43MTQyODYiPnRlcm06IHllcyAvIG5vPC90c3Bhbj48dHNwYW4geD0iMTkwLjUiIGR5PSIxNi43MTQyODYiPmNoZWNrYWJsZTogeWVzIC8gbmVlZHMgYSBtZWFzdXJlIC8gbm88L3RzcGFuPjx0c3BhbiB4PSIxOTAuNSIgZHk9IjE2LjcxNDI4NiI+ZF90ZXJtX2tpbmQgKGRpYWdub3N0aWMpPC90c3Bhbj48dHNwYW4geD0iMTkwLjUiIGR5PSIxNi43MTQyODYiPmRfY2hlY2tfbWV0aG9kIChkaWFnbm9zdGljKTwvdHNwYW4+PC90ZXh0PjwvZz48ZyBjbGFzcz0iYmpFPSBjb25kaXRpb24gdmlzaXRlZCI+PGcgY2xhc3M9InNoYXBlIiA+PHBhdGggZD0iTSAxOTEgMzM2IEMgMTkwIDMzNiAxOTAgMzM2IDE4OSAzMzYgTCA5NCAyOTEgQyA5MyAyOTEgOTMgMjkwIDk0IDI4OSBMIDE4OSAyNDQgQyAxOTAgMjQ0IDE5MiAyNDQgMTkzIDI0NCBMIDI4OCAyODkgQyAyODkgMjg5IDI4OSAyOTAgMjg4IDI5MSBMIDE5MyAzMzYgQyAxOTIgMzM2IDE5MiAzMzYgMTkxIDMzNiBaIiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9IiNmOWZhZmMiIHN0eWxlPSJzdHJva2Utd2lkdGg6MzsiIC8+PC9nPjx0ZXh0IHg9IjE5MSIgeT0iMjk1LjUiIGZpbGw9IiMzOTQ3NWQiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPjEuIHRlcm0gPSBubzwvdGV4dD48L2c+PGcgY2xhc3M9ImJqST0gY29uZGl0aW9uIHZpc2l0ZWQiPjxnIGNsYXNzPSJzaGFwZSIgPjxwYXRoIGQ9Ik0gMzMwIDU0MCBDIDMyOCA1NDAgMzI3IDU0MCAzMjYgNTQwIEwgOTYgNDc5IEMgOTQgNDc4IDk0IDQ3NyA5NiA0NzcgTCAzMjYgNDE2IEMgMzI4IDQxNSAzMzIgNDE1IDMzNSA0MTYgTCA1NjUgNDc2IEMgNTY3IDQ3NyA1NjcgNDc4IDU2NSA0NzggTCAzMzQgNTQwIEMgMzMzIDU0MCAzMzIgNTQwIDMzMCA1NDAgWiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZjlmYWZjIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSIzMzAiIHk9IjQ3NS41IiBmaWxsPSIjMzk0NzVkIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij48dHNwYW4geD0iMzMwIiBkeT0iMCI+Mi4gY2hlY2thYmxlID0gbmVlZHMgYSBtZWFzdXJlPC90c3Bhbj48dHNwYW4geD0iMzMwIiBkeT0iMTguNSI+LyBubzwvdHNwYW4+PC90ZXh0PjwvZz48ZyBjbGFzcz0iYmpNPSBjb25kaXRpb24gdmlzaXRlZCI+PGcgY2xhc3M9InNoYXBlIiA+PHBhdGggZD0iTSA0MDggNzEyIEMgNDA3IDcxMiA0MDYgNzEyIDQwNSA3MTIgTCAyMjUgNjY3IEMgMjIzIDY2NyAyMjMgNjY2IDIyNSA2NjUgTCA0MDUgNjIwIEMgNDA3IDYyMCA0MTAgNjIwIDQxMiA2MjAgTCA1OTEgNjY1IEMgNTkzIDY2NSA1OTMgNjY2IDU5MSA2NjcgTCA0MTEgNzEyIEMgNDEwIDcxMiA0MDkgNzEyIDQwOCA3MTIgWiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZjlmYWZjIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSI0MDgiIHk9IjY3MS41IiBmaWxsPSIjMzk0NzVkIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij4zLiBvYmxpZ2F0aW9ucyA9IDIgLyAzIC8gNCs8L3RleHQ+PC9nPjxnIGNsYXNzPSJialE9IHdhdmUiPjxnIGNsYXNzPSJzaGFwZSIgPjxyZWN0IHg9IjEwNiIgeT0iNzkyIiB3aWR0aD0iMzQ3IiBoZWlnaHQ9IjE0NiIgc3Ryb2tlPSIjYmFjN2Q4IiBmaWxsPSIjZjBmNGZhIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjI7IiAvPjwvZz48dGV4dCB4PSIyNzkuNSIgeT0iODMwLjUiIGZpbGw9IiMyMzMxNDciIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPjx0c3BhbiB4PSIyNzkuNSIgZHk9IjAiPndhdmUtMjwvdHNwYW4+PHRzcGFuIHg9IjI3OS41IiBkeT0iMTYuODMzMzMzIj5wZXIgTVVTVCAvIE1VU1QgTk9UIHN0YXRlbWVudDsgbWF0Y2hlZDwvdHNwYW4+PHRzcGFuIHg9IjI3OS41IiBkeT0iMTYuODMzMzMzIj5zdGF0ZW1lbnRzIG9ubHk8L3RzcGFuPjx0c3BhbiB4PSIyNzkuNSIgZHk9IjE2LjgzMzMzMyI+am9pbmVkX2J5OiBub25lIC8gYW5kLWxpc3QgLzwvdHNwYW4+PHRzcGFuIHg9IjI3OS41IiBkeT0iMTYuODMzMzMzIj5jb25kaXRpb24rb2JsaWdhdGlvbiAvIGFsdGVybmF0aXZlcyAvPC90c3Bhbj48dHNwYW4geD0iMjc5LjUiIGR5PSIxNi44MzMzMzMiPm9ibGlnYXRpb24rcmF0aW9uYWxlPC90c3Bhbj48L3RleHQ+PC9nPjxnIGNsYXNzPSJialU9IHJldmlldyI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iMTQ1IiB5PSIxMjQ0IiB3aWR0aD0iMTIzIiBoZWlnaHQ9IjY2IiBzdHJva2U9IiNkN2JkOTEiIGZpbGw9IiNmZmY2ZTciIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIC8+PC9nPjx0ZXh0IHg9IjIwNi41IiB5PSIxMjgyLjUiIGZpbGw9IiM3NjU3MjEiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPlZlcmRpY3Q6IG5vPC90ZXh0PjwvZz48ZyBjbGFzcz0iYmpZPSBjb25kaXRpb24iPjxnIGNsYXNzPSJzaGFwZSIgPjxwYXRoIGQ9Ik0gMjc5IDExNjQgQyAyNzggMTE2NCAyNzcgMTE2NCAyNzYgMTE2MyBMIDEwMSAxMDg4IEMgOTkgMTA4NyA5OSAxMDg2IDEwMSAxMDg1IEwgMjc2IDEwMDkgQyAyNzggMTAwOCAyODEgMTAwOCAyODMgMTAwOSBMIDQ1NyAxMDg1IEMgNDU5IDEwODYgNDU5IDEwODcgNDU3IDEwODggTCAyODIgMTE2MyBDIDI4MSAxMTY0IDI4MCAxMTY0IDI3OSAxMTY0IFoiIHN0cm9rZT0iI2M2Y2VkOSIgZmlsbD0iI2Y5ZmFmYyIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgLz48L2c+PHRleHQgeD0iMjc5IiB5PSIxMDc1LjUiIGZpbGw9IiMzOTQ3NWQiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPjx0c3BhbiB4PSIyNzkiIGR5PSIwIj4xLiBqb2luZWRfYnkgPSBhbmQtbGlzdCAvPC90c3Bhbj48dHNwYW4geD0iMjc5IiBkeT0iMTcuNjY2NjY3Ij5hbHRlcm5hdGl2ZXMgLzwvdHNwYW4+PHRzcGFuIHg9IjI3OSIgZHk9IjE3LjY2NjY2NyI+b2JsaWdhdGlvbityYXRpb25hbGU8L3RzcGFuPjwvdGV4dD48L2c+PGcgY2xhc3M9ImJqYz0gcGFzcyI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iMjg4IiB5PSIxMjQ0IiB3aWR0aD0iMTI5IiBoZWlnaHQ9IjY2IiBzdHJva2U9IiNhNWNiYmIiIGZpbGw9IiNlZGY3ZjIiIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIC8+PC9nPjx0ZXh0IHg9IjM1Mi41IiB5PSIxMjgyLjUiIGZpbGw9IiMyODVjNDkiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPlZlcmRpY3Q6IHllczwvdGV4dD48L2c+PGcgY2xhc3M9ImJqZz0gcGFzcyB2aXNpdGVkIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSI0NzMiIHk9Ijc5MiIgd2lkdGg9IjEyOSIgaGVpZ2h0PSI2NiIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSIjZWRmN2YyIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiAvPjwvZz48dGV4dCB4PSI1MzcuNSIgeT0iODMwLjUiIGZpbGw9IiMyODVjNDkiIGNsYXNzPSJ0ZXh0LWJvbGQiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPlZlcmRpY3Q6IHllczwvdGV4dD48L2c+PGcgY2xhc3M9ImJqaz0gcmV2aWV3Ij48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIxMiIgeT0iNjIwIiB3aWR0aD0iMTIzIiBoZWlnaHQ9IjY2IiBzdHJva2U9IiNkN2JkOTEiIGZpbGw9IiNmZmY2ZTciIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIC8+PC9nPjx0ZXh0IHg9IjczLjUiIHk9IjY1OC41IiBmaWxsPSIjNzY1NzIxIiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij5WZXJkaWN0OiBubzwvdGV4dD48L2c+PGcgY2xhc3M9ImJHVm5aVzVrIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSI4MyIgeT0iLTE5NCIgd2lkdGg9IjQ0OCIgaGVpZ2h0PSIxODYiIHN0cm9rZT0iIzBEMzJCMiIgZmlsbD0idHJhbnNwYXJlbnQiIGNsYXNzPSIgc3Ryb2tlLUIxIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjA7IiAvPjwvZz48L2c+PGcgY2xhc3M9ImJHVm5aVzVrTG5ObFpXND0gdmlzaXRlZCI+PGcgY2xhc3M9InNoYXBlIiA+PHJlY3QgeD0iMTQzIiB5PSItMTM0IiB3aWR0aD0iMTQ5IiBoZWlnaHQ9IjY2IiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9IiNFREYwRkQiIGNsYXNzPSIgZmlsbC1CNSIgc3R5bGU9InN0cm9rZS13aWR0aDozOyIgLz48L2c+PHRleHQgeD0iMjE3LjUiIHk9Ii05NS41IiBmaWxsPSIjMEEwRjI1IiBjbGFzcz0idGV4dC1ib2xkIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPk9ic2VydmVkIHBhdGg8L3RleHQ+PC9nPjxnIGNsYXNzPSJiR1ZuWlc1a0xuVnVjMlZsYmc9PSB3YXZlIj48ZyBjbGFzcz0ic2hhcGUiID48cmVjdCB4PSIzMzIiIHk9Ii0xMzQiIHdpZHRoPSIxMzkiIGhlaWdodD0iNjYiIHN0cm9rZT0iI2JhYzdkOCIgZmlsbD0iI2YwZjRmYSIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgLz48L2c+PHRleHQgeD0iNDAxLjUiIHk9Ii05NS41IiBmaWxsPSIjMjMzMTQ3IiBjbGFzcz0idGV4dC1ib2xkIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij5PdGhlciBicmFuY2g8L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR3SUMwbVozUTdJRzR4S1Zzd1hRPT0iPjxtYXJrZXIgaWQ9Im1rLWQyLTI5MjUwOTU4NDYtMzY5NDYyMjQ0NCIgbWFya2VyV2lkdGg9IjEzIiBtYXJrZXJIZWlnaHQ9IjE2IiByZWZYPSI4LjUiIHJlZlk9IjgiIHZpZXdCb3g9IjAgMCAxMyAxNiIgb3JpZW50PSJhdXRvIiBtYXJrZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPiA8cG9seWdvbiBwb2ludHM9IjAsMCAxMyw4IDAsMTYiIGZpbGw9IiMyMzc1NWMiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHJva2Utd2lkdGg9IjMiIC8+IDwvbWFya2VyPjxwYXRoIGQ9Ik0gMTkxLjUyMDQ2NCAxNzYuOTk5OTIzIEwgMTkxLjk1NzA1OCAyMzguMDAwMTU0IiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9Im5vbmUiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiBtYXJrZXItZW5kPSJ1cmwoI21rLWQyLTI5MjUwOTU4NDYtMzY5NDYyMjQ0NCkiIG1hc2s9InVybCgjZDItMjkyNTA5NTg0NikiIC8+PC9nPjxnIGNsYXNzPSJLRzR4SUMwbVozUTdJRzQ1S1Zzd1hRPT0iPjxtYXJrZXIgaWQ9Im1rLWQyLTI5MjUwOTU4NDYtMjE4OTU5NzM4OSIgbWFya2VyV2lkdGg9IjEwIiBtYXJrZXJIZWlnaHQ9IjEyIiByZWZYPSI3IiByZWZZPSI2IiB2aWV3Qm94PSIwIDAgMTAgMTIiIG9yaWVudD0iYXV0byIgbWFya2VyVW5pdHM9InVzZXJTcGFjZU9uVXNlIj4gPHBvbHlnb24gcG9pbnRzPSIwLDAgMTAsNiAwLDEyIiBmaWxsPSIjYjNiZWNiIiBjbGFzcz0iY29ubmVjdGlvbiIgc3Ryb2tlLXdpZHRoPSIyIiAvPiA8L21hcmtlcj48cGF0aCBkPSJNIDE1OC45OTI0MDkgMzIzLjQ5OTk4OCBMIDE1OC44NjMzNTcgMzY2LjAwMDA0NiBTIDE1OC44MzI5OTMgMzc2IDE0OC44MzI5OTMgMzc2IEwgNjMgMzc2IFMgNTMgMzc2IDUzIDM4NiBMIDUzIDYxNiIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjcyLjUiIHk9IjYxMCIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPnllczwvdGV4dD48L2c+PGcgY2xhc3M9IktHNHhJQzBtWjNRN0lHNHlLVnN3WFE9PSI+PHBhdGggZD0iTSAyMjQgMzI0IEwgMjI0IDQzNyIgc3Ryb2tlPSIjMjM3NTVjIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDozOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTM2OTQ2MjI0NDQpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjI0MyIgeT0iNDMzIiBmaWxsPSIjMEEwRjI1IiBjbGFzcz0idGV4dC1pdGFsaWMgZmlsbC1OMSIgc3R5bGU9InRleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MTZweCI+bm88L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR5SUMwbVozUTdJRzQ1S1Zzd1hRPT0iPjxwYXRoIGQ9Ik0gMjUxLjAxMzg3NCA1MjIuNDk5OTYxIEwgMjUxLjI3NzQ5NSA1NzAuMDAwMTU0IFMgMjUxLjMzMjk5MyA1ODAgMjQxLjMzMjk5MyA1ODAgTCAxMDQgNTgwIFMgOTQgNTgwIDk0IDU5MCBMIDk0IDYxNiIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjExMy41IiB5PSI2MTAiIGZpbGw9IiMwQTBGMjUiIGNsYXNzPSJ0ZXh0LWl0YWxpYyBmaWxsLU4xIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij55ZXM8L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR5SUMwbVozUTdJRzR6S1Zzd1hRPT0iPjxwYXRoIGQ9Ik0gNDA5IDUyMyBMIDQwOSA2MTQiIHN0cm9rZT0iIzIzNzU1YyIgZmlsbD0ibm9uZSIgY2xhc3M9ImNvbm5lY3Rpb24iIHN0eWxlPSJzdHJva2Utd2lkdGg6MzsiIG1hcmtlci1lbmQ9InVybCgjbWstZDItMjkyNTA5NTg0Ni0zNjk0NjIyNDQ0KSIgbWFzaz0idXJsKCNkMi0yOTI1MDk1ODQ2KSIgLz48dGV4dCB4PSI0MjgiIHk9IjYxMCIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPm5vPC90ZXh0PjwvZz48ZyBjbGFzcz0iS0c0eklDMG1aM1E3SUc0MEtWc3dYUT09Ij48cGF0aCBkPSJNIDI3OS45OTI1NDQgNjgyLjQ5OTk4OSBMIDI3OS42Nzc5MTQgNzg4LjAwMDAxOCIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjI5OS40OTk5OTEiIHk9Ijc4Mi4wMDU5NjUiIGZpbGw9IiMwQTBGMjUiIGNsYXNzPSJ0ZXh0LWl0YWxpYyBmaWxsLU4xIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij55ZXM8L3RleHQ+PC9nPjxnIGNsYXNzPSJLRzR6SUMwbVozUTdJRzQ0S1Zzd1hRPT0iPjxwYXRoIGQ9Ik0gNTM3Ljk5MTA1NCA2ODIuOTk5OTg3IEwgNTM3LjY4MzkwOCA3ODYuMDAwMDI3IiBzdHJva2U9IiMyMzc1NWMiIGZpbGw9Im5vbmUiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjM7IiBtYXJrZXItZW5kPSJ1cmwoI21rLWQyLTI5MjUwOTU4NDYtMzY5NDYyMjQ0NCkiIG1hc2s9InVybCgjZDItMjkyNTA5NTg0NikiIC8+PHRleHQgeD0iNTU1Ljk5OTk4NCIgeT0iNzgyLjAxMDQzNyIgZmlsbD0iIzBBMEYyNSIgY2xhc3M9InRleHQtaXRhbGljIGZpbGwtTjEiIHN0eWxlPSJ0ZXh0LWFuY2hvcjptaWRkbGU7Zm9udC1zaXplOjE2cHgiPm5vPC90ZXh0PjwvZz48ZyBjbGFzcz0iS0c0MElDMG1aM1E3SUc0MktWc3dYUT09Ij48cGF0aCBkPSJNIDI3OS42NzU1MjggOTM5Ljk5OTk3NyBMIDI3OS45ODA5MTQgMTAwNC4wMDAwNDYiIHN0cm9rZT0iI2IzYmVjYiIgZmlsbD0ibm9uZSIgY2xhc3M9ImNvbm5lY3Rpb24iIHN0eWxlPSJzdHJva2Utd2lkdGg6MjsiIG1hcmtlci1lbmQ9InVybCgjbWstZDItMjkyNTA5NTg0Ni0yMTg5NTk3Mzg5KSIgbWFzaz0idXJsKCNkMi0yOTI1MDk1ODQ2KSIgLz48L2c+PGcgY2xhc3M9IktHNDJJQzBtWjNRN0lHNDFLVnN3WFE9PSI+PHBhdGggZD0iTSAyMDYuOTkzOTgyIDExMzQuOTk5OTkxIEwgMjA2LjY3ODAzNiAxMjQwLjAwMDAxOCIgc3Ryb2tlPSIjYjNiZWNiIiBmaWxsPSJub25lIiBjbGFzcz0iY29ubmVjdGlvbiIgc3R5bGU9InN0cm9rZS13aWR0aDoyOyIgbWFya2VyLWVuZD0idXJsKCNtay1kMi0yOTI1MDk1ODQ2LTIxODk1OTczODkpIiBtYXNrPSJ1cmwoI2QyLTI5MjUwOTU4NDYpIiAvPjx0ZXh0IHg9IjIyNi40OTk5OTEiIHk9IjEyMzQuMDA2MDE4IiBmaWxsPSIjMEEwRjI1IiBjbGFzcz0idGV4dC1pdGFsaWMgZmlsbC1OMSIgc3R5bGU9InRleHQtYW5jaG9yOm1pZGRsZTtmb250LXNpemU6MTZweCI+eWVzPC90ZXh0PjwvZz48ZyBjbGFzcz0iS0c0MklDMG1aM1E3SUc0M0tWc3dYUT09Ij48cGF0aCBkPSJNIDM1Mi45OTM5ODIgMTEzNC45OTk5OTEgTCAzNTIuNjc4MDIyIDEyNDAuMDAwMDE4IiBzdHJva2U9IiNiM2JlY2IiIGZpbGw9Im5vbmUiIGNsYXNzPSJjb25uZWN0aW9uIiBzdHlsZT0ic3Ryb2tlLXdpZHRoOjI7IiBtYXJrZXItZW5kPSJ1cmwoI21rLWQyLTI5MjUwOTU4NDYtMjE4OTU5NzM4OSkiIG1hc2s9InVybCgjZDItMjkyNTA5NTg0NikiIC8+PHRleHQgeD0iMzY5LjQ5OTk5MSIgeT0iMTIzNC4wMDYwMTgiIGZpbGw9IiMwQTBGMjUiIGNsYXNzPSJ0ZXh0LWl0YWxpYyBmaWxsLU4xIiBzdHlsZT0idGV4dC1hbmNob3I6bWlkZGxlO2ZvbnQtc2l6ZToxNnB4Ij5ubzwvdGV4dD48L2c+PG1hc2sgaWQ9ImQyLTI5MjUwOTU4NDYiIG1hc2tVbml0cz0idXNlclNwYWNlT25Vc2UiIHg9Ii04OSIgeT0iLTI5NCIgd2lkdGg9Ijc5MyIgaGVpZ2h0PSIxNzA1Ij4KPHJlY3QgeD0iLTg5IiB5PSItMjk0IiB3aWR0aD0iNzkzIiBoZWlnaHQ9IjE3MDUiIGZpbGw9IndoaXRlIj48L3JlY3Q+Cgo8L21hc2s+PC9zdmc+PC9zdmc+Cg==" alt="D2 decision tree for NFR-JEV-0001. Observed path: wave-1 → yes." /></section>
+        <section class="answers"><h3>Observed answers</h3>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s1 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">56%</span></div>
+            <div class="track"><div class="fill" style="width:56.0%"></div></div>
+<p class="criterion">One obligation.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s1 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">68%</span></div>
+            <div class="track"><div class="fill" style="width:68.0%"></div></div>
+<p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s1 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">97%</span></div>
+            <div class="track"><div class="fill" style="width:97.0%"></div></div>
+<p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s1 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_term_kind: <span class="choice">none</span></span><span class="probability">84%</span></div>
+            <div class="track"><div class="fill" style="width:84.0%"></div></div>
+<p class="criterion">Every term is common usage or defined in the record.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s1 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_check_method: <span class="choice">CLI run</span></span><span class="probability">36%</span></div>
+            <div class="track"><div class="fill" style="width:36.0%"></div></div>
+<p class="criterion">Running a command and reading its output or exit code.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s2 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">99%</span></div>
+            <div class="track"><div class="fill" style="width:99.0%"></div></div>
+<p class="criterion">One obligation.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s2 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">62%</span></div>
+            <div class="track"><div class="fill" style="width:62.0%"></div></div>
+<p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s2 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">72%</span></div>
+            <div class="track"><div class="fill" style="width:72.0%"></div></div>
+<p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s2 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_term_kind: <span class="choice">none</span></span><span class="probability">51%</span></div>
+            <div class="track"><div class="fill" style="width:51.0%"></div></div>
+<p class="criterion">Every term is common usage or defined in the record.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s2 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_check_method: <span class="choice">inspection or grep</span></span><span class="probability">69%</span></div>
+            <div class="track"><div class="fill" style="width:69.0%"></div></div>
+<p class="criterion">Reading or searching files or output.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s3 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">100%</span></div>
+            <div class="track"><div class="fill" style="width:100.0%"></div></div>
+<p class="criterion">One obligation.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s3 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">58%</span></div>
+            <div class="track"><div class="fill" style="width:58.0%"></div></div>
+<p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s3 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">89%</span></div>
+            <div class="track"><div class="fill" style="width:89.0%"></div></div>
+<p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s3 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_term_kind: <span class="choice">none</span></span><span class="probability">84%</span></div>
+            <div class="track"><div class="fill" style="width:84.0%"></div></div>
+<p class="criterion">Every term is common usage or defined in the record.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s3 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_check_method: <span class="choice">inspection or grep</span></span><span class="probability">92%</span></div>
+            <div class="track"><div class="fill" style="width:92.0%"></div></div>
+<p class="criterion">Reading or searching files or output.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s4 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>obligations: <span class="choice">1</span></span><span class="probability">100%</span></div>
+            <div class="track"><div class="fill" style="width:100.0%"></div></div>
+<p class="criterion">One obligation.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s4 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>term: <span class="choice">yes</span></span><span class="probability">66%</span></div>
+            <div class="track"><div class="fill" style="width:66.0%"></div></div>
+<p class="criterion">Every term is common usage, defined in this record, or defined in a linked record.</p>          </div>
+          <div class="answer gate">
+            <div class="answer-meta"><span>NFR-JEV-0001.s4 / wave-1</span><span>gate</span></div>
+            <div class="answer-top"><span>checkable: <span class="choice">yes</span></span><span class="probability">80%</span></div>
+            <div class="track"><div class="fill" style="width:80.0%"></div></div>
+<p class="criterion">Yes, by a test, a command run, or reading files.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s4 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_term_kind: <span class="choice">none</span></span><span class="probability">51%</span></div>
+            <div class="track"><div class="fill" style="width:51.0%"></div></div>
+<p class="criterion">Every term is common usage or defined in the record.</p>          </div>
+          <div class="answer diagnostic">
+            <div class="answer-meta"><span>NFR-JEV-0001.s4 / wave-1</span><span>diagnostic</span></div>
+            <div class="answer-top"><span>d_check_method: <span class="choice">inspection or grep</span></span><span class="probability">62%</span></div>
+            <div class="track"><div class="fill" style="width:62.0%"></div></div>
+<p class="criterion">Reading or searching files or output.</p>          </div>
+        </section>
+      </div>
+      <details><summary>Recorded evidence</summary><pre>{
+  &quot;record&quot;: {
+    &quot;id&quot;: &quot;NFR-JEV-0001&quot;,
+    &quot;kind&quot;: &quot;nfr&quot;,
+    &quot;source&quot;: {
+      &quot;raptor_index&quot;: &quot;{tmp}/decidr-repo-example.n7y7yg/index.json&quot;
+    }
+  },
+  &quot;tree&quot;: {
+    &quot;id&quot;: &quot;quality-nfr&quot;,
+    &quot;sha256&quot;: &quot;94e04d9e0dce6c67a0abaaff7ac05c4d2f08dd4080e5db674f5097b1dfc47a3a&quot;,
+    &quot;source&quot;: &quot;shipped&quot;,
+    &quot;path&quot;: &quot;{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-nfr.json&quot;
+  },
+  &quot;verdict&quot;: &quot;yes&quot;,
+  &quot;path&quot;: [
+    &quot;wave-1&quot;,
+    &quot;yes&quot;
+  ],
+  &quot;waves&quot;: [
+    {
+      &quot;node&quot;: &quot;wave-1&quot;,
+      &quot;per&quot;: &quot;statement&quot;,
+      &quot;request_ids&quot;: [
+        &quot;quality/NFR-JEV-0001.s1/wave-1/r1&quot;,
+        &quot;quality/NFR-JEV-0001.s2/wave-1/r1&quot;,
+        &quot;quality/NFR-JEV-0001.s3/wave-1/r1&quot;,
+        &quot;quality/NFR-JEV-0001.s4/wave-1/r1&quot;
+      ],
+      &quot;reason&quot;: [
+        {
+          &quot;statement&quot;: {
+            &quot;index&quot;: 1,
+            &quot;modal&quot;: &quot;Must&quot;,
+            &quot;text&quot;: &quot;judge-jev tests MUST run offline against recorded Jev answers.&quot;
+          },
+          &quot;answers&quot;: [
+            {
+              &quot;id&quot;: &quot;obligations&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?&quot;,
+              &quot;choice&quot;: &quot;1&quot;,
+              &quot;criterion&quot;: &quot;One obligation.&quot;,
+              &quot;confidence&quot;: 0.56,
+              &quot;probabilities&quot;: {
+                &quot;1&quot;: 0.67,
+                &quot;2&quot;: 0.31,
+                &quot;3&quot;: 0.02,
+                &quot;4+&quot;: 0.0
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;2&quot;,
+                &quot;probability&quot;: 0.31,
+                &quot;criterion&quot;: &quot;Two independent obligations.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;term&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage, defined in this record, or defined in a linked record.&quot;,
+              &quot;confidence&quot;: 0.68,
+              &quot;probabilities&quot;: {
+                &quot;no&quot;: 0.16,
+                &quot;yes&quot;: 0.84
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;no&quot;,
+                &quot;probability&quot;: 0.16,
+                &quot;criterion&quot;: &quot;At least one term is none of these.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;checkable&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Yes, by a test, a command run, or reading files.&quot;,
+              &quot;confidence&quot;: 0.97,
+              &quot;probabilities&quot;: {
+                &quot;needs a measure&quot;: 0.02,
+                &quot;no&quot;: 0.0,
+                &quot;yes&quot;: 0.98
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;needs a measure&quot;,
+                &quot;probability&quot;: 0.02,
+                &quot;criterion&quot;: &quot;A check exists only once a measure is stated.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_term_kind&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?&quot;,
+              &quot;choice&quot;: &quot;none&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage or defined in the record.&quot;,
+              &quot;confidence&quot;: 0.84,
+              &quot;probabilities&quot;: {
+                &quot;none&quot;: 0.87,
+                &quot;project term defined in a linked record&quot;: 0.01,
+                &quot;project term defined nowhere&quot;: 0.06,
+                &quot;undefined acronym&quot;: 0.05,
+                &quot;vague qualifier&quot;: 0.01
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;project term defined nowhere&quot;,
+                &quot;probability&quot;: 0.06,
+                &quot;criterion&quot;: &quot;A project term defined neither here nor in a linked record. Fix: define it or link the record.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_check_method&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?&quot;,
+              &quot;choice&quot;: &quot;CLI run&quot;,
+              &quot;criterion&quot;: &quot;Running a command and reading its output or exit code.&quot;,
+              &quot;confidence&quot;: 0.36,
+              &quot;probabilities&quot;: {
+                &quot;CLI run&quot;: 0.49,
+                &quot;inspection or grep&quot;: 0.2,
+                &quot;needs a measure&quot;: 0.01,
+                &quot;none&quot;: 0.02,
+                &quot;unit test&quot;: 0.28
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;unit test&quot;,
+                &quot;probability&quot;: 0.28,
+                &quot;criterion&quot;: &quot;A unit or integration test.&quot;
+              }
+            }
+          ]
+        },
+        {
+          &quot;statement&quot;: {
+            &quot;index&quot;: 2,
+            &quot;modal&quot;: &quot;MustNot&quot;,
+            &quot;text&quot;: &quot;judge-jev tests MUST NOT depend on timing.&quot;
+          },
+          &quot;answers&quot;: [
+            {
+              &quot;id&quot;: &quot;obligations&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?&quot;,
+              &quot;choice&quot;: &quot;1&quot;,
+              &quot;criterion&quot;: &quot;One obligation.&quot;,
+              &quot;confidence&quot;: 0.99,
+              &quot;probabilities&quot;: {
+                &quot;1&quot;: 0.99,
+                &quot;2&quot;: 0.01,
+                &quot;3&quot;: 0.0,
+                &quot;4+&quot;: 0.0
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;2&quot;,
+                &quot;probability&quot;: 0.01,
+                &quot;criterion&quot;: &quot;Two independent obligations.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;term&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage, defined in this record, or defined in a linked record.&quot;,
+              &quot;confidence&quot;: 0.62,
+              &quot;probabilities&quot;: {
+                &quot;no&quot;: 0.19,
+                &quot;yes&quot;: 0.81
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;no&quot;,
+                &quot;probability&quot;: 0.19,
+                &quot;criterion&quot;: &quot;At least one term is none of these.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;checkable&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Yes, by a test, a command run, or reading files.&quot;,
+              &quot;confidence&quot;: 0.72,
+              &quot;probabilities&quot;: {
+                &quot;needs a measure&quot;: 0.18,
+                &quot;no&quot;: 0.01,
+                &quot;yes&quot;: 0.81
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;needs a measure&quot;,
+                &quot;probability&quot;: 0.18,
+                &quot;criterion&quot;: &quot;A check exists only once a measure is stated.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_term_kind&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?&quot;,
+              &quot;choice&quot;: &quot;none&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage or defined in the record.&quot;,
+              &quot;confidence&quot;: 0.51,
+              &quot;probabilities&quot;: {
+                &quot;none&quot;: 0.61,
+                &quot;project term defined in a linked record&quot;: 0.0,
+                &quot;project term defined nowhere&quot;: 0.08,
+                &quot;undefined acronym&quot;: 0.06,
+                &quot;vague qualifier&quot;: 0.25
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;vague qualifier&quot;,
+                &quot;probability&quot;: 0.25,
+                &quot;criterion&quot;: &quot;A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_check_method&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?&quot;,
+              &quot;choice&quot;: &quot;inspection or grep&quot;,
+              &quot;criterion&quot;: &quot;Reading or searching files or output.&quot;,
+              &quot;confidence&quot;: 0.69,
+              &quot;probabilities&quot;: {
+                &quot;CLI run&quot;: 0.04,
+                &quot;inspection or grep&quot;: 0.75,
+                &quot;needs a measure&quot;: 0.03,
+                &quot;none&quot;: 0.04,
+                &quot;unit test&quot;: 0.14
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;unit test&quot;,
+                &quot;probability&quot;: 0.14,
+                &quot;criterion&quot;: &quot;A unit or integration test.&quot;
+              }
+            }
+          ]
+        },
+        {
+          &quot;statement&quot;: {
+            &quot;index&quot;: 3,
+            &quot;modal&quot;: &quot;MustNot&quot;,
+            &quot;text&quot;: &quot;judge-jev tests MUST NOT depend on sleeps.&quot;
+          },
+          &quot;answers&quot;: [
+            {
+              &quot;id&quot;: &quot;obligations&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?&quot;,
+              &quot;choice&quot;: &quot;1&quot;,
+              &quot;criterion&quot;: &quot;One obligation.&quot;,
+              &quot;confidence&quot;: 1.0,
+              &quot;probabilities&quot;: {
+                &quot;1&quot;: 1.0,
+                &quot;2&quot;: 0.0,
+                &quot;3&quot;: 0.0,
+                &quot;4+&quot;: 0.0
+              },
+              &quot;runner_up&quot;: null
+            },
+            {
+              &quot;id&quot;: &quot;term&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage, defined in this record, or defined in a linked record.&quot;,
+              &quot;confidence&quot;: 0.58,
+              &quot;probabilities&quot;: {
+                &quot;no&quot;: 0.21,
+                &quot;yes&quot;: 0.79
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;no&quot;,
+                &quot;probability&quot;: 0.21,
+                &quot;criterion&quot;: &quot;At least one term is none of these.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;checkable&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Yes, by a test, a command run, or reading files.&quot;,
+              &quot;confidence&quot;: 0.89,
+              &quot;probabilities&quot;: {
+                &quot;needs a measure&quot;: 0.06,
+                &quot;no&quot;: 0.01,
+                &quot;yes&quot;: 0.93
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;needs a measure&quot;,
+                &quot;probability&quot;: 0.06,
+                &quot;criterion&quot;: &quot;A check exists only once a measure is stated.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_term_kind&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?&quot;,
+              &quot;choice&quot;: &quot;none&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage or defined in the record.&quot;,
+              &quot;confidence&quot;: 0.84,
+              &quot;probabilities&quot;: {
+                &quot;none&quot;: 0.87,
+                &quot;project term defined in a linked record&quot;: 0.0,
+                &quot;project term defined nowhere&quot;: 0.07,
+                &quot;undefined acronym&quot;: 0.05,
+                &quot;vague qualifier&quot;: 0.01
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;project term defined nowhere&quot;,
+                &quot;probability&quot;: 0.07,
+                &quot;criterion&quot;: &quot;A project term defined neither here nor in a linked record. Fix: define it or link the record.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_check_method&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?&quot;,
+              &quot;choice&quot;: &quot;inspection or grep&quot;,
+              &quot;criterion&quot;: &quot;Reading or searching files or output.&quot;,
+              &quot;confidence&quot;: 0.92,
+              &quot;probabilities&quot;: {
+                &quot;CLI run&quot;: 0.01,
+                &quot;inspection or grep&quot;: 0.94,
+                &quot;needs a measure&quot;: 0.0,
+                &quot;none&quot;: 0.01,
+                &quot;unit test&quot;: 0.04
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;unit test&quot;,
+                &quot;probability&quot;: 0.04,
+                &quot;criterion&quot;: &quot;A unit or integration test.&quot;
+              }
+            }
+          ]
+        },
+        {
+          &quot;statement&quot;: {
+            &quot;index&quot;: 4,
+            &quot;modal&quot;: &quot;MustNot&quot;,
+            &quot;text&quot;: &quot;judge-jev tests MUST NOT depend on ordering.&quot;
+          },
+          &quot;answers&quot;: [
+            {
+              &quot;id&quot;: &quot;obligations&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?&quot;,
+              &quot;choice&quot;: &quot;1&quot;,
+              &quot;criterion&quot;: &quot;One obligation.&quot;,
+              &quot;confidence&quot;: 1.0,
+              &quot;probabilities&quot;: {
+                &quot;1&quot;: 1.0,
+                &quot;2&quot;: 0.0,
+                &quot;3&quot;: 0.0,
+                &quot;4+&quot;: 0.0
+              },
+              &quot;runner_up&quot;: null
+            },
+            {
+              &quot;id&quot;: &quot;term&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage, defined in this record, or defined in a linked record.&quot;,
+              &quot;confidence&quot;: 0.66,
+              &quot;probabilities&quot;: {
+                &quot;no&quot;: 0.17,
+                &quot;yes&quot;: 0.83
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;no&quot;,
+                &quot;probability&quot;: 0.17,
+                &quot;criterion&quot;: &quot;At least one term is none of these.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;checkable&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?&quot;,
+              &quot;choice&quot;: &quot;yes&quot;,
+              &quot;criterion&quot;: &quot;Yes, by a test, a command run, or reading files.&quot;,
+              &quot;confidence&quot;: 0.8,
+              &quot;probabilities&quot;: {
+                &quot;needs a measure&quot;: 0.11,
+                &quot;no&quot;: 0.02,
+                &quot;yes&quot;: 0.87
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;needs a measure&quot;,
+                &quot;probability&quot;: 0.11,
+                &quot;criterion&quot;: &quot;A check exists only once a measure is stated.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_term_kind&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?&quot;,
+              &quot;choice&quot;: &quot;none&quot;,
+              &quot;criterion&quot;: &quot;Every term is common usage or defined in the record.&quot;,
+              &quot;confidence&quot;: 0.51,
+              &quot;probabilities&quot;: {
+                &quot;none&quot;: 0.61,
+                &quot;project term defined in a linked record&quot;: 0.01,
+                &quot;project term defined nowhere&quot;: 0.14,
+                &quot;undefined acronym&quot;: 0.05,
+                &quot;vague qualifier&quot;: 0.19
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;vague qualifier&quot;,
+                &quot;probability&quot;: 0.19,
+                &quot;criterion&quot;: &quot;A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure.&quot;
+              }
+            },
+            {
+              &quot;id&quot;: &quot;d_check_method&quot;,
+              &quot;text&quot;: &quot;`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?&quot;,
+              &quot;choice&quot;: &quot;inspection or grep&quot;,
+              &quot;criterion&quot;: &quot;Reading or searching files or output.&quot;,
+              &quot;confidence&quot;: 0.62,
+              &quot;probabilities&quot;: {
+                &quot;CLI run&quot;: 0.05,
+                &quot;inspection or grep&quot;: 0.7,
+                &quot;needs a measure&quot;: 0.01,
+                &quot;none&quot;: 0.04,
+                &quot;unit test&quot;: 0.2
+              },
+              &quot;runner_up&quot;: {
+                &quot;choice&quot;: &quot;unit test&quot;,
+                &quot;probability&quot;: 0.2,
+                &quot;criterion&quot;: &quot;A unit or integration test.&quot;
+              }
+            }
+          ]
+        }
+      ],
+      &quot;matched_statements&quot;: [
+        1,
+        2,
+        3,
+        4
+      ],
+      &quot;next&quot;: &quot;yes&quot;,
+      &quot;verdict&quot;: null,
+      &quot;models&quot;: [
+        &quot;jev-1.14.0&quot;
+      ]
+    }
+  ]
+}</pre></details>
+    </article>
+    <footer>Diagrams rendered with D2 / ELK. Report composed with sc-compose. Source revision <code>c823e4600cbbee7f987cc2e65485f7c8deb6da92</code>. Confidence is a model response, not a measured probability of correctness.</footer>
+  </main>
+  <script>
+    document.getElementById('record-select').addEventListener('change', function(event) {
+      document.querySelectorAll('article').forEach(function(panel) {
+        panel.hidden = panel.id !== event.target.value;
+      });
+    });
+  </script>
+</body>
+</html>

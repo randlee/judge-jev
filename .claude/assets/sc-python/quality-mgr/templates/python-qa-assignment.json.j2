@@ -1,0 +1,34 @@
+---
+name: python-qa-assignment
+version: 0.1.0
+description: Render a fenced-JSON assignment for python-qa-agent.
+format: json
+required_variables:
+  - review_mode
+  - worktree_path
+  - branch
+  - commit
+  - review_targets
+optional_variables:
+  - round_limit
+  - changed_files
+  - carry_forward_findings_json
+  - notes
+defaults:
+  round_limit: false
+  changed_files: []
+  carry_forward_findings_json: "[]"
+  notes: ""
+---
+{
+  "review_mode": {{ review_mode }},
+  "worktree_path": {{ worktree_path }},
+  "branch": {{ branch }},
+  "commit": {{ commit }},
+  "review_targets": [{% for target in review_targets %}{{ target }}{% if not loop.last %}, {% endif %}{% endfor %}],
+  "commands": {"types": "pyright", "unit": "python -m unittest discover -s tests/sc-judge-jev", "version": "python scripts/check_version_sync.py"},
+  "round_limit": {% if round_limit %}true{% else %}false{% endif %},
+  "changed_files": [{% for file in changed_files %}{{ file }}{% if not loop.last %}, {% endif %}{% endfor %}],
+  "carry_forward_findings": {{ carry_forward_findings_json | safe }},
+  "notes": {{ notes }}
+}

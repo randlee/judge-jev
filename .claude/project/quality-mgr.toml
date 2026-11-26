@@ -1,0 +1,79 @@
+# Manifest read by .claude/agents/quality-mgr.md. Data only: prose policy,
+# exceptions and approval authorities live in quality-policy.md.
+schema_version = 1
+language = "python"
+supplement = ".claude/assets/sc-python/quality-mgr/quality-mgr.python.md"
+templates_root = ".claude/assets/sc-python/quality-mgr/templates"
+default_branch = "develop"
+
+[commands]
+unit = "python -m unittest discover -s tests/sc-judge-jev"
+version = "python scripts/check_version_sync.py"
+types = "pyright"                      # run on the changed .py files
+# tests.yml job names. GitHub names a matrix job's check runs "<job> (<matrix values>)",
+# so a job matches every check run named exactly <job> or starting with "<job> (".
+phase_end_proof = ["unit", "dependency-floor", "installer"]
+
+# One entry per reviewer. `modes` lists the review types it runs in.
+# `when` is a condition the quality-mgr evaluates from the assignment:
+#   always | tests_changed | python_changed | version_surface_changed
+#   | adds_process_artifact | has_findings | has_blocking_findings
+# `scope_locked_in_fix_round = true` means: in a fix round, dispatch only for a
+# carried finding of its own category, with findings_scope_locked set.
+[[reviewer]]
+name = "req-qa"
+modes = ["plan", "sprint", "fix", "phase_end"]
+when = "always"
+
+[[reviewer]]
+name = "arch-qa"
+modes = ["plan", "sprint", "fix", "phase_end"]
+when = "always"
+
+[[reviewer]]
+name = "extensibility-qa"
+modes = ["plan", "sprint", "fix", "phase_end"]
+when = "always"
+scope_locked_in_fix_round = true
+
+[[reviewer]]
+name = "python-qa-agent"
+modes = ["sprint", "fix", "phase_end"]
+when = "python_changed"
+template = "python-qa-assignment.json.j2"
+
+[[reviewer]]
+name = "python-best-practices-agent"
+modes = ["plan", "sprint", "phase_end"]
+when = "python_changed"
+template = "python-best-practices-assignment.json.j2"
+scope_locked_in_fix_round = true
+practice_ids_sprint = ["PBP-001", "PBP-003", "PBP-004"]
+
+[[reviewer]]
+name = "flaky-test-qa"
+modes = ["sprint", "phase_end"]
+when = "tests_changed"
+
+[[reviewer]]
+name = "ceremony-qa"
+modes = ["plan", "sprint"]
+when = "adds_process_artifact"
+scope_locked_in_fix_round = true
+
+[[reviewer]]
+name = "ceremony-finding-screen"
+modes = ["plan", "sprint", "fix", "phase_end"]
+when = "has_findings"
+
+[[reviewer]]
+name = "blastr"
+modes = ["plan", "sprint", "fix", "phase_end"]
+when = "has_blocking_findings"
+
+[report]
+# Fields appended to the PASS/FAIL line, one per reviewer that ran.
+line = "req-qa={req-qa}; arch-qa={arch-qa}; extensibility-qa={extensibility-qa}; python-qa={python-qa-agent}; python-best-practices={python-best-practices-agent}; flaky-test-qa={flaky-test-qa}; PR #{pr}; worktree {worktree}"
+
+[versioning]
+bump_required_unless = "docs_only"

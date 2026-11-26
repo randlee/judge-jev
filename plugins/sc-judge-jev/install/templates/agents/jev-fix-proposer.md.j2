@@ -31,7 +31,7 @@ One fenced JSON object:
 | `strategy` | The one edit |
 | --- | --- |
 | `name-referent` | Replace the back-reference ("that type", "as follows", "it", "the same") with the full noun phrase or the named table. |
-| `define-term` | One sentence in the record's `Definitions:` paragraph (first paragraph under `### Requirement Statement`; add it if absent) for the term Jev blames, from facts already in the record or `sources`. Reuse an existing definition's wording. |
+| `define-term` | Define the term Jev blames as [definitions.md](../skills/judge-jev/references/definitions.md) says, from facts already in the record or `sources`; reuse existing wording. If that places it outside this record's text, return `"candidate": null` and `unfixable.needs` as one line: the term, its text and its source. |
 | `plain-words` | Replace the jargon or qualifier with plain words that say the same thing. A vague qualifier takes the number the code or tests use. |
 | `observable` | State what can be observed in place of an internal property. |
 | `inspect-target` | Name the file or command to inspect and what it shows. Do not recast the statement as behaviour. |

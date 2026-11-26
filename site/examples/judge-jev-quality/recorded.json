@@ -1,0 +1,2411 @@
+{
+  "example": "judge-jev-quality",
+  "mode": "live",
+  "captured_at": "2026-11-25T19:59:16.734522+00:00",
+  "revision": "c823e4600cbbee7f987cc2e65485f7c8deb6da92",
+  "index_sha256": "562b08b639bf265269bc492ef356fe9908b2a8d78222ff6f16b15a1fdae27414",
+  "diagnostics": [
+    {
+      "file": "docs/requirements/raptor-integration.md",
+      "line": 113,
+      "column": 13,
+      "rule": "MODAL_MISMATCH",
+      "id": "REQ-JEV-0003",
+      "record": "REQ-JEV-0003",
+      "section": "Requirement Statement",
+      "label": "MUST statements",
+      "value": "MUST NOT",
+      "allowed": [
+        "MUST"
+      ],
+      "message": "Found 'MUST NOT' in a statement under 'MUST statements'; expected 'MUST' or no keyword. The label's modal is kept.",
+      "remedy": "Fix the source: move the statement under the label for its keyword, or reword it to use the label's keyword.",
+      "source": "- judge-jev MUST NOT pass keyring service or account overrides to sc-agent.",
+      "fix": "replace `MUST NOT` at line 113, column 13 with `MUST`, or reword the statement without a modal keyword",
+      "edit": {
+        "op": "replace",
+        "line": 113,
+        "lines": [
+          "- judge-jev MUST pass keyring service or account overrides to sc-agent."
+        ]
+      }
+    }
+  ],
+  "import": null,
+  "bar": null,
+  "views": [
+    {
+      "id": "REQ-JEV-0001",
+      "kind": "req",
+      "title": "Records come from Raptor",
+      "text": "judge-jev MUST obtain records through Raptor's query interface.\njudge-jev MUST NOT parse record Markdown itself.\njudge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself.",
+      "tree": {
+        "schema": "judge-jev/quality-tree/1",
+        "id": "quality-req",
+        "kind": "req",
+        "version": 1,
+        "approved": true,
+        "note": "gate questions checkable, term (yes/no) and joined_by as a second step: wording set by Rand Lee in issue #137, 2026-11-25",
+        "start": "wave-1",
+        "nodes": {
+          "wave-1": {
+            "per": "statement",
+            "statements": "requirement_statement.statements",
+            "modals": [
+              "Must",
+              "MustNot"
+            ],
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              },
+              "d_term_kind": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                "criteria": {
+                  "none": "Every term is common usage or defined in the record.",
+                  "project term defined in a linked record": "A project term defined in a record this one links. Acceptable.",
+                  "project term defined nowhere": "A project term defined neither here nor in a linked record. Fix: define it or link the record.",
+                  "vague qualifier": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure.",
+                  "undefined acronym": "An acronym that is never expanded or defined. Fix: define the acronym."
+                }
+              },
+              "d_check_method": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                "criteria": {
+                  "unit test": "A unit or integration test.",
+                  "CLI run": "Running a command and reading its output or exit code.",
+                  "inspection or grep": "Reading or searching files or output.",
+                  "needs a measure": "A check exists only once a number is given. Fix: add a threshold.",
+                  "none": "Nothing could check it. Fix: rewrite as an outcome."
+                }
+              }
+            },
+            "next": [
+              {
+                "when": {
+                  "term": "no"
+                },
+                "goto": "no"
+              },
+              {
+                "when": {
+                  "checkable": [
+                    "needs a measure",
+                    "no"
+                  ]
+                },
+                "goto": "no"
+              },
+              {
+                "when": {
+                  "obligations": [
+                    "2",
+                    "3",
+                    "4+"
+                  ]
+                },
+                "goto": "wave-2"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "wave-2": {
+            "per": "statement",
+            "statements": "requirement_statement.statements",
+            "modals": [
+              "Must",
+              "MustNot"
+            ],
+            "only_matched": true,
+            "questions": {
+              "joined_by": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?",
+                "criteria": {
+                  "none": "One obligation; nothing is joined.",
+                  "and-list": "A list of items joined by and or commas. Fix: split into one statement per item.",
+                  "condition+obligation": "A condition (when, if, unless) plus one obligation. Acceptable: a condition is not a second obligation.",
+                  "alternatives": "Alternatives joined by or. Fix: split, or state the choice.",
+                  "obligation+rationale": "An obligation plus its reason or purpose. Fix: move the rationale to Rationale."
+                }
+              }
+            },
+            "verdict_rules": [
+              {
+                "any": {
+                  "joined_by": [
+                    "and-list",
+                    "alternatives",
+                    "obligation+rationale"
+                  ]
+                },
+                "verdict": "no"
+              },
+              {
+                "verdict": "yes"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "no": {
+            "verdict": "no"
+          }
+        }
+      },
+      "verdict": "yes",
+      "path": [
+        "wave-1",
+        "yes"
+      ],
+      "waves": [
+        {
+          "node": "wave-1",
+          "per": "statement",
+          "request_ids": [
+            "quality/REQ-JEV-0001.s1/wave-1/r1",
+            "quality/REQ-JEV-0001.s2/wave-1/r1",
+            "quality/REQ-JEV-0001.s3/wave-1/r1"
+          ],
+          "reason": [
+            {
+              "statement": {
+                "index": 1,
+                "modal": "Must",
+                "text": "judge-jev MUST obtain records through Raptor's query interface."
+              },
+              "answers": [
+                {
+                  "id": "obligations",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                  "choice": "1",
+                  "criterion": "One obligation.",
+                  "confidence": 0.99,
+                  "probabilities": {
+                    "1": 0.99,
+                    "2": 0.01,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "runner_up": {
+                    "choice": "2",
+                    "probability": 0.01,
+                    "criterion": "Two independent obligations."
+                  }
+                },
+                {
+                  "id": "term",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                  "choice": "yes",
+                  "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "confidence": 0.28,
+                  "probabilities": {
+                    "no": 0.36,
+                    "yes": 0.64
+                  },
+                  "runner_up": {
+                    "choice": "no",
+                    "probability": 0.36,
+                    "criterion": "At least one term is none of these."
+                  }
+                },
+                {
+                  "id": "checkable",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                  "choice": "yes",
+                  "criterion": "Yes, by a test, a command run, or reading files.",
+                  "confidence": 0.96,
+                  "probabilities": {
+                    "needs a measure": 0.02,
+                    "no": 0.01,
+                    "yes": 0.97
+                  },
+                  "runner_up": {
+                    "choice": "needs a measure",
+                    "probability": 0.02,
+                    "criterion": "A check exists only once a measure is stated."
+                  }
+                },
+                {
+                  "id": "d_term_kind",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                  "choice": "none",
+                  "criterion": "Every term is common usage or defined in the record.",
+                  "confidence": 0.64,
+                  "probabilities": {
+                    "none": 0.71,
+                    "project term defined in a linked record": 0.02,
+                    "project term defined nowhere": 0.13,
+                    "undefined acronym": 0.14,
+                    "vague qualifier": 0.0
+                  },
+                  "runner_up": {
+                    "choice": "undefined acronym",
+                    "probability": 0.14,
+                    "criterion": "An acronym that is never expanded or defined. Fix: define the acronym."
+                  }
+                },
+                {
+                  "id": "d_check_method",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                  "choice": "inspection or grep",
+                  "criterion": "Reading or searching files or output.",
+                  "confidence": 0.7,
+                  "probabilities": {
+                    "CLI run": 0.02,
+                    "inspection or grep": 0.76,
+                    "needs a measure": 0.0,
+                    "none": 0.04,
+                    "unit test": 0.18
+                  },
+                  "runner_up": {
+                    "choice": "unit test",
+                    "probability": 0.18,
+                    "criterion": "A unit or integration test."
+                  }
+                }
+              ]
+            },
+            {
+              "statement": {
+                "index": 2,
+                "modal": "MustNot",
+                "text": "judge-jev MUST NOT parse record Markdown itself."
+              },
+              "answers": [
+                {
+                  "id": "obligations",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                  "choice": "1",
+                  "criterion": "One obligation.",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "runner_up": null
+                },
+                {
+                  "id": "term",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                  "choice": "yes",
+                  "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "confidence": 0.32,
+                  "probabilities": {
+                    "no": 0.34,
+                    "yes": 0.66
+                  },
+                  "runner_up": {
+                    "choice": "no",
+                    "probability": 0.34,
+                    "criterion": "At least one term is none of these."
+                  }
+                },
+                {
+                  "id": "checkable",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                  "choice": "yes",
+                  "criterion": "Yes, by a test, a command run, or reading files.",
+                  "confidence": 0.98,
+                  "probabilities": {
+                    "needs a measure": 0.01,
+                    "no": 0.0,
+                    "yes": 0.99
+                  },
+                  "runner_up": {
+                    "choice": "needs a measure",
+                    "probability": 0.01,
+                    "criterion": "A check exists only once a measure is stated."
+                  }
+                },
+                {
+                  "id": "d_term_kind",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                  "choice": "none",
+                  "criterion": "Every term is common usage or defined in the record.",
+                  "confidence": 0.77,
+                  "probabilities": {
+                    "none": 0.82,
+                    "project term defined in a linked record": 0.01,
+                    "project term defined nowhere": 0.09,
+                    "undefined acronym": 0.04,
+                    "vague qualifier": 0.04
+                  },
+                  "runner_up": {
+                    "choice": "project term defined nowhere",
+                    "probability": 0.09,
+                    "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                  }
+                },
+                {
+                  "id": "d_check_method",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                  "choice": "inspection or grep",
+                  "criterion": "Reading or searching files or output.",
+                  "confidence": 0.99,
+                  "probabilities": {
+                    "CLI run": 0.0,
+                    "inspection or grep": 0.99,
+                    "needs a measure": 0.0,
+                    "none": 0.0,
+                    "unit test": 0.01
+                  },
+                  "runner_up": {
+                    "choice": "unit test",
+                    "probability": 0.01,
+                    "criterion": "A unit or integration test."
+                  }
+                }
+              ]
+            },
+            {
+              "statement": {
+                "index": 3,
+                "modal": "MustNot",
+                "text": "judge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself."
+              },
+              "answers": [
+                {
+                  "id": "obligations",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                  "choice": "1",
+                  "criterion": "One obligation.",
+                  "confidence": 0.97,
+                  "probabilities": {
+                    "1": 0.98,
+                    "2": 0.02,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "runner_up": {
+                    "choice": "2",
+                    "probability": 0.02,
+                    "criterion": "Two independent obligations."
+                  }
+                },
+                {
+                  "id": "term",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                  "choice": "yes",
+                  "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "confidence": 0.4,
+                  "probabilities": {
+                    "no": 0.3,
+                    "yes": 0.7
+                  },
+                  "runner_up": {
+                    "choice": "no",
+                    "probability": 0.3,
+                    "criterion": "At least one term is none of these."
+                  }
+                },
+                {
+                  "id": "checkable",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                  "choice": "yes",
+                  "criterion": "Yes, by a test, a command run, or reading files.",
+                  "confidence": 0.98,
+                  "probabilities": {
+                    "needs a measure": 0.01,
+                    "no": 0.0,
+                    "yes": 0.99
+                  },
+                  "runner_up": {
+                    "choice": "needs a measure",
+                    "probability": 0.01,
+                    "criterion": "A check exists only once a measure is stated."
+                  }
+                },
+                {
+                  "id": "d_term_kind",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                  "choice": "none",
+                  "criterion": "Every term is common usage or defined in the record.",
+                  "confidence": 0.66,
+                  "probabilities": {
+                    "none": 0.73,
+                    "project term defined in a linked record": 0.01,
+                    "project term defined nowhere": 0.15,
+                    "undefined acronym": 0.1,
+                    "vague qualifier": 0.01
+                  },
+                  "runner_up": {
+                    "choice": "project term defined nowhere",
+                    "probability": 0.15,
+                    "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                  }
+                },
+                {
+                  "id": "d_check_method",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                  "choice": "inspection or grep",
+                  "criterion": "Reading or searching files or output.",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "CLI run": 0.0,
+                    "inspection or grep": 1.0,
+                    "needs a measure": 0.0,
+                    "none": 0.0,
+                    "unit test": 0.0
+                  },
+                  "runner_up": null
+                }
+              ]
+            }
+          ],
+          "matched_statements": [
+            1,
+            2,
+            3
+          ],
+          "next": "yes",
+          "verdict": null,
+          "models": [
+            "jev-1.14.0"
+          ],
+          "rule_position": 4
+        }
+      ],
+      "answers": [
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s1",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 0.99,
+          "criterion": "One obligation.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s1",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.28,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s1",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.96,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s1",
+          "question": "d_term_kind",
+          "choice": "none",
+          "confidence": 0.64,
+          "criterion": "Every term is common usage or defined in the record.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s1",
+          "question": "d_check_method",
+          "choice": "inspection or grep",
+          "confidence": 0.7,
+          "criterion": "Reading or searching files or output.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s2",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s2",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.32,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s2",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.98,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s2",
+          "question": "d_term_kind",
+          "choice": "none",
+          "confidence": 0.77,
+          "criterion": "Every term is common usage or defined in the record.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s2",
+          "question": "d_check_method",
+          "choice": "inspection or grep",
+          "confidence": 0.99,
+          "criterion": "Reading or searching files or output.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s3",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 0.97,
+          "criterion": "One obligation.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s3",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.4,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s3",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.98,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s3",
+          "question": "d_term_kind",
+          "choice": "none",
+          "confidence": 0.66,
+          "criterion": "Every term is common usage or defined in the record.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "REQ-JEV-0001.s3",
+          "question": "d_check_method",
+          "choice": "inspection or grep",
+          "confidence": 1.0,
+          "criterion": "Reading or searching files or output.",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "record": {
+          "id": "REQ-JEV-0001",
+          "kind": "req",
+          "source": {
+            "raptor_index": "{tmp}/decidr-repo-example.n7y7yg/index.json"
+          }
+        },
+        "tree": {
+          "id": "quality-req",
+          "sha256": "36c00a0d3d318e065ececdb6d1fae1a291dd833552ae93a662802ab02769081c",
+          "source": "shipped",
+          "path": "{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-req.json"
+        },
+        "verdict": "yes",
+        "path": [
+          "wave-1",
+          "yes"
+        ],
+        "waves": [
+          {
+            "node": "wave-1",
+            "per": "statement",
+            "request_ids": [
+              "quality/REQ-JEV-0001.s1/wave-1/r1",
+              "quality/REQ-JEV-0001.s2/wave-1/r1",
+              "quality/REQ-JEV-0001.s3/wave-1/r1"
+            ],
+            "reason": [
+              {
+                "statement": {
+                  "index": 1,
+                  "modal": "Must",
+                  "text": "judge-jev MUST obtain records through Raptor's query interface."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "1",
+                    "criterion": "One obligation.",
+                    "confidence": 0.99,
+                    "probabilities": {
+                      "1": 0.99,
+                      "2": 0.01,
+                      "3": 0.0,
+                      "4+": 0.0
+                    },
+                    "runner_up": {
+                      "choice": "2",
+                      "probability": 0.01,
+                      "criterion": "Two independent obligations."
+                    }
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                    "choice": "yes",
+                    "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                    "confidence": 0.28,
+                    "probabilities": {
+                      "no": 0.36,
+                      "yes": 0.64
+                    },
+                    "runner_up": {
+                      "choice": "no",
+                      "probability": 0.36,
+                      "criterion": "At least one term is none of these."
+                    }
+                  },
+                  {
+                    "id": "checkable",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                    "choice": "yes",
+                    "criterion": "Yes, by a test, a command run, or reading files.",
+                    "confidence": 0.96,
+                    "probabilities": {
+                      "needs a measure": 0.02,
+                      "no": 0.01,
+                      "yes": 0.97
+                    },
+                    "runner_up": {
+                      "choice": "needs a measure",
+                      "probability": 0.02,
+                      "criterion": "A check exists only once a measure is stated."
+                    }
+                  },
+                  {
+                    "id": "d_term_kind",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.64,
+                    "probabilities": {
+                      "none": 0.71,
+                      "project term defined in a linked record": 0.02,
+                      "project term defined nowhere": 0.13,
+                      "undefined acronym": 0.14,
+                      "vague qualifier": 0.0
+                    },
+                    "runner_up": {
+                      "choice": "undefined acronym",
+                      "probability": 0.14,
+                      "criterion": "An acronym that is never expanded or defined. Fix: define the acronym."
+                    }
+                  },
+                  {
+                    "id": "d_check_method",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "inspection or grep",
+                    "criterion": "Reading or searching files or output.",
+                    "confidence": 0.7,
+                    "probabilities": {
+                      "CLI run": 0.02,
+                      "inspection or grep": 0.76,
+                      "needs a measure": 0.0,
+                      "none": 0.04,
+                      "unit test": 0.18
+                    },
+                    "runner_up": {
+                      "choice": "unit test",
+                      "probability": 0.18,
+                      "criterion": "A unit or integration test."
+                    }
+                  }
+                ]
+              },
+              {
+                "statement": {
+                  "index": 2,
+                  "modal": "MustNot",
+                  "text": "judge-jev MUST NOT parse record Markdown itself."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "1",
+                    "criterion": "One obligation.",
+                    "confidence": 1.0,
+                    "probabilities": {
+                      "1": 1.0,
+                      "2": 0.0,
+                      "3": 0.0,
+                      "4+": 0.0
+                    },
+                    "runner_up": null
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                    "choice": "yes",
+                    "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                    "confidence": 0.32,
+                    "probabilities": {
+                      "no": 0.34,
+                      "yes": 0.66
+                    },
+                    "runner_up": {
+                      "choice": "no",
+                      "probability": 0.34,
+                      "criterion": "At least one term is none of these."
+                    }
+                  },
+                  {
+                    "id": "checkable",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                    "choice": "yes",
+                    "criterion": "Yes, by a test, a command run, or reading files.",
+                    "confidence": 0.98,
+                    "probabilities": {
+                      "needs a measure": 0.01,
+                      "no": 0.0,
+                      "yes": 0.99
+                    },
+                    "runner_up": {
+                      "choice": "needs a measure",
+                      "probability": 0.01,
+                      "criterion": "A check exists only once a measure is stated."
+                    }
+                  },
+                  {
+                    "id": "d_term_kind",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.77,
+                    "probabilities": {
+                      "none": 0.82,
+                      "project term defined in a linked record": 0.01,
+                      "project term defined nowhere": 0.09,
+                      "undefined acronym": 0.04,
+                      "vague qualifier": 0.04
+                    },
+                    "runner_up": {
+                      "choice": "project term defined nowhere",
+                      "probability": 0.09,
+                      "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                    }
+                  },
+                  {
+                    "id": "d_check_method",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "inspection or grep",
+                    "criterion": "Reading or searching files or output.",
+                    "confidence": 0.99,
+                    "probabilities": {
+                      "CLI run": 0.0,
+                      "inspection or grep": 0.99,
+                      "needs a measure": 0.0,
+                      "none": 0.0,
+                      "unit test": 0.01
+                    },
+                    "runner_up": {
+                      "choice": "unit test",
+                      "probability": 0.01,
+                      "criterion": "A unit or integration test."
+                    }
+                  }
+                ]
+              },
+              {
+                "statement": {
+                  "index": 3,
+                  "modal": "MustNot",
+                  "text": "judge-jev MUST NOT run SQL (Structured Query Language) against the record\nstore itself."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "1",
+                    "criterion": "One obligation.",
+                    "confidence": 0.97,
+                    "probabilities": {
+                      "1": 0.98,
+                      "2": 0.02,
+                      "3": 0.0,
+                      "4+": 0.0
+                    },
+                    "runner_up": {
+                      "choice": "2",
+                      "probability": 0.02,
+                      "criterion": "Two independent obligations."
+                    }
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                    "choice": "yes",
+                    "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                    "confidence": 0.4,
+                    "probabilities": {
+                      "no": 0.3,
+                      "yes": 0.7
+                    },
+                    "runner_up": {
+                      "choice": "no",
+                      "probability": 0.3,
+                      "criterion": "At least one term is none of these."
+                    }
+                  },
+                  {
+                    "id": "checkable",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                    "choice": "yes",
+                    "criterion": "Yes, by a test, a command run, or reading files.",
+                    "confidence": 0.98,
+                    "probabilities": {
+                      "needs a measure": 0.01,
+                      "no": 0.0,
+                      "yes": 0.99
+                    },
+                    "runner_up": {
+                      "choice": "needs a measure",
+                      "probability": 0.01,
+                      "criterion": "A check exists only once a measure is stated."
+                    }
+                  },
+                  {
+                    "id": "d_term_kind",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.66,
+                    "probabilities": {
+                      "none": 0.73,
+                      "project term defined in a linked record": 0.01,
+                      "project term defined nowhere": 0.15,
+                      "undefined acronym": 0.1,
+                      "vague qualifier": 0.01
+                    },
+                    "runner_up": {
+                      "choice": "project term defined nowhere",
+                      "probability": 0.15,
+                      "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                    }
+                  },
+                  {
+                    "id": "d_check_method",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "inspection or grep",
+                    "criterion": "Reading or searching files or output.",
+                    "confidence": 1.0,
+                    "probabilities": {
+                      "CLI run": 0.0,
+                      "inspection or grep": 1.0,
+                      "needs a measure": 0.0,
+                      "none": 0.0,
+                      "unit test": 0.0
+                    },
+                    "runner_up": null
+                  }
+                ]
+              }
+            ],
+            "matched_statements": [
+              1,
+              2,
+              3
+            ],
+            "next": "yes",
+            "verdict": null,
+            "models": [
+              "jev-1.14.0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ADR-JEV-0001",
+      "kind": "adr",
+      "title": "Keep the Jev core unchanged until its Rust replacement",
+      "text": "The Jev core keeps its architecture and contracts unchanged. It changes\nonly to fix a defect, or to replace its run log with the sc-observability\nlogger (REQ-JEV-0008).",
+      "tree": {
+        "schema": "judge-jev/quality-tree/1",
+        "id": "quality-adr",
+        "kind": "adr",
+        "version": 1,
+        "approved": true,
+        "note": "wave-1 wording approved by Rand Lee, 2026-11-08",
+        "start": "wave-1",
+        "nodes": {
+          "wave-1": {
+            "questions": {
+              "context": {
+                "type": "choice",
+                "instructions": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+                "criteria": {
+                  "problem and forces": "Names the problem and the forces or constraints that shaped the decision.",
+                  "background only": "Gives background but no problem. Fix: state the problem.",
+                  "missing": "No context in substance. Fix: add the problem and its forces."
+                }
+              },
+              "alternatives": {
+                "type": "choice",
+                "instructions": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+                "criteria": {
+                  "named with reasons rejected": "Names alternatives and why each was rejected.",
+                  "named only": "Names alternatives without why they were rejected. Fix: add why rejected.",
+                  "none": "Names no alternative. Fix: add alternatives."
+                }
+              },
+              "consequences": {
+                "type": "choice",
+                "instructions": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+                "criteria": {
+                  "positive and negative": "Names benefits and costs.",
+                  "positive only": "Names only benefits. Fix: add the costs.",
+                  "missing": "Names no consequence. Fix: add benefits and costs."
+                }
+              }
+            },
+            "verdict_rules": [
+              {
+                "any": {
+                  "context": [
+                    "background only",
+                    "missing"
+                  ],
+                  "alternatives": [
+                    "named only",
+                    "none"
+                  ],
+                  "consequences": [
+                    "positive only",
+                    "missing"
+                  ]
+                },
+                "verdict": "no"
+              },
+              {
+                "verdict": "yes"
+              }
+            ]
+          }
+        }
+      },
+      "verdict": "yes",
+      "path": [
+        "wave-1"
+      ],
+      "waves": [
+        {
+          "node": "wave-1",
+          "request_id": "quality/ADR-JEV-0001/wave-1/r1",
+          "reason": [
+            {
+              "id": "context",
+              "text": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+              "choice": "problem and forces",
+              "criterion": "Names the problem and the forces or constraints that shaped the decision.",
+              "confidence": 0.98,
+              "probabilities": {
+                "background only": 0.01,
+                "missing": 0.0,
+                "problem and forces": 0.99
+              },
+              "runner_up": {
+                "choice": "background only",
+                "probability": 0.01,
+                "criterion": "Gives background but no problem. Fix: state the problem."
+              }
+            },
+            {
+              "id": "alternatives",
+              "text": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+              "choice": "named with reasons rejected",
+              "criterion": "Names alternatives and why each was rejected.",
+              "confidence": 1.0,
+              "probabilities": {
+                "named only": 0.0,
+                "named with reasons rejected": 1.0,
+                "none": 0.0
+              },
+              "runner_up": null
+            },
+            {
+              "id": "consequences",
+              "text": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+              "choice": "positive and negative",
+              "criterion": "Names benefits and costs.",
+              "confidence": 1.0,
+              "probabilities": {
+                "missing": 0.0,
+                "positive and negative": 1.0,
+                "positive only": 0.0
+              },
+              "runner_up": null
+            }
+          ],
+          "next": null,
+          "verdict": "yes",
+          "models": [
+            "jev-1.14.0"
+          ],
+          "rule_position": 2
+        }
+      ],
+      "answers": [
+        {
+          "wave": "wave-1",
+          "item": "ADR-JEV-0001",
+          "question": "context",
+          "choice": "problem and forces",
+          "confidence": 0.98,
+          "criterion": "Names the problem and the forces or constraints that shaped the decision.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "ADR-JEV-0001",
+          "question": "alternatives",
+          "choice": "named with reasons rejected",
+          "confidence": 1.0,
+          "criterion": "Names alternatives and why each was rejected.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "ADR-JEV-0001",
+          "question": "consequences",
+          "choice": "positive and negative",
+          "confidence": 1.0,
+          "criterion": "Names benefits and costs.",
+          "status": "gate"
+        }
+      ],
+      "raw": {
+        "record": {
+          "id": "ADR-JEV-0001",
+          "kind": "adr",
+          "source": {
+            "raptor_index": "{tmp}/decidr-repo-example.n7y7yg/index.json"
+          }
+        },
+        "tree": {
+          "id": "quality-adr",
+          "sha256": "2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1",
+          "source": "shipped",
+          "path": "{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-adr.json"
+        },
+        "verdict": "yes",
+        "path": [
+          "wave-1"
+        ],
+        "waves": [
+          {
+            "node": "wave-1",
+            "request_id": "quality/ADR-JEV-0001/wave-1/r1",
+            "reason": [
+              {
+                "id": "context",
+                "text": "`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?",
+                "choice": "problem and forces",
+                "criterion": "Names the problem and the forces or constraints that shaped the decision.",
+                "confidence": 0.98,
+                "probabilities": {
+                  "background only": 0.01,
+                  "missing": 0.0,
+                  "problem and forces": 0.99
+                },
+                "runner_up": {
+                  "choice": "background only",
+                  "probability": 0.01,
+                  "criterion": "Gives background but no problem. Fix: state the problem."
+                }
+              },
+              {
+                "id": "alternatives",
+                "text": "`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?",
+                "choice": "named with reasons rejected",
+                "criterion": "Names alternatives and why each was rejected.",
+                "confidence": 1.0,
+                "probabilities": {
+                  "named only": 0.0,
+                  "named with reasons rejected": 1.0,
+                  "none": 0.0
+                },
+                "runner_up": null
+              },
+              {
+                "id": "consequences",
+                "text": "`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?",
+                "choice": "positive and negative",
+                "criterion": "Names benefits and costs.",
+                "confidence": 1.0,
+                "probabilities": {
+                  "missing": 0.0,
+                  "positive and negative": 1.0,
+                  "positive only": 0.0
+                },
+                "runner_up": null
+              }
+            ],
+            "next": null,
+            "verdict": "yes",
+            "models": [
+              "jev-1.14.0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "NFR-JEV-0001",
+      "kind": "nfr",
+      "title": "Deterministic offline tests",
+      "text": "judge-jev tests MUST run offline against recorded Jev answers.\njudge-jev tests MUST NOT depend on timing.\njudge-jev tests MUST NOT depend on sleeps.\njudge-jev tests MUST NOT depend on ordering.",
+      "tree": {
+        "schema": "judge-jev/quality-tree/1",
+        "id": "quality-nfr",
+        "kind": "nfr",
+        "version": 1,
+        "approved": true,
+        "note": "gate questions checkable, term (yes/no) and joined_by as a second step: wording set by Rand Lee in issue #137, 2026-11-25",
+        "start": "wave-1",
+        "nodes": {
+          "wave-1": {
+            "per": "statement",
+            "statements": "requirement_statement.statements",
+            "modals": [
+              "Must",
+              "MustNot"
+            ],
+            "questions": {
+              "obligations": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                "criteria": {
+                  "1": "One obligation.",
+                  "2": "Two independent obligations.",
+                  "3": "Three independent obligations.",
+                  "4+": "Four or more independent obligations."
+                }
+              },
+              "term": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                "criteria": {
+                  "yes": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "no": "At least one term is none of these."
+                }
+              },
+              "checkable": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                "criteria": {
+                  "yes": "Yes, by a test, a command run, or reading files.",
+                  "needs a measure": "A check exists only once a measure is stated.",
+                  "no": "Nothing could check it."
+                }
+              },
+              "d_term_kind": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                "criteria": {
+                  "none": "Every term is common usage or defined in the record.",
+                  "project term defined in a linked record": "A project term defined in a record this one links. Acceptable.",
+                  "project term defined nowhere": "A project term defined neither here nor in a linked record. Fix: define it or link the record.",
+                  "vague qualifier": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure.",
+                  "undefined acronym": "An acronym that is never expanded or defined. Fix: define the acronym."
+                }
+              },
+              "d_check_method": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                "criteria": {
+                  "unit test": "A unit or integration test.",
+                  "CLI run": "Running a command and reading its output or exit code.",
+                  "inspection or grep": "Reading or searching files or output.",
+                  "needs a measure": "A check exists only once a number is given. Fix: add a threshold.",
+                  "none": "Nothing could check it. Fix: rewrite as an outcome."
+                }
+              }
+            },
+            "next": [
+              {
+                "when": {
+                  "term": "no"
+                },
+                "goto": "no"
+              },
+              {
+                "when": {
+                  "checkable": [
+                    "needs a measure",
+                    "no"
+                  ]
+                },
+                "goto": "no"
+              },
+              {
+                "when": {
+                  "obligations": [
+                    "2",
+                    "3",
+                    "4+"
+                  ]
+                },
+                "goto": "wave-2"
+              },
+              {
+                "goto": "yes"
+              }
+            ]
+          },
+          "wave-2": {
+            "per": "statement",
+            "statements": "requirement_statement.statements",
+            "modals": [
+              "Must",
+              "MustNot"
+            ],
+            "only_matched": true,
+            "questions": {
+              "joined_by": {
+                "type": "choice",
+                "instructions": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What joins its obligations?",
+                "criteria": {
+                  "none": "One obligation; nothing is joined.",
+                  "and-list": "A list of items joined by and or commas. Fix: split into one statement per item.",
+                  "condition+obligation": "A condition (when, if, unless) plus one obligation. Acceptable: a condition is not a second obligation.",
+                  "alternatives": "Alternatives joined by or. Fix: split, or state the choice.",
+                  "obligation+rationale": "An obligation plus its reason or purpose. Fix: move the rationale to Rationale."
+                }
+              }
+            },
+            "verdict_rules": [
+              {
+                "any": {
+                  "joined_by": [
+                    "and-list",
+                    "alternatives",
+                    "obligation+rationale"
+                  ]
+                },
+                "verdict": "no"
+              },
+              {
+                "verdict": "yes"
+              }
+            ]
+          },
+          "yes": {
+            "verdict": "yes"
+          },
+          "no": {
+            "verdict": "no"
+          }
+        }
+      },
+      "verdict": "yes",
+      "path": [
+        "wave-1",
+        "yes"
+      ],
+      "waves": [
+        {
+          "node": "wave-1",
+          "per": "statement",
+          "request_ids": [
+            "quality/NFR-JEV-0001.s1/wave-1/r1",
+            "quality/NFR-JEV-0001.s2/wave-1/r1",
+            "quality/NFR-JEV-0001.s3/wave-1/r1",
+            "quality/NFR-JEV-0001.s4/wave-1/r1"
+          ],
+          "reason": [
+            {
+              "statement": {
+                "index": 1,
+                "modal": "Must",
+                "text": "judge-jev tests MUST run offline against recorded Jev answers."
+              },
+              "answers": [
+                {
+                  "id": "obligations",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                  "choice": "1",
+                  "criterion": "One obligation.",
+                  "confidence": 0.56,
+                  "probabilities": {
+                    "1": 0.67,
+                    "2": 0.31,
+                    "3": 0.02,
+                    "4+": 0.0
+                  },
+                  "runner_up": {
+                    "choice": "2",
+                    "probability": 0.31,
+                    "criterion": "Two independent obligations."
+                  }
+                },
+                {
+                  "id": "term",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                  "choice": "yes",
+                  "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "confidence": 0.68,
+                  "probabilities": {
+                    "no": 0.16,
+                    "yes": 0.84
+                  },
+                  "runner_up": {
+                    "choice": "no",
+                    "probability": 0.16,
+                    "criterion": "At least one term is none of these."
+                  }
+                },
+                {
+                  "id": "checkable",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                  "choice": "yes",
+                  "criterion": "Yes, by a test, a command run, or reading files.",
+                  "confidence": 0.97,
+                  "probabilities": {
+                    "needs a measure": 0.02,
+                    "no": 0.0,
+                    "yes": 0.98
+                  },
+                  "runner_up": {
+                    "choice": "needs a measure",
+                    "probability": 0.02,
+                    "criterion": "A check exists only once a measure is stated."
+                  }
+                },
+                {
+                  "id": "d_term_kind",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                  "choice": "none",
+                  "criterion": "Every term is common usage or defined in the record.",
+                  "confidence": 0.84,
+                  "probabilities": {
+                    "none": 0.87,
+                    "project term defined in a linked record": 0.01,
+                    "project term defined nowhere": 0.06,
+                    "undefined acronym": 0.05,
+                    "vague qualifier": 0.01
+                  },
+                  "runner_up": {
+                    "choice": "project term defined nowhere",
+                    "probability": 0.06,
+                    "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                  }
+                },
+                {
+                  "id": "d_check_method",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                  "choice": "CLI run",
+                  "criterion": "Running a command and reading its output or exit code.",
+                  "confidence": 0.36,
+                  "probabilities": {
+                    "CLI run": 0.49,
+                    "inspection or grep": 0.2,
+                    "needs a measure": 0.01,
+                    "none": 0.02,
+                    "unit test": 0.28
+                  },
+                  "runner_up": {
+                    "choice": "unit test",
+                    "probability": 0.28,
+                    "criterion": "A unit or integration test."
+                  }
+                }
+              ]
+            },
+            {
+              "statement": {
+                "index": 2,
+                "modal": "MustNot",
+                "text": "judge-jev tests MUST NOT depend on timing."
+              },
+              "answers": [
+                {
+                  "id": "obligations",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                  "choice": "1",
+                  "criterion": "One obligation.",
+                  "confidence": 0.99,
+                  "probabilities": {
+                    "1": 0.99,
+                    "2": 0.01,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "runner_up": {
+                    "choice": "2",
+                    "probability": 0.01,
+                    "criterion": "Two independent obligations."
+                  }
+                },
+                {
+                  "id": "term",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                  "choice": "yes",
+                  "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "confidence": 0.62,
+                  "probabilities": {
+                    "no": 0.19,
+                    "yes": 0.81
+                  },
+                  "runner_up": {
+                    "choice": "no",
+                    "probability": 0.19,
+                    "criterion": "At least one term is none of these."
+                  }
+                },
+                {
+                  "id": "checkable",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                  "choice": "yes",
+                  "criterion": "Yes, by a test, a command run, or reading files.",
+                  "confidence": 0.72,
+                  "probabilities": {
+                    "needs a measure": 0.18,
+                    "no": 0.01,
+                    "yes": 0.81
+                  },
+                  "runner_up": {
+                    "choice": "needs a measure",
+                    "probability": 0.18,
+                    "criterion": "A check exists only once a measure is stated."
+                  }
+                },
+                {
+                  "id": "d_term_kind",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                  "choice": "none",
+                  "criterion": "Every term is common usage or defined in the record.",
+                  "confidence": 0.51,
+                  "probabilities": {
+                    "none": 0.61,
+                    "project term defined in a linked record": 0.0,
+                    "project term defined nowhere": 0.08,
+                    "undefined acronym": 0.06,
+                    "vague qualifier": 0.25
+                  },
+                  "runner_up": {
+                    "choice": "vague qualifier",
+                    "probability": 0.25,
+                    "criterion": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure."
+                  }
+                },
+                {
+                  "id": "d_check_method",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                  "choice": "inspection or grep",
+                  "criterion": "Reading or searching files or output.",
+                  "confidence": 0.69,
+                  "probabilities": {
+                    "CLI run": 0.04,
+                    "inspection or grep": 0.75,
+                    "needs a measure": 0.03,
+                    "none": 0.04,
+                    "unit test": 0.14
+                  },
+                  "runner_up": {
+                    "choice": "unit test",
+                    "probability": 0.14,
+                    "criterion": "A unit or integration test."
+                  }
+                }
+              ]
+            },
+            {
+              "statement": {
+                "index": 3,
+                "modal": "MustNot",
+                "text": "judge-jev tests MUST NOT depend on sleeps."
+              },
+              "answers": [
+                {
+                  "id": "obligations",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                  "choice": "1",
+                  "criterion": "One obligation.",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "runner_up": null
+                },
+                {
+                  "id": "term",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                  "choice": "yes",
+                  "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "confidence": 0.58,
+                  "probabilities": {
+                    "no": 0.21,
+                    "yes": 0.79
+                  },
+                  "runner_up": {
+                    "choice": "no",
+                    "probability": 0.21,
+                    "criterion": "At least one term is none of these."
+                  }
+                },
+                {
+                  "id": "checkable",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                  "choice": "yes",
+                  "criterion": "Yes, by a test, a command run, or reading files.",
+                  "confidence": 0.89,
+                  "probabilities": {
+                    "needs a measure": 0.06,
+                    "no": 0.01,
+                    "yes": 0.93
+                  },
+                  "runner_up": {
+                    "choice": "needs a measure",
+                    "probability": 0.06,
+                    "criterion": "A check exists only once a measure is stated."
+                  }
+                },
+                {
+                  "id": "d_term_kind",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                  "choice": "none",
+                  "criterion": "Every term is common usage or defined in the record.",
+                  "confidence": 0.84,
+                  "probabilities": {
+                    "none": 0.87,
+                    "project term defined in a linked record": 0.0,
+                    "project term defined nowhere": 0.07,
+                    "undefined acronym": 0.05,
+                    "vague qualifier": 0.01
+                  },
+                  "runner_up": {
+                    "choice": "project term defined nowhere",
+                    "probability": 0.07,
+                    "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                  }
+                },
+                {
+                  "id": "d_check_method",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                  "choice": "inspection or grep",
+                  "criterion": "Reading or searching files or output.",
+                  "confidence": 0.92,
+                  "probabilities": {
+                    "CLI run": 0.01,
+                    "inspection or grep": 0.94,
+                    "needs a measure": 0.0,
+                    "none": 0.01,
+                    "unit test": 0.04
+                  },
+                  "runner_up": {
+                    "choice": "unit test",
+                    "probability": 0.04,
+                    "criterion": "A unit or integration test."
+                  }
+                }
+              ]
+            },
+            {
+              "statement": {
+                "index": 4,
+                "modal": "MustNot",
+                "text": "judge-jev tests MUST NOT depend on ordering."
+              },
+              "answers": [
+                {
+                  "id": "obligations",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                  "choice": "1",
+                  "criterion": "One obligation.",
+                  "confidence": 1.0,
+                  "probabilities": {
+                    "1": 1.0,
+                    "2": 0.0,
+                    "3": 0.0,
+                    "4+": 0.0
+                  },
+                  "runner_up": null
+                },
+                {
+                  "id": "term",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                  "choice": "yes",
+                  "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                  "confidence": 0.66,
+                  "probabilities": {
+                    "no": 0.17,
+                    "yes": 0.83
+                  },
+                  "runner_up": {
+                    "choice": "no",
+                    "probability": 0.17,
+                    "criterion": "At least one term is none of these."
+                  }
+                },
+                {
+                  "id": "checkable",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                  "choice": "yes",
+                  "criterion": "Yes, by a test, a command run, or reading files.",
+                  "confidence": 0.8,
+                  "probabilities": {
+                    "needs a measure": 0.11,
+                    "no": 0.02,
+                    "yes": 0.87
+                  },
+                  "runner_up": {
+                    "choice": "needs a measure",
+                    "probability": 0.11,
+                    "criterion": "A check exists only once a measure is stated."
+                  }
+                },
+                {
+                  "id": "d_term_kind",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                  "choice": "none",
+                  "criterion": "Every term is common usage or defined in the record.",
+                  "confidence": 0.51,
+                  "probabilities": {
+                    "none": 0.61,
+                    "project term defined in a linked record": 0.01,
+                    "project term defined nowhere": 0.14,
+                    "undefined acronym": 0.05,
+                    "vague qualifier": 0.19
+                  },
+                  "runner_up": {
+                    "choice": "vague qualifier",
+                    "probability": 0.19,
+                    "criterion": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure."
+                  }
+                },
+                {
+                  "id": "d_check_method",
+                  "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                  "choice": "inspection or grep",
+                  "criterion": "Reading or searching files or output.",
+                  "confidence": 0.62,
+                  "probabilities": {
+                    "CLI run": 0.05,
+                    "inspection or grep": 0.7,
+                    "needs a measure": 0.01,
+                    "none": 0.04,
+                    "unit test": 0.2
+                  },
+                  "runner_up": {
+                    "choice": "unit test",
+                    "probability": 0.2,
+                    "criterion": "A unit or integration test."
+                  }
+                }
+              ]
+            }
+          ],
+          "matched_statements": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "next": "yes",
+          "verdict": null,
+          "models": [
+            "jev-1.14.0"
+          ],
+          "rule_position": 4
+        }
+      ],
+      "answers": [
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s1",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 0.56,
+          "criterion": "One obligation.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s1",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.68,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s1",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.97,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s1",
+          "question": "d_term_kind",
+          "choice": "none",
+          "confidence": 0.84,
+          "criterion": "Every term is common usage or defined in the record.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s1",
+          "question": "d_check_method",
+          "choice": "CLI run",
+          "confidence": 0.36,
+          "criterion": "Running a command and reading its output or exit code.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s2",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 0.99,
+          "criterion": "One obligation.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s2",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.62,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s2",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.72,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s2",
+          "question": "d_term_kind",
+          "choice": "none",
+          "confidence": 0.51,
+          "criterion": "Every term is common usage or defined in the record.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s2",
+          "question": "d_check_method",
+          "choice": "inspection or grep",
+          "confidence": 0.69,
+          "criterion": "Reading or searching files or output.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s3",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s3",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.58,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s3",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.89,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s3",
+          "question": "d_term_kind",
+          "choice": "none",
+          "confidence": 0.84,
+          "criterion": "Every term is common usage or defined in the record.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s3",
+          "question": "d_check_method",
+          "choice": "inspection or grep",
+          "confidence": 0.92,
+          "criterion": "Reading or searching files or output.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s4",
+          "question": "obligations",
+          "choice": "1",
+          "confidence": 1.0,
+          "criterion": "One obligation.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s4",
+          "question": "term",
+          "choice": "yes",
+          "confidence": 0.66,
+          "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s4",
+          "question": "checkable",
+          "choice": "yes",
+          "confidence": 0.8,
+          "criterion": "Yes, by a test, a command run, or reading files.",
+          "status": "gate"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s4",
+          "question": "d_term_kind",
+          "choice": "none",
+          "confidence": 0.51,
+          "criterion": "Every term is common usage or defined in the record.",
+          "status": "diagnostic"
+        },
+        {
+          "wave": "wave-1",
+          "item": "NFR-JEV-0001.s4",
+          "question": "d_check_method",
+          "choice": "inspection or grep",
+          "confidence": 0.62,
+          "criterion": "Reading or searching files or output.",
+          "status": "diagnostic"
+        }
+      ],
+      "raw": {
+        "record": {
+          "id": "NFR-JEV-0001",
+          "kind": "nfr",
+          "source": {
+            "raptor_index": "{tmp}/decidr-repo-example.n7y7yg/index.json"
+          }
+        },
+        "tree": {
+          "id": "quality-nfr",
+          "sha256": "94e04d9e0dce6c67a0abaaff7ac05c4d2f08dd4080e5db674f5097b1dfc47a3a",
+          "source": "shipped",
+          "path": "{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-nfr.json"
+        },
+        "verdict": "yes",
+        "path": [
+          "wave-1",
+          "yes"
+        ],
+        "waves": [
+          {
+            "node": "wave-1",
+            "per": "statement",
+            "request_ids": [
+              "quality/NFR-JEV-0001.s1/wave-1/r1",
+              "quality/NFR-JEV-0001.s2/wave-1/r1",
+              "quality/NFR-JEV-0001.s3/wave-1/r1",
+              "quality/NFR-JEV-0001.s4/wave-1/r1"
+            ],
+            "reason": [
+              {
+                "statement": {
+                  "index": 1,
+                  "modal": "Must",
+                  "text": "judge-jev tests MUST run offline against recorded Jev answers."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "1",
+                    "criterion": "One obligation.",
+                    "confidence": 0.56,
+                    "probabilities": {
+                      "1": 0.67,
+                      "2": 0.31,
+                      "3": 0.02,
+                      "4+": 0.0
+                    },
+                    "runner_up": {
+                      "choice": "2",
+                      "probability": 0.31,
+                      "criterion": "Two independent obligations."
+                    }
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                    "choice": "yes",
+                    "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                    "confidence": 0.68,
+                    "probabilities": {
+                      "no": 0.16,
+                      "yes": 0.84
+                    },
+                    "runner_up": {
+                      "choice": "no",
+                      "probability": 0.16,
+                      "criterion": "At least one term is none of these."
+                    }
+                  },
+                  {
+                    "id": "checkable",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                    "choice": "yes",
+                    "criterion": "Yes, by a test, a command run, or reading files.",
+                    "confidence": 0.97,
+                    "probabilities": {
+                      "needs a measure": 0.02,
+                      "no": 0.0,
+                      "yes": 0.98
+                    },
+                    "runner_up": {
+                      "choice": "needs a measure",
+                      "probability": 0.02,
+                      "criterion": "A check exists only once a measure is stated."
+                    }
+                  },
+                  {
+                    "id": "d_term_kind",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.84,
+                    "probabilities": {
+                      "none": 0.87,
+                      "project term defined in a linked record": 0.01,
+                      "project term defined nowhere": 0.06,
+                      "undefined acronym": 0.05,
+                      "vague qualifier": 0.01
+                    },
+                    "runner_up": {
+                      "choice": "project term defined nowhere",
+                      "probability": 0.06,
+                      "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                    }
+                  },
+                  {
+                    "id": "d_check_method",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "CLI run",
+                    "criterion": "Running a command and reading its output or exit code.",
+                    "confidence": 0.36,
+                    "probabilities": {
+                      "CLI run": 0.49,
+                      "inspection or grep": 0.2,
+                      "needs a measure": 0.01,
+                      "none": 0.02,
+                      "unit test": 0.28
+                    },
+                    "runner_up": {
+                      "choice": "unit test",
+                      "probability": 0.28,
+                      "criterion": "A unit or integration test."
+                    }
+                  }
+                ]
+              },
+              {
+                "statement": {
+                  "index": 2,
+                  "modal": "MustNot",
+                  "text": "judge-jev tests MUST NOT depend on timing."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "1",
+                    "criterion": "One obligation.",
+                    "confidence": 0.99,
+                    "probabilities": {
+                      "1": 0.99,
+                      "2": 0.01,
+                      "3": 0.0,
+                      "4+": 0.0
+                    },
+                    "runner_up": {
+                      "choice": "2",
+                      "probability": 0.01,
+                      "criterion": "Two independent obligations."
+                    }
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                    "choice": "yes",
+                    "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                    "confidence": 0.62,
+                    "probabilities": {
+                      "no": 0.19,
+                      "yes": 0.81
+                    },
+                    "runner_up": {
+                      "choice": "no",
+                      "probability": 0.19,
+                      "criterion": "At least one term is none of these."
+                    }
+                  },
+                  {
+                    "id": "checkable",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                    "choice": "yes",
+                    "criterion": "Yes, by a test, a command run, or reading files.",
+                    "confidence": 0.72,
+                    "probabilities": {
+                      "needs a measure": 0.18,
+                      "no": 0.01,
+                      "yes": 0.81
+                    },
+                    "runner_up": {
+                      "choice": "needs a measure",
+                      "probability": 0.18,
+                      "criterion": "A check exists only once a measure is stated."
+                    }
+                  },
+                  {
+                    "id": "d_term_kind",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.51,
+                    "probabilities": {
+                      "none": 0.61,
+                      "project term defined in a linked record": 0.0,
+                      "project term defined nowhere": 0.08,
+                      "undefined acronym": 0.06,
+                      "vague qualifier": 0.25
+                    },
+                    "runner_up": {
+                      "choice": "vague qualifier",
+                      "probability": 0.25,
+                      "criterion": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure."
+                    }
+                  },
+                  {
+                    "id": "d_check_method",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "inspection or grep",
+                    "criterion": "Reading or searching files or output.",
+                    "confidence": 0.69,
+                    "probabilities": {
+                      "CLI run": 0.04,
+                      "inspection or grep": 0.75,
+                      "needs a measure": 0.03,
+                      "none": 0.04,
+                      "unit test": 0.14
+                    },
+                    "runner_up": {
+                      "choice": "unit test",
+                      "probability": 0.14,
+                      "criterion": "A unit or integration test."
+                    }
+                  }
+                ]
+              },
+              {
+                "statement": {
+                  "index": 3,
+                  "modal": "MustNot",
+                  "text": "judge-jev tests MUST NOT depend on sleeps."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "1",
+                    "criterion": "One obligation.",
+                    "confidence": 1.0,
+                    "probabilities": {
+                      "1": 1.0,
+                      "2": 0.0,
+                      "3": 0.0,
+                      "4+": 0.0
+                    },
+                    "runner_up": null
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                    "choice": "yes",
+                    "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                    "confidence": 0.58,
+                    "probabilities": {
+                      "no": 0.21,
+                      "yes": 0.79
+                    },
+                    "runner_up": {
+                      "choice": "no",
+                      "probability": 0.21,
+                      "criterion": "At least one term is none of these."
+                    }
+                  },
+                  {
+                    "id": "checkable",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                    "choice": "yes",
+                    "criterion": "Yes, by a test, a command run, or reading files.",
+                    "confidence": 0.89,
+                    "probabilities": {
+                      "needs a measure": 0.06,
+                      "no": 0.01,
+                      "yes": 0.93
+                    },
+                    "runner_up": {
+                      "choice": "needs a measure",
+                      "probability": 0.06,
+                      "criterion": "A check exists only once a measure is stated."
+                    }
+                  },
+                  {
+                    "id": "d_term_kind",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.84,
+                    "probabilities": {
+                      "none": 0.87,
+                      "project term defined in a linked record": 0.0,
+                      "project term defined nowhere": 0.07,
+                      "undefined acronym": 0.05,
+                      "vague qualifier": 0.01
+                    },
+                    "runner_up": {
+                      "choice": "project term defined nowhere",
+                      "probability": 0.07,
+                      "criterion": "A project term defined neither here nor in a linked record. Fix: define it or link the record."
+                    }
+                  },
+                  {
+                    "id": "d_check_method",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "inspection or grep",
+                    "criterion": "Reading or searching files or output.",
+                    "confidence": 0.92,
+                    "probabilities": {
+                      "CLI run": 0.01,
+                      "inspection or grep": 0.94,
+                      "needs a measure": 0.0,
+                      "none": 0.01,
+                      "unit test": 0.04
+                    },
+                    "runner_up": {
+                      "choice": "unit test",
+                      "probability": 0.04,
+                      "criterion": "A unit or integration test."
+                    }
+                  }
+                ]
+              },
+              {
+                "statement": {
+                  "index": 4,
+                  "modal": "MustNot",
+                  "text": "judge-jev tests MUST NOT depend on ordering."
+                },
+                "answers": [
+                  {
+                    "id": "obligations",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?",
+                    "choice": "1",
+                    "criterion": "One obligation.",
+                    "confidence": 1.0,
+                    "probabilities": {
+                      "1": 1.0,
+                      "2": 0.0,
+                      "3": 0.0,
+                      "4+": 0.0
+                    },
+                    "runner_up": null
+                  },
+                  {
+                    "id": "term",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?",
+                    "choice": "yes",
+                    "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
+                    "confidence": 0.66,
+                    "probabilities": {
+                      "no": 0.17,
+                      "yes": 0.83
+                    },
+                    "runner_up": {
+                      "choice": "no",
+                      "probability": 0.17,
+                      "criterion": "At least one term is none of these."
+                    }
+                  },
+                  {
+                    "id": "checkable",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?",
+                    "choice": "yes",
+                    "criterion": "Yes, by a test, a command run, or reading files.",
+                    "confidence": 0.8,
+                    "probabilities": {
+                      "needs a measure": 0.11,
+                      "no": 0.02,
+                      "yes": 0.87
+                    },
+                    "runner_up": {
+                      "choice": "needs a measure",
+                      "probability": 0.11,
+                      "criterion": "A check exists only once a measure is stated."
+                    }
+                  },
+                  {
+                    "id": "d_term_kind",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?",
+                    "choice": "none",
+                    "criterion": "Every term is common usage or defined in the record.",
+                    "confidence": 0.51,
+                    "probabilities": {
+                      "none": 0.61,
+                      "project term defined in a linked record": 0.01,
+                      "project term defined nowhere": 0.14,
+                      "undefined acronym": 0.05,
+                      "vague qualifier": 0.19
+                    },
+                    "runner_up": {
+                      "choice": "vague qualifier",
+                      "probability": 0.19,
+                      "criterion": "A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure."
+                    }
+                  },
+                  {
+                    "id": "d_check_method",
+                    "text": "`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?",
+                    "choice": "inspection or grep",
+                    "criterion": "Reading or searching files or output.",
+                    "confidence": 0.62,
+                    "probabilities": {
+                      "CLI run": 0.05,
+                      "inspection or grep": 0.7,
+                      "needs a measure": 0.01,
+                      "none": 0.04,
+                      "unit test": 0.2
+                    },
+                    "runner_up": {
+                      "choice": "unit test",
+                      "probability": 0.2,
+                      "criterion": "A unit or integration test."
+                    }
+                  }
+                ]
+              }
+            ],
+            "matched_statements": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "next": "yes",
+            "verdict": null,
+            "models": [
+              "jev-1.14.0"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "uv",
+        "run",
+        "--python",
+        "3.11",
+        "--script",
+        "{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/scripts/jev_judge.py",
+        "quality",
+        "--index",
+        "{tmp}/decidr-repo-example.n7y7yg/index.json",
+        "--repository-root",
+        "{repo}",
+        "--run-name",
+        "quality-example-live",
+        "--req",
+        "REQ-JEV-0001",
+        "--adr",
+        "ADR-JEV-0001",
+        "--nfr",
+        "NFR-JEV-0001"
+      ],
+      "environment": {
+        "SC_PROJECT": "decidr-question-tree"
+      },
+      "exit_code": 0,
+      "stdout": "{\n  \"success\": true,\n  \"error\": null,\n  \"data\": {\n    \"dry_run\": false,\n    \"results\": [\n      {\n        \"record\": {\n          \"id\": \"REQ-JEV-0001\",\n          \"kind\": \"req\",\n          \"source\": {\n            \"raptor_index\": \"{tmp}/decidr-repo-example.n7y7yg/index.json\"\n          }\n        },\n        \"tree\": {\n          \"id\": \"quality-req\",\n          \"sha256\": \"36c00a0d3d318e065ececdb6d1fae1a291dd833552ae93a662802ab02769081c\",\n          \"source\": \"shipped\",\n          \"path\": \"{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-req.json\"\n        },\n        \"verdict\": \"yes\",\n        \"path\": [\n          \"wave-1\",\n          \"yes\"\n        ],\n        \"waves\": [\n          {\n            \"node\": \"wave-1\",\n            \"per\": \"statement\",\n            \"request_ids\": [\n              \"quality/REQ-JEV-0001.s1/wave-1/r1\",\n              \"quality/REQ-JEV-0001.s2/wave-1/r1\",\n              \"quality/REQ-JEV-0001.s3/wave-1/r1\"\n            ],\n            \"reason\": [\n              {\n                \"statement\": {\n                  \"index\": 1,\n                  \"modal\": \"Must\",\n                  \"text\": \"judge-jev MUST obtain records through Raptor's query interface.\"\n                },\n                \"answers\": [\n                  {\n                    \"id\": \"obligations\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?\",\n                    \"choice\": \"1\",\n                    \"criterion\": \"One obligation.\",\n                    \"confidence\": 0.99,\n                    \"probabilities\": {\n                      \"1\": 0.99,\n                      \"2\": 0.01,\n                      \"3\": 0.0,\n                      \"4+\": 0.0\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"2\",\n                      \"probability\": 0.01,\n                      \"criterion\": \"Two independent obligations.\"\n                    }\n                  },\n                  {\n                    \"id\": \"term\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Every term is common usage, defined in this record, or defined in a linked record.\",\n                    \"confidence\": 0.28,\n                    \"probabilities\": {\n                      \"no\": 0.36,\n                      \"yes\": 0.64\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"no\",\n                      \"probability\": 0.36,\n                      \"criterion\": \"At least one term is none of these.\"\n                    }\n                  },\n                  {\n                    \"id\": \"checkable\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Yes, by a test, a command run, or reading files.\",\n                    \"confidence\": 0.96,\n                    \"probabilities\": {\n                      \"needs a measure\": 0.02,\n                      \"no\": 0.01,\n                      \"yes\": 0.97\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"needs a measure\",\n                      \"probability\": 0.02,\n                      \"criterion\": \"A check exists only once a measure is stated.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_term_kind\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?\",\n                    \"choice\": \"none\",\n                    \"criterion\": \"Every term is common usage or defined in the record.\",\n                    \"confidence\": 0.64,\n                    \"probabilities\": {\n                      \"none\": 0.71,\n                      \"project term defined in a linked record\": 0.02,\n                      \"project term defined nowhere\": 0.13,\n                      \"undefined acronym\": 0.14,\n                      \"vague qualifier\": 0.0\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"undefined acronym\",\n                      \"probability\": 0.14,\n                      \"criterion\": \"An acronym that is never expanded or defined. Fix: define the acronym.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_check_method\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?\",\n                    \"choice\": \"inspection or grep\",\n                    \"criterion\": \"Reading or searching files or output.\",\n                    \"confidence\": 0.7,\n                    \"probabilities\": {\n                      \"CLI run\": 0.02,\n                      \"inspection or grep\": 0.76,\n                      \"needs a measure\": 0.0,\n                      \"none\": 0.04,\n                      \"unit test\": 0.18\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"unit test\",\n                      \"probability\": 0.18,\n                      \"criterion\": \"A unit or integration test.\"\n                    }\n                  }\n                ]\n              },\n              {\n                \"statement\": {\n                  \"index\": 2,\n                  \"modal\": \"MustNot\",\n                  \"text\": \"judge-jev MUST NOT parse record Markdown itself.\"\n                },\n                \"answers\": [\n                  {\n                    \"id\": \"obligations\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?\",\n                    \"choice\": \"1\",\n                    \"criterion\": \"One obligation.\",\n                    \"confidence\": 1.0,\n                    \"probabilities\": {\n                      \"1\": 1.0,\n                      \"2\": 0.0,\n                      \"3\": 0.0,\n                      \"4+\": 0.0\n                    },\n                    \"runner_up\": null\n                  },\n                  {\n                    \"id\": \"term\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Every term is common usage, defined in this record, or defined in a linked record.\",\n                    \"confidence\": 0.32,\n                    \"probabilities\": {\n                      \"no\": 0.34,\n                      \"yes\": 0.66\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"no\",\n                      \"probability\": 0.34,\n                      \"criterion\": \"At least one term is none of these.\"\n                    }\n                  },\n                  {\n                    \"id\": \"checkable\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Yes, by a test, a command run, or reading files.\",\n                    \"confidence\": 0.98,\n                    \"probabilities\": {\n                      \"needs a measure\": 0.01,\n                      \"no\": 0.0,\n                      \"yes\": 0.99\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"needs a measure\",\n                      \"probability\": 0.01,\n                      \"criterion\": \"A check exists only once a measure is stated.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_term_kind\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?\",\n                    \"choice\": \"none\",\n                    \"criterion\": \"Every term is common usage or defined in the record.\",\n                    \"confidence\": 0.77,\n                    \"probabilities\": {\n                      \"none\": 0.82,\n                      \"project term defined in a linked record\": 0.01,\n                      \"project term defined nowhere\": 0.09,\n                      \"undefined acronym\": 0.04,\n                      \"vague qualifier\": 0.04\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"project term defined nowhere\",\n                      \"probability\": 0.09,\n                      \"criterion\": \"A project term defined neither here nor in a linked record. Fix: define it or link the record.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_check_method\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?\",\n                    \"choice\": \"inspection or grep\",\n                    \"criterion\": \"Reading or searching files or output.\",\n                    \"confidence\": 0.99,\n                    \"probabilities\": {\n                      \"CLI run\": 0.0,\n                      \"inspection or grep\": 0.99,\n                      \"needs a measure\": 0.0,\n                      \"none\": 0.0,\n                      \"unit test\": 0.01\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"unit test\",\n                      \"probability\": 0.01,\n                      \"criterion\": \"A unit or integration test.\"\n                    }\n                  }\n                ]\n              },\n              {\n                \"statement\": {\n                  \"index\": 3,\n                  \"modal\": \"MustNot\",\n                  \"text\": \"judge-jev MUST NOT run SQL (Structured Query Language) against the record\\nstore itself.\"\n                },\n                \"answers\": [\n                  {\n                    \"id\": \"obligations\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?\",\n                    \"choice\": \"1\",\n                    \"criterion\": \"One obligation.\",\n                    \"confidence\": 0.97,\n                    \"probabilities\": {\n                      \"1\": 0.98,\n                      \"2\": 0.02,\n                      \"3\": 0.0,\n                      \"4+\": 0.0\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"2\",\n                      \"probability\": 0.02,\n                      \"criterion\": \"Two independent obligations.\"\n                    }\n                  },\n                  {\n                    \"id\": \"term\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Every term is common usage, defined in this record, or defined in a linked record.\",\n                    \"confidence\": 0.4,\n                    \"probabilities\": {\n                      \"no\": 0.3,\n                      \"yes\": 0.7\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"no\",\n                      \"probability\": 0.3,\n                      \"criterion\": \"At least one term is none of these.\"\n                    }\n                  },\n                  {\n                    \"id\": \"checkable\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Yes, by a test, a command run, or reading files.\",\n                    \"confidence\": 0.98,\n                    \"probabilities\": {\n                      \"needs a measure\": 0.01,\n                      \"no\": 0.0,\n                      \"yes\": 0.99\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"needs a measure\",\n                      \"probability\": 0.01,\n                      \"criterion\": \"A check exists only once a measure is stated.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_term_kind\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?\",\n                    \"choice\": \"none\",\n                    \"criterion\": \"Every term is common usage or defined in the record.\",\n                    \"confidence\": 0.66,\n                    \"probabilities\": {\n                      \"none\": 0.73,\n                      \"project term defined in a linked record\": 0.01,\n                      \"project term defined nowhere\": 0.15,\n                      \"undefined acronym\": 0.1,\n                      \"vague qualifier\": 0.01\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"project term defined nowhere\",\n                      \"probability\": 0.15,\n                      \"criterion\": \"A project term defined neither here nor in a linked record. Fix: define it or link the record.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_check_method\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?\",\n                    \"choice\": \"inspection or grep\",\n                    \"criterion\": \"Reading or searching files or output.\",\n                    \"confidence\": 1.0,\n                    \"probabilities\": {\n                      \"CLI run\": 0.0,\n                      \"inspection or grep\": 1.0,\n                      \"needs a measure\": 0.0,\n                      \"none\": 0.0,\n                      \"unit test\": 0.0\n                    },\n                    \"runner_up\": null\n                  }\n                ]\n              }\n            ],\n            \"matched_statements\": [\n              1,\n              2,\n              3\n            ],\n            \"next\": \"yes\",\n            \"verdict\": null,\n            \"models\": [\n              \"jev-1.14.0\"\n            ]\n          }\n        ]\n      },\n      {\n        \"record\": {\n          \"id\": \"ADR-JEV-0001\",\n          \"kind\": \"adr\",\n          \"source\": {\n            \"raptor_index\": \"{tmp}/decidr-repo-example.n7y7yg/index.json\"\n          }\n        },\n        \"tree\": {\n          \"id\": \"quality-adr\",\n          \"sha256\": \"2ee15b3641c6e3effae3eb7892151a110f0eda740080f83a0a1be9e2cd257fc1\",\n          \"source\": \"shipped\",\n          \"path\": \"{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-adr.json\"\n        },\n        \"verdict\": \"yes\",\n        \"path\": [\n          \"wave-1\"\n        ],\n        \"waves\": [\n          {\n            \"node\": \"wave-1\",\n            \"request_id\": \"quality/ADR-JEV-0001/wave-1/r1\",\n            \"reason\": [\n              {\n                \"id\": \"context\",\n                \"text\": \"`item.text` is one architecture decision record as JSON. Does its context name the problem and the forces behind the decision?\",\n                \"choice\": \"problem and forces\",\n                \"criterion\": \"Names the problem and the forces or constraints that shaped the decision.\",\n                \"confidence\": 0.98,\n                \"probabilities\": {\n                  \"background only\": 0.01,\n                  \"missing\": 0.0,\n                  \"problem and forces\": 0.99\n                },\n                \"runner_up\": {\n                  \"choice\": \"background only\",\n                  \"probability\": 0.01,\n                  \"criterion\": \"Gives background but no problem. Fix: state the problem.\"\n                }\n              },\n              {\n                \"id\": \"alternatives\",\n                \"text\": \"`item.text` is one architecture decision record as JSON. Does it name the alternatives considered?\",\n                \"choice\": \"named with reasons rejected\",\n                \"criterion\": \"Names alternatives and why each was rejected.\",\n                \"confidence\": 1.0,\n                \"probabilities\": {\n                  \"named only\": 0.0,\n                  \"named with reasons rejected\": 1.0,\n                  \"none\": 0.0\n                },\n                \"runner_up\": null\n              },\n              {\n                \"id\": \"consequences\",\n                \"text\": \"`item.text` is one architecture decision record as JSON. Does it name the decision's consequences?\",\n                \"choice\": \"positive and negative\",\n                \"criterion\": \"Names benefits and costs.\",\n                \"confidence\": 1.0,\n                \"probabilities\": {\n                  \"missing\": 0.0,\n                  \"positive and negative\": 1.0,\n                  \"positive only\": 0.0\n                },\n                \"runner_up\": null\n              }\n            ],\n            \"next\": null,\n            \"verdict\": \"yes\",\n            \"models\": [\n              \"jev-1.14.0\"\n            ]\n          }\n        ]\n      },\n      {\n        \"record\": {\n          \"id\": \"NFR-JEV-0001\",\n          \"kind\": \"nfr\",\n          \"source\": {\n            \"raptor_index\": \"{tmp}/decidr-repo-example.n7y7yg/index.json\"\n          }\n        },\n        \"tree\": {\n          \"id\": \"quality-nfr\",\n          \"sha256\": \"94e04d9e0dce6c67a0abaaff7ac05c4d2f08dd4080e5db674f5097b1dfc47a3a\",\n          \"source\": \"shipped\",\n          \"path\": \"{tmp}/decidr-repo-example.n7y7yg/installed/.claude/skills/judge-jev/assets/questions/quality-nfr.json\"\n        },\n        \"verdict\": \"yes\",\n        \"path\": [\n          \"wave-1\",\n          \"yes\"\n        ],\n        \"waves\": [\n          {\n            \"node\": \"wave-1\",\n            \"per\": \"statement\",\n            \"request_ids\": [\n              \"quality/NFR-JEV-0001.s1/wave-1/r1\",\n              \"quality/NFR-JEV-0001.s2/wave-1/r1\",\n              \"quality/NFR-JEV-0001.s3/wave-1/r1\",\n              \"quality/NFR-JEV-0001.s4/wave-1/r1\"\n            ],\n            \"reason\": [\n              {\n                \"statement\": {\n                  \"index\": 1,\n                  \"modal\": \"Must\",\n                  \"text\": \"judge-jev tests MUST run offline against recorded Jev answers.\"\n                },\n                \"answers\": [\n                  {\n                    \"id\": \"obligations\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?\",\n                    \"choice\": \"1\",\n                    \"criterion\": \"One obligation.\",\n                    \"confidence\": 0.56,\n                    \"probabilities\": {\n                      \"1\": 0.67,\n                      \"2\": 0.31,\n                      \"3\": 0.02,\n                      \"4+\": 0.0\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"2\",\n                      \"probability\": 0.31,\n                      \"criterion\": \"Two independent obligations.\"\n                    }\n                  },\n                  {\n                    \"id\": \"term\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Every term is common usage, defined in this record, or defined in a linked record.\",\n                    \"confidence\": 0.68,\n                    \"probabilities\": {\n                      \"no\": 0.16,\n                      \"yes\": 0.84\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"no\",\n                      \"probability\": 0.16,\n                      \"criterion\": \"At least one term is none of these.\"\n                    }\n                  },\n                  {\n                    \"id\": \"checkable\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Yes, by a test, a command run, or reading files.\",\n                    \"confidence\": 0.97,\n                    \"probabilities\": {\n                      \"needs a measure\": 0.02,\n                      \"no\": 0.0,\n                      \"yes\": 0.98\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"needs a measure\",\n                      \"probability\": 0.02,\n                      \"criterion\": \"A check exists only once a measure is stated.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_term_kind\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?\",\n                    \"choice\": \"none\",\n                    \"criterion\": \"Every term is common usage or defined in the record.\",\n                    \"confidence\": 0.84,\n                    \"probabilities\": {\n                      \"none\": 0.87,\n                      \"project term defined in a linked record\": 0.01,\n                      \"project term defined nowhere\": 0.06,\n                      \"undefined acronym\": 0.05,\n                      \"vague qualifier\": 0.01\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"project term defined nowhere\",\n                      \"probability\": 0.06,\n                      \"criterion\": \"A project term defined neither here nor in a linked record. Fix: define it or link the record.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_check_method\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?\",\n                    \"choice\": \"CLI run\",\n                    \"criterion\": \"Running a command and reading its output or exit code.\",\n                    \"confidence\": 0.36,\n                    \"probabilities\": {\n                      \"CLI run\": 0.49,\n                      \"inspection or grep\": 0.2,\n                      \"needs a measure\": 0.01,\n                      \"none\": 0.02,\n                      \"unit test\": 0.28\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"unit test\",\n                      \"probability\": 0.28,\n                      \"criterion\": \"A unit or integration test.\"\n                    }\n                  }\n                ]\n              },\n              {\n                \"statement\": {\n                  \"index\": 2,\n                  \"modal\": \"MustNot\",\n                  \"text\": \"judge-jev tests MUST NOT depend on timing.\"\n                },\n                \"answers\": [\n                  {\n                    \"id\": \"obligations\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?\",\n                    \"choice\": \"1\",\n                    \"criterion\": \"One obligation.\",\n                    \"confidence\": 0.99,\n                    \"probabilities\": {\n                      \"1\": 0.99,\n                      \"2\": 0.01,\n                      \"3\": 0.0,\n                      \"4+\": 0.0\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"2\",\n                      \"probability\": 0.01,\n                      \"criterion\": \"Two independent obligations.\"\n                    }\n                  },\n                  {\n                    \"id\": \"term\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Every term is common usage, defined in this record, or defined in a linked record.\",\n                    \"confidence\": 0.62,\n                    \"probabilities\": {\n                      \"no\": 0.19,\n                      \"yes\": 0.81\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"no\",\n                      \"probability\": 0.19,\n                      \"criterion\": \"At least one term is none of these.\"\n                    }\n                  },\n                  {\n                    \"id\": \"checkable\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Yes, by a test, a command run, or reading files.\",\n                    \"confidence\": 0.72,\n                    \"probabilities\": {\n                      \"needs a measure\": 0.18,\n                      \"no\": 0.01,\n                      \"yes\": 0.81\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"needs a measure\",\n                      \"probability\": 0.18,\n                      \"criterion\": \"A check exists only once a measure is stated.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_term_kind\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?\",\n                    \"choice\": \"none\",\n                    \"criterion\": \"Every term is common usage or defined in the record.\",\n                    \"confidence\": 0.51,\n                    \"probabilities\": {\n                      \"none\": 0.61,\n                      \"project term defined in a linked record\": 0.0,\n                      \"project term defined nowhere\": 0.08,\n                      \"undefined acronym\": 0.06,\n                      \"vague qualifier\": 0.25\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"vague qualifier\",\n                      \"probability\": 0.25,\n                      \"criterion\": \"A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_check_method\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?\",\n                    \"choice\": \"inspection or grep\",\n                    \"criterion\": \"Reading or searching files or output.\",\n                    \"confidence\": 0.69,\n                    \"probabilities\": {\n                      \"CLI run\": 0.04,\n                      \"inspection or grep\": 0.75,\n                      \"needs a measure\": 0.03,\n                      \"none\": 0.04,\n                      \"unit test\": 0.14\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"unit test\",\n                      \"probability\": 0.14,\n                      \"criterion\": \"A unit or integration test.\"\n                    }\n                  }\n                ]\n              },\n              {\n                \"statement\": {\n                  \"index\": 3,\n                  \"modal\": \"MustNot\",\n                  \"text\": \"judge-jev tests MUST NOT depend on sleeps.\"\n                },\n                \"answers\": [\n                  {\n                    \"id\": \"obligations\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?\",\n                    \"choice\": \"1\",\n                    \"criterion\": \"One obligation.\",\n                    \"confidence\": 1.0,\n                    \"probabilities\": {\n                      \"1\": 1.0,\n                      \"2\": 0.0,\n                      \"3\": 0.0,\n                      \"4+\": 0.0\n                    },\n                    \"runner_up\": null\n                  },\n                  {\n                    \"id\": \"term\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Every term is common usage, defined in this record, or defined in a linked record.\",\n                    \"confidence\": 0.58,\n                    \"probabilities\": {\n                      \"no\": 0.21,\n                      \"yes\": 0.79\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"no\",\n                      \"probability\": 0.21,\n                      \"criterion\": \"At least one term is none of these.\"\n                    }\n                  },\n                  {\n                    \"id\": \"checkable\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Yes, by a test, a command run, or reading files.\",\n                    \"confidence\": 0.89,\n                    \"probabilities\": {\n                      \"needs a measure\": 0.06,\n                      \"no\": 0.01,\n                      \"yes\": 0.93\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"needs a measure\",\n                      \"probability\": 0.06,\n                      \"criterion\": \"A check exists only once a measure is stated.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_term_kind\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?\",\n                    \"choice\": \"none\",\n                    \"criterion\": \"Every term is common usage or defined in the record.\",\n                    \"confidence\": 0.84,\n                    \"probabilities\": {\n                      \"none\": 0.87,\n                      \"project term defined in a linked record\": 0.0,\n                      \"project term defined nowhere\": 0.07,\n                      \"undefined acronym\": 0.05,\n                      \"vague qualifier\": 0.01\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"project term defined nowhere\",\n                      \"probability\": 0.07,\n                      \"criterion\": \"A project term defined neither here nor in a linked record. Fix: define it or link the record.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_check_method\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?\",\n                    \"choice\": \"inspection or grep\",\n                    \"criterion\": \"Reading or searching files or output.\",\n                    \"confidence\": 0.92,\n                    \"probabilities\": {\n                      \"CLI run\": 0.01,\n                      \"inspection or grep\": 0.94,\n                      \"needs a measure\": 0.0,\n                      \"none\": 0.01,\n                      \"unit test\": 0.04\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"unit test\",\n                      \"probability\": 0.04,\n                      \"criterion\": \"A unit or integration test.\"\n                    }\n                  }\n                ]\n              },\n              {\n                \"statement\": {\n                  \"index\": 4,\n                  \"modal\": \"MustNot\",\n                  \"text\": \"judge-jev tests MUST NOT depend on ordering.\"\n                },\n                \"answers\": [\n                  {\n                    \"id\": \"obligations\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. How many independent obligations does this statement impose?\",\n                    \"choice\": \"1\",\n                    \"criterion\": \"One obligation.\",\n                    \"confidence\": 1.0,\n                    \"probabilities\": {\n                      \"1\": 1.0,\n                      \"2\": 0.0,\n                      \"3\": 0.0,\n                      \"4+\": 0.0\n                    },\n                    \"runner_up\": null\n                  },\n                  {\n                    \"id\": \"term\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Is every term in this statement common usage, defined in this record, or defined in a linked record?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Every term is common usage, defined in this record, or defined in a linked record.\",\n                    \"confidence\": 0.66,\n                    \"probabilities\": {\n                      \"no\": 0.17,\n                      \"yes\": 0.83\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"no\",\n                      \"probability\": 0.17,\n                      \"criterion\": \"At least one term is none of these.\"\n                    }\n                  },\n                  {\n                    \"id\": \"checkable\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. Can a tester decide whether this statement holds?\",\n                    \"choice\": \"yes\",\n                    \"criterion\": \"Yes, by a test, a command run, or reading files.\",\n                    \"confidence\": 0.8,\n                    \"probabilities\": {\n                      \"needs a measure\": 0.11,\n                      \"no\": 0.02,\n                      \"yes\": 0.87\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"needs a measure\",\n                      \"probability\": 0.11,\n                      \"criterion\": \"A check exists only once a measure is stated.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_term_kind\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What kind of term in this statement is unclear?\",\n                    \"choice\": \"none\",\n                    \"criterion\": \"Every term is common usage or defined in the record.\",\n                    \"confidence\": 0.51,\n                    \"probabilities\": {\n                      \"none\": 0.61,\n                      \"project term defined in a linked record\": 0.01,\n                      \"project term defined nowhere\": 0.14,\n                      \"undefined acronym\": 0.05,\n                      \"vague qualifier\": 0.19\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"vague qualifier\",\n                      \"probability\": 0.19,\n                      \"criterion\": \"A qualifier such as fast, clear or robust with no measure. Fix: replace it with a measure.\"\n                    }\n                  },\n                  {\n                    \"id\": \"d_check_method\",\n                    \"text\": \"`item.text` is JSON: `statement` is one MUST or MUST NOT statement of the non-functional requirement record in `record`. Judge only `statement`; use `record` as context. What would check this statement?\",\n                    \"choice\": \"inspection or grep\",\n                    \"criterion\": \"Reading or searching files or output.\",\n                    \"confidence\": 0.62,\n                    \"probabilities\": {\n                      \"CLI run\": 0.05,\n                      \"inspection or grep\": 0.7,\n                      \"needs a measure\": 0.01,\n                      \"none\": 0.04,\n                      \"unit test\": 0.2\n                    },\n                    \"runner_up\": {\n                      \"choice\": \"unit test\",\n                      \"probability\": 0.2,\n                      \"criterion\": \"A unit or integration test.\"\n                    }\n                  }\n                ]\n              }\n            ],\n            \"matched_statements\": [\n              1,\n              2,\n              3,\n              4\n            ],\n            \"next\": \"yes\",\n            \"verdict\": null,\n            \"models\": [\n              \"jev-1.14.0\"\n            ]\n          }\n        ]\n      }\n    ],\n    \"log\": {\n      \"run\": \"quality-example-live\"\n    }\n  }\n}\n",
+      "stderr": "Installed 20 packages in 11ms\n"
+    }
+  ],
+  "exit_code": 0,
+  "path_presentation": "Local execution paths are placeholders; model response values, ids, and digests are unchanged."
+}
