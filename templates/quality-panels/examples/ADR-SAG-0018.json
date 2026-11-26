@@ -1,0 +1,61 @@
+{
+ "record": {
+  "id": "ADR-SAG-0018",
+  "kind": "adr",
+  "kind_label": "architecture decision",
+  "title": "ADR-SAG-0018: the decision was sound, the record left two things out",
+  "repo": "sc-agent",
+  "from": "develop",
+  "to": "0d63bd2b (PR #430)",
+  "evidence": "before and after: three runs each, reported by ai-lead 2026-11-25 · later single runs scored context 0.80 · the answer for alternatives after the edit was not captured · model jev-1.14.0"
+ },
+ "result": {
+  "before": "Verdict no on 3 of 3 runs · lowest 0.43",
+  "after": "Verdict yes on 3 of 3 runs · lowest 0.83",
+  "summary": "Two additions. The decision itself did not change."
+ },
+ "edits": [
+  {
+   "where": "Context",
+   "check_id": "context",
+   "check_label": "Does the context name the problem?",
+   "fault": "Jev answered \"background only\": the context gave background but named no problem. That answer alone gives verdict no.",
+   "named": "",
+   "named_by": "",
+   "named_share": "",
+   "segments": [],
+   "added": [
+    {
+     "to": "Context",
+     "text": "The problem is keeping the rendered release files consistent with that input and the pinned kit."
+    }
+   ],
+   "note": "",
+   "before": "background only",
+   "after": "problem and forces · 0.80",
+   "bar": "",
+   "meaning": "Meaning check: passed by ai-qa."
+  },
+  {
+   "where": "Alternatives Considered",
+   "check_id": "alternatives",
+   "check_label": "Are the alternatives named, with why each lost?",
+   "fault": "Jev answered \"none\": the record named no alternative. That answer alone gives verdict no.",
+   "named": "",
+   "named_by": "",
+   "named_share": "",
+   "segments": [],
+   "added": [
+    {
+     "to": "a new section, Alternatives Considered",
+     "text": "Alternative 1: Ad-hoc workflow edits. Description: Edit release workflows directly rather than use sc-publish. Why Rejected: The pinned kit owns the rendered release files; direct edits can drift from its consumer input."
+    }
+   ],
+   "note": "",
+   "before": "none",
+   "after": "named with reasons rejected",
+   "bar": "",
+   "meaning": "Meaning check: passed by ai-qa."
+  }
+ ]
+}

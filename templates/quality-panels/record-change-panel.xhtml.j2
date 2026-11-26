@@ -1,0 +1,49 @@
+---
+metadata:
+  name: record-change-panel
+  description: What changed in one record and which fault drove each edit.
+required_variables:
+  - record
+  - result
+  - edits
+---
+<section class="jj-panel jj-change" id="fix-{{ record.kind }}" data-record="{{ record.id }}">
+  <header class="jj-head">
+    <p class="jj-eyebrow jj-mono">{{ record.id }} · {{ record.kind_label }} · {{ record.repo }} · {{ record.from }} to {{ record.to }}</p>
+    <h2>{{ record.title }}</h2>
+    <p class="jj-legend"><span class="jj-cell jj-bad">{{ result.before }}</span><span class="jj-to">to</span><span class="jj-cell jj-ok">{{ result.after }}</span></p>
+    <p class="jj-lede">{{ result.summary }}</p>
+  </header>
+{% for e in edits %}
+  <div class="jj-edit" data-where="{{ e.where }}" data-question="{{ e.check_id }}">
+    <p class="jj-eyebrow"><span class="jj-mono">{{ e.where }}</span> · check {{ e.check_id }} · {{ e.check_label }}</p>
+    <div class="jj-cols">
+      <div class="jj-fault">
+        <p class="jj-eyebrow">The fault</p>
+        <p>{{ e.fault }}</p>
+{% if e.named %}
+        <p>{{ e.named_by }} <span class="jj-red">{{ e.named }}</span>{% if e.named_share %} ({{ e.named_share }}){% endif %}.</p>
+{% endif %}
+      </div>
+      <div class="jj-diff">
+        <p class="jj-eyebrow">The change</p>
+{% if e.segments %}
+        <p class="jj-text">{% for s in e.segments %}{% if s.t == 'ins' %}<ins>{{ s.text }}</ins>{% elif s.t == 'del' %}<del>{{ s.text }}</del>{% else %}{{ s.text }}{% endif %}{% endfor %}</p>
+{% endif %}
+{% for a in e.added %}
+        <p class="jj-eyebrow">Added to {{ a.to }}</p>
+        <p class="jj-text"><ins>{{ a.text }}</ins></p>
+{% endfor %}
+{% if e.note %}
+        <p class="jj-small">{{ e.note }}</p>
+{% endif %}
+      </div>
+    </div>
+    <p class="jj-legend"><span class="jj-cell jj-bad jj-mono">before {{ e.before }}</span><span class="jj-to">to</span><span class="jj-cell jj-ok jj-mono">after {{ e.after }}</span>{% if e.bar %}<span class="jj-cell jj-na">bar {{ e.bar }}</span>{% endif %}<span class="jj-small">{{ e.meaning }}</span></p>
+  </div>
+{% endfor %}
+  <div class="jj-notes">
+    <p><ins>Green</ins> text was added. <del>Struck</del> text was removed. <span class="jj-red">Red</span> is the part named before the edit.</p>
+    <p class="jj-mono">{{ record.evidence }}</p>
+  </div>
+</section>

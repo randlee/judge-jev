@@ -1,0 +1,52 @@
+{
+ "record": {
+  "id": "NFR-SAG-0004",
+  "kind": "nfr",
+  "kind_label": "non-functional requirement",
+  "title": "NFR-SAG-0004: one phrase read as two duties",
+  "repo": "sc-agent plan/phase-j",
+  "from": "1a9af55a",
+  "to": "2712a7fb",
+  "evidence": "before: three runs at 1a9af55a (0.52, 0.44, 0.59), judge-jev docs/evidence/issue-137-gate-fix · after: commit 2712a7fb, which reports one figure · model jev-1.14.0"
+ },
+ "result": {
+  "before": "Not passing · one statement under 0.60",
+  "after": "Passing · lowest 0.74",
+  "summary": "One statement changed by three words. The other four statements were not touched."
+ },
+ "edits": [
+  {
+   "where": "Statement 1",
+   "check_id": "obligations",
+   "check_label": "Does it ask for one thing?",
+   "fault": "Jev answered 1, but with a score of 0.52. Its second choice was 2 obligations, at 31%.",
+   "named": "exactly one owner",
+   "named_by": "Jev was not asked which part. The author read the second duty in",
+   "named_share": "",
+   "segments": [
+    {
+     "t": "same",
+     "text": "Every shared fact MUST have "
+    },
+    {
+     "t": "del",
+     "text": "exactly one"
+    },
+    {
+     "t": "ins",
+     "text": "a single"
+    },
+    {
+     "t": "same",
+     "text": " owner."
+    }
+   ],
+   "added": [],
+   "note": "\"Exactly one\" can be read as two rules: it has an owner, and it has no second owner. \"A single owner\" states the same rule as one.",
+   "before": "0.52",
+   "after": "0.74",
+   "bar": "0.60",
+   "meaning": "Meaning check: not recorded."
+  }
+ ]
+}

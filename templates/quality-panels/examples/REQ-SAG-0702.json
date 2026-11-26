@@ -1,0 +1,82 @@
+{
+ "record": {
+  "id": "REQ-SAG-0702",
+  "kind": "req",
+  "kind_label": "requirement",
+  "title": "REQ-SAG-0702: two edits, each for one named fault",
+  "repo": "sc-agent plan/phase-j",
+  "from": "3ea97a7",
+  "to": "4c10054f",
+  "evidence": "scores are the middle of three runs · tree quality-req 0.8.0 · model jev-1.14.0 · commits bba6914d and 4c10054f"
+ },
+ "result": {
+  "before": "Not passing · two statements under 0.60",
+  "after": "Passing · lowest 0.70",
+  "summary": "12 of the 14 statements were not touched."
+ },
+ "edits": [
+  {
+   "where": "Statement 8",
+   "check_id": "term",
+   "check_label": "Is every term defined?",
+   "fault": "Jev answered yes, but with a score of 0.54. The gate needs 0.60.",
+   "named": "the provider's error",
+   "named_by": "Asked which term was unclear, Jev pointed at",
+   "named_share": "40%",
+   "segments": [
+    {
+     "t": "same",
+     "text": "When a provider rejects a request as too large for the model's context, the call MUST return the provider's error."
+    }
+   ],
+   "added": [
+    {
+     "to": "Definitions",
+     "text": "The provider's error is the error value decision.api_status whose message is the provider's reply text."
+    }
+   ],
+   "note": "The statement itself did not change. The definition comes from the code (lib.rs 1110 to 1118).",
+   "before": "0.54",
+   "after": "0.74",
+   "bar": "0.60",
+   "meaning": "Meaning check: passed by ai-qa."
+  },
+  {
+   "where": "Statement 9",
+   "check_id": "obligations",
+   "check_label": "Does it ask for one thing?",
+   "fault": "Jev answered 1, but with a score of 0.57. It half-read two duties: resend, and stop at five.",
+   "named": "until it has made 5 sends in all",
+   "named_by": "Asked which part was a second obligation, Jev pointed at",
+   "named_share": "48%",
+   "segments": [
+    {
+     "t": "same",
+     "text": "When a send exceeds the send timeout"
+    },
+    {
+     "t": "ins",
+     "text": " and fewer than 5 sends of that request have been made"
+    },
+    {
+     "t": "same",
+     "text": ", the Run MUST resend it"
+    },
+    {
+     "t": "del",
+     "text": " until it has made 5 sends in all, the first included"
+    },
+    {
+     "t": "same",
+     "text": "."
+    }
+   ],
+   "added": [],
+   "note": "The limit moved into the condition, so one duty is left.",
+   "before": "0.57",
+   "after": "0.79",
+   "bar": "0.60",
+   "meaning": "Meaning check: not recorded."
+  }
+ ]
+}

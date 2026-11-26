@@ -1,0 +1,76 @@
+---
+metadata:
+  name: quality-tree-panel
+  description: One judge-jev quality tree as its checks and every path through it. Variables come from scripts/tree_vars.py.
+required_variables:
+  - tree
+  - calls
+  - columns
+  - paths
+  - counts
+---
+<section class="jj-panel jj-tree" id="tree-{{ tree.kind }}" data-tree="{{ tree.id }}" data-sha256="{{ tree.sha256 }}">
+  <header class="jj-head">
+    <p class="jj-eyebrow jj-mono">{{ tree.id }} · tree for {{ tree.kind_label }} records · version {{ tree.version }}</p>
+    <h2>Every {{ tree.kind_label }} {{ tree.unit }} faces these checks, in this order.</h2>
+    <p class="jj-lede">The first check that fails ends it and the record's verdict is no. Left: the check and where each answer leads. Right: the exact words Jev is sent.</p>
+    <p class="jj-legend"><span class="jj-chip jj-ok">answer continues</span><span class="jj-chip jj-bad">answer stops: verdict no</span><span class="jj-chip jj-nx">answer asks another question</span><span class="jj-chip jj-dg">asked, never decides</span></p>
+  </header>
+{% for call in calls %}
+  <p class="jj-eyebrow">Call {{ call.n }} · {{ call.asked_of }}{% if call.only_after %} · only after an answer of {{ call.only_after }}{% endif %}</p>
+{% for check in call.checks %}
+  <div class="jj-check" data-node="{{ call.node }}" data-question="{{ check.id }}">
+    <div class="jj-q">
+      <p class="jj-eyebrow jj-mono">{{ check.n }} · {{ check.id }}</p>
+      <h3>{{ check.label }}</h3>
+      <p class="jj-chips">{% for c in check.choices %}<span class="jj-chip jj-{{ c.outcome }}" data-choice="{{ c.name }}" data-leads="{{ c.leads }}" data-rule="{{ c.rule }}">{{ c.name }} → {{ c.leads }}</span>{% endfor %}</p>
+    </div>
+    <div class="jj-asked">
+      <p class="jj-eyebrow">Jev is asked</p>
+      <p class="jj-question">{{ check.asked }}</p>
+{% for c in check.choices %}
+      <p><b>{{ c.name }}</b> · {{ c.meaning }}</p>
+{% endfor %}
+    </div>
+  </div>
+{% endfor %}
+{% if call.diagnostics %}
+  <div class="jj-check jj-dashed">
+    <div class="jj-q">
+      <p class="jj-eyebrow">Also asked in call {{ call.n }}</p>
+      <h3>{{ call.diagnostics | length }} question{% if call.diagnostics | length > 1 %}s{% endif %} that never decide{% if call.diagnostics | length == 1 %}s{% endif %}</h3>
+      <p class="jj-chips">{% for d in call.diagnostics %}<span class="jj-chip jj-dg jj-mono">{{ d.id }}</span>{% endfor %}</p>
+    </div>
+    <div class="jj-asked">
+{% for d in call.diagnostics %}
+      <p><b class="jj-mono">{{ d.id }}</b> · {{ d.asked }}</p>
+{% endfor %}
+      <p>Their answers appear in the run report and never change the verdict.</p>
+    </div>
+  </div>
+{% endif %}
+{% endfor %}
+  <div class="jj-sub">
+    <h3>The same tree as every path a {{ tree.unit }} can take</h3>
+    <p class="jj-lede">{{ counts.paths }} lines, read left to right. {{ counts.yes }} end in yes. The first red answer ends a line.</p>
+  </div>
+  <div class="jj-scroll">
+    <div class="jj-paths" style="--cols: {{ counts.columns }}">
+      <div class="jj-path jj-eyebrow"><div>Path</div>{% for col in columns %}<div>{{ col.n }} · {{ col.label }}</div>{% endfor %}<div>Ends in</div></div>
+{% for p in paths %}
+      <div class="jj-path" data-path="{{ p.n }}" data-verdict="{{ p.verdict }}"><div class="jj-mono jj-n">{{ p.n }}</div>{% for c in p.cells %}<div class="jj-cell jj-{{ c.k }}" data-question="{{ c.q }}" data-choices="{{ c.choices | join('|') }}">{{ c.t }}</div>{% endfor %}<div class="jj-cell jj-{% if p.verdict == 'yes' %}ok{% else %}bad{% endif %}">Verdict: {{ p.verdict }}{% if p.stop %} · {{ p.stop }}{% endif %}</div></div>
+{% endfor %}
+    </div>
+  </div>
+  <div class="jj-notes">
+    <p><b>Not used</b> means the question was asked in the same call, but an earlier red answer already ended the line.</p>
+{% if calls | length > 1 %}
+    <p><b>Not asked</b> means no later call was made.</p>
+{% endif %}
+{% if tree.per == 'statement' %}
+    <p><b>A record</b> gets verdict no when any one of its statements ends in no.</p>
+{% endif %}
+    <p><b>A verdict of yes is not yet a pass.</b> The gate also needs every deciding answer to score 0.60 or more.</p>
+  </div>
+  <p class="jj-foot jj-mono">source: {{ tree.source }} · sha256 {{ tree.sha256 }}</p>
+</section>

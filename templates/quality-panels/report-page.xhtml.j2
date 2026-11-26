@@ -1,0 +1,93 @@
+---
+metadata:
+  name: report-page
+  description: A standalone XHTML page that holds rendered judge-jev panels.
+required_variables:
+  - page
+  - groups
+---
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{ page.title }}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&amp;family=IBM+Plex+Sans:wght@400;600&amp;display=swap" />
+<style>
+/* layout: one column of panels; each panel is a stack of rows that wrap to one column on a phone */
+:root{color-scheme:light;--ground:#f4f6f8;--card:#ffffff;--ink:#16202b;--soft:#3a4553;--muted:#4a5563;--line:#d5dbe2;
+--ok:#14653c;--ok-bg:#e6f4ec;--bad:#a32820;--bad-bg:#fbeae8;--nx:#1d4aa8;--nx-bg:#e8eefb;
+--body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.5 var(--body)}
+a{color:var(--nx)}a:focus-visible{outline:2px solid var(--nx);outline-offset:2px}
+main{max-width:1100px;margin:0 auto;padding:28px 18px 56px;display:flex;flex-direction:column;gap:40px}
+h1{margin:0;font-size:clamp(28px,5vw,40px);line-height:1.12;font-weight:600;text-wrap:balance}
+h2{margin:0;font-size:clamp(22px,3.6vw,30px);line-height:1.18;font-weight:600;text-wrap:balance}
+h3{margin:0;font-size:19px;line-height:1.3;font-weight:600}
+p{margin:0}
+nav{display:flex;flex-wrap:wrap;gap:8px}
+nav a{display:inline-block;padding:8px 12px;border:1.5px solid var(--line);border-radius:8px;background:var(--card);text-decoration:none;font-weight:600;font-size:14px}
+.jj-group{display:flex;flex-direction:column;gap:18px}
+.jj-group>h2{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.jj-panel{display:flex;flex-direction:column;gap:16px;scroll-margin-top:12px}
+.jj-head{display:flex;flex-direction:column;gap:10px}
+.jj-eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.jj-mono{font-family:var(--mono)}
+.jj-lede{color:var(--soft);max-width:65ch}
+.jj-legend,.jj-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.jj-chip{display:inline-block;padding:4px 10px;border-radius:999px;font-size:13px;font-weight:600;border:1.5px solid}
+.jj-cell{padding:9px 12px;border-radius:8px;font-size:13px;font-weight:600;border:1.5px solid;text-align:center}
+.jj-ok{color:var(--ok);border-color:var(--ok);background:var(--ok-bg)}
+.jj-bad{color:var(--bad);border-color:var(--bad);background:var(--bad-bg)}
+.jj-nx{color:var(--nx);border-color:var(--nx);background:var(--nx-bg)}
+.jj-dg,.jj-na{color:var(--muted);border-color:#8b95a3;border-style:dashed;background:var(--card);font-weight:400}
+.jj-dg{font-weight:600}
+.jj-check,.jj-edit{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px}
+.jj-check{display:flex;flex-wrap:wrap;gap:16px}
+.jj-dashed{border-style:dashed}
+.jj-q{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.jj-asked{flex:2 1 360px;min-width:0;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--soft)}
+.jj-question{color:var(--ink);font-size:15px}
+.jj-sub{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.jj-scroll{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+.jj-paths{display:flex;flex-direction:column;gap:10px;min-width:calc(200px + var(--cols) * 150px)}
+.jj-path{display:grid;grid-template-columns:44px repeat(var(--cols),minmax(0,1fr)) 150px;gap:8px;align-items:center}
+.jj-n{font-weight:600;color:var(--muted)}
+.jj-notes{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:14px;color:var(--soft)}
+.jj-notes p{flex:1 1 280px;min-width:0}
+.jj-notes b{color:var(--ink)}
+.jj-foot{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.jj-edit{display:flex;flex-direction:column;gap:12px}
+.jj-cols{display:flex;flex-wrap:wrap;gap:16px}
+.jj-fault{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--soft)}
+.jj-diff{flex:2 1 360px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.jj-text{font-size:15px;line-height:1.6}
+.jj-small{font-size:13px;color:var(--soft)}
+.jj-to{font-weight:600;color:var(--muted)}
+.jj-red{background:var(--bad-bg);color:var(--bad);border-bottom:2px solid var(--bad);font-weight:600;padding:0 2px}
+ins{background:var(--ok-bg);color:var(--ok);text-decoration:none;padding:0 2px}
+del{color:var(--bad)}
+</style>
+</head>
+<body>
+<main>
+<header class="jj-head">
+<p class="jj-eyebrow jj-mono">{{ page.eyebrow }}</p>
+<h1>{{ page.title }}</h1>
+<p class="jj-lede">{{ page.lede }}</p>
+<nav aria-label="On this page">{% for g in groups %}{% for p in g.panels %}<a href="#{{ p.anchor }}">{{ p.nav }}</a>{% endfor %}{% endfor %}</nav>
+</header>
+{% for g in groups %}
+<div class="jj-group">
+<h2>{{ g.title }}</h2>
+{% for p in g.panels %}
+{{ p.html | safe }}
+{% endfor %}
+</div>
+{% endfor %}
+<p class="jj-foot jj-mono">{{ page.foot }}</p>
+</main>
+</body>
+</html>
