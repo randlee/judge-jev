@@ -24,8 +24,7 @@ what the first version leaves out.
 
 ### Context
 
-judge-jev's Jev core (the batch command, request and result contracts,
-key lookup and remote-judge consent) is copied from an existing
+judge-jev's Jev core (the batch command, request and result contracts) is copied from an existing
 implementation, and a Rust implementation, exposed through PyO3 bindings or
 a command-line interface (CLI), will replace that Python core. The problem
 is whether the Python core may change before then: any change to its
@@ -35,45 +34,18 @@ or its callers break when the replacement lands.
 ### Decision
 
 The Jev core keeps its architecture and contracts unchanged. It changes
-only to fix a defect, to replace its run log with the sc-observability
-logger (REQ-JEV-0008), to adopt sc-agent's session log and the
+only to fix a defect, to adopt sc-agent's session log and the
 `jev-batch-result/2` result line (owner ruling 2026-11-24), or to make
-one of the four changes that follow (the first three by owner ruling at
-phase j plan review, 2026-11-24; the fourth by owner approval, 2026-11-24):
+one of the changes that follow:
 
 - A `--no-cache` flag on `quality`, which sends its requests with
   `cache=False`; `batch --repeat N` above 1 sends all repeats in one
   `cache=False` call.
-- `--model haiku` and `--model luna`, sent through the sc-decidr wheel,
-  which resolves the model's provider and its key (REQ-JEV-0009).
-- Redaction of every key in the sc-decidr wheel's provider-key list
-  (REQ-JEV-0010).
-- `batch --answers-file` fixture runs answer through the adopted client's
-  `run_batch` with no Run, and the fixture retry simulation is removed: a
-  fixture entry is one answer or one error, and an entry that carries an
-  attempts list is a validation error (owner approval, 2026-11-24;
-  NFR-JEV-0001).
-
-Owner ruling 2026-11-24: `--model` takes any selector the sc-decidr
-wheel resolves, not only `haiku` and `luna`; the caller chooses one model
-per command.
-
-sc-agent's session log is adopted through the wheel's `Run`: each
-command opens one `Run` through the adopted client's `open_run`, sends through it and reads its `run_id` from
-it; the core mints no id. The `Run` owns the logger, cancellation,
-configuration resolution, test seams and the one model the caller chose
-with `--model`, so no call names a model or a provider, and a call passes only its
-requests, `cache=False` for an intentional resend and, for a
-batch, `on_result`.
 
 ### Rationale
 
 An unchanged core lets the Rust implementation replace it with no change
 to its callers.
-
-Owner ruling (2026-11-24, phase j plan review): no model name is
-hard-coded in a call; one model per command, chosen by the caller. Consent is checked by the adopted client's
-gate on the resolved provider (REQ-JEV-0004).
 
 ### Consequences
 
@@ -418,8 +390,7 @@ judge-jev has two ports:
   event, which references the `session_id`. The Python core implements the port now; sc-agent's Jev
   tool implements it later. The canonical `jev-batch-result/2` schema is
   the one the sc-decidr wheel ships as package data
-  (`sc_agent/templates/jev-batch-result.schema.json`, read through
-  `importlib.resources`); judge-jev keeps no copy, so
+  (`sc_agent/templates/jev-batch-result.schema.json`); judge-jev keeps no copy, so
   `assets/schemas/jev-batch-result.schema.json` is removed and judge-jev
   checks its `/2` lines against the wheel's schema (amended at phase j plan
   review, 2026-11-24).
@@ -433,8 +404,7 @@ a run's queries: one row per Jev query, keyed by `session_id`, holding the
 request and Jev's answers. The result lines and judge-jev's own records
 hold only what judge-jev derived and reference those rows by `session_id`;
 they are not the record of a run's queries. A rebuild reads answers
-through the adopted client's `answers_for`: `jev-batch-result/1` events
-give their inline answers and `/2` lines give answers from the session
+through the adopted client's `answers_for`: `/2` lines give answers from the session
 rows by `session_id`; judge-jev reads no session-log file. A run's triples are a
 projection of the session rows, judge-jev's records and the tree, so they
 can be rebuilt from them at any time. The tree walk (which wave next, which
@@ -531,8 +501,8 @@ A definition is a node in the judge-jev graph (ADR-JEV-0006):
   evaluation), followed by the questions. `definitions` holds the record's
   record-only definitions plus those attached to this record and this
   location. A request with no matching definition is the same as before.
-  `quality` evaluates the record alone, so it uses record-only definitions. Definitions are never
-  truncated. A request that the definitions push over the size limit is
+  `quality` evaluates the record alone, so it uses record-only definitions.
+  A request that the definitions push over the size limit is
   refused before it is sent. Every request and its log event record the
   digest of each definition carried, and a run's triples link the run to
   them.

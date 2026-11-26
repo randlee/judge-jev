@@ -369,7 +369,6 @@ questions that judges whether a record is well written: waves of questions
 - A dry run MUST NOT write a result envelope.
 - A dry run MUST NOT write a result, wave or verdict event to the
   sc-observability logger.
-- A dry run MUST NOT open an sc-agent `Run` or write a run link.
 
 ### Rationale
 
@@ -569,9 +568,6 @@ judge-jev's own record of that request's result; it carries the request's
   it over the size limit.
 - Every request's result record MUST carry the digest of each definition
   the request carried.
-
-**MUST NOT statements:**
-- `judge-jev` MUST NOT truncate a definition.
 
 ### Rationale
 
