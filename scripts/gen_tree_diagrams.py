@@ -1,182 +1,162 @@
 #!/usr/bin/env python3
-"""Render a decision-tree JSON file as Mermaid, Markdown, or D2 source.
+"""Generate docs/diagrams/trees/<tree id>.md from the shipped quality and diagnostic trees.
 
-Ordered when/all/any rule handling is adapted from the existing generator on
-judge-jev's docs/mode-diagrams branch. Both outputs use the same graph. No model
-is called. --result may name a report view with its actual path and waves.
+Reader: anyone who needs to see what a tree asks and how its answers become a verdict, without reading JSON.
+Each page is a Mermaid flowchart made only from the tree file: every question and its choices, which choices
+are acceptable, the ordered routing and verdict rules, the second wave, and the diagnostic ``d_*`` questions
+(shown dashed: they never gate). A diagram therefore cannot disagree with its tree.
+
+    gen_tree_diagrams.py           write the pages
+    gen_tree_diagrams.py --check   exit 2 when a committed page differs from what the trees give (used by the tests)
 """
 from __future__ import annotations
-import argparse
-import html
+
 import json
-from pathlib import Path
-import textwrap
+import pathlib
+import sys
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+QUESTIONS = ROOT / "plugins/sc-judge-jev/install/templates/skills/judge-jev/assets/questions"
+OUT = ROOT / "docs/diagrams/trees"
+TREES = ("quality-req", "quality-nfr", "quality-adr", "diag-req", "diag-nfr", "diag-adr")
+SOURCE = "plugins/sc-judge-jev/install/templates/skills/judge-jev/assets/questions"
 
 
-def _choices(value):
+def _choices(value) -> list:
     return value if isinstance(value, list) else [value]
 
 
-def _cond(rule):
-    if 'condition' in rule:
-        return rule['condition']
+def _esc(text: str) -> str:
+    return text.replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _sid(*parts: str) -> str:
+    return "_".join(p.replace("-", "_").replace(" ", "_") for p in parts)
+
+
+def rejected(node: dict, nodes: dict) -> dict:
+    """Question id -> choices that lead to verdict no (a next rule to a 'no' leaf, or a verdict rule giving no)."""
+    out: dict = {}
+    for rule in node.get("next") or []:
+        target = nodes.get(rule["goto"], {})
+        if target.get("verdict") == "no" and len(rule.get("when", {})) == 1:
+            for q, c in rule["when"].items():
+                out.setdefault(q, set()).update(_choices(c))
+    for rule in node.get("verdict_rules") or []:
+        if rule.get("verdict") == "no":
+            for q, c in rule.get("any", {}).items():
+                out.setdefault(q, set()).update(_choices(c))
+    return out
+
+
+def routed(node: dict, nodes: dict) -> dict:
+    """Question id -> choices that lead to another wave."""
+    out: dict = {}
+    for rule in node.get("next") or []:
+        if "questions" in nodes.get(rule["goto"], {}) and len(rule.get("when", {})) == 1:
+            for q, c in rule["when"].items():
+                out.setdefault(q, set()).update(_choices(c))
+    return out
+
+
+def _cond(rule: dict) -> str:
     parts = []
-    for key, joiner in (('when', ' and '), ('all', ' and '), ('any', ' or ')):
+    for key, joiner in (("when", " and "), ("all", " and "), ("any", " or ")):
         if rule.get(key):
             parts.append(joiner.join(f"{q} = {' / '.join(_choices(c))}" for q, c in rule[key].items()))
-    return ' and '.join(parts) or 'otherwise'
+    return " and ".join(parts) or "otherwise"
 
 
-def graph(tree, result=None):
-    """Keep rule order, every branch, terminal, and question; never infer a path."""
-    source = tree['nodes']
-    if tree['start'] not in source:
-        raise ValueError('tree start does not name a node')
-    nodes, edges = {}, []
-    result = result or {}
-    path = result.get('path', [])
-    waves = {w['node']: w for w in result.get('waves', [])}
-    active_edges = set()
-    for i, name in enumerate(path):
-        wave = waves.get(name, {})
-        rules = source.get(name, {}).get('next') or source.get(name, {}).get('verdict_rules') or []
-        rank = wave.get('rule_position')
-        if rank is None and wave.get('rule_rank') is not None:
-            # judge-jev rank is global across the tree, not a per-node index.
-            offset = sum(len(n.get('next') or n.get('verdict_rules') or [])
-                         for k, n in source.items() if k in list(source)[:list(source).index(name)])
-            rank = wave['rule_rank'] - offset
-        if rank is None:
+def render(tree: dict) -> str:
+    nodes = tree["nodes"]
+    lines = ["flowchart TD"]
+    leaves = {name for name, n in nodes.items() if "questions" not in n}
+    for name, node in nodes.items():
+        if name in leaves:
             continue
-        prev = name
-        for number, rule in enumerate(rules[:rank], 1):
-            dest = rule.get('goto') or 'verdict_' + rule.get('verdict', '')
-            if _cond(rule) == 'otherwise':
-                active_edges.add((prev, dest))
-            else:
-                condition = f'{name}__r{number}'
-                active_edges.add((prev, condition))
-                if number == rank:
-                    active_edges.add((condition, dest))
-                prev = condition
-    for name, node in source.items():
-        if 'questions' not in node:
-            verdict = node.get('verdict')
-            nodes[name] = {'label': ('Verdict: ' + verdict) if verdict else node.get('error', name),
-                           'role': 'pass' if verdict == 'yes' else 'error' if node.get('error') else 'review',
-                           'active': name in path}
-            continue
-        title = node.get('title', name)
-        per_statement = node.get('per') == 'statement' or '.s' in result.get('id', '')
-        scope = 'per MUST / MUST NOT statement' if per_statement else 'per record'
-        if node.get('only_matched'):
-            scope += '; matched statements only'
-        rows = [title, scope]
-        for qid, question in node['questions'].items():
-            choices = list(question.get('criteria', {}))
-            if qid == 'which_part':
-                rows.append('which_part: literal term / section or none')
-            elif qid.startswith('d_'):
-                rows.append(qid + ' (diagnostic)')
-            else:
-                rows.append(qid + ': ' + ' / '.join(choices))
-        label = '\n'.join(textwrap.fill(row, width=46, break_long_words=False, break_on_hyphens=False) for row in rows)
-        nodes[name] = {'label': label, 'role': 'wave', 'active': name in path}
-        rules = node.get('next') or node.get('verdict_rules') or []
-        prev = name
-        for number, rule in enumerate(rules, 1):
-            target = rule.get('goto') or 'verdict_' + rule.get('verdict', '')
-            if 'goto' in rule and target not in source:
-                raise ValueError(f'{name}: unknown target {target}')
-            if 'verdict' in rule:
-                nodes[target] = {'label': 'Verdict: ' + rule['verdict'],
-                                 'role': 'pass' if rule['verdict'] == 'yes' else 'review',
-                                 'active': result.get('verdict') == rule['verdict'] and name in path}
-            condition = _cond(rule)
-            if condition == 'otherwise':
-                edges.append((prev, target, 'otherwise' if prev == name else 'no'))
+        bad, onward = rejected(node, nodes), routed(node, nodes)
+        scope = "once per MUST / MUST NOT statement" if node.get("per") == "statement" else "once per record"
+        if node.get("only_matched"):
+            scope += ", only the statements the rule matched"
+        lines.append(f'    subgraph {_sid(name)}["{name}: {scope}"]')
+        lines.append("        direction TB")
+        for qid, q in node["questions"].items():
+            rows = []
+            for choice in q["criteria"]:
+                if qid.startswith("d_"):
+                    mark = "·"
+                elif choice in bad.get(qid, ()):
+                    mark = "✗"
+                elif choice in onward.get(qid, ()):
+                    mark = "→"
+                else:
+                    mark = "✓"
+                rows.append(f"{mark} {_esc(choice)}")
+            label = f"<b>{qid}</b>" + (" (diagnostic)" if qid.startswith("d_") else "") + "<br/>" + "<br/>".join(rows)
+            lines.append(f'        {_sid(name, qid)}["{label}"]')
+        lines.append("    end")
+        rules = node.get("next") or node.get("verdict_rules") or []
+        prev = _sid(name)
+        for i, rule in enumerate(rules, 1):
+            target = rule.get("goto") or ("verdict_" + rule["verdict"])
+            dest = _sid(target) if target in nodes and target not in leaves else _sid("verdict", nodes.get(target, {}).get("verdict", rule.get("verdict", target)))
+            if _cond(rule) == "otherwise":
+                lines.append(f"    {prev} --> {dest}" if i == 1 else f"    {prev} -- no --> {dest}")
                 break
-            rule_id = f'{name}__r{number}'
-            label = '\n'.join(textwrap.fill(row, width=30, break_long_words=False, break_on_hyphens=False)
-                              for row in f'{number}. {condition}'.splitlines())
-            nodes[rule_id] = {'label': label, 'role': 'condition',
-                              'active': (prev, rule_id) in active_edges}
-            edges.append((prev, rule_id, '' if prev == name else 'no'))
-            edges.append((rule_id, target, 'yes'))
-            prev = rule_id
-    return nodes, edges, active_edges
+            rid = _sid(name, "r", str(i))
+            lines.append(f'    {rid}{{"{i}. {_esc(_cond(rule))}?"}}')
+            lines.append(f"    {prev} --> {rid}" if i == 1 else f"    {prev} -- no --> {rid}")
+            lines.append(f"    {rid} -- yes --> {dest}")
+            prev = rid
+        for qid in node["questions"]:
+            if qid.startswith("d_"):
+                lines.append(f"    class {_sid(name, qid)} diag")
+    lines.append('    verdict_yes(["verdict yes"])')
+    lines.append('    verdict_no(["verdict no"])')
+    lines.append("    classDef diag stroke-dasharray: 4 3,color:#666")
+    return "\n".join(lines)
 
 
-def render(tree, fmt='mmd', result=None):
-    nodes, edges, active_edges = graph(tree, result)
-    ids = {key: 'n' + str(i) for i, key in enumerate(nodes)}
-    if fmt in ('mmd', 'md'):
-        lines = ['flowchart TD']
-        for key, node in nodes.items():
-            label = html.escape(node['label'], quote=True).replace('\n', '<br/>')
-            opener, closer = ('{', '}') if node['role'] == 'condition' else ('[', ']')
-            lines.append(f'  {ids[key]}{opener}"{label}"{closer}')
-            if node['active']:
-                lines.append(f'  class {ids[key]} visited')
-        for a, b, label in edges:
-            annotation = f'|"{html.escape(label, quote=True)}"|' if label else ''
-            lines.append(f'  {ids[a]} -->{annotation} {ids[b]}')
-        lines.append('  classDef visited fill:#e7f4ef,stroke:#23755c,stroke-width:2px')
-        for number, (a, b, _) in enumerate(edges):
-            if (a, b) in active_edges:
-                lines.append(f'  linkStyle {number} stroke:#23755c,stroke-width:3px')
-        body = '\n'.join(lines) + '\n'
-        return '# ' + tree.get('id', 'Decision tree') + '\n\n```mermaid\n' + body + '```\n' if fmt == 'md' else body
-    if fmt != 'd2':
-        raise ValueError('format must be mmd, md, or d2')
-    lines = [
-        '# Decision tree and observed path. Level: workflow.',
-        '# Render: d2 --layout elk tree.d2 tree.svg',
-        'vars: {d2-config: {layout-engine: elk}}',
-        'direction: down',
-        'classes: {',
-        '  wave: {style: {fill: "#f0f4fa"; stroke: "#bac7d8"; font-color: "#233147"}}',
-        '  condition: {shape: diamond; style: {fill: "#f9fafc"; stroke: "#c6ced9"; font-color: "#39475d"}}',
-        '  pass: {style: {fill: "#edf7f2"; stroke: "#a5cbbb"; font-color: "#285c49"}}',
-        '  review: {style: {fill: "#fff6e7"; stroke: "#d7bd91"; font-color: "#765721"}}',
-        '  error: {style: {fill: "#fcf0f0"; stroke: "#d7b0b0"; font-color: "#803c3c"}}',
-        '  visited: {style: {stroke: "#23755c"; stroke-width: 3}}',
-        '}',
-    ]
-    for key, node in nodes.items():
-        classes = '[' + '; '.join([node['role']] + (['visited'] if node['active'] else [])) + ']'
-        lines.append(f'{ids[key]}: {json.dumps(node["label"], ensure_ascii=False)} {{class: {classes}}}')
-    for a, b, label in edges:
-        attributes = ['style.stroke: "#b3becb"']
-        if label:
-            attributes.append('target-arrowhead.label: ' + json.dumps(label))
-        if (a, b) in active_edges:
-            attributes[0] = 'style.stroke: "#23755c"'
-            attributes.append('style.stroke-width: 3')
-        attrs = ' {' + '; '.join(attributes) + '}' if attributes else ''
-        lines.append(f'{ids[a]} -> {ids[b]}:{attrs}' if attrs else f'{ids[a]} -> {ids[b]}')
-    lines.extend(['legend: {', '  label: ""', '  near: top-center', '  grid-rows: 1',
-                  '  style: {stroke-width: 0; fill: transparent}',
-                  '  seen: "Observed path" {class: visited}',
-                  '  unseen: "Other branch" {class: wave}', '}'])
-    return '\n'.join(lines) + '\n'
+def page(tree_id: str) -> str:
+    tree = json.loads((QUESTIONS / f"{tree_id}.json").read_text(encoding="utf-8"))
+    gating = [q for n in tree["nodes"].values() for q in n.get("questions", {}) if not q.startswith("d_")]
+    diag = [q for n in tree["nodes"].values() for q in n.get("questions", {}) if q.startswith("d_")]
+    return f"""<!-- Generated by scripts/gen_tree_diagrams.py from {SOURCE}/{tree_id}.json. Do not edit; rerun the script. -->
+# Tree `{tree_id}` ({tree['kind'].upper()})
+
+Reader: anyone judging or fixing a {tree['kind'].upper()} record who needs to know what Jev is asked and why a
+verdict came out as it did. Source: [`{tree_id}.json`](../../../{SOURCE}/{tree_id}.json).
+
+```mermaid
+{render(tree)}
+```
+
+Marks: ✓ acceptable, ✗ gives verdict no, → asks the next wave, · diagnostic (never gates).
+Rules are tried in order; the first that matches decides. In a per-statement wave a rule matches when any one
+statement matches it.
+
+- Gate questions: {', '.join(f'`{q}`' for q in gating)}.
+- Diagnostic questions: {', '.join(f'`{q}`' for q in diag) or 'none'}. They explain a weak answer and never gate.
+- The pass gate over three runs is in [../gate.md](../gate.md).
+"""
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--tree', type=Path, required=True)
-    parser.add_argument('--result', type=Path)
-    parser.add_argument('--format', choices=('mmd', 'md', 'd2'), default='mmd')
-    parser.add_argument('--output', type=Path)
-    args = parser.parse_args()
-    tree = json.loads(args.tree.read_text())
-    result = json.loads(args.result.read_text()) if args.result else None
-    text = render(tree, args.format, result)
-    if args.output:
-        args.output.write_text(text, encoding='utf-8')
-    else:
-        print(text, end='')
+def main(argv: list) -> int:
+    check = "--check" in argv
+    stale = []
+    for tree_id in TREES:
+        target = OUT / f"{tree_id}.md"
+        text = page(tree_id)
+        if check:
+            if not target.exists() or target.read_text(encoding="utf-8") != text:
+                stale.append(str(target.relative_to(ROOT)))
+        else:
+            OUT.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+    for s in stale:
+        print(f"stale: {s} (run python3 scripts/gen_tree_diagrams.py)")
+    return 2 if stale else 0
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

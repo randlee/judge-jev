@@ -8,7 +8,7 @@ from pathlib import Path
 import shlex
 import subprocess
 import xml.etree.ElementTree as ET
-from gen_tree_diagrams import render
+from render_tree_graph import render
 from recording_paths import portable_recording
 
 ROOT = Path(__file__).resolve().parents[1]

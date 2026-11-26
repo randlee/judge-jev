@@ -1,5 +1,7 @@
 # `judge-jev check`: Jev prompt composition
 
+> **Planned, not in this release.** `check` (compliance: does code or a prompt meet its record) has no subcommand in `jev_judge.py`; this diagram is its design.
+
 ```mermaid
 flowchart LR
     ID["--req | --adr | --nfr &lt;id&gt;"] --> R[Raptor: fetch record] --> RT[Record text]

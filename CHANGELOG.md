@@ -2,7 +2,14 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
-## 0.10.0 — 2026-11-25
+## 0.9.0 — 2026-11-25
+
+- New agent `req-author`: writes one REQ, NFR or ADR record from a PRD clause, or repairs one, so it passes judge-jev. It renders with Raptor's template, judges once (three runs only when a gating answer is between 0.50 and 0.70), asks Jev which part of a weak statement is the cause, and edits only that part. Returns `pass` or `blocked` with one question.
+- Definitions have one source of truth (ADR-JEV-0009, REQ-JEV-0216, REQ-JEV-0217): new `references/definitions.md` says where a term is defined and how to look one up, add one and test one; every other skill, agent and reference links to it. A shared term is defined exactly once, in a definitions file, not in a record's paragraph. `jev-fix-proposer` returns a shared term as a need instead of a candidate; `req-author` reads defined terms from the definitions file plus the record's own paragraph (its `defined_terms` input is removed).
+- Assets: `assets/templates/raptor-{req,nfr,adr}-record.md.j2`, copied verbatim from randlee/raptor `integration/judge-jev` at 8ce2be8 (to be managed centrally later). `check_version_sync.py` leaves their Raptor template version alone.
+- Docs: a diagram for every `jev_judge.py` subcommand (`batch`, `drift`, `doctor` added) and for the gate, fix and write workflows; `docs/diagrams/README.md` indexes them.
+- Docs: tree diagrams under `docs/diagrams/trees/` generated from the shipped quality and diagnostic trees by `scripts/gen_tree_diagrams.py`; `test_tree_diagrams.py` fails when they disagree.
+- Docs: `quality.md` no longer says the shipped trees hold wave 1 only, and shows the 0.7.0 to 0.8.0 tree change; `check` and `check --profile` are marked planned (no such subcommand).
 
 - Add the published `walking-decidr-trees` skill for one-wave-per-call decidr and jq pipelines, including deterministic early-stop, error, and which-part routing.
 - Add runnable REQ/ADR/NFR examples under `site/examples/`, with recorded live responses, offline replay, D2 diagrams, Mermaid output and sc-compose XHTML reports linked from the Pages diagrams index.

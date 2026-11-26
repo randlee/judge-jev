@@ -77,7 +77,7 @@ Every output contains `run.json`, D2/SVG/Mermaid diagrams, `report.html`, and
 `report.md`. The diagram CLI supports `--format mmd`, `md`, or `d2`:
 
 ```bash
-python3 scripts/gen_tree_diagrams.py \
+python3 scripts/render_tree_graph.py \
   --tree plugins/sc-judge-jev/install/templates/skills/judge-jev/assets/questions/quality-adr.json \
   --format md --output /tmp/quality-adr.md
 ```

@@ -13,7 +13,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import decision_examples as examples
-import gen_tree_diagrams as diagrams
+import render_tree_graph as diagrams
 
 
 def record(rid, *statements):

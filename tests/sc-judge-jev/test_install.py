@@ -152,7 +152,7 @@ class RenderingTests(unittest.TestCase):
                      if p.name.endswith(".j2")}
         self.assertTrue({"scripts/result.py", "scripts/judge_jev_paths.py", "scripts/judge_jev_settings.py"} <= expected)
         self.assertEqual(set(self.package.rendered), expected)
-        self.assertEqual(self.package.agents, ("jev-fix-proposer.md",))
+        self.assertEqual(set(self.package.agents), {"jev-fix-proposer.md", "req-author.md"})
 
     def test_every_template_renders_strictly(self):
         templates = [t for t in sorted(TEMPLATES.rglob("*.j2")) if inst.is_install_template(t)]

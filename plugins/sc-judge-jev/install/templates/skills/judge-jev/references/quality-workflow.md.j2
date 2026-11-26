@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-quality-workflow
-version: 0.10.0
+version: 0.9.0
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -9,7 +9,7 @@ required_variables:
 ---
 name: quality-workflow
 version: {{ version }}
-description: Judge whether REQ, NFR and ADR records are well written - the quality command, reading its verdict and answers, definitions files with compare-definition, and the offline checks validate, doctor and --dry-run.
+description: Judge whether REQ, NFR and ADR records are well written - the quality command, reading its verdict and answers, and the offline checks validate, doctor and --dry-run.
 ---
 
 # Quality workflow
@@ -48,28 +48,9 @@ A verdict of `yes` can still hold an unclear statement: an answer whose top choi
 
 Follow `references/fix-strategy.md`; report per SKILL.md.
 
-## Definitions files
+## Definitions
 
-The default fix for an undefined term is a sentence in the record's own `Definitions:` paragraph (fix-strategy.md). A definitions file instead attaches a definition to records without editing them: use it when the record text must not change. It lives in `.sc/judge-jev/definitions.ttl`, attached to the record's Raptor IRI, `<repository URN>#<record id>` (the index's `metadata.repository`):
-
-```turtle
-@prefix jj: <urn:judge-jev:ontology#> .
-@prefix d:  <urn:judge-jev:definition:> .
-@prefix a:  <urn:judge-jev:attachment:> .
-
-d:fast a jj:Definition ; jj:term "fast" ; jj:text "Finishes within 5 s on the reference host." ;
-    jj:source "docs/requirements/perf.md" ; jj:attachedTo a:fast-1 .
-a:fast-1 a jj:Attachment ; jj:record <urn:raptor:repo:example#REQ-ABC-0001> .
-```
-
-Check the file, then measure it:
-
-```bash
-uv run -q --script "$J" doctor --index index.json
-uv run -q --script "$J" compare-definition --req REQ-ABC-0001 --index index.json --definition urn:judge-jev:definition:fast
-```
-
-`doctor` exits 2 on an invalid file and warns on an unattached definition or a record the index lacks. `compare-definition` judges the record without and with the candidates. Keep a definition only when `data.material` is `true`: an answer's choice flips, or its confidence crosses the threshold (default 0.6). Moving from one failing choice to another, or from 0.90 to 0.95, is not material. Jev is noisy below 0.5: confirm a material result with a second comparison before keeping it. Remove a definition that changes nothing.
+Where a term is defined, how to look one up, add one and test one (`doctor`, `compare-definition`): [definitions.md](definitions.md). It is the only place that describes definitions.
 
 ## Offline checks
 

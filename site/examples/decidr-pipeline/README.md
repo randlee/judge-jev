@@ -59,7 +59,7 @@ plus `run.json`, `report.html` and `report.md`. The HTML is composed from
 [the XHTML template](../../../templates/decision-report/report.xhtml.j2).
 
 ```bash
-python3 scripts/gen_tree_diagrams.py \
+python3 scripts/render_tree_graph.py \
   --tree plugins/sc-judge-jev/install/templates/skills/judge-jev/assets/questions/quality-req.json \
   --format mmd --output /tmp/quality-req.mmd
 ```
