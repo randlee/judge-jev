@@ -1,0 +1,12 @@
+{
+  "kinds": {"req": "REQ", "nfr": "NFR", "adr": "ADR"},
+  "checks": {
+    "term": "Is every term defined?",
+    "checkable": "Can a tester check it?",
+    "obligations": "Does it ask for one thing?",
+    "joined_by": "What joins the obligations?",
+    "context": "Does the context name the problem?",
+    "alternatives": "Are the alternatives named, with why each lost?",
+    "consequences": "Are both the benefits and the costs named?"
+  }
+}
