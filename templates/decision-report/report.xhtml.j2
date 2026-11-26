@@ -1,0 +1,101 @@
+---
+metadata:
+  name: decision-report
+  description: A standalone XHTML report of actual decision trees and recorded results.
+required_variables:
+  - report
+  - views
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ report.example }} — decision report</title>
+  <style>
+    :root { color-scheme: light; --ink:#20334b; --muted:#53677b; --green:#23755c; --line:#dce4e9; --surface:#f4f7f8; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--surface); color:var(--ink); font:16px/1.55 ui-sans-serif,system-ui,-apple-system,sans-serif; }
+    header.hero { background:#142c3d; color:#f4faf8; padding:48px max(24px,calc((100vw - 1160px)/2)) 40px; }
+    .eyebrow { margin:0 0 14px; text-transform:uppercase; letter-spacing:.16em; font-size:12px; font-weight:700; color:#a2d4c0; }
+    h1 { margin:0 0 12px; font:500 clamp(32px,5vw,58px)/1.1 Georgia,serif; letter-spacing:-.025em; }
+    .hero p { margin:0; max-width:850px; } .meta { margin-top:20px!important; color:#bdd0da; font-size:13px; }
+    main { max-width:1208px; margin:auto; padding:24px; } .topline { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; align-items:center; margin-bottom:22px; }
+    .outcomes { color:var(--green); font-weight:650; } .count { color:var(--muted); font-size:14px; }
+    .notice { margin:0 0 20px; padding:14px 18px; background:#fff5df; border-left:3px solid #b47b21; color:#715315; font-size:14px; }
+    label { font-size:13px; font-weight:600; display:block; margin:0 0 6px; } select { max-width:100%; width:100%; padding:12px; background:white; border:1px solid #bccbd5; border-radius:7px; color:var(--ink); font:inherit; }
+    .selector { margin-bottom:24px; } article { background:white; border:1px solid var(--line); border-radius:12px; overflow:hidden; } article[hidden] { display:none; }
+    .record { padding:24px 28px; border-bottom:1px solid var(--line); } h2 { margin:6px 0 10px; font-size:24px; line-height:1.3; font-weight:600; }
+    .record-id { font:600 12px ui-monospace,monospace; letter-spacing:.06em; color:var(--green); } .statement { margin:0; white-space:pre-line; max-width:920px; }
+    .route { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin:18px 0 0; color:var(--muted); font-size:14px; }
+    .badge { padding:4px 10px; border-radius:20px; background:#e8f4ee; color:#24684f; font-weight:650; text-transform:uppercase; font-size:12px; }
+    .badge.review,.badge.no { background:#fff0d8; color:#785318; } .badge.error { background:#fbe9e8; color:#8a3434; }
+    .content { display:grid; grid-template-columns:1fr; } .diagram { padding:24px; background:#fbfcfd; border-bottom:1px solid var(--line); }
+    h3 { margin:0 0 14px; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; } .diagram img { width:100%; max-width:920px; height:auto; display:block; margin:auto; }
+    .answers { padding:24px; min-width:0; } .answer { padding:14px 0; border-bottom:1px solid #e9eef1; } .answer:last-child { border:0; }
+    .answer-meta { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--muted); overflow-wrap:anywhere; }
+    .answer-top { display:flex; justify-content:space-between; gap:12px; margin:4px 0 7px; } .choice { font-weight:650; } .probability { font-variant-numeric:tabular-nums; }
+    .track { height:4px; background:#e8edf1; border-radius:4px; overflow:hidden; } .fill { height:100%; background:#438b72; } .under-bar .fill { background:#c9953b; }
+    .criterion { font-size:13px; color:var(--muted); margin:8px 0 0; } .diagnostic .fill { background:#7186a2; }
+    details { padding:20px 28px; border-top:1px solid var(--line); } summary { cursor:pointer; font-size:14px; font-weight:600; } pre { overflow:auto; padding:18px; background:#f3f6f8; font:12px/1.6 ui-monospace,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+    footer { color:var(--muted); font-size:12px; padding:20px 0; overflow-wrap:anywhere; } footer code { font-size:11px; }
+    @media(max-width:850px) { .content { grid-template-columns:1fr; } .diagram { border-right:0; border-bottom:1px solid var(--line); } main { padding:16px; } .record { padding:22px; } }
+    @media print { article[hidden] { display:block; break-before:page; } .selector { display:none; } .hero { padding:20px!important; } }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">judge-jev / {{ report.example }}</p>
+    <h1>{{ report.title }}</h1>
+    <p>{{ report.policy }}</p>
+    <p>{{ report.review_meaning }}</p>
+    <p class="meta">{{ report.mode }} · {{ report.captured_at }}</p>
+  </header>
+  <main>
+    <div class="topline"><span class="outcomes">{{ report.summary }}</span><span class="count">{{ report.item_count }} recorded items · REQ / ADR / NFR</span></div>
+{% if report.diagnostic_count %}
+    <aside class="notice">Raptor reported {{ report.diagnostic_count }} import diagnostic(s) on unselected records. Those records were not sent. Details are in the Markdown report and recording.</aside>
+{% endif %}
+    <div class="selector">
+      <label for="record-select">Inspect a statement or record</label>
+      <select id="record-select">
+{% for view in views %}
+        <option value="panel-{{ loop.index }}">{{ view.id }} · {{ view.title }} · {{ view.verdict }}</option>
+{% endfor %}
+      </select>
+    </div>
+{% for view in views %}
+    <article id="panel-{{ loop.index }}"{% if not loop.first %} hidden="hidden"{% endif %}>
+      <div class="record">
+        <span class="record-id">{{ view.id }} / {{ view.kind }}</span>
+        <h2>{{ view.title }}</h2>
+        <p class="statement">{{ view.text }}</p>
+        <p class="route"><span class="badge {{ view.verdict }}">{{ view.verdict }}</span><span>{{ view.path_label }}</span></p>
+      </div>
+      <div class="content">
+        <section class="diagram"><h3>Decision tree · observed path in green</h3><img src="{{ view.svg_data }}" alt="D2 decision tree for {{ view.id }}. Observed path: {{ view.path_label }}." /></section>
+        <section class="answers"><h3>Observed answers</h3>
+{% for answer in view.answers %}
+          <div class="answer {{ answer.status | replace(' ', '-') }}">
+            <div class="answer-meta"><span>{{ answer.item }} / {{ answer.wave }}</span><span>{{ answer.status }}</span></div>
+            <div class="answer-top"><span>{{ answer.question }}: <span class="choice">{{ answer.choice }}</span></span><span class="probability">{{ answer.confidence_label }}</span></div>
+            <div class="track"><div class="fill" style="width:{{ answer.confidence_width }}%"></div></div>
+{% if answer.criterion %}<p class="criterion">{{ answer.criterion }}</p>{% endif %}
+          </div>
+{% endfor %}
+        </section>
+      </div>
+      <details><summary>Recorded evidence</summary><pre>{{ view.raw_json }}</pre></details>
+    </article>
+{% endfor %}
+    <footer>Diagrams rendered with D2 / ELK. Report composed with sc-compose. Source revision <code>{{ report.revision }}</code>. Confidence is a model response, not a measured probability of correctness.</footer>
+  </main>
+  <script>
+    document.getElementById('record-select').addEventListener('change', function(event) {
+      document.querySelectorAll('article').forEach(function(panel) {
+        panel.hidden = panel.id !== event.target.value;
+      });
+    });
+  </script>
+</body>
+</html>
