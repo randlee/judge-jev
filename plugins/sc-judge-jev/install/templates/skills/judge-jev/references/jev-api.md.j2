@@ -73,7 +73,7 @@ The answer is recorded once per repository, never per session: ask the user, the
 
 ## Models
 
-`jev` moves with releases. Once thresholds are tuned, pin the version the response reported (`model_answered` in the run file) with `--model jev-1.14.0`.
+Every request asks for `jev-latest`. Do not pin a version: TypeSafe retires versions, and a retired one fails every call (`Unknown model`). The version that answered is recorded as `model_answered` in the run file, so a score change can be traced to a model change.
 
 ## Error codes
 
