@@ -463,8 +463,7 @@ questions, choices or probabilities do not match the request.
 - `judge-jev validate --answers` MUST apply the answers-file envelope that
   `--answers-file` applies before the first request.
 - The answers-file envelope MUST require an object of string keys.
-- The answers-file envelope MUST require each key's value to be an object
-  or a non-empty list of objects.
+- The answers-file envelope MUST require each key's value to be an object.
 - The answers-file envelope MUST require an object with `__error__` to hold
   only a string code of at most 64 characters.
 
