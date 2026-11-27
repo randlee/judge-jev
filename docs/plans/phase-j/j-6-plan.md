@@ -1,6 +1,6 @@
 # j-6 plan: judge-jev on the rendered j-4 client
 
-Base: judge-jev origin/plan/phase-j @031a61f (records already trimmed; J6-16 of the old bead is done there). `S/` = `plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/`, `T/` = `tests/sc-judge-jev/`, `jj:` = `S/jev_judge.py.j2`. Line numbers are at 031a61f. Upstream: sc-agent origin/sprint/j-4 @6af95bc8 `docs/plans/phase-j/j-4-plan.md` (the template surface used here), j-2/j-3 plans, j-1 signatures. Written by reading the code; no j-6 code yet. The old prose bead (agt-j-6) is intent only.
+Base: judge-jev origin/integrate/phase-j (cf87c81) after it merges develop carrying (a) the code at 031a61f and (b) the judge-jev record deletions being landed on develop now (owner: "land the judge-jev deletions"): NFR-JEV-0001's second MUST bullet and its Lead ruling paragraph; "with no Run" in ADR-JEV-0001; in ADR-JEV-0007 "`jev-batch-result/1` events give their inline answers and"; REQ-JEV-0210 "or a non-empty list of objects". sprint/j-6 rebases on that merge before dev starts. REQ-JEV-0101 stays as written: J6-S10 drops choices and confidences from wave events instead (its MUST NOT). `S/` = `plugins/sc-judge-jev/install/templates/skills/judge-jev/scripts/`, `T/` = `tests/sc-judge-jev/`, `jj:` = `S/jev_judge.py.j2`. Line numbers are at 031a61f (the code integrate/phase-j holds after the develop merge). Upstream: sc-agent origin/sprint/j-4 @6af95bc8 `docs/plans/phase-j/j-4-plan.md` (the template surface used here), j-2/j-3 plans, j-1 signatures. Written by reading the code; no j-6 code yet. The old prose bead (agt-j-6) is intent only.
 
 ## Goal
 
@@ -58,6 +58,7 @@ def judge_batch(run: Run | None, lines: list, settings: BatchSettings, *, fixtur
                 repository_root: str = ".") -> Result[list[tuple[ResultLine, Mapping[str, Any] | None]], ClientError]
     # builds jobs, calls decidr_client.run_batch(run, jobs, settings, fixture=..., verdict=batch_verdict,
     #   abort_on=frozenset({"auth"}), repository_root=..., consent_what=..., on_line=collect + log_result_line + echo)
+    # a log_result_line Err inside on_line stops the batch: judge_batch returns that Err (ADR-SAG-0021 errors), never drops it
     # run None only for a dry run (no line, no event); returns (line, answers) in index order; answers are what the walk and drift need, never logged
 
 def open_command_run(args: argparse.Namespace, *, timeout_secs: float | None, workers: int | None,
@@ -70,7 +71,8 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture,
 def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, results: list, per_choices: list,
                     matched: list, nxt, verdict, rank=None) -> tuple
     # same signature; results are (ResultLine, answers) pairs; events carry request_id and session_id,
-    # choices and reason (derived); no "request", "answers" or "models" key
+    # node, next, verdict, rule_rank, matched_statements; no "request", "answers", "choices", "reason" or "models" key
+    # (REQ-JEV-0101 MUST NOT: no composed request, answers, or the choices and confidences its reason reports; the reason stays in stdout)
 
 def quality_settings(dry_run: bool) -> BatchSettings   # BatchSettings("plan", 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, dry_run)
 ```
@@ -103,7 +105,7 @@ CLI: `--model` (default `None`, help "model selector; default from config") on `
 | `run_low_layer` (same signature) | jj:1008-1062 | dict `["ok"]` reads, `remote_preflight`, `streamed_result` |
 | `--model default=None` on 4 commands | `DEFAULT_MODEL` jj:125, `add_stream_options` jj:1078; quality/compare/drift hard-code `DEFAULT_MODEL` in `quality_settings` jj:1387-1388 and drift jj:2184 | `DEFAULT_MODEL`; BatchSettings `model/timeout/max_workers` args |
 | `quality --no-cache` → `open_command_run(cache=False)` | none in code; ADR-JEV-0001 l.41-43 and REQ-JEV-0209 require it | new capability (counted separately) |
-| `wave_log_events` without answers/request/models | jj:1553-1585 (`answering_models`, `"answers"`, `"request"` keys) | `answering_models` jj:1553-1556 |
+| `wave_log_events` without answers/request/choices/reason/models | jj:1553-1585 (`answering_models`, `"answers"`, `"request"`, `"choices"`, `"reason"` keys in events) | `answering_models` jj:1553-1556 (REQ-JEV-0101 MUST NOT) |
 | `walk_tree(run=)` | jj:1593-1659 own `check_fixture_coverage` + `judge_batch(..., log, ...)` | coverage block, `result["answers"]`/`result["ok"]` dict reads |
 | `FixtureError`/list envelope | jj:602-624 `FixtureError` and list branch of `_fixture_problems` | both (Rand, rule-7 item 2); REQ-JEV-0210 list clause deleted on develop |
 | `read_run_events(log_file)` required | jev_runs:266-268 hard-coded `~/.sc-agent/logs/judge-jev.log.jsonl` | the path literal (ANC-015) |
@@ -111,12 +113,13 @@ CLI: `--model` (default `None`, help "model selector; default from config") on `
 | port docstring | jev_ports:72 `jev_judge.pump_batch` | stale name |
 | (none) | assets/schemas/jev-batch-result.schema.json | file (ADR-JEV-0007 l.391-395) |
 | integration runner haiku/luna | scripts/integration.py:44-47 (`TypeSafe key is required`) | the hard requirement; new capability for the haiku/luna cases |
+| shipped text (J6-S17, text only) | installation-and-troubleshooting.md.j2:49 `~/.judge-jev/<repository name>/` log path and :124 `jev-latest` row; SKILL.md.j2:92 "contains whole requests"; jev-api.md.j2:72, :81, :107, :109, :113 (jev-latest, attempts/retry_count, request/answer events, 4-worker cap, fixture list); docs/cli.md:122 list envelope; wave_log_events docstring jj:1561-1563 | the stale sentences (replaced by the wheel's default log path, `--model`/config, `/2` fields, result event only, no worker cap, one answer or one error) |
 
 ## External contracts (examples)
 
 stdout line (`batch`, one per job, index order; the template writes it):
 ```json
-{"schema":"jev-batch-result/2","tool":"judge-jev","tool_version":"0.8.0","run_id":"01KC...","session_id":"01KC...",
+{"schema":"jev-batch-result/2","tool":"judge-jev","tool_version":"0.11.0","run_id":"01KC...","session_id":"01KC...",
  "request_id":"batch/I-1/ANC-001/c1/r1","project":"judge-jev","agent_role":"judge-jev","threshold":0.6,
  "verdict":"pass","min_confidence":0.82,"leaning":"pass","ok":true,"error":null}
 ```
@@ -138,10 +141,10 @@ Fixture run (`--answers-file`): same events through a real Run, `session_id` nul
 
 ## Done checks
 
-- Build: `sc-compose render --strict` of the template equals S/decidr_client.py.j2 (`test_client_equals_fresh_strict_render_of_installed_template`); `python3 -m compileall` on rendered scripts.
-- Tests (`python -m pytest tests/sc-judge-jev -q` with the j-4 prerelease wheel; every Run is `sc_agent.testing.fake_open_run` or the real wheel on a loopback `http.server` at 127.0.0.1:0; `JUDGE_JEV_LOG_ROOT` per test; no sleeps, timing or HOME writes): T/test_client_run.py `test_each_sending_command_opens_one_run_with_its_timeout_and_workers`, `test_model_is_passed_unchanged_and_absent_model_passes_none`, `test_every_line_and_event_carries_the_run_id`, `test_dry_run_opens_no_run_and_writes_no_event`, `test_events_hold_no_request_answers_or_models`, `test_quality_no_cache_opens_run_with_cache_false`, `test_lines_match_wheel_schema_and_share_run_id` (real wheel, 3 lines), `test_result_event_holds_tool_ids_and_session_id`, `test_consent_only_for_typesafe` (real wheel), `test_canaries_absent_from_stdout_and_events`, `test_rebuild_reads_answers_through_answers_for`; T/test_decidr_client.py `test_scripts_import_with_result_module_absent`; T/test_no_plugin_env_vars.py `test_only_listed_variables_are_read`; T/test_jev_batch.py `test_fixture_batch_runs_through_a_run_and_logs_result_events`.
+- Build: `sc-compose render --strict` of the template equals S/decidr_client.py.j2 (`test_client_equals_fresh_strict_render_of_installed_template`); the install tests render every `.py.j2` and import it (`python -m unittest discover -s tests/sc-judge-jev -p 'test_install*.py'`).
+- Tests (`python -m unittest discover -s tests/sc-judge-jev` (CI's command, .github/workflows/tests.yml:45) with the j-4 prerelease wheel; every Run is `sc_agent.testing.fake_open_run` or the real wheel on a loopback `http.server` at 127.0.0.1:0; `JUDGE_JEV_LOG_ROOT` per test; no sleeps, timing or HOME writes): T/test_client_run.py `test_each_sending_command_opens_one_run_with_its_timeout_and_workers`, `test_model_is_passed_unchanged_and_absent_model_passes_none`, `test_every_line_and_event_carries_the_run_id`, `test_dry_run_opens_no_run_and_writes_no_event`, `test_events_hold_no_request_answers_or_models`, `test_quality_no_cache_opens_run_with_cache_false`, `test_lines_match_wheel_schema_and_share_run_id` (real wheel, 3 lines), `test_result_event_holds_tool_ids_and_session_id`, `test_consent_only_for_typesafe` (real wheel), `test_canaries_absent_from_stdout_and_events`, `test_rebuild_reads_answers_through_answers_for`; T/test_decidr_client.py `test_scripts_import_with_result_module_absent`; T/test_no_plugin_env_vars.py `test_only_listed_variables_are_read`; T/test_jev_batch.py `test_fixture_batch_runs_through_a_run_and_logs_result_events`.
 - Greps: the Goal grep; `find plugins/sc-judge-jev -name jev-batch-result.schema.json` empty; `grep -rnE '"(jev-latest|haiku|luna)"|provider=' S/` empty.
-- Records: `python scripts/extract.py` 0 issues; `python scripts/check_version_sync.py` exits 0 (VERSION 0.8.0).
+- Records: `$RAPTOR/.venv/bin/python $RAPTOR/scripts/extract.py --project-root . --output $TMP/index.json` reports 0 diagnostics for judge-jev's records (REQ-JEV-0007; Raptor checkout as in evals/README.md); `python scripts/check_version_sync.py` exits 0 (VERSION 0.11.0, the next minor above the base's 0.10.0).
 - Gate: sc-agent `scripts/gate/rewrite.py` unchanged by j-6 (0 Rust lines).
 
 ## Budget
@@ -150,7 +153,7 @@ Phase Rust: 0 lines from j-6 (cap 2,580 untouched; j-4 `PyRun.log` about +8 is c
 
 ## Plan decisions (rule 0, no question to Rand)
 
-1. judge-jev's own events go through the Run it already holds (rule 0: the tool's logger comes through its client). j-4's surface has no such accessor, so j-6 needs this j-4 addition (not in j-4's plan yet):
+1. judge-jev's own events go through the Run it already holds (rule 0: the tool's logger comes through its client). j-4's surface has no such accessor, so j-6 uses j-4's J4-S29:
    `def log_event(run: Any, target: str, action: str, correlation_id: str | None, fields: Mapping[str, Any]) -> Result[None, ClientError]` -- `redact_secrets(fields)`, then `run.log({"target": target, "action": action, "correlation_id": correlation_id, "fields": ...})` and flush on the Run's own logger; Err(`DEPENDENCY.SC_DECIDR` / the wheel's `log.*` error). It needs the wheel's `PyRun.log(event: dict) -> Envelope` (the Run's logger through j-3's kept `pub fn log(logger, action, fields)`; new capability, about +8 Rust). Tests redirect with `JUDGE_JEV_LOG_ROOT`.
 2. `abort_on={"auth"}` kept (core unchanged, ADR-JEV-0001); passed to `run_batch`.
 3. Run name default = `run.run_id` (replaces `stamp()`); `--run-name` still overrides; compare-definition keeps `<run>.with`/`<run>.without` as fields under one Run.
@@ -158,5 +161,5 @@ Phase Rust: 0 lines from j-6 (cap 2,580 untouched; j-4 `PyRun.log` about +8 is c
 
 ## Rule-7 items (answered by Rand)
 
-1. Rebuild from fixture runs. Rand: "Use cache, it will return answers". The rebuild tests (T/test_graph_runs.py RunCase.run_quality, T/test_rule_rank_record_iri.py, T/test_definitions.py rebuild cases) seed the wheel's result cache from the recorded answers, then run quality on a real Run; each reply comes from the cache (`cached: true`, a real `session_id`, nothing sent), so `answers_for` returns the answers. No loopback stub for these tests.
+1. Rebuild from fixture runs. Rand: "Use cache, it will return answers". The rebuild tests (T/test_graph_runs.py RunCase.run_quality, T/test_rule_rank_record_iri.py, T/test_definitions.py rebuild cases) populate the wheel's result cache through one real Run on the loopback stub (the stub serves the recorded answers once; the session rows and cache are the wheel's own, no hand-written session files, ADR-JEV-0007), then run quality on a real Run; each reply comes from the cache (`cached: true`, a real `session_id`, nothing sent), so `answers_for` returns the answers. No loopback stub for these tests.
 2. REQ-JEV-0210 list form. Rand: "Who cares, over specified". Delete "or a non-empty list of objects" from prose-evaluation.md:462-463 on develop (conflict deletion) and delete jev_judge.py.j2:602-624 (`FixtureError`, list branch); `AnswersFile` checks only the object/`__error__` shape.
