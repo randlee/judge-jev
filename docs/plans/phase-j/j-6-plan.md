@@ -105,7 +105,7 @@ CLI: `--model` (default `None`, help "model selector; default from config") on `
 | `quality --no-cache` → `open_command_run(cache=False)` | none in code; ADR-JEV-0001 l.41-43 and REQ-JEV-0209 require it | new capability (counted separately) |
 | `wave_log_events` without answers/request/models | jj:1553-1585 (`answering_models`, `"answers"`, `"request"` keys) | `answering_models` jj:1553-1556 |
 | `walk_tree(run=)` | jj:1593-1659 own `check_fixture_coverage` + `judge_batch(..., log, ...)` | coverage block, `result["answers"]`/`result["ok"]` dict reads |
-| `FixtureError`/list envelope | jj:602-624 `FixtureError` and list branch of `_fixture_problems` | see rule-7 item 2 (deleted only if Rand confirms) |
+| `FixtureError`/list envelope | jj:602-624 `FixtureError` and list branch of `_fixture_problems` | both (Rand, rule-7 item 2); REQ-JEV-0210 list clause deleted on develop |
 | `read_run_events(log_file)` required | jev_runs:266-268 hard-coded `~/.sc-agent/logs/judge-jev.log.jsonl` | the path literal (ANC-015) |
 | `rebuild_from_log` via `answers_for` | jev_runs:205-206 `decidr_client.json_answers(result_lines)` (answers read from /1 lines) | /1 reader (ANC-002/003) |
 | port docstring | jev_ports:72 `jev_judge.pump_batch` | stale name |
@@ -132,7 +132,7 @@ Fixture run (`--answers-file`): same events through a real Run, `session_id` nul
 ## Deletions (file:line at 031a61f)
 
 - Files: S/result.py.j2 (126), S/jev_errors.py.j2 (59), assets/schemas/jev-batch-result.schema.json, T/test_result.py, T/test_jev_error_contracts.py.
-- jj: :99-104 imports, :125, :134, :231-232, :602-624 (rule-7 item 2), :807-808, :851-893, :923-950, :953-1005, :1035-1037, :1042-1049, :1520-1527, :1553-1556, :1626-1631, :1857-1864, :2195-2197, :2209-2213; `"model"` in `batch_jobs` body :843.
+- jj: :99-104 imports, :125, :134, :231-232, :602-624, :807-808, :851-893, :923-950, :953-1005, :1035-1037, :1042-1049, :1520-1527, :1553-1556, :1626-1631, :1857-1864, :2195-2197, :2209-2213; `"model"` in `batch_jobs` body :843.
 - jev_runs: :205-206, :268 path literal. jev_ports:72 name.
 - Tests: T/test_jev_batch.py retry-policy and attempts cases; T/test_jev_result.py helper tests now covered by the template; T/test_decidr_client.py client-internal tests (kept: render equality); T/test_no_plugin_env_vars.py `TYPESAFE_API_KEY` allowance (:40, :44-46).
 
@@ -146,7 +146,7 @@ Fixture run (`--answers-file`): same events through a real Run, `session_id` nul
 
 ## Budget
 
-Phase Rust: 0 lines from j-6 (cap 2,500 untouched). judge-jev production Python (S/*.py.j2 without decidr_client = 5,103 measured, plus scripts/integration.py 119 = 5,222): deletions of copies the template replaces ≈ −185 (two files) and ≈ −190 in jev_judge/jev_runs (pump, attempts, consent blocks, coverage calls, request/answer events, log opener, stamp, model constant); restructure (open_command_run, judge_batch wrapper, result_event, batch_verdict, imports) ≈ +60 against those, so net ≈ −315, restructure ≤ 0. New capability counted separately: `--model` on 3 more commands, `--no-cache`, integration haiku/luna ≈ +30. decidr_client.py.j2 is generated and counted in j-4 (delta reported, 659 → render). Tests: net negative (attempt/retry/client-internal tests deleted; T/test_client_run.py added).
+Phase Rust: 0 lines from j-6 (cap 2,580 untouched; j-4 `PyRun.log` about +8 is counted in j-4). judge-jev production Python (S/*.py.j2 without decidr_client = 5,103 measured, plus scripts/integration.py 119 = 5,222): deletions of copies the template replaces ≈ −185 (two files) and ≈ −190 in jev_judge/jev_runs (pump, attempts, consent blocks, coverage calls, request/answer events, log opener, stamp, model constant); restructure (open_command_run, judge_batch wrapper, result_event, batch_verdict, imports) ≈ +60 against those, so net ≈ −315, restructure ≤ 0. New capability counted separately: `--model` on 3 more commands, `--no-cache`, integration haiku/luna ≈ +30. decidr_client.py.j2 is generated and counted in j-4 (delta reported, 659 → render). Tests: net negative (attempt/retry/client-internal tests deleted; T/test_client_run.py added).
 
 ## Plan decisions (rule 0, no question to Rand)
 
@@ -154,9 +154,9 @@ Phase Rust: 0 lines from j-6 (cap 2,500 untouched). judge-jev production Python 
    `def log_event(run: Any, target: str, action: str, correlation_id: str | None, fields: Mapping[str, Any]) -> Result[None, ClientError]` -- `redact_secrets(fields)`, then `run.log({"target": target, "action": action, "correlation_id": correlation_id, "fields": ...})` and flush on the Run's own logger; Err(`DEPENDENCY.SC_DECIDR` / the wheel's `log.*` error). It needs the wheel's `PyRun.log(event: dict) -> Envelope` (the Run's logger through j-3's kept `pub fn log(logger, action, fields)`; new capability, about +8 Rust). Tests redirect with `JUDGE_JEV_LOG_ROOT`.
 2. `abort_on={"auth"}` kept (core unchanged, ADR-JEV-0001); passed to `run_batch`.
 3. Run name default = `run.run_id` (replaces `stamp()`); `--run-name` still overrides; compare-definition keeps `<run>.with`/`<run>.without` as fields under one Run.
-4. Records need no edit except rule-7 item 2: the trim on plan/phase-j already landed the old J6-16 deletions and ADR-JEV-0007's `/2` text.
+4. Records need no edit except the REQ-JEV-0210 list-clause deletion (rule-7 item 2): the trim on plan/phase-j already landed the old J6-16 deletions and ADR-JEV-0007's `/2` text.
 
-## Rule-7 items
+## Rule-7 items (answered by Rand)
 
-1. Rebuild from fixture runs. ADR-JEV-0007 l.405-407: "A rebuild reads answers through the adopted client's `answers_for` ... judge-jev reads no session-log file"; j-4: a fixture run's lines have `session_id` null, so `answers_for` has nothing to read. Tests that rebuild from `--answers-file` runs (T/test_graph_runs.py RunCase.run_quality, T/test_rule_rank_record_iri.py, T/test_definitions.py rebuild cases) cannot pass unchanged. Proposed: those tests drive the real wheel through a loopback stub that serves the recorded answers (offline, NFR-JEV-0001), so session rows exist; cost ≈ +40 test lines.
-2. REQ-JEV-0210 (prose-evaluation.md:462-463) "each key's value to be an object or a non-empty list of objects" conflicts with j-4 `fixture_answer` (one answer or one error; list entries deleted) and the 2026-11-24 owner approval "fixture-attempts-removed". Proposed: conflict deletion of "or a non-empty list of objects" on develop; a list becomes `VALIDATION.INPUT`; jj:602-624 shrink accordingly.
+1. Rebuild from fixture runs. Rand: "Use cache, it will return answers". The rebuild tests (T/test_graph_runs.py RunCase.run_quality, T/test_rule_rank_record_iri.py, T/test_definitions.py rebuild cases) seed the wheel's result cache from the recorded answers, then run quality on a real Run; each reply comes from the cache (`cached: true`, a real `session_id`, nothing sent), so `answers_for` returns the answers. No loopback stub for these tests.
+2. REQ-JEV-0210 list form. Rand: "Who cares, over specified". Delete "or a non-empty list of objects" from prose-evaluation.md:462-463 on develop (conflict deletion) and delete jev_judge.py.j2:602-624 (`FixtureError`, list branch); `AnswersFile` checks only the object/`__error__` shape.
