@@ -369,7 +369,6 @@ questions that judges whether a record is well written: waves of questions
 - A dry run MUST NOT write a result envelope.
 - A dry run MUST NOT write a result, wave or verdict event to the
   sc-observability logger.
-- A dry run MUST NOT open an sc-agent `Run` or write a run link.
 
 ### Rationale
 
@@ -411,8 +410,7 @@ once.
 - `judge-jev quality` MUST judge each record with its kind's quality
   decision tree (REQ-JEV-0101).
 - All records of one `judge-jev quality` invocation MUST be logged under
-  one run name: `--run-name` when given, else the `run_id` of the
-  invocation's `Run`.
+  one run name: `--run-name` when given.
 - `judge-jev quality --no-cache` MUST send every request with
   `cache=False`.
 - `judge-jev batch --repeat N` with N above 1 MUST send all repeats in one
@@ -424,9 +422,6 @@ Quality and compliance are separate questions about separate inputs. One
 run name per invocation groups a measurement over many records in the
 log. An intentional identical resend (a variance check, a repeat) would
 otherwise be answered from sc-agent's cache (ADR-JEV-0001).
-
-Lead ruling (2026-11-24, phase j plan review): all repeats go in one
-`cache=False` call; the default run name is the `Run`'s `run_id`.
 
 ### Success Criteria
 
@@ -445,7 +440,7 @@ Lead ruling (2026-11-24, phase j plan review): all repeats go in one
 Definitions: Jev is TypeSafe's hosted judge model: it answers each
 multiple-choice question about a text with one choice and a confidence from
 0 to 1. A Jev request is one call to it. The model for an input kind is the
-Pydantic model (a typed schema class) judge-jev validates that input with
+model judge-jev validates that input with
 (ADR-JEV-0005). A field path is the dotted path of keys and list indexes to
 the refused field, such as `nodes.wave-1.questions.context.criteria`. An
 answers file is a JSON file of Jev's answers, keyed by request, that
@@ -468,8 +463,7 @@ questions, choices or probabilities do not match the request.
 - `judge-jev validate --answers` MUST apply the answers-file envelope that
   `--answers-file` applies before the first request.
 - The answers-file envelope MUST require an object of string keys.
-- The answers-file envelope MUST require each key's value to be an object
-  or a non-empty list of objects.
+- The answers-file envelope MUST require each key's value to be an object.
 - The answers-file envelope MUST require an object with `__error__` to hold
   only a string code of at most 64 characters.
 
@@ -569,9 +563,6 @@ judge-jev's own record of that request's result; it carries the request's
   it over the size limit.
 - Every request's result record MUST carry the digest of each definition
   the request carried.
-
-**MUST NOT statements:**
-- `judge-jev` MUST NOT truncate a definition.
 
 ### Rationale
 

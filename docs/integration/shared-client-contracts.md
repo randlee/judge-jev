@@ -7,5 +7,5 @@ judge-jev's generated client and sitr integration follow these producer-owned re
 
 judge-jev always enables sitr, pins it to the sc-decidr version, and imports `sc_treesitter` lazily inside `extract()`; there is no install-time sitr switch.
 
-judge-jev uses sc-agent's default credential lookup (keyring service = variable name, account = OS user), per [REQ-JEV-0003](../requirements/raptor-integration.md#req-jev-0003-typesafe-key-lookup) and owner ruling `agt-wfav`.
+judge-jev uses sc-agent's default credential lookup (keyring service = variable name, account = OS user) and owner ruling `agt-wfav`.
 [REQ-JEV-0004](../requirements/raptor-integration.md#req-jev-0004-remote-judge-consent) governs remote-judge consent; it does not define sitr integration.

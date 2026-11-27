@@ -46,7 +46,7 @@ judges every named record under one run name.
   selected branch or verdict. A per-statement wave logs each statement's
   request and a `statement` event (statement, answers, reason), then a
   `wave` event with the request ids, matched statements and verdict. Logging goes through the sc-observability
-  logger, the one sc-agent uses (REQ-JEV-0008), to
+  logger, the one sc-agent uses, to
   `~/.sc-agent/logs/judge-jev.log.jsonl`.
   That file is per user and shared by every repository and worktree; `--run-name` tags a run's events. In the result, each answer carries
   `probabilities` (every option) and `runner_up` (the option Jev nearly chose: its name, probability and criterion),
