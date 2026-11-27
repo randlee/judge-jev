@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev-gate
-version: 0.10.0
+version: 0.11.0
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -37,7 +37,7 @@ import statistics
 import sys
 from collections import Counter
 
-from result import run_main
+from decidr_client import run_main
 
 SCRIPT = "jev_gate.py"
 DEFAULT_THRESHOLD = 0.6

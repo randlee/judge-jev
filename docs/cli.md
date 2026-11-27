@@ -42,15 +42,7 @@ judges every named record under one run name.
 - `--dry-run` reports each record's tree and composed wave-1 request, one
   per statement for a per-statement wave; later waves depend on live
   answers.
-- A live run logs every wave as output: composed request, answers, reason,
-  selected branch or verdict. A per-statement wave logs each statement's
-  request and a `statement` event (statement, answers, reason), then a
-  `wave` event with the request ids, matched statements and verdict. Logging goes through the sc-observability
-  logger, the one sc-agent uses, to
-  `~/.sc-agent/logs/judge-jev.log.jsonl`.
-  That file is per user and shared by every repository and worktree; `--run-name` tags a run's events. In the result, each answer carries
-  `probabilities` (every option) and `runner_up` (the option Jev nearly chose: its name, probability and criterion),
-  and each wave carries `models`, the Jev versions that answered.
+- A live run writes result and wave events to `<JUDGE_JEV_LOG_ROOT|~/.sc-agent>/logs/judge-jev.log.jsonl`. Events reference sc-agent session rows by session ID; `--run-name` identifies the run. The command result retains each wave's reason and answer probabilities.
 
 - `--definitions <file>` (repeatable) adds the definitions attached to each
   record to its requests (see Definitions); with no flag the repository's
@@ -119,7 +111,7 @@ before its first Jev request (REQ-JEV-0210, ADR-JEV-0005). `-` reads stdin.
   first call and in `--dry-run`.
 - `--answers` checks the envelope only, the same one `--answers-file` checks
   before the first request in `batch` and `quality`: an object of string keys,
-  each an object or a non-empty list of objects; an `__error__` object holds a
+  each an answer object or an `__error__` object holding a
   string code and nothing else (`INPUT.MALFORMED`
   otherwise). An answer's own body (its choice, probabilities, extra keys) is
   Jev's response stand-in and is checked after the send
@@ -170,7 +162,7 @@ a:fast-2 a jj:Attachment ; jj:record <urn:raptor:repo:atm-core#REQ-ATM-0043> ;
   never changes because a definitions file exists. The same definition IRI
   in two files is `DEFINITIONS.INVALID` naming both.
 - Definitions are never truncated.
-- Every request, answer, result, wave and verdict event, and each record's
+- Every result, wave and verdict event, and each record's
   result, carries `definitions: [{iri, term, digest}]` (the digest is the
   SHA-256 of term, text and source); the run's triples link the run to each
   definition IRI with `jj:carriedDefinition`.

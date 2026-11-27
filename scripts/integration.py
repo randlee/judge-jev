@@ -22,9 +22,10 @@ def dependencies(path):
     return tomllib.loads('\n'.join(line.removeprefix('# ') for line in text.splitlines()))['dependencies']
 
 
-def keychain_probe(operation):
-    return ("import json,sc_agent; q={'model':'jev','state':'test','questions':{'q':{'type':'noul','instructions':'Assess whether the statement is clear.'}}}; "
-            f"r=sc_agent.{operation}({'[q]' if operation == 'send_batch' else 'q'},model='jev',agent_role='judge-jev'); "
+def keychain_probe(operation, model):
+    return ("import json,sc_agent; q={'state':'test','questions':{'q':{'type':'noul','instructions':'Assess whether the statement is clear.'}}}; "
+            f"run=sc_agent.Run(tool='judge-jev',tool_version='integration',model={model!r},project='judge-jev-integration',agent_role='judge-jev'); "
+            f"r=run.{operation}({'[q]' if operation == 'send_batch' else 'q'}); "
             "r=(r['value'][0]['result'] if r.get('ok') and isinstance(r.get('value'),list) else r); "
             "print(json.dumps({'ok':r.get('ok'),'error':{'id':(r.get('error') or {}).get('id')}}))")
 
@@ -35,13 +36,14 @@ def main():
     parser.add_argument('--env-file', required=True, type=Path)
     parser.add_argument('--key-variable', required=True)
     parser.add_argument('--results', required=True, type=Path)
+    parser.add_argument('--model', default=None, help='model selector; default from sc-agent config')
     args = parser.parse_args()
     try:
         values = dict(line.split('=', 1) for line in args.env_file.read_text().splitlines()
                       if line.strip() and not line.lstrip().startswith('#'))
         secret = values.get(args.key_variable)
         if not secret:
-            raise ValueError('TypeSafe key is required')
+            raise ValueError(f'{args.key_variable} is required')
         python = str(args.venv.resolve() / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python'))
         env = {k: v for k, v in os.environ.items()
                if not k.endswith('_API_KEY') and k not in (args.key_variable, 'SC_AGENT_TEST_TRAP_PLATFORM_KEYRING')
@@ -91,15 +93,16 @@ def main():
                      "(p/'index.json').write_text(json.dumps(INDEX)); (p/'batch.jsonl').write_text(jsonl(BatchTests.LINES))")
             run('prepare', [python, '-c', setup, str(ROOT / 'tests/sc-judge-jev'), str(root)])
             script = str(root / '.claude/skills/judge-jev/scripts/jev_judge.py')
-            run('quality', [python, script, 'quality', '--req', 'REQ-T-0001', '--index', 'index.json'],
+            model_args = ['--model', args.model] if args.model else []
+            run('quality', [python, script, 'quality', '--req', 'REQ-T-0001', '--index', 'index.json', *model_args],
                 check=lambda text: json.loads(text).get('success') is True)
-            batch = [python, script, 'batch', '--input', 'batch.jsonl', '--repeat', '1']
+            batch = [python, script, 'batch', '--input', 'batch.jsonl', '--repeat', '1', *model_args]
             run('batch', batch, check=lambda text: len(rows := [json.loads(line) for line in text.splitlines()]) == 3 and all(r.get('ok') for r in rows))
             for n in range(4):
                 run(f'invalid-key-{n + 1}', batch, key=INVALID_KEY, expected=2,
                     check=lambda text: any((json.loads(line).get('error') or {}).get('code') == 'AUTH.CREDENTIALS' for line in text.splitlines()))
             for operation in ('send', 'send_batch'):
-                probe = keychain_probe(operation)
+                probe = keychain_probe(operation, args.model)
                 text = run('keychain-' + operation, [python, '-c', probe], key=None,
                            check=lambda out: accepted_keychain(json.loads(out)))
                 try:

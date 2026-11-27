@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_runs
-version: 0.10.0
+version: 0.11.0
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -41,7 +41,7 @@ from typing import Any, Optional
 from urllib.parse import quote
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from result import Err, Ok, Result  # noqa: E402
+from decidr_client import Err, Ok, Result  # noqa: E402
 
 JJ = "urn:judge-jev:ontology#"
 RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
@@ -263,9 +263,9 @@ def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list:
     return sorted(quads, key=str)
 
 
-def read_run_events(run_name: str, log_file: Optional[pathlib.Path] = None) -> Result[dict, Any]:
+def read_run_events(run_name: str, log_file: pathlib.Path) -> Result[dict, Any]:
     """The run's result, statement, wave and verdict fields from the supplied JSONL file, oldest first."""
-    source = pathlib.Path(log_file) if log_file is not None else pathlib.Path.home() / ".sc-agent/logs/judge-jev.log.jsonl"
+    source = pathlib.Path(log_file)
     out = {action: [] for action in ("result", "statement", "wave", "verdict")}
     try:
         with source.open(encoding="utf-8") as stream:
@@ -285,7 +285,7 @@ def _log_error(message: str) -> Err:
 
 
 def rebuild_from_log(run_name: str, tree: Any, repository: Optional[str] = None, *,
-                     log_file: Optional[pathlib.Path] = None) -> Result[list, Any]:
+                     log_file: pathlib.Path) -> Result[list, Any]:
     """The run's triples (every record under the run name) rebuilt from the sc-observability log alone: its ``result``
     events are the result lines, its ``statement`` and ``wave`` events the walk, its ``verdict`` event the verdict.
     ``repository`` is the Raptor repository URN when the log does not carry it (it does not today)."""
@@ -317,6 +317,11 @@ def rebuild_from_log(run_name: str, tree: Any, repository: Optional[str] = None,
         if record_id is None or rec["verdict"] is None:
             continue  # a record whose walk did not finish has no verdict to project
         try:
+            import decidr_client
+            found = decidr_client.answers_for(rec["lines"])
+            if isinstance(found, Err):
+                return found
+            lines = [{**line, "answers": found.value[line["request_id"]]} for line in rec["lines"]]
             waves = []
             for w in rec["waves"]:
                 if w.get("per") == "statement":
@@ -324,7 +329,7 @@ def rebuild_from_log(run_name: str, tree: Any, repository: Optional[str] = None,
                                   "reason": [{"statement": rec["statements"][i]} for i in w["request_ids"]]})
                 else:
                     waves.append({"node": w["node"], "request_id": w["request_id"]})
-            quads += run_triples(tree, rec["run"], rec["lines"], {"verdict": rec["verdict"], "waves": waves})
+            quads += run_triples(tree, rec["run"], lines, {"verdict": rec["verdict"], "waves": waves})
         except Exception as exc:  # a log line missing a field, or the log and the tree disagree: a typed error, never a crash
             return _log_error(f"run {run_name} record {record_id}: the log does not match the tree or lacks a field: "
                               f"{type(exc).__name__}: {exc}")

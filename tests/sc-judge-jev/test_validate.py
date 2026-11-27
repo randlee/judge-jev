@@ -23,8 +23,8 @@ SHIPPED_TREES = ("quality-req.json", "quality-adr.json", "quality-nfr.json")
 def validate(*argv):
     """Run `validate` in-process with Jev, the run log and remote-consent gate all forbidden."""
     with env(), mock.patch.multiple(jj.decidr_client, call_result=tq.never_called, call_batch_results=tq.never_called), \
-            mock.patch.object(jj, "open_run_log", side_effect=AssertionError("validate wrote a log")), \
-            mock.patch.object(jj.decidr_client, "remote_preflight", side_effect=AssertionError("validate checked live-call consent")):
+            mock.patch.object(jj, "open_command_run", side_effect=AssertionError("validate opened a run")), \
+            mock.patch.object(jj.decidr_client, "remote_judge_consent", side_effect=AssertionError("validate checked live-call consent")):
         return run_cli(["validate", *argv])
 
 
@@ -57,7 +57,7 @@ class ValidateKinds(unittest.TestCase):
     def test_index_answers_and_requests_pass(self):
         self.accepted("--index", write(self.d, "index.json", tq.INDEX), "index")
         self.accepted("--answers", write(self.d, "answers.json", {"ADR-T-0001/wave-1": tq.tree_answers("quality-adr.json"), "*": {}}), "answers")
-        fixture = {"a/c/r1": [{"__error__": "DECIDR.NETWORK"}, tq.tree_answers("quality-adr.json")], "n": {"q": {"noul": 0.3}}}
+        fixture = {"a/c/r1": {"__error__": "DECIDR.NETWORK"}, "n": {"q": {"noul": 0.3}}}
         self.accepted("--answers", write(self.d, "fixture.json", fixture), "answers")
         self.accepted("--requests", write(self.d, "requests.jsonl", jsonl([request_line(), request_line("ex-43")])), "requests")
 
@@ -169,7 +169,7 @@ class FieldPaths(unittest.TestCase):
         answers = {"ADR/wave-1": {"context": {"type": "choice", "choice": "a", "confidence": 2, "probabilities": {"a": 1}}}}
         self.assertEqual(validate("--answers", write(self.d, "body.json", answers))[0], 0)  # a bad answer body is DECIDR.RESPONSE_INVALID after the send
         listed = {"k": [{"__error__": "X"}, {"__error__": 7}]}
-        self.assertIn("k.1: __error__: Input should be a valid string", self.message("--answers", listed, "INPUT.MALFORMED"))
+        self.assertIn("k: Input should be an object", self.message("--answers", listed, "INPUT.MALFORMED"))
         line = request_line()
         line["item"]["id"] = "bad id"
         code, out = validate("--requests", write(self.d, "r.jsonl", jsonl([line])))

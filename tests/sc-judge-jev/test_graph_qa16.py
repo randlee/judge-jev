@@ -18,7 +18,7 @@ from jev_support import SKILL  # noqa: F401,E402
 import jev_graph  # noqa: E402
 import jev_ports  # noqa: E402
 import jev_runs  # noqa: E402
-from result import Err, Ok  # noqa: E402
+from decidr_client import Err, Ok  # noqa: E402
 
 from test_graph_tree import ADR_JSON, ADR_TTL, BRANCH_TTL, GraphCase, write  # noqa: E402
 

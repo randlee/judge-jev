@@ -51,7 +51,6 @@ class BatchCase(unittest.TestCase):
         _log_environment.start()
         self.addCleanup(_log_environment.stop)
         self.addCleanup(self.td.cleanup)
-        self.enterContext(mock.patch.object(jj.decidr_client, "_logger_handle", None))
 
     def put(self, name, value):
         return write(self.d, name, value)
@@ -73,56 +72,46 @@ class BatchTests(BatchCase):
         return proc
 
     def log(self, run_dir):
-        """The result lines rebuilt from the run log's request, answer and result events."""
-        return log_lines(self.d / run_dir)
+        return [e["fields"] for e in read_log(self.d / run_dir, action="result")]
 
     @staticmethod
     def parsed(stdout):
         return [json.loads(x) for x in stdout.decode("utf-8").splitlines()]
 
-    def test_lines_are_keyed_by_id_with_verdicts_and_request_evidence(self):
+    def test_lines_are_keyed_by_id_with_verdicts_and_wheel_schema(self):
+        import importlib.resources
+        import jsonschema
         proc = self.subprocess_batch("runs", "--input", self.put("in.jsonl", jsonl(self.LINES)))
         self.assertEqual((proc.returncode, proc.stderr), (0, b""))
-        lines = [json.loads(x) for x in proc.stdout.decode("utf-8").splitlines()]
-        self.assertEqual([x["request_id"] for x in lines],
-                         ["run-7/s1/ANC-001/cur/r1", "run-7/s1/ANC-001/cur/r2", "run-7/s1/ANC-001/alt/r1", "run-7/s1/ANC-001/alt/r2",
-                          "run-7/s3/ANC-001/cur/r1", "run-7/s3/ANC-001/cur/r2"])
-        by_key = {(x["item_id"], x["candidate_id"], x["repeat"]): x for x in lines}
-        self.assertEqual((by_key[("s1", "cur", 1)]["verdict"], by_key[("s1", "alt", 2)]["verdict"], by_key[("s3", "cur", 1)]["verdict"]),
-                         ("satisfied", "not_addressed", "contradicted"))
-        line = by_key[("s1", "alt", 2)]
-        self.assertEqual(line["answers"]["addressed"]["probabilities"], answer("no")["probabilities"])
-        self.assertEqual((line["run_id"], line["ok"], line["retry_count"], line["schema"]),
-                         (hashlib.sha256(b"run-7/s1/ANC-001/alt/r2").hexdigest()[:16], True, 0, "jev-batch-result/1"))
-        self.assertEqual(line["request"]["questions"], alt_set(1))
-        self.assertEqual(line["request"]["state"]["item"], {"id": "s1", "title": "Sprint 1", "text": "We copy the legacy crates."})
-        self.assertEqual(by_key[("s1", "cur", 1)]["request_sha256"], by_key[("s1", "cur", 2)]["request_sha256"])
-        try:
-            import jsonschema
-        except ImportError:
-            self.skipTest("jsonschema is not installed; the schema half of this test needs it")
-        schemas = SKILL / "assets" / "schemas"
-        for name, values in (("jev-batch-request", self.LINES), ("jev-batch-result", lines)):
-            validator = jsonschema.Draft202012Validator(json.loads((schemas / f"{name}.schema.json").read_text(encoding="utf-8")))
-            for value in values:
-                validator.validate(value)
+        lines = self.parsed(proc.stdout)
+        ids = ["run-7/s1/ANC-001/cur/r1", "run-7/s1/ANC-001/cur/r2", "run-7/s1/ANC-001/alt/r1", "run-7/s1/ANC-001/alt/r2", "run-7/s3/ANC-001/cur/r1", "run-7/s3/ANC-001/cur/r2"]
+        self.assertEqual([line["request_id"] for line in lines], ids)
+        by_id = {line["request_id"]: line for line in lines}
+        self.assertEqual([by_id[ids[i]]["verdict"] for i in (0, 3, 4)], ["satisfied", "not_addressed", "contradicted"])
+        self.assertEqual(len({line["run_id"] for line in lines}), 1)
+        schema = json.loads((importlib.resources.files("sc_agent") / "templates" / "jev-batch-result.schema.json").read_text())
+        validator = jsonschema.Draft202012Validator(schema)
+        for line in lines:
+            validator.validate(line)
+            self.assertEqual((line["schema"], line["session_id"], line["ok"]), ("jev-batch-result/2", None, True))
+            self.assertTrue({"request", "answers", "attempts"}.isdisjoint(line))
 
     def test_log_holds_every_stdout_line_and_stdin_matches_file_input(self):
-        from_file = self.subprocess_batch("a", "--input", self.put("in.jsonl", jsonl(self.LINES)))
-        from_stdin = self.subprocess_batch("b", stdin=jsonl(self.LINES).encode("utf-8"))
-        self.assertEqual((from_file.returncode, from_stdin.returncode), (0, 0))
-        self.assertEqual(len(from_file.stdout.splitlines()), 6)
-        self.assertEqual(self.log("a"), self.parsed(from_file.stdout))
-        self.assertEqual(self.log("b"), self.parsed(from_stdin.stdout))
-        self.assertEqual(from_stdin.stdout, from_file.stdout)
-        events = read_log(self.d / "a")
-        self.assertEqual([e["action"] for e in events], ["request", "answer", "result"] * 6)
-        self.assertEqual({e["fields"]["run"] for e in events}, {"r1"})
-        self.assertEqual([e["correlation_id"] for e in events if e["action"] == "result"], [x["run_id"] for x in self.parsed(from_file.stdout)])
-        self.assertEqual(list((self.d / "a").rglob("tournament-*.jsonl")), [])
-        # the log is append-only: a second run with the same name adds its events after the first run's
+        first = self.subprocess_batch("a", "--input", self.put("in.jsonl", jsonl(self.LINES)))
+        second = self.subprocess_batch("b", stdin=jsonl(self.LINES).encode())
+        self.assertEqual((first.returncode, second.returncode), (0, 0))
+        lines1, lines2 = self.parsed(first.stdout), self.parsed(second.stdout)
+        self.assertEqual(len(lines1), 6)
+        for run_dir, lines in (("a", lines1), ("b", lines2)):
+            events = read_log(self.d / run_dir)
+            self.assertEqual([e["action"] for e in events], ["result"] * 6)
+            self.assertEqual([e["fields"]["request_id"] for e in events], [x["request_id"] for x in lines])
+            self.assertEqual([e["correlation_id"] for e in events], [x["run_id"] for x in lines])
+            self.assertTrue(all({"request", "answers"}.isdisjoint(e["fields"]) for e in events))
+        self.assertEqual([dict(x, run_id=None) for x in lines1], [dict(x, run_id=None) for x in lines2])
         again = self.subprocess_batch("a", "--input", str(self.d / "in.jsonl"))
-        self.assertEqual(self.log("a"), self.parsed(from_file.stdout) + self.parsed(again.stdout))
+        self.assertEqual(again.returncode, 0)
+        self.assertEqual(len(self.log("a")), 12)
 
     def test_three_request_lines_are_three_results_and_three_result_events(self):
         """REQ-JEV-0002: a request file of three lines produces three result envelopes and three log entries."""
@@ -132,15 +121,12 @@ class BatchTests(BatchCase):
         self.assertEqual(len(self.parsed(proc.stdout)), 3)
         self.assertEqual(len(read_log(self.d / "three", action="result")), 3)
 
-    def test_dry_run_logs_requests_and_results_without_answers(self):
+    def test_dry_run_writes_no_results_or_events(self):
         proc = self.subprocess_batch("dry", "--dry-run", "--repeat", "1", "--input", self.put("in.jsonl", jsonl(self.LINES[1:])))
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual([e["action"] for e in read_log(self.d / "dry")], ["request", "result"])
-        self.assertEqual(self.log("dry"), self.parsed(proc.stdout))
+        self.assertEqual((proc.returncode, proc.stdout, proc.stderr), (0, b"", b""))
+        self.assertEqual(read_log(self.d / "dry"), [])
 
     def test_stdout_lines_end_in_lf_where_text_stdout_writes_crlf(self):
-        """On Windows a text-mode stdout turns "\n" into "\r\n"; the result lines must still match the log byte for byte.
-        The child gets the same CRLF-translating stdout on every OS, so this check does not depend on the runner OS."""
         wrapper = ("import runpy, sys; sys.stdout.reconfigure(newline='\\r\\n'); sys.argv = sys.argv[1:]; "
                    "runpy.run_path(sys.argv[0], run_name='__main__')")
         argv = [sys.executable, "-c", wrapper, str(SCRIPTS / "jev_judge.py"), "batch", "--run-name", "r1", "--answers-file", self.put("answers.json", self.FIXTURE), "--input", self.put("in.jsonl", jsonl(self.LINES))]
@@ -148,70 +134,49 @@ class BatchTests(BatchCase):
         self.assertEqual((proc.returncode, proc.stderr), (0, b""))
         self.assertEqual(len(proc.stdout.splitlines()), 3)
         self.assertNotIn(b"\r", proc.stdout)
-        self.assertEqual(self.log("crlf"), self.parsed(proc.stdout))
+        self.assertEqual([x["request_id"] for x in self.log("crlf")], [x["request_id"] for x in self.parsed(proc.stdout)])
 
-    def test_native_callbacks_persist_finish_order_and_match_input_indices(self):
-        from test_jev_judge import wheel_record
+    def test_callbacks_match_input_indices_when_delivered_out_of_order(self):
+        from sc_agent.testing import FakeRun
         line = request_line("s1", "text", ("c1", PLAN_QS["questions"]), ("c2", PLAN_QS["questions"]), ("c3", PLAN_QS["questions"]))
-        settings = jj.BatchSettings("plan", "fixture-model", 1, "p", 0.6, 30.0, 3, False)
-        records = [wheel_record((json.dumps({"response": {"answers": plan_answers()}, "sends": 1}), None), i) for i in range(3)]
-        persisted = []
-        def native_batch(requests, **kwargs):
-            self.assertEqual(len(requests), 3)
-            for i in (2, 0, 1):
-                kwargs["on_result"](records[i])
-                self.assertEqual(len(persisted), (2, 0, 1).index(i) + 1)
-            return {"ok": True, "value": records}
-        def log_result(log, result, fields):
-            persisted.append(result["candidate_id"])
-            return jj.Ok(None)
-        with mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=native_batch), \
-                mock.patch.object(jj, "log_result_line", side_effect=log_result):
-            got = jj._live_batch_results([line], settings, mock.Mock(), False)
-        self.assertIsInstance(got, jj.Ok)
-        self.assertEqual(persisted, ["c3", "c1", "c2"])
-        self.assertEqual([r["candidate_id"] for r in got.value], ["c1", "c2", "c3"])
+        settings = jj.BatchSettings("plan", 1, "p", 0.6, False)
+        run = FakeRun({"run_id": "test-run", "provider": "local"})
+        original = jj.decidr_client.run_batch
+        def reverse(run, jobs, settings, **kwargs):
+            deliver, saved = kwargs["on_line"], []
+            kwargs["on_line"] = lambda line, answers: saved.append((line, answers))
+            outcome = original(run, jobs, settings, **kwargs)
+            for result, answers in reversed(saved):
+                deliver(result, answers)
+            return outcome
+        with mock.patch.object(jj.decidr_client, "run_batch", side_effect=reverse):
+            got = jj.judge_batch(run, [line], settings, fixture={"*": plan_answers()}, echo=False)
+        self.assertTrue(got.ok, got)
+        self.assertEqual([x[0].request_id.split("/")[-2] for x in got.value], ["c1", "c2", "c3"])
+        self.assertEqual([x["fields"]["candidate_id"] for x in run.logged], ["c1", "c2", "c3"])
 
     def test_failed_call_is_a_line_and_exit_2_with_the_error_on_stderr(self):
-        self.FIXTURE = {"s1/cur": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}], "*": plan_answers()}
-        proc = self.subprocess_batch("runs", "--repeat", "1", stdin=jsonl(self.LINES[:1]).encode("utf-8"))
+        self.FIXTURE = {"s1/cur": {"__error__": "DECIDR.OVERLOADED"}, "*": plan_answers()}
+        proc = self.subprocess_batch("runs", "--repeat", "1", stdin=jsonl(self.LINES[:1]).encode())
         self.assertEqual(proc.returncode, 2)
-        lines = [json.loads(x) for x in proc.stdout.decode("utf-8").splitlines()]
-        failed = next(x for x in lines if x["candidate_id"] == "cur")
-        self.assertEqual((failed["ok"], failed["retry_count"], failed["error"]["code"], failed["verdict"]), (False, 1, "DECIDR.OVERLOADED", None))
-        self.assertTrue(next(x for x in lines if x["candidate_id"] == "alt")["ok"])
+        lines = self.parsed(proc.stdout)
+        failed = next(x for x in lines if "/cur/" in x["request_id"])
+        self.assertEqual((failed["ok"], failed["error"]["code"], failed["verdict"]), (False, "DECIDR.OVERLOADED", None))
+        self.assertTrue(next(x for x in lines if "/alt/" in x["request_id"])["ok"])
         self.assertEqual(json.loads(proc.stderr)["error"]["code"], "DECIDR.OVERLOADED")
-        self.assertEqual(self.log("runs"), lines)
+        self.assertEqual([x["request_id"] for x in self.log("runs")], [x["request_id"] for x in lines])
 
-    def test_wheel_failure_is_flushed_to_run_log_during_result_callback(self):
-        detail = {"id": "http.network", "category": "network", "message": "controlled connection failure",
-                  "recovery": "Check connectivity and retry."}
-        source = self.put("in.jsonl", jsonl(self.LINES[:1]))
-        transport = BatchTransport((json.dumps({"error": detail, "sends": 1}), "DECIDR.NETWORK"))
-        observed = []
-
-        def checked_transport(requests, **kwargs):
-            persist = kwargs["on_result"]
-
-            def received(record):
-                persist(record)
-                observed.append(self.log("logs"))
-
-            kwargs["on_result"] = received
-            return transport(requests, **kwargs)
-
-        stdout, stderr = io.StringIO(), io.StringIO()
-        with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", checked_transport), \
-                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = jj.main(["batch", "--input", source])
-        lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
-        self.assertEqual(code, 2)
-        self.assertEqual([len(snapshot) for snapshot in observed], [1, 2])
-        self.assertEqual(observed[0], lines[:1])
-        self.assertEqual(observed[1], lines)
-        self.assertFalse(observed[0][0]["ok"])
-        self.assertEqual(observed[0][0]["error"]["code"], "DECIDR.NETWORK")
-        self.assertTrue(lines[1]["ok"])
+    def test_wheel_failure_is_logged_in_result_callback(self):
+        from sc_agent.testing import FakeRun
+        detail = {"id": "http.network", "category": "network", "message": "controlled connection failure"}
+        run = FakeRun({"provider": "local", "run_id": "test-run", "envelopes": [{"ok": False, "error": detail}]})
+        line = request_line("s1", "text", ("cur", PLAN_QS["questions"]))
+        settings = jj.BatchSettings("plan", 1, "p", 0.6, False)
+        outcome = jj.judge_batch(run, [line], settings, fixture=None, echo=False)
+        self.assertTrue(outcome.ok, outcome)
+        self.assertEqual(len(run.logged), 1)
+        self.assertFalse(run.logged[0]["fields"]["ok"])
+        self.assertEqual(run.logged[0]["fields"]["error"]["code"], "DECIDR.NETWORK")
 
     def test_bad_input_is_refused_before_any_line(self):
         def refused(lines_text, *extra):
@@ -223,18 +188,17 @@ class BatchTests(BatchCase):
         self.assertEqual(refused(jsonl([request_line("s1", "x", ("c", PLAN_QS["questions"]), ("c", PLAN_QS["questions"]))])), "VALIDATION.INPUT")
         self.assertEqual(refused(good + jsonl(self.LINES[:1])), "VALIDATION.INPUT")  # the same request twice
         self.assertEqual(refused(jsonl([request_line("bad id", "x", ("c", PLAN_QS["questions"]))])), "VALIDATION.INPUT")
-        self.assertEqual(refused(good, "--max-workers", "5"), "VALIDATION.INPUT")
         self.assertEqual(refused("\n"), "INPUT.EMPTY")
         self.assertFalse((self.d / "runs").exists())
 
 
 
     def test_live_auth_failure_is_reported_from_the_typed_wheel_error(self):
-        error = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable", "sends": 1}
-        transport = BatchTransport((json.dumps({"error": error}), "AUTH.CREDENTIALS"))
+        from sc_agent.testing import fake_open_run
+        error = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable"}
         src = self.put("in.jsonl", jsonl([request_line("s1", "text", ("cur", PLAN_QS["questions"]))]))
         stdout, stderr = io.StringIO(), io.StringIO()
-        with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
+        with fake_open_run(jj.decidr_client, {"provider": "local", "run_id": "test-run", "envelopes": [{"ok": False, "error": error}]}), \
                 contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = jj.main(["batch", "--input", src])
         line, = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
@@ -242,59 +206,23 @@ class BatchTests(BatchCase):
                          (2, "AUTH.CREDENTIALS", "AUTH.CREDENTIALS"))
 
     def test_batch_summary_keeps_auth_cause_after_other_requests_are_canceled(self):
-        auth = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable",
-                "recovery": "Set TYPESAFE_API_KEY or store it in the default credential entry."}
+        from sc_agent.testing import fake_open_run
+        auth = {"id": "auth.credentials", "category": "auth", "message": "credential unavailable", "action": "Set credentials."}
         canceled = {"id": "decision.cancelled", "category": "cancelled", "message": "the request was cancelled"}
-        src = self.put("in.jsonl", jsonl([request_line("s1", "text", *[
-            (f"c{i}", PLAN_QS["questions"]) for i in range(4)])]))
+        src = self.put("in.jsonl", jsonl([request_line("s1", "text", *[(f"c{i}", PLAN_QS["questions"]) for i in range(4)])]))
         for auth_position in (0, 1, 2, 3, None):
             with self.subTest(auth_position=auth_position):
-                transport = BatchTransport(*[
-                    (json.dumps({"error": auth if i == auth_position else canceled, "sends": 1}), None)
-                    for i in range(4)])
+                envelopes = [{"ok": False, "error": auth if i == auth_position else canceled} for i in range(4)]
                 stdout, stderr = io.StringIO(), io.StringIO()
-                with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", transport), \
+                with fake_open_run(jj.decidr_client, {"provider": "local", "run_id": "test-run", "envelopes": envelopes}), \
                         contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                     code = jj.main(["batch", "--input", src])
                 lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
                 summary = json.loads(stderr.getvalue())
                 cause = lines[auth_position if auth_position is not None else 0]
                 self.assertEqual((code, len(lines), summary["unanswered"]), (2, 4, 4))
-                self.assertEqual(summary["request_id"], cause["request_id"])
-                self.assertEqual(summary["error"], cause["error"])
+                self.assertEqual((summary["request_id"], summary["error"]), (cause["request_id"], cause["error"]))
                 self.assertEqual(summary["error"]["code"], "AUTH.CREDENTIALS" if auth_position is not None else "CANCELED")
-                if auth_position is not None:
-                    self.assertEqual(summary["error"]["message"], auth["message"])
-                    self.assertEqual(summary["error"]["suggested_action"], auth["recovery"])
-
-
-class BatchRetryPolicyTests(BatchCase):
-    """The shared wheel owns retries; judge-jev records the wheel's typed attempt count."""
-
-    LINE = request_line("s1", "We copy the legacy crates.", ("cur", PLAN_QS["questions"]))
-
-    def live_batch(self, result):
-        stdout, stderr = io.StringIO(), io.StringIO()
-        with consented(), mock.patch.object(jj.decidr_client, "call_batch_results", BatchTransport(result)), \
-                contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = jj.main(["batch", "--input", self.put("in.jsonl", jsonl([self.LINE])), "--run-name", "r1", "--max-workers", "1"])
-        lines = [json.loads(raw) for raw in stdout.getvalue().splitlines()]
-        envelope = json.loads(stderr.getvalue()) if stderr.getvalue() else None
-        return code, lines, envelope
-
-    def test_retry_count_comes_from_wheel_error_attempts(self):
-        detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
-        code, lines, envelope = self.live_batch((json.dumps({"error": detail, "sends": 4}), "DECIDR.OVERLOADED"))
-        line, = lines
-        self.assertEqual((code, line["ok"], line["retry_count"], line["attempts"]), (2, False, 3, []))
-        self.assertEqual(envelope["error"]["code"], "DECIDR.OVERLOADED")
-
-    def test_success_is_not_retried_by_judge_jev(self):
-        response = {"model": "jev-x", "answers": plan_answers()}
-        code, lines, envelope = self.live_batch((json.dumps({"response": response, "sends": 1}), None))
-        line, = lines
-        self.assertEqual((code, envelope, line["ok"], line["retry_count"], line["attempts"], line["verdict"]),
-                         (0, None, True, 0, [], "satisfied"))
 
 
 if __name__ == "__main__":

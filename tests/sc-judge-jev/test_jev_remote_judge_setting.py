@@ -63,18 +63,22 @@ class Batched:
     """`batch` over one request line with a stubbed transport and the real consent lookup (no consent mock)."""
 
     def __init__(self, test, repo, env_values=None, transport=None, extra=()):
+        from sc_agent.testing import fake_open_run
         self.transport = transport if transport is not None else BatchTransport()
         d = tempfile.mkdtemp(dir=str(repo.root))
         src = write(d, "in.jsonl", jsonl([request_line()]))
         err = io.StringIO()
         argv = ["batch", "--input", src, "--repository-root", str(repo.root), *extra]
+        envelope = {"ok": True, "value": {"answers": plan_answers(), "session_id": "test-session", "cached": False}}
+        script = {"provider": "typesafe", "run_id": "test-run", "envelopes": [envelope]}
+        send_name = "_call_batch_results" if hasattr(jj.decidr_client, "_call_batch_results") else "call_batch_results"
+        send = getattr(jj.decidr_client, send_name)
         with env(**(dict(KEY) if env_values is None else env_values)), \
-                mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=self.transport) as call, contextlib.redirect_stderr(err):
+                fake_open_run(jj.decidr_client, script) as runs, \
+                mock.patch.object(jj.decidr_client, send_name, wraps=send), contextlib.redirect_stderr(err):
             self.code, self.out = run_cli(argv)
-        test.assertEqual(err.getvalue(), "")  # every case here either answers or fails before the first line
-        if call.called:
-            selected = [value for flag, value in zip(argv, argv[1:]) if flag == "--repository-root"][-1]
-            test.assertEqual(call.call_args.kwargs["repository_root"], selected)
+        self.transport.bodies = [request for run in runs for batch, _cache in run.sent for request in batch]
+        test.assertEqual(err.getvalue(), "")
 
 
 def yaml_test(fn):
@@ -185,12 +189,16 @@ class LiveCallConsentTests(unittest.TestCase):
                 outcome = settings_mod.find_repo_root(Path(d))
             if outcome.ok:
                 self.skipTest("the temporary directory is inside a repository here")
-            t = BatchTransport()
+            from sc_agent.testing import fake_open_run
             src = write(d, "in.jsonl", jsonl([request_line()]))
-            with env(**KEY), mock.patch.object(jj.decidr_client, "call_batch_results", t), \
+            send_name = "_call_batch_results" if hasattr(jj.decidr_client, "_call_batch_results") else "call_batch_results"
+            send = getattr(jj.decidr_client, send_name)
+            with env(**KEY), fake_open_run(jj.decidr_client, {"provider": "typesafe", "run_id": "test-run"}) as runs, \
+                    mock.patch.object(jj.decidr_client, send_name, wraps=send), \
                     mock.patch.object(settings_mod, "_git_toplevel", lambda start: None):
                 code, out = run_cli(["batch", "--input", src, "--repository-root", d])
-            self.assertEqual((code, out["error"]["code"], t.bodies), (2, "REPO.NOT_FOUND", []))
+            self.assertEqual((code, out["error"]["code"]), (2, "REPO.NOT_FOUND"))
+            self.assertEqual(runs[0].sent, [])
 
     def test_dry_run_and_fixture_answers_need_no_setting(self):
         with tempfile.TemporaryDirectory() as d:  # not a repository, no settings, no key

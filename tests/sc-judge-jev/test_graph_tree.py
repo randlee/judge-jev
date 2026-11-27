@@ -15,7 +15,7 @@ import pyoxigraph as ox
 from jev_support import SKILL
 import jev_graph  # noqa: E402
 import jev_judge as jj  # noqa: E402
-from result import Err, Ok  # noqa: E402
+from decidr_client import Err, Ok  # noqa: E402
 
 QUESTIONS = SKILL / "assets" / "questions"
 ADR_TTL = (QUESTIONS / "quality-adr.ttl").read_text(encoding="utf-8")

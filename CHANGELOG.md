@@ -2,6 +2,10 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.11.0 — 2026-11-27
+
+- Use shared Run-based calls, session references, and batch-result/2.
+
 ## 0.10.0 — 2026-11-26
 
 - No request size limit (phase-j ANC-004; owner: "Input is limited by model context."). Removed the 24000-byte (`--gate plan`) and 64000-byte (`--gate dev`) request caps, the `--max-request-bytes` flag of `batch` and `validate --requests`, `JEV.CONTEXT_EXCEEDED`, and the dry-run `max_request_bytes` field; `request_bytes` is still reported. A provider size error stays `DECIDR.CONTEXT_EXCEEDED`. REQ-JEV-0002, REQ-JEV-0208 and REQ-JEV-0212 drop the limit clauses.

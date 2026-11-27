@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_judge
-version: 0.10.0
+version: 0.11.0
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -85,7 +85,6 @@ from __future__ import annotations
 
 import argparse
 import functools
-import datetime as _dt
 import difflib
 import hashlib
 import json
@@ -93,16 +92,12 @@ import os
 import pathlib
 import re
 import sys
-from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
+import threading
+from typing import Annotated, Any, Literal, Mapping, NamedTuple, Optional, Union
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from result import Err, Ok, Result, utf8_stdio  # noqa: E402
-from jev_errors import redact_sensitive
-from decidr_client import (ClientError, BatchSettings, BatchJob, StreamedResult,
-                           BATCH_MAX_WORKERS, BATCH_FIXTURE_ERROR, BATCH_ID_RE,
-                           BATCH_RETRIES as BATCH_FIXTURE_RETRY_LIMIT,
-                           REPO_ROOT_HELP, CANCELED_EXIT, canceled_envelope,
-                           batch_request_id, safe_id)
+from decidr_client import (Err, Ok, Result, ClientError, BatchSettings, BatchJob, ResultLine, StreamedResult,
+                           BATCH_FIXTURE_ERROR, BATCH_ID_RE, REPO_ROOT_HELP, batch_request_id, safe_id, utf8_stdio, log_event)
 import jev_definitions  # noqa: E402  (standard library only)
 import jev_runs  # noqa: E402  (standard library at import)
 import judge_jev_paths  # noqa: E402  (standard library only)
@@ -122,7 +117,6 @@ except ImportError as _exc:  # before any model exists: print the typed error by
     sys.exit(2)
 
 
-DEFAULT_MODEL = "jev-latest"
 DEFAULT_THRESHOLD = 0.6
 PROBABILITY_ROUNDING = 0.01        # Jev rounds each probability; the sum may be off by this per option
 HERE = pathlib.Path(__file__).resolve().parent
@@ -131,7 +125,6 @@ KINDS = ("directive", "prohibition", "structural")  # how decide() gates: see de
 REQUIRED_ROLES = ("relevance", "compliance", "conflict")
 MAX_PROBLEMS = 5                    # pydantic errors named in one refusal message
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
-ATTEMPT_MESSAGE_LIMIT = 500         # characters of an error message recorded in a result line: bounds its log events
 
 
 # --------------------------------------------------------------------------- #
@@ -212,7 +205,7 @@ def utf8_text(text: str) -> str:
 
 
 def emit(obj, fmt: str = "json") -> None:
-    obj = redact_sensitive(decidr_client.json_answers(bound_depth(obj)))  # always printable: nesting beyond EMIT_MAX_DEPTH is marked, never a traceback
+    obj = decidr_client.redact_secrets(decidr_client.json_answers(bound_depth(obj)))  # always printable: nesting beyond EMIT_MAX_DEPTH is marked, never a traceback
     if fmt == "json":
         text = json.dumps(obj, indent=2, ensure_ascii=False)
         try:
@@ -222,14 +215,6 @@ def emit(obj, fmt: str = "json") -> None:
         print(text)
     else:
         print(utf8_text(str(obj)))
-
-
-def now_utc() -> _dt.datetime:
-    return _dt.datetime.now(_dt.timezone.utc)
-
-
-def stamp() -> str:
-    return now_utc().strftime("%Y%m%dT%H%M%SZ")
 
 
 def read_source(path: str, what: str, action: str = "") -> Result[str, ClientError]:
@@ -599,34 +584,22 @@ class RaptorIndex(Open):
     diagnostics: RaptorDiagnostics
 
 
-class FixtureError(Closed):
-    code: str = Field(alias="__error__", min_length=1)  # BATCH_FIXTURE_ERROR: the attempt fails with this code
-
-
 def _fixture_problems(entries: dict) -> list:
-    """Each envelope problem of an answers file as ``path: rule``. The envelope is what is decidable before any request: an
-    entry is an object, {"__error__": code} (a non-empty string code, nothing else), or a non-empty list of
-    those (successive attempts). What an answer object holds (its questions, choices, probabilities) is Jev's response and is
-    interpreted through the shared typed-answer boundary after fixture loading, so a test can feed an invalid answer on purpose."""
+    """Validate each fixture entry before issuing any requests."""
     problems = []
     for key, entry in entries.items():
-        attempts = entry if isinstance(entry, list) else [entry]
-        if isinstance(entry, list) and not entry:
-            problems.append(f"{key}: List should have at least 1 item after validation, not 0")
-        for n, attempt in enumerate(attempts):
-            where = f"{key}.{n}" if isinstance(entry, list) else key
-            if isinstance(attempt, dict) and BATCH_FIXTURE_ERROR in attempt:
-                parsed = validate_model(FixtureError, attempt)
-                if isinstance(parsed, Err):
-                    problems.append(f"{where}: {parsed.error.text}")
-            elif not isinstance(attempt, dict):
-                problems.append(f"{where}: Input should be an object of answers, an object with {BATCH_FIXTURE_ERROR}, or a list of them")
+        if not isinstance(entry, dict):
+            problems.append(f"{key}: Input should be an object of answers or an object with {BATCH_FIXTURE_ERROR}")
+        elif BATCH_FIXTURE_ERROR in entry and (set(entry) != {BATCH_FIXTURE_ERROR}
+                                               or not isinstance(entry[BATCH_FIXTURE_ERROR], str)
+                                               or not entry[BATCH_FIXTURE_ERROR]):
+            problems.append(f"{key}: {BATCH_FIXTURE_ERROR} must be the only field and a non-empty string")
     return problems
 
 
 class AnswersFile(RootModel[dict[str, Any]]):
     """The envelope of an answers file, the one model `validate --answers` and every command that reads --answers-file apply
-    before the first request: an object of string keys, each an object or a non-empty list of objects, an object with
+    before the first request: an object of string keys, each an answer object or an object with
     {"__error__": code} holding only a non-empty string code."""
 
     model_config = ConfigDict(strict=True)
@@ -788,7 +761,7 @@ def answers_envelope_error(data, where: str) -> Optional[ClientError]:
     if isinstance(parsed, Ok):
         return None
     return ClientError("INPUT.MALFORMED", f"{where}: {parsed.error.text}",
-                      action="An answers file maps a request key to Jev's answers (an object), a non-empty list of them, or "
+                      action="An answers file maps a request key to Jev's answers (an object), or "
                              "an __error__ object with a non-empty string code and nothing else.")
 
 
@@ -804,9 +777,6 @@ def check_threshold(value: float, name: str = "--threshold") -> Result[float, Cl
 # --------------------------------------------------------------------------- #
 # batch (low layer, tracker-neutral): request lines in, one result line per (item, candidate, repeat) out
 # --------------------------------------------------------------------------- #
-FIXTURE_RETRYABLE_CODES = frozenset(("DECIDR.RATE_LIMITED", "DECIDR.OVERLOADED",
-                                     "DECIDR.NETWORK", "DECIDR.RESPONSE_INVALID"))
-
 
 def request_line_error(refused: Refused, where: str) -> ClientError:
     """A request-line refusal: QUESTIONS.ROLES for a role problem, INPUT.MALFORMED for a candidate's question set, else
@@ -840,7 +810,7 @@ def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict) -> 
     kind = anchor.kind or "directive" if anchored else "directive"
     anchor_id = anchor.id if anchored else None
     for cand in request.questions:
-        body = {"model": settings.model, "state": state, "questions": cand.questions}
+        body = {"state": state, "questions": cand.questions}
         for r in range(1, settings.repeat + 1):
             rid = batch_request_id(settings.prefix, item.id, anchor_id, cand.candidate_id, r)
             jobs.append(BatchJob(item.id, anchor_id, cand.candidate_id, r, rid, body, cand.questions, cand.effective_roles, kind))
@@ -848,49 +818,13 @@ def batch_jobs(line, number: int, settings: BatchSettings, base_roles: dict) -> 
     return Ok(jobs)
 
 
-def batch_verdict_fields(job, settings, raw):
-    """Consumer verdict interpretation; record layout stays in the generated client."""
-    verdict = min_conf = leaning = None
-    if raw is not None and job.anchor_id is not None:
-        verdict, min_conf = decide(raw["answers"], job.roles, settings.threshold, job.kind)
-        leaning = decide(raw["answers"], job.roles, 0.0, job.kind)[0]
-    return dict(verdict=verdict, min_confidence=min_conf, leaning=leaning)
-
-
-def _batch_result_line(job: BatchJob, settings: BatchSettings, record) -> dict:
-    return decidr_client.result_line(job, settings, record if record["ok"] else None, [],
-        None if record["ok"] else record["error"], False, result_fields=batch_verdict_fields)
-
-
-def run_batch_job(job: BatchJob, settings: BatchSettings, fixture) -> dict:
-    """Supply this consumer's verdict callback to the shared result record builder."""
-    if settings.dry_run:
-        return decidr_client.result_line(job, settings, None, [], None, True)
-    attempts, raw, error = [], None, None
-    for attempt in range(1, BATCH_FIXTURE_RETRY_LIMIT + 2):
-        try:
-            _checked = decidr_client.fixture_attempt(job, fixture, attempt, transient_codes=FIXTURE_RETRYABLE_CODES)
-            if not _checked["ok"]:
-                error = _checked["error"]
-                attempts.append({"attempt": attempt, "ok": False,
-                    "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
-                              "recoverable": error.retryable}})
-                if not error.retryable:
-                    break
-                continue
-            else:
-                raw = _checked["value"]
-            error = None
-            attempts.append({"attempt": attempt, "ok": True})
-            break
-        except ClientError as exc:
-            error = exc
-            attempts.append({"attempt": attempt, "ok": False,
-                "error": {"code": error.code, "message": _clip(error.message, ATTEMPT_MESSAGE_LIMIT),
-                          "recoverable": error.retryable}})
-            if not error.retryable:
-                break
-    return decidr_client.result_line(job, settings, raw, attempts, error, False, result_fields=batch_verdict_fields)
+def batch_verdict(job: BatchJob, settings: BatchSettings, answers: Mapping[str, Any] | None):
+    """Apply the consumer's decision rule to a shared batch result."""
+    if answers is None or job.anchor_id is None:
+        return None, None, None
+    verdict, min_conf = decide(answers, job.roles, settings.threshold, job.kind)
+    leaning = decide(answers, job.roles, 0.0, job.kind)[0]
+    return verdict, min_conf, leaning
 
 
 def parse_request_lines(text: str, path: str) -> Result[list, ClientError]:
@@ -920,146 +854,93 @@ LOG_SERVICE = "judge-jev"
 LOG_TARGET = "judge-jev.batch"
 
 
-def open_run_log() -> Result[Any, ClientError]:
-    loaded = decidr_client.load_wheel()
-    if isinstance(loaded, dict):
-        return Err(decidr_client.wheel_error(loaded["error"]))
-    created = decidr_client._logger(loaded.logger, None)
-    return Ok(created["value"]) if created["ok"] else Err(decidr_client.wheel_error(created["error"]))
+def open_command_run(args, *, timeout_secs: float | None, workers: int | None, cache: bool | None = None):
+    return decidr_client.open_run(model=getattr(args, "model", None), cache=cache,
+                                  timeout_secs=timeout_secs, workers=workers)
 
 
-def result_line_events(line: dict, fields: dict) -> list:
-    """A result line as three events: the request, Jev's answer (not on a dry run) and the result (the line without its
-    request and raw response). ``fields`` goes on every event."""
-    ids = {"request_id": line["request_id"], "run_id": line["run_id"], **fields}
-    events = [("request", {**ids, "item_id": line["item_id"], "anchor_id": line["anchor_id"], "candidate_id": line["candidate_id"],
-                           "repeat": line["repeat"], "request_sha256": line["request_sha256"],
-                           "questions_sha256": line["questions_sha256"], "dry_run": line["dry_run"], "request": line["request"]})]
-    if not line["dry_run"]:
-        events.append(("answer", {**ids, "ok": line["ok"], "model_answered": line["model_answered"], "raw_response": line["raw_response"],
-                                  "attempts": line["attempts"], "error": line["error"]}))
-    events.append(("result", {**ids, **{k: v for k, v in line.items() if k not in ("request", "raw_response")}}))
-    return events
+def result_event(line: ResultLine, job: BatchJob, fields: Mapping[str, Any]) -> dict[str, Any]:
+    data = json.loads(decidr_client.encode_result_line(line))
+    for key in ("schema", "tool", "tool_version", "agent_role"):
+        data.pop(key, None)
+    return {**fields, **data, "item_id": job.item_id, "anchor_id": job.anchor_id,
+            "candidate_id": job.candidate_id, "repeat": job.repeat}
 
 
-def log_result_line(log, line: dict, fields: dict) -> None:
-    import sc_agent
-    for action, event_fields in result_line_events(line, fields):
-        sc_agent.log(log, {"target": LOG_TARGET, "action": action, "correlation_id": line["run_id"],
-                           "fields": redact_sensitive(decidr_client.json_answers(event_fields))})
-    sc_agent.flush(log)
+def log_result_line(run: Any, line: ResultLine, job: BatchJob, fields: Mapping[str, Any]):
+    return log_event(run, LOG_TARGET, "result", line.run_id, result_event(line, job, fields))
 
 
-def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bool,
-                        fields=None, *, repository_root=".") -> Result[list, ClientError]:
-    """Send validated jobs through sc-agent's batch API and persist each result as it arrives."""
+def judge_batch(run, lines, settings, *, fixture, echo, fields=None, cache=None, repository_root="."):
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base
     jobs = []
-    for number, request_line in enumerate(lines, start=1):
-        built = batch_jobs(request_line, number, settings, base.value.roles)
-        if isinstance(built, Err):
-            return built
-        jobs.extend(built.value)
-    result_lines = {}
-
-    def persist(record):
-        position = record["position"]
-        job = jobs[position]
-        result_line = _batch_result_line(job, settings, record)
-        log_result_line(log, result_line, fields or {})
-        if echo:
-            decidr_client.write_stdout_line(decidr_client.encode_result_line(result_line, redact=redact_sensitive))
-        result_lines[position] = result_line
-
-    batch = decidr_client.call_batch_results(
-        [job.body for job in jobs],
-        model=settings.model,
-        abort_on=frozenset({"auth"}), general_log=log, timeout_secs=settings.timeout,
-        workers=settings.max_workers, on_result=persist, repository_root=repository_root,
-    )
-    if not batch["ok"]:
-        return Err(batch["error"])
-    return Ok([result_lines[position] for position in range(len(jobs))])
-
-
-def judge_batch(lines, settings, fixture, log, echo, fields=None, *, repository_root="."):
-    """Compose consumer job authoring with the shared stream and durable result pump."""
-    if fixture is None and not settings.dry_run:
-        return _live_batch_results(lines, settings, log, echo, fields, repository_root=repository_root)
-    base = load_question_set(settings.gate)
-    if isinstance(base, Err):
-        return base
-    results = []
     for number, request in enumerate(lines, start=1):
-        built = batch_jobs(request, number, settings, base.value.roles)
-        if isinstance(built, Err):
-            return built
-        for job in built.value:
-            result = run_batch_job(job, settings, fixture)
-            log_result_line(log, result, fields or {})
-            if echo:
-                decidr_client.write_stdout_line(decidr_client.encode_result_line(result, redact=redact_sensitive))
-            results.append(result)
-    return Ok(results)
+        made = batch_jobs(request, number, settings, base.value.roles)
+        if isinstance(made, Err):
+            return made
+        jobs.extend(made.value)
+    positions = {job.request_id: index for index, job in enumerate(jobs)}
+    pending, results = {}, []
+    lock = threading.Lock()
+    next_index = 0
+    def collect(line, answers):
+        nonlocal next_index
+        with lock:
+            pending[positions[line.request_id]] = (line, answers)
+            while next_index in pending:
+                current, current_answers = pending.pop(next_index)
+                job = jobs[next_index]
+                if run is not None:
+                    logged = log_result_line(run, current, job, fields or {})
+                    if isinstance(logged, Err):
+                        raise logged.error
+                if echo:
+                    decidr_client.write_stdout_line(decidr_client.encode_result_line(current))
+                results.append((current, current_answers))
+                next_index += 1
+    try:
+        outcome = decidr_client.run_batch(run, jobs, settings, fixture=fixture, verdict=batch_verdict,
+            abort_on=frozenset({"auth"}), repository_root=repository_root,
+            consent_what="The anchor statements, scopes and item texts in the request stream",
+            on_line=collect, cache=cache)
+    except ClientError as error:
+        return Err(error)
+    return outcome if isinstance(outcome, Err) else Ok(results)
 
 
 def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
-    """The shared CLI path for `batch` and `bead-batch`: validate, consent, stream, log. Stdout carries only result lines."""
-    _checked = decidr_client.batch_settings(args, args.request_prefix,
-        check_threshold=check_threshold)
-    if not _checked["ok"]:
-        return Err(_checked["error"])
-    else:
-        settings = _checked["value"]
+    settings = decidr_client.batch_settings(args, args.request_prefix, check_threshold=check_threshold)
+    if isinstance(settings, Err):
+        return settings
+    settings = settings.value
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base
-    try:
-        _checked = decidr_client.validate_request_lines(lines, settings, base.value.roles, batch_jobs)
-        if not _checked["ok"]:
-            return Err(_checked["error"])
-        _checked = decidr_client.load_answers_fixture(args.answers_file,
-            "'<item>/<candidate>/r<n>', '<item>/<candidate>', '<candidate>'", load_json,
-            validate_envelope=answers_envelope_error)
-        if not _checked["ok"]:
-            return Err(_checked["error"])
-        else:
-            fixture = _checked["value"]
-        _checked = decidr_client.check_fixture_coverage(lines, settings, base.value.roles, batch_jobs, fixture)
-        if not _checked["ok"]:
-            return Err(_checked["error"])
-    except ClientError as exc:
-        return Err(exc)
-    run_name = args.run_name or stamp()
-    try:
-        _checked = decidr_client.safe_id(run_name, "--run-name")
-        if not _checked["ok"]:
-            return Err(_checked["error"])
-    except ClientError as exc:
-        return Err(exc)
-    if not settings.dry_run and fixture is None:
-        try:
-            _checked = decidr_client.remote_preflight(args.repository_root, "The anchor statements, scopes and item texts in the request stream")
-            if not _checked["ok"]:
-                return Err(_checked["error"])
-        except ClientError as exc:
-            return Err(exc)
-    log = open_run_log()
-    if isinstance(log, Err):
-        return log
-    import sc_agent
-    try:
-        pumped = judge_batch(lines, settings, fixture, log.value, echo=True, fields={"run": run_name}, repository_root=args.repository_root)
-    except KeyboardInterrupt:
-        sc_agent.flush(log.value)
-        raise
-    sc_agent.flush(log.value)
-    if isinstance(pumped, Err):
-        return pumped
-
-    return Ok(decidr_client.streamed_result(pumped.value))
+    checked = decidr_client.validate_request_lines(lines, settings, base.value.roles, batch_jobs)
+    if isinstance(checked, Err):
+        return checked
+    fixture = decidr_client.load_answers_fixture(args.answers_file,
+        "'<item>/<candidate>/r<n>', '<item>/<candidate>', '<candidate>'", load_json,
+        validate_envelope=answers_envelope_error)
+    if isinstance(fixture, Err):
+        return fixture
+    if settings.dry_run:
+        return Ok(StreamedResult([]))
+    opened = open_command_run(args, timeout_secs=args.timeout, workers=args.max_workers)
+    if isinstance(opened, Err):
+        return opened
+    with opened.value as run:
+        run_name = args.run_name or run.run_id
+        checked = safe_id(run_name, "--run-name")
+        if isinstance(checked, Err):
+            return checked
+        pumped = judge_batch(run, lines, settings, fixture=fixture.value, echo=True,
+                             fields={"run": run_name}, repository_root=args.repository_root)
+        if isinstance(pumped, Err):
+            return pumped
+        return Ok(StreamedResult([line for line, _ in pumped.value if not line.ok]))
 
 
 def cmd_batch(args) -> Result[Any, ClientError]:
@@ -1075,10 +956,10 @@ def add_stream_options(parser) -> None:
     parser.add_argument("--repeat", type=int, default=1, help="identical requests per (item, candidate); default 1")
     parser.add_argument("--request-prefix", default="batch", help="request ids are <prefix>/<item>/<anchor>/<candidate>/r<n>")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="confidence threshold of each line's verdict")
-    parser.add_argument("--max-workers", type=int, default=BATCH_MAX_WORKERS, help=f"parallel Jev calls, 1 to {BATCH_MAX_WORKERS}")
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--max-workers", type=int, default=None, help="parallel requests; default from config")
+    parser.add_argument("--model", default=None, help="model selector; default from config")
     parser.add_argument("--timeout", type=float, default=30.0)
-    parser.add_argument("--dry-run", action="store_true", help="emit the result lines with the requests only; call nothing")
+    parser.add_argument("--dry-run", action="store_true", help="validate inputs without sending or logging")
     parser.add_argument("--answers-file", default="", help="fixture answers keyed '<item>/<candidate>/r<n>', '<item>/<candidate>', '<candidate>' or '*'; no network")
     parser.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
 
@@ -1385,7 +1266,7 @@ def wave_lines(record: dict, node_id: str, node: Wave, definitions=(), location=
 
 
 def quality_settings(dry_run: bool) -> BatchSettings:
-    return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, dry_run)
+    return BatchSettings("plan", 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, dry_run)
 
 
 def _with_refs(failed: Err, refs: dict) -> Err:
@@ -1500,89 +1381,59 @@ def cmd_quality(args) -> Result[Any, ClientError]:
         results = [{**refs, "wave": dry_run_wave(tree, jobs, settings)} for tree, _record, refs, jobs, _carried in prepared]
         return Ok({"success": True, "error": None, "data": {"dry_run": True, "results": results}})
     run_refs = prepared[0][2] if len(prepared) == 1 else {"records": [refs for _t, _r, refs, _j, _c in prepared]}
-    try:
-        _checked = decidr_client.load_answers_fixture(args.answers_file,
-            "'<record>/<node>/r1', '<record>/<node>', '<node>'", load_json,
-            validate_envelope=answers_envelope_error)
-        if not _checked["ok"]:
-            return _with_refs(Err(_checked["error"]), run_refs)
-        else:
-            fixture = _checked["value"]
-    except ClientError as exc:
-        return _with_refs(Err(exc), run_refs)
-    run_name = args.run_name or stamp()
-    try:
-        _checked = decidr_client.safe_id(run_name, "--run-name")
-        if not _checked["ok"]:
-            return _with_refs(Err(_checked["error"]), run_refs)
-    except ClientError as exc:
-        return _with_refs(Err(exc), run_refs)
-    if fixture is None:
-        try:
-            _checked = decidr_client.remote_preflight(args.repository_root, "The record text")
-            if not _checked["ok"]:
-                return _with_refs(Err(_checked["error"]), run_refs)
-        except ClientError as exc:
-            return _with_refs(Err(exc), run_refs)
-    log = open_run_log()
-    if isinstance(log, Err):
-        return _with_refs(log, run_refs)
-    import sc_agent
-    results, failed = [], None
-    for tree, record, refs, _job, carried in prepared:
-        try:
-            walked = walk_tree(tree, record, settings, fixture, log.value,
-                               { "run": run_name, **quality_fields(tree, record["id"], refs["record"]["kind"], carried,
-                                             index_record_iri(args.index, record["id"]))}, carried, repository_root=args.repository_root)
-        except KeyboardInterrupt:
-            sc_agent.flush(log.value)
-            raise
-        if isinstance(walked, Err):
-            failed = _with_refs(walked, {**refs, "results": results})
-            break
-        verdict, path, waves = walked.value
-        results.append({**refs, "verdict": verdict, "path": path, "waves": waves})
-    sc_agent.flush(log.value)
-    if failed is not None:
-        return failed
-
+    fixture = decidr_client.load_answers_fixture(args.answers_file,
+        "'<record>/<node>/r1', '<record>/<node>', '<node>'", load_json,
+        validate_envelope=answers_envelope_error)
+    if isinstance(fixture, Err):
+        return _with_refs(fixture, run_refs)
+    opened = open_command_run(args, timeout_secs=getattr(args, "timeout", None),
+                              workers=getattr(args, "max_workers", None),
+                              cache=False if getattr(args, "no_cache", False) else None)
+    if isinstance(opened, Err):
+        return _with_refs(opened, run_refs)
+    results = []
+    with opened.value as run:
+        run_name = args.run_name or run.run_id
+        checked = safe_id(run_name, "--run-name")
+        if isinstance(checked, Err):
+            return _with_refs(checked, run_refs)
+        for tree, record, refs, _job, carried in prepared:
+            walked = walk_tree(tree, record, settings, fixture.value,
+                               {"run": run_name, **quality_fields(tree, record["id"], refs["record"]["kind"], carried,
+                                             index_record_iri(args.index, record["id"]))}, carried,
+                               run=run, repository_root=args.repository_root)
+            if isinstance(walked, Err):
+                return _with_refs(walked, {**refs, "results": results})
+            verdict, path, waves = walked.value
+            results.append({**refs, "verdict": verdict, "path": path, "waves": waves})
     return Ok({"success": True, "error": None, "data": {
         "dry_run": False, "results": results, "log": {"run": run_name}}})
 
 
-def answering_models(results: list) -> list:
-    """The Jev model versions that answered a wave's requests (``jev-latest`` resolves to one), sorted; empty for answers
-    read from an answers file."""
-    return sorted({r.get("model_answered") for r in results if r.get("model_answered")})
-
-
 def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, results: list, per_choices: list,
                     matched: list, nxt, verdict, rank=None) -> tuple:
-    """The events a wave logs, as (action, fields, correlation_id), and the wave's entry of the command's result.
-    A per-statement wave logs one statement event per statement (its request is the request event with the same
-    request_id), then a compact wave event: a single event holding every statement exceeds the logger's event size limit."""
-    rank_field = {} if rank is None else {"rule_rank": rank}  # the 1-based rank of the rule that fired (jj:rank in the tree)
+    """Return events without request or answer content and a user-facing wave reason."""
+    del per_choices
+    rank_field = {} if rank is None else {"rule_rank": rank}
     if node.per == "statement":
         reason, events = [], []
-        for s, r, c in zip(statements, results, per_choices):
-            plain = wave_reason(node, r["answers"])
-            reason.append({"statement": s, "answers": reveal(node, r["answers"], plain)})
-            events.append(("statement", {**fields, "node": node_id, "statement": s, "request_id": r["request_id"],
-                                         "answers": r["answers"], "choices": c, "reason": plain}, r["run_id"]))
+        for statement, (line, answers) in zip(statements, results):
+            plain = wave_reason(node, answers)
+            reason.append({"statement": statement, "answers": reveal(node, answers, plain)})
+            events.append(("statement", {**fields, "node": node_id, "statement": statement,
+                           "request_id": line.request_id, "session_id": line.session_id}, line.run_id))
         matched_statements = [statements[i]["index"] for i in matched]
-        request_ids = [r["request_id"] for r in results]
+        request_ids = [line.request_id for line, _ in results]
         events.append(("wave", {**fields, "node": node_id, "per": "statement", "request_ids": request_ids,
                                 "matched_statements": matched_statements, "next": nxt, "verdict": verdict, **rank_field}, None))
-        wave = {"node": node_id, "per": "statement", "request_ids": request_ids, "reason": reason,
-                "matched_statements": matched_statements, "next": nxt, "verdict": verdict, "models": answering_models(results)}
-        return events, wave
-    result, choices = results[0], per_choices[0]
-    reason = wave_reason(node, result["answers"])
-    events = [("wave", {**fields, "node": node_id, "request_id": result["request_id"], "request": result["request"],
-                        "answers": result["answers"], "choices": choices, "reason": reason, "next": nxt,
-                        "verdict": verdict, **rank_field}, result["run_id"])]
-    return events, {"node": node_id, "request_id": result["request_id"], "reason": reveal(node, result["answers"], reason),
-                    "next": nxt, "verdict": verdict, "models": answering_models([result])}
+        return events, {"node": node_id, "per": "statement", "request_ids": request_ids,
+                        "reason": reason, "matched_statements": matched_statements, "next": nxt, "verdict": verdict}
+    line, answers = results[0]
+    reason = wave_reason(node, answers)
+    events = [("wave", {**fields, "node": node_id, "request_id": line.request_id, "session_id": line.session_id,
+                        "next": nxt, "verdict": verdict, **rank_field}, line.run_id)]
+    return events, {"node": node_id, "request_id": line.request_id, "reason": reveal(node, answers, reason),
+                    "next": nxt, "verdict": verdict}
 
 
 def _position(rules: list, rule) -> int:
@@ -1590,12 +1441,9 @@ def _position(rules: list, rule) -> int:
     return next(i for i, r in enumerate(rules, 1) if r is rule)
 
 
-def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, log: Any,
-              fields: dict, definitions=(), location=None, *, repository_root=".") -> Result[tuple, ClientError]:
-    """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
-    Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
-    request, answers and selected branch or verdict; the verdict is logged with the path."""
-    import sc_agent
+def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, fields: dict,
+              definitions=(), location=None, *, run: Any, repository_root=".") -> Result[tuple, ClientError]:
+    """Send each wave through the command's Run and log its selected branch."""
     node_id, path, waves = tree.start, [], []
     verdict, decided_rank, carried_match = None, None, None
     while verdict is None:
@@ -1610,28 +1458,20 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture,
         lines = wave_lines(record, node_id, node, definitions, location, carried_match)
         if isinstance(lines, Err):
             return lines
-        lines, statements = lines.value
-        base = load_question_set(settings.gate)
-        if isinstance(base, Err):
-            return base
-        try:
-            _checked = decidr_client.check_fixture_coverage(lines, settings, base.value.roles, batch_jobs, fixture)
-            if not _checked["ok"]:
-                return Err(_checked["error"])
-        except ClientError as exc:
-            return Err(exc)
-        pumped = judge_batch(lines, settings, fixture, log, echo=False, fields={**fields, "node": node_id}, repository_root=repository_root)
+        requests, statements = lines.value
+        pumped = judge_batch(run, requests, settings, fixture=fixture, echo=False,
+                             fields={**fields, "node": node_id}, repository_root=repository_root)
         if isinstance(pumped, Err):
             return pumped
-        for result, statement in zip(pumped.value, statements):
-            if not result["ok"]:
+        for (line, _answers), statement in zip(pumped.value, statements):
+            if not line.ok:
                 which = "" if statement is None else f" statement {statement['index']} ({statement['text']!r})"
-                error = ClientError(result["error"]["code"], f"wave {node_id}{which} got no answer: {result['error']['message']}",
-                                   retryable=result["error"]["recoverable"], action=result["error"].get("suggested_action"))
-                error.data = {"path": path, "waves": waves, **({} if statement is None else {"statement": statement})}
+                prior = line.error
+                error = ClientError(prior.code, f"wave {node_id}{which} got no answer: {prior.message}",
+                                    retryable=prior.retryable, action=prior.action,
+                                    data={"path": path, "waves": waves, **({} if statement is None else {"statement": statement})})
                 return Err(error)
-        per_choices = [{qid: answer_choice(ans)[0] for qid, ans in r["answers"].items()} for r in pumped.value]
-        nxt, matched = None, []
+        per_choices = [{qid: answer_choice(ans)[0] for qid, ans in answers.items()} for _line, answers in pumped.value]
         if node.next is not None:
             rule, matched = select_rule(node.next, branch_matches, per_choices)
             if rule is None:
@@ -1642,20 +1482,18 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture,
             if rule is None:
                 return _tree_error(tree.path, f"no verdict rule of wave {node_id} matches the answers {per_choices}")
             verdict, rank = rule.verdict, tree.rule_rank(node_id, _position(node.verdict_rules, rule))
-            decided_rank = rank
+            decided_rank, nxt = rank, None
         events, wave = wave_log_events(fields, node_id, node, statements, pumped.value, per_choices, matched, nxt, verdict, rank)
         for action, event_fields, correlation_id in events:
-            sc_agent.log(log, {"target": LOG_TARGET, "action": action, "correlation_id": correlation_id, "fields": redact_sensitive(decidr_client.json_answers(event_fields))})
-
+            logged = log_event(run, LOG_TARGET, action, correlation_id, event_fields)
+            if isinstance(logged, Err):
+                return logged
         waves.append(wave)
         carried_match = {statements[i]["index"] for i in matched} if node.per == "statement" else None
         node_id = nxt
-    sc_agent.log(log, {"target": LOG_TARGET, "action": "verdict", "correlation_id": None, "fields": redact_sensitive(decidr_client.json_answers({**fields, "verdict": verdict, "path": path,
-                                   **({} if decided_rank is None else {"rule_rank": decided_rank})}))})
-
-    sc_agent.flush(log)
-
-    return Ok((verdict, path, waves))
+    logged = log_event(run, LOG_TARGET, "verdict", None, {**fields, "verdict": verdict, "path": path,
+                       **({} if decided_rank is None else {"rule_rank": decided_rank})})
+    return logged if isinstance(logged, Err) else Ok((verdict, path, waves))
 
 
 # --------------------------------------------------------------------------- #
@@ -1675,17 +1513,12 @@ def validate_input(kind: str, raw: str, path: str, args) -> Result[None, ClientE
         lines = parse_request_lines(raw, path)
         if isinstance(lines, Err):
             return lines
-        settings = BatchSettings(args.gate, DEFAULT_MODEL, 1, "batch", DEFAULT_THRESHOLD, 30.0, 1, True)
+        settings = BatchSettings(args.gate, 1, "batch", DEFAULT_THRESHOLD, True)
         base = load_question_set(settings.gate)
         if isinstance(base, Err):
             return base
-        try:
-            _checked = decidr_client.validate_request_lines(lines.value, settings, base.value.roles, batch_jobs)
-            if not _checked["ok"]:
-                return Err(_checked["error"])
-        except ClientError as exc:
-            return Err(exc)
-        return Ok(None)
+        checked = decidr_client.validate_request_lines(lines.value, settings, base.value.roles, batch_jobs)
+        return checked if isinstance(checked, Err) else Ok(None)
     data = decode_json(raw, path, what)
     if isinstance(data, Err):
         return data
@@ -1835,59 +1668,35 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
         arms = {arm: {"definitions": jev_definitions.log_entries(prepared[arm][4]), "wave": dry_run_wave(prepared[arm][0], prepared[arm][3], settings)}
                 for arm in COMPARE_ARMS}
         return Ok({"success": True, "error": None, "data": {"dry_run": True, **head, "arms": arms}})
-    try:
-        _checked = decidr_client.load_answers_fixture(args.answers_file, COMPARE_FIXTURE_KEYS, load_json,
-                                                    validate_envelope=answers_envelope_error)
-        if not _checked["ok"]:
-            return _with_refs(Err(_checked["error"]), head)
-        else:
-            fixture = _checked["value"]
-    except ClientError as exc:
-        return _with_refs(Err(exc), head)
-    run_name = args.run_name or stamp()
-    runs = {arm: f"{run_name}.{arm}" for arm in COMPARE_ARMS}
-    for name in (run_name, *runs.values()):
-        try:
-            _checked = decidr_client.safe_id(name, "--run-name")
-            if not _checked["ok"]:
-                return _with_refs(Err(_checked["error"]), head)
-        except ClientError as exc:
-            return _with_refs(Err(exc), head)
-
-    if fixture is None:
-        try:
-            _checked = decidr_client.remote_preflight(args.repository_root, "The record text and the definitions")
-            if not _checked["ok"]:
-                return _with_refs(Err(_checked["error"]), head)
-        except ClientError as exc:
-            return _with_refs(Err(exc), head)
-    log = open_run_log()
-    if isinstance(log, Err):
-        return _with_refs(log, head)
-    import sc_agent
-    walks = {}
-    for arm in COMPARE_ARMS:
-        tree, record, _refs, _jobs, arm_carried = prepared[arm]
-        try:
-            walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
-                               {"run": runs[arm], **quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location, repository_root=args.repository_root)
-        except KeyboardInterrupt:
-            sc_agent.flush(log.value)
-            raise
-        sc_agent.flush(log.value)
-        if isinstance(walked, Err):
-            return _with_refs(walked, {**head, "arm": arm})
-
-        walks[arm] = walked.value
-    answers = compare_answers(answer_table(walks["without"][2]), answer_table(walks["with"][2]), threshold)
-    try:
-        sc_agent.log(log.value, {"target": LOG_TARGET, "action": "compare", "correlation_id": None, "fields": redact_sensitive(decidr_client.json_answers({"run": run_name, **({"tree_id": prepared["with"][0].id,
-                                             **compare_event_fields(rid, candidates, location, threshold, answers, runs)})}))})
-    except KeyboardInterrupt:
-        sc_agent.flush(log.value)
-        raise
-    sc_agent.flush(log.value)
-
+    fixture = decidr_client.load_answers_fixture(args.answers_file, COMPARE_FIXTURE_KEYS, load_json,
+                                                validate_envelope=answers_envelope_error)
+    if isinstance(fixture, Err):
+        return _with_refs(fixture, head)
+    opened = open_command_run(args, timeout_secs=getattr(args, "timeout", None), workers=getattr(args, "max_workers", None))
+    if isinstance(opened, Err):
+        return _with_refs(opened, head)
+    with opened.value as run:
+        run_name = args.run_name or run.run_id
+        runs = {arm: f"{run_name}.{arm}" for arm in COMPARE_ARMS}
+        for name in (run_name, *runs.values()):
+            checked = safe_id(name, "--run-name")
+            if isinstance(checked, Err):
+                return _with_refs(checked, head)
+        walks = {}
+        for arm in COMPARE_ARMS:
+            tree, record, _refs, _jobs, arm_carried = prepared[arm]
+            walked = walk_tree(tree, record, settings, arm_fixture(fixture.value, arm),
+                               {"run": runs[arm], **quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm},
+                               arm_carried, location, run=run, repository_root=args.repository_root)
+            if isinstance(walked, Err):
+                return _with_refs(walked, {**head, "arm": arm})
+            walks[arm] = walked.value
+        answers = compare_answers(answer_table(walks["without"][2]), answer_table(walks["with"][2]), threshold)
+        logged = log_event(run, LOG_TARGET, "compare", run.run_id,
+                           {"run": run_name, "tree_id": prepared["with"][0].id,
+                            **compare_event_fields(rid, candidates, location, threshold, answers, runs)})
+        if isinstance(logged, Err):
+            return logged
     return Ok({"success": True, "error": None, "data": {
         "dry_run": False, **head, "material": any(a["material"] for a in answers),
         "answers_compared": len(answers), "answers_material": sum(1 for a in answers if a["material"]), "answers": answers,
@@ -2181,7 +1990,7 @@ def cmd_drift(args) -> Result[Any, ClientError]:
             questions = drift_questions(m["obligations"], m["table"], args.form, drift_verbatim(m["obligations"], cand), args.question_set)
             lines.append(drift_line(f"{rid}.ctl-drop-{k}", "", m["original"], cand, questions, args.form))
             controls.append({"item": f"{rid}.ctl-drop-{k}", "record": rid, "expect": "drift", "drops": k, "obligations": m["obligations"]})
-    settings = BatchSettings("plan", DEFAULT_MODEL, 1, DRIFT_PREFIX, threshold, 60.0, BATCH_MAX_WORKERS, args.dry_run)
+    settings = BatchSettings("plan", 1, DRIFT_PREFIX, threshold, args.dry_run)
     total = 0
     for number, line in enumerate(lines, 1):
         jobs = batch_jobs(line, number, settings, {})
@@ -2192,69 +2001,62 @@ def cmd_drift(args) -> Result[Any, ClientError]:
             "controls_requested": len(controls)}
     if args.dry_run:
         return Ok({"success": True, "error": None, "data": {"dry_run": True, **head, "requests": lines}})
-    try:
-        _checked = decidr_client.load_answers_fixture(args.answers_file,
-            "'<record>/drift', '<record>.ctl-same/drift', '*'", load_json,
-            validate_envelope=answers_envelope_error)
-        if not _checked["ok"]:
-            return Err(_checked["error"])
-        else:
-            fixture = _checked["value"]
-        _checked = decidr_client.check_fixture_coverage(lines, settings, {}, batch_jobs, fixture)
-        if not _checked["ok"]:
-            return Err(_checked["error"])
-        run_name = args.run_name or stamp()
-        _checked = decidr_client.safe_id(run_name, "--run-name")
-        if not _checked["ok"]:
-            return Err(_checked["error"])
-        if fixture is None and lines:
-            _checked = decidr_client.remote_preflight(args.repository_root, "The normative text of each compared record, old and new")
-            if not _checked["ok"]:
-                return Err(_checked["error"])
-    except ClientError as exc:
-        return Err(exc)
-    log = open_run_log()
-    if isinstance(log, Err):
-        return log
-    import sc_agent
-    try:
-        pumped = judge_batch(lines, settings, fixture, log.value, echo=False,
+    fixture = decidr_client.load_answers_fixture(args.answers_file,
+        "'<record>/drift', '<record>.ctl-same/drift', '*'", load_json,
+        validate_envelope=answers_envelope_error)
+    if isinstance(fixture, Err):
+        return fixture
+    opened = open_command_run(args, timeout_secs=getattr(args, "timeout", None), workers=getattr(args, "max_workers", None))
+    if isinstance(opened, Err):
+        return opened
+    with opened.value as run:
+        run_name = args.run_name or run.run_id
+        checked = safe_id(run_name, "--run-name")
+        if isinstance(checked, Err):
+            return checked
+        pumped = judge_batch(run, lines, settings, fixture=fixture.value, echo=False,
                              fields={"run": run_name, "old_index": args.old_index, "new_index": args.new_index},
                              repository_root=args.repository_root) if lines else Ok([])
-    except KeyboardInterrupt:
-        sc_agent.flush(log.value)
-        raise
-    if isinstance(pumped, Err):
-        sc_agent.flush(log.value)
-        return pumped
-    by_item = {x["item_id"]: x for x in pumped.value}
-    failed = [{"item": i, "error": x["error"]} for i, x in by_item.items() if not x["ok"]]
-    records = []
-    for rid in sorted(meta):
-        x = by_item.get(rid)
-        if x is None or not x["ok"]:
-            records.append({"id": rid, "verdict": None, "error": x and x["error"]})
-            continue
-        records.append({"id": rid, **drift_assess(x["answers"], meta[rid]["obligations"], threshold, args.question_set), "run_id": x["run_id"],
-                        "obligations": len(meta[rid]["obligations"]), "kept_verbatim": meta[rid]["verbatim"]})
-    control_results = []
-    for c in controls:
-        x = by_item.get(c["item"])
-        got = drift_assess(x["answers"], c["obligations"], threshold, args.question_set) if x is not None and x["ok"] else None
-        ok = got is not None and got["verdict"] == c["expect"]
-        if ok and c["expect"] == "drift":  # the removed obligation itself must be the one found dropped
-            ok = any(f["question"] == f"keep_{c['drops']}" and f["choice"] != "same" for f in got["findings"])
-        control_results.append({"item": c["item"], "expect": c["expect"], "got": got and got["verdict"], "ok": ok,
-                                "findings": got and got["findings"]})
-    valid = all(c["ok"] for c in control_results) and not failed
-    counts = {v: sum(1 for r in records if r["verdict"] == v) for v in DRIFT_VERDICTS}
-    summary = {**head, "valid": valid, "counts": counts, "controls_passed": sum(1 for c in control_results if c["ok"])}
-    sc_agent.log(log.value, {"target": LOG_TARGET, "action": "drift", "correlation_id": None, "fields": redact_sensitive(decidr_client.json_answers({"run": run_name, **({**summary, "records": [{k: r.get(k) for k in ("id", "verdict", "min_confidence")} for r in records]})}))})
-    sc_agent.flush(log.value)
+        if isinstance(pumped, Err):
+            return pumped
+        by_request = {}
+        for number, request in enumerate(lines, 1):
+            made = batch_jobs(request, number, settings, {})
+            if isinstance(made, Err):
+                return made
+            by_request.update({job.request_id: job.item_id for job in made.value})
+        by_item = {by_request[line.request_id]: {"ok": line.ok, "answers": answers,
+                   "error": json.loads(decidr_client.encode_result_line(line))["error"], "run_id": line.run_id}
+                   for line, answers in pumped.value}
+        failed = [{"item": i, "error": x["error"]} for i, x in by_item.items() if not x["ok"]]
+        records = []
+        for rid in sorted(meta):
+            x = by_item.get(rid)
+            if x is None or not x["ok"]:
+                records.append({"id": rid, "verdict": None, "error": x and x["error"]})
+                continue
+            records.append({"id": rid, **drift_assess(x["answers"], meta[rid]["obligations"], threshold, args.question_set), "run_id": x["run_id"],
+                            "obligations": len(meta[rid]["obligations"]), "kept_verbatim": meta[rid]["verbatim"]})
+        control_results = []
+        for c in controls:
+            x = by_item.get(c["item"])
+            got = drift_assess(x["answers"], c["obligations"], threshold, args.question_set) if x is not None and x["ok"] else None
+            ok = got is not None and got["verdict"] == c["expect"]
+            if ok and c["expect"] == "drift":  # the removed obligation itself must be the one found dropped
+                ok = any(f["question"] == f"keep_{c['drops']}" and f["choice"] != "same" for f in got["findings"])
+            control_results.append({"item": c["item"], "expect": c["expect"], "got": got and got["verdict"], "ok": ok,
+                                    "findings": got and got["findings"]})
+        valid = all(c["ok"] for c in control_results) and not failed
+        counts = {v: sum(1 for r in records if r["verdict"] == v) for v in DRIFT_VERDICTS}
+        summary = {**head, "valid": valid, "counts": counts, "controls_passed": sum(1 for c in control_results if c["ok"])}
+        logged = log_event(run, LOG_TARGET, "drift", run.run_id, {"run": run_name, **summary,
+                           "records": [{k: r.get(k) for k in ("id", "verdict", "min_confidence")} for r in records]})
+        if isinstance(logged, Err):
+            return logged
 
-    return Ok({"success": True, "error": None, "data": {"dry_run": False, **summary, "records": records,
-                                                         "controls": control_results, "failed_requests": failed,
-                                                         "log": {"run": run_name}}})
+        return Ok({"success": True, "error": None, "data": {"dry_run": False, **summary, "records": records,
+                                                             "controls": control_results, "failed_requests": failed,
+                                                             "log": {"run": run_name}}})
 
 
 # --------------------------------------------------------------------------- #
@@ -2525,6 +2327,8 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--dry-run", action="store_true", help="report each record's tree and composed wave-1 request (one per statement for a per-statement wave); call nothing")
     q.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/<node>/r1', '<record>/<node>', '<node>' or '*'; no network")
     q.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
+    q.add_argument("--no-cache", action="store_true", help="send fresh requests")
+    q.add_argument("--model", default=None, help="model selector; default from config")
     q.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
     q.add_argument("--definitions", metavar="FILE", action="append", default=[], help=DEFINITIONS_HELP)
     q.set_defaults(func=cmd_quality)
@@ -2549,6 +2353,7 @@ def build_parser() -> argparse.ArgumentParser:
     cd.add_argument("--dry-run", action="store_true", help="report the start-wave request of each arm, without and with the definitions; call nothing")
     cd.add_argument("--answers-file", default="", help="fixture answers keyed " + COMPARE_FIXTURE_KEYS + "; no network")
     cd.add_argument("--run-name", default="", help="run name of the compare event; the arms log as <run name>.without and <run name>.with; default a UTC timestamp")
+    cd.add_argument("--model", default=None, help="model selector; default from config")
     cd.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
     cd.set_defaults(func=cmd_compare_definition)
     df = sub.add_parser("drift", help="compare records between two Raptor indexes: does each rewritten record still require exactly what the original required? one Jev request per record, plus controls")
@@ -2564,6 +2369,7 @@ def build_parser() -> argparse.ArgumentParser:
     df.add_argument("--dry-run", action="store_true", help="report the composed requests; call nothing")
     df.add_argument("--answers-file", default="", help="fixture answers keyed '<record>/drift', '<record>.ctl-same/drift', '<record>.ctl-drop-<n>/drift' or '*'; no network")
     df.add_argument("--run-name", default="", help="run name carried by every log event; default a UTC timestamp")
+    df.add_argument("--model", default=None, help="model selector; default from config")
     df.add_argument("--repository-root", default=".", help=REPO_ROOT_HELP)
     df.set_defaults(func=cmd_drift)
     dr = sub.add_parser("doctor", help="check every tree, question set and definitions file of the repository scope; calls nothing, needs no key, writes no log")
@@ -2576,11 +2382,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     """0 when the command ran (its outcome, negative or not, is in data); 2 when it could not; 130 on interrupt."""
-    try:
-        return _main(argv)
-    except KeyboardInterrupt:
-        emit(canceled_envelope())
-        return CANCELED_EXIT
+    return decidr_client.run_main(lambda: _main(argv))
 
 
 def _main(argv=None) -> int:
@@ -2611,20 +2413,14 @@ def _main(argv=None) -> int:
         failed = outcome.value.failed
         if not failed:
             return 0
-        cause = next((line for line in failed if (line["error"] or {}).get("code") != "CANCELED"), failed[0])
-        summary = {"success": False, "data": None, "error": cause["error"],
-                   "unanswered": len(failed), "request_id": cause["request_id"]}
-        sys.stderr.write(json.dumps(redact_sensitive(summary), sort_keys=True) + "\n")  # stdout stays pure result lines
+        cause = next((line for line in failed if line.error and line.error.code != "CANCELED"), failed[0])
+        summary = {"success": False, "data": None, "error": json.loads(decidr_client.encode_result_line(cause))["error"],
+                   "unanswered": len(failed), "request_id": cause.request_id}
+        sys.stderr.write(json.dumps(decidr_client.redact_secrets(summary), sort_keys=True) + "\n")  # stdout stays pure result lines
         return 2
     emit(outcome.value, fmt)
     return 0
 
 
 if __name__ == "__main__":
-    try:
-        utf8_stdio()
-        code = main()
-    except KeyboardInterrupt:  # between the imports and main's own handler
-        emit(canceled_envelope())
-        code = CANCELED_EXIT
-    sys.exit(code)
+    sys.exit(main())

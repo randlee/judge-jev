@@ -11,7 +11,7 @@ from jev_support import SCRIPTS  # noqa: F401
 import jev_judge as jj  # noqa: E402
 import decidr_client  # noqa: E402
 import judge_jev_settings as settings  # noqa: E402
-from result import run_main  # noqa: E402
+from decidr_client import run_main  # noqa: E402
 from test_jev_judge import run_cli, write  # noqa: E402
 import test_jev_batch as batch_helpers  # noqa: E402
 from test_quality import INDEX  # noqa: E402

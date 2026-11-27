@@ -1,8 +1,4 @@
-"""TYPESAFE_API_KEY is the plugin's only configuration variable.
-
-The shipped tree reads no other environment variable as configuration, and
-names no plugin-prefixed variable.
-"""
+"""Environment configuration belongs to the shared wheel, not the plugin."""
 from pathlib import Path
 import re
 import unittest
@@ -22,10 +18,10 @@ class ShippedTreeNamesNoPluginVariable(unittest.TestCase):
             else:
                 yield from (p for p in sorted(top.rglob("*")) if p.is_file() and "__pycache__" not in p.parts)
 
-    def test_no_plugin_prefix_in_shipped_files(self):
-        hits = [p.relative_to(ROOT).as_posix() for p in self.shipped_files()
-                if b"JUDGE_JEV_" in p.read_bytes() or b"PLAN_ANCHOR_" in p.read_bytes()]
-        self.assertEqual(hits, [])
+    def test_only_shared_log_root_is_named_in_shipped_files(self):
+        token = re.compile(r"\b(?:JUDGE_JEV|PLAN_ANCHOR)_[A-Z0-9_]+\b")
+        found = {name for p in self.shipped_files() for name in token.findall(p.read_text(encoding="utf-8", errors="replace"))}
+        self.assertEqual(found - {"JUDGE_JEV_LOG_ROOT"}, set())
 
     def found(self):
         read = re.compile(r"""(?:environ\.get|environ\[|getenv)\(?\s*["']([^"']+)["']""")
@@ -35,15 +31,15 @@ class ShippedTreeNamesNoPluginVariable(unittest.TestCase):
                 found.setdefault(name, []).append(path.relative_to(PLUGIN).as_posix())
         return found
 
-    def test_only_typesafe_key_is_read_from_the_environment(self):
+    def test_only_os_user_is_read_from_the_environment(self):
         # USER is the operating system's login name, not plugin configuration.
-        allowed = {"TYPESAFE_API_KEY", "USER"}
+        allowed = {"USER"}
         found = self.found()
         self.assertEqual(sorted(set(found) - allowed), [], found)
 
     @unittest.skipUnless(JUDGE_TEMPLATE.is_file(), "jev_judge.py.j2 is not in this tree yet")
-    def test_the_judge_reads_typesafe_key(self):
-        self.assertIn("TYPESAFE_API_KEY", self.found())
+    def test_credentials_are_left_to_the_shared_wheel(self):
+        self.assertNotIn("TYPESAFE_API_KEY", self.found())
 
 
 if __name__ == "__main__":

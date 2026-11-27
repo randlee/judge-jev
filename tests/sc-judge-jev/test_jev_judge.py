@@ -57,14 +57,17 @@ def run_cli(argv):
     """Run main() in-process; returns (exit code, parsed JSON or raw text)."""
     buf = io.StringIO()
     with contextlib.ExitStack() as controlled:
-        controlled.enter_context(mock.patch.object(jj.decidr_client, "_logger_handle", None))
         api = sys.modules.get("sc_agent")
         native = getattr(api, "_native", None)
         if native is not None:
             for operation in ("send", "send_batch"):
-                if getattr(api, operation) is getattr(native, operation):
+                if hasattr(api, operation) and getattr(api, operation) is getattr(native, operation, None):
                     controlled.enter_context(mock.patch.object(api, operation,
                         side_effect=AssertionError("unit test reached an uncontrolled native decision call")))
+        send_name = "_call_batch_results" if hasattr(jj.decidr_client, "_call_batch_results") else "call_batch_results"
+        if not isinstance(getattr(jj.decidr_client, send_name), mock.Mock):
+            controlled.enter_context(mock.patch.object(jj.decidr_client, send_name,
+                side_effect=AssertionError("unit test reached an uncontrolled native decision call")))
         controlled.enter_context(contextlib.redirect_stdout(buf))
         code = jj.main(argv)
     out = buf.getvalue()

@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-quality-workflow
-version: 0.10.0
+version: 0.11.0
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -22,7 +22,7 @@ description: Judge whether REQ, NFR and ADR records are well written - the quali
 uv run -q --script "$J" quality --req REQ-ABC-0001 --nfr NFR-ABC-0001 --adr ADR-ABC-0001 --index index.json --run-name <name> > <name>.json
 ```
 
-`--req`, `--nfr` and `--adr` repeat and mix. Every request and answer is also logged to `~/.sc-agent/logs/judge-jev.log.jsonl`, shared by runs and identified by `--run-name`. Each answer in the result carries `probabilities`, the probability of every option, and `runner_up`, the option Jev nearly chose with its probability and criterion; each wave carries `models`, the Jev versions that answered.
+`--req`, `--nfr` and `--adr` repeat and mix. Result and wave events are written under `<JUDGE_JEV_LOG_ROOT|~/.sc-agent>/logs/judge-jev.log.jsonl` and reference sc-agent session rows by ID. Each answer in the result carries `probabilities`, the probability of every option, and `runner_up`, the option Jev nearly chose with its probability and criterion.
 
 ## 2. Read the result
 

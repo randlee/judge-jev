@@ -3,7 +3,8 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "pyyaml>=5.1",
-#   "sc-compose>=1.7.0,<2",
+#   "sc-compose>=1.9.0,<2",
+#   "sc-decidr==0.4.1",
 # ]
 # ///
 """Install judge-jev (the judge-jev skill) into a folder.
@@ -110,6 +111,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import hashlib
 import importlib
+import importlib.resources
 import json
 import os
 from pathlib import Path
@@ -159,7 +161,36 @@ def _load_plain_script(name: str) -> ModuleType:
     return module
 
 
-_result = _load_plain_script("result")
+def _wheel_client() -> ModuleType:
+    """Bootstrap the shared result types from the installed wheel's template."""
+    try:
+        import sc_agent
+        import sc_compose
+    except ImportError as exc:
+        print(json.dumps({"code": "INSTALL.MISSING_DEPENDENCY", "message": str(exc),
+                          "remedy": "python3 -m pip install sc-decidr==0.4.1 sc-compose"}), file=sys.stderr)
+        raise SystemExit(2) from None
+    template = Path(str(importlib.resources.files("sc_agent") / "templates" / "consumer.py.j2"))
+    try:
+        request = sc_compose.ComposeRequest(str(template.parent), sc_compose.ComposeMode.file(str(template)),
+            vars_input={"client_name": "judge-jev", "sitr": True, "sc_decidr_version": sc_agent.__version__,
+                        "tool_version": "installer"},
+            policy=sc_compose.ComposePolicy(strict_undeclared_variables=True))
+        source = sc_compose.compose_file(request).rendered_text
+        module = ModuleType("sc_judge_jev_install_client")
+        module.__file__ = str(template)
+        sys.modules[module.__name__] = module
+        exec(compile(source, str(template), "exec"), module.__dict__)
+        for name in ("Err", "Ok", "Result", "ToolError", "err", "utf8_stdio"):
+            getattr(module, name)
+        return module
+    except (OSError, ValueError, AttributeError, sc_compose.ScComposeError) as exc:
+        print(json.dumps({"code": "INSTALL.MISSING_DEPENDENCY", "message": str(exc),
+                          "remedy": "Install the pinned sc-decidr wheel with consumer template 2.0.0."}), file=sys.stderr)
+        raise SystemExit(2) from None
+
+
+_result = _wheel_client()
 _paths = _load_plain_script("judge_jev_paths")
 Err, Ok, Result, ToolError, err, utf8_stdio = (_result.Err, _result.Ok, _result.Result, _result.ToolError,
                                                _result.err, _result.utf8_stdio)
@@ -172,9 +203,9 @@ BACKUP_DIR = ".backup"
 TARGETS = ("claude", "codex", "cursor")
 REGISTRY = "registry.yaml"   # per-target file installed in the skill directory
 TEMPLATE_NAME_PREFIX = "name: sc-judge-jev-"
-SC_COMPOSE_FLOOR = (1, 7, 0)
+SC_COMPOSE_FLOOR = (1, 9, 0)
 SC_COMPOSE_CEILING_MAJOR = 2
-SC_COMPOSE_SPEC = "sc-compose>=1.7.0,<2"
+SC_COMPOSE_SPEC = "sc-compose>=1.9.0,<2"
 IGNORED = frozenset({"__pycache__", ".DS_Store"})
 ERROR_EXIT = 2
 
@@ -266,6 +297,8 @@ def load_package(plugin_dir: Path = PLUGIN_DIR) -> Result[Package, ToolError]:
     if REGISTRY in skill:
         return err(bad, f"install/templates/skills/{SKILL_NAME}/{REGISTRY} would shadow the per-target registry")
     skill.append(REGISTRY)
+    skill.append("scripts/decidr_client.py")
+    rendered.add("scripts/decidr_client.py")
     agents = []
     for path in _tree(agents_src) if agents_src.is_dir() else []:  # a package may ship no agents
         if not is_install_template(path) or path.parent != agents_src:
@@ -315,7 +348,7 @@ def check_sc_compose() -> Result[Any, ToolError]:
 
 
 def render_template(sc_compose: Any, template: Path, version: str,
-                    extra_variables: Optional[Dict[str, str]] = None) -> Result[str, ToolError]:
+                    extra_variables: Optional[Dict[str, Any]] = None) -> Result[str, ToolError]:
     """Strict sc-compose render with package metadata and declared runtime versions."""
     template = template.resolve()
     variables = {"version": version, **(extra_variables or {})}
@@ -358,12 +391,20 @@ class Renderer:
         return Ok(self._cache[key])
 
     def skill_source(self, rel: str, target: str) -> Path:
+        if rel == "scripts/decidr_client.py":
+            return Path(str(importlib.resources.files("sc_agent") / "templates" / "consumer.py.j2"))
         if rel == REGISTRY:
             return self.harness / target / REGISTRY
         return self.skill_src / (f"{rel}.j2" if rel in self.package.rendered else rel)
 
     def skill_file(self, rel: str, target: str) -> Result[bytes, ToolError]:
         src = self.skill_source(rel, target)
+        if rel == "scripts/decidr_client.py":
+            out = render_template(self.sc_compose, src, self.package.version,
+                                  {"client_name": "judge-jev", "sitr": True,
+                                   "sc_decidr_version": self.package.sc_decidr_version,
+                                   "tool_version": self.package.version})
+            return out if isinstance(out, Err) else Ok(out.value.encode("utf-8"))
         if rel not in self.package.rendered:
             return Ok(src.read_bytes())
         out = self._render(src)

@@ -62,6 +62,17 @@ def _render(dest: Path) -> Path:
         data = out.read_bytes()
         if not data.endswith(b"\n"):
             out.write_bytes(data + b"\n")
+    import importlib.resources
+    template = Path(str(importlib.resources.files("sc_agent") / "templates" / "consumer.py.j2"))
+    out = scripts / "decidr_client.py"
+    proc = run_child([binary, "render", "--root", str(template.parent), "--strict",
+                      "--var", "client_name=judge-jev", "--var", "sitr=true",
+                      "--var", f"sc_decidr_version={SC_DECIDR_VERSION}",
+                      "--var", f"tool_version={_package.value.version}",
+                      "--file", str(template), "--output", str(out)],
+                     text=True, encoding="utf-8", errors="replace", check=False)
+    if proc.returncode != 0:
+        raise RuntimeError(f"sc-compose render wheel client failed: {proc.stderr[-2000:]}")
     return scripts
 
 

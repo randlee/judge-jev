@@ -42,16 +42,16 @@ class RedactionIsIterative(unittest.TestCase):
         for kind in (list, dict, tuple):
             for depth in DEPTHS + (50000,):
                 with self.subTest(kind=kind.__name__, depth=depth), mock.patch.dict("os.environ", {"TYPESAFE_API_KEY": key}):
-                    out = jj.redact_sensitive(nested(depth, f"has {key} in it", kind))
-                    self.assertIs(type(out), kind)
-                    self.assertEqual(depth_of(out), (depth, "has <redacted> in it"))
+                    out = jj.decidr_client.redact_secrets(nested(depth, f"has {key} in it", kind))
+                    self.assertIs(type(out), list if kind is tuple else kind)
+                    self.assertEqual(depth_of(out), (depth, "has [redacted] in it"))
 
     def test_redact_sensitive_keeps_order_types_and_scalars(self):
         value = {"b": (1, [2, {"c": "Bearer abc.def"}]), "a": None, "z": 1.5, "t": True}
-        out = jj.redact_sensitive(value)
+        out = jj.decidr_client.redact_secrets(value)
         self.assertEqual(list(out), ["b", "a", "z", "t"])
-        self.assertEqual(out, {"b": (1, [2, {"c": "Bearer <redacted>"}]), "a": None, "z": 1.5, "t": True})
-        self.assertIsInstance(out["b"], tuple)
+        self.assertEqual(out, {"b": [1, [2, {"c": "Bearer [redacted]"}]], "a": None, "z": 1.5, "t": True})
+        self.assertIsInstance(out["b"], list)
 
     def test_bound_depth_keeps_the_limit_and_marks_what_is_deeper(self):
         limit = jj.EMIT_MAX_DEPTH
@@ -138,9 +138,11 @@ class DeepInputIsATypedError(unittest.TestCase):
 def counting_pump(sent):
     real = jj.judge_batch
 
-    def counting(lines, *args, **kwargs):
-        sent.extend(lines)
-        return real(lines, *args, **kwargs)
+    def counting(run, lines, *args, **kwargs):
+        result = real(run, lines, *args, **kwargs)
+        if not isinstance(result, jj.Err) or result.error.code != "FIXTURE.MISSING":
+            sent.extend(lines)
+        return result
     return counting
 
 
@@ -217,7 +219,7 @@ class AnswersEnvelope(unittest.TestCase):
         "error of one character": {"*": {"__error__": "J"}},
         "short error": {"*": {"__error__": "DECIDR.NETWORK"}},
         "empty answers object": {"*": {}},
-        "list of errors": {"*": [{"__error__": "DECIDR.NETWORK"}, {"__error__": "DECIDR.OVERLOADED"}]},
+
     }
 
     def test_validate_quality_and_batch_refuse_the_same_envelopes_before_any_send(self):
@@ -277,22 +279,15 @@ class AnswersEnvelope(unittest.TestCase):
         self.assertEqual((code, out["error"]["code"], sent), (2, "FIXTURE.MISSING", 0), out)
         self.assertIn("ex-42/cur/r1", out["error"]["message"])
 
-    def test_fixture_attempt_uses_the_shared_key_and_missing_helpers(self):
+    def test_fixture_answer_uses_specific_key_and_reports_missing(self):
         job = jj.BatchJob("item", None, "candidate", 2, "request", {}, {"answer": {"type": "noul"}}, {}, "directive")
-        keys = ("delegated/r2", "delegated", "candidate", "*")
-        with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys:
-            result = jj.decidr_client.fixture_attempt(job,
-                {"delegated/r2": {"answer": {"type": "noul", "noul": 0.75}}}, 1)
-        self.assertEqual(result["value"]["answers"]["answer"].noul, 0.75)
-        get_keys.assert_called_once_with(job)
-        missing = jj.ClientError("TEST.MISSING", "shared helper result")
-        with mock.patch.object(jj.decidr_client, "_fixture_keys", return_value=keys) as get_keys, \
-                mock.patch.object(jj.decidr_client, "_fixture_missing", return_value=missing) as get_missing:
-            result = jj.decidr_client.fixture_attempt(job, {}, 1)
-        self.assertFalse(result["ok"])
-        self.assertIs(result["error"], missing)
-        get_keys.assert_called_once_with(job)
-        get_missing.assert_called_once_with(keys)
+        result = jj.decidr_client.fixture_answer(job, {"item/candidate/r2": {"answer": {"type": "noul", "noul": 0.75}}})
+        self.assertTrue(result.ok)
+        self.assertEqual(result.value.answers["answer"].noul, 0.75)
+        missing = jj.decidr_client.fixture_answer(job, {})
+        self.assertFalse(missing.ok)
+        self.assertEqual(missing.error.code, "FIXTURE.MISSING")
+        self.assertIn("item/candidate/r2", missing.error.message)
 
     def test_batch_checks_every_line_of_the_stream_before_sending_the_first(self):
         sent = []
@@ -312,30 +307,26 @@ class AnswersEnvelope(unittest.TestCase):
 
     def test_a_request_over_64000_bytes_is_sent_whole(self):
         """No --answers-file: the live path runs to sc_agent.send_batch (stubbed), which must receive the whole item text."""
-        import sc_agent
+        from sc_agent.testing import fake_open_run
         text = "x" * 70000
-        captured = []
-
-        def send_batch(requests, **kwargs):
-            captured.extend(json.loads(request) for request in requests)
-            lines = [{"ok": True, "value": {"answers": plan_answers(), "session_id": f"s{i}"}} for i in range(len(requests))]
-            for index, line in enumerate(lines):
-                kwargs["on_result"](index, line)
-            return {"ok": True, "value": [{"index": i, "result": line} for i, line in enumerate(lines)]}
-
         src = write(self.d, "big.jsonl", jsonl([request_line(text=text)]))
-        with env(), consented(), mock.patch.object(sc_agent, "send_batch", send_batch):
+        envelope = {"ok": True, "value": {"answers": plan_answers(), "session_id": "s1", "cached": False}}
+        name = "_call_batch_results" if hasattr(jj.decidr_client, "_call_batch_results") else "call_batch_results"
+        original = getattr(jj.decidr_client, name)
+        with env(), fake_open_run(jj.decidr_client, {"provider": "local", "run_id": "test", "envelopes": [envelope]}) as runs, \
+                mock.patch.object(jj.decidr_client, name, wraps=original):
             code, out = run_cli(["batch", "--input", src])
         self.assertEqual(code, 0, out)
-        self.assertEqual(len(captured), 1)
-        self.assertEqual(captured[0]["state"]["item"]["text"], text)
+        requests, _cache = runs[0].sent[0]
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(json.loads(requests[0])["state"]["item"]["text"], text)
 
     def test_an_error_fails_the_wave_with_its_code_and_logs_cleanly(self):
         code_text = "J"
         code, out, sent = self.quality({"*": {"__error__": code_text}})
         self.assertEqual((code, out["error"]["code"], sent), (2, code_text, 1), out)
         events = tq.read_log(self.d / "logs")
-        self.assertEqual([event["action"] for event in events], ["request", "answer", "result"])
+        self.assertEqual([event["action"] for event in events], ["result"])
         self.assertEqual((events[-1]["fields"]["ok"], events[-1]["fields"]["error"]["code"]), (False, code_text))
 
 

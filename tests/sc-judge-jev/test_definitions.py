@@ -17,7 +17,7 @@ import jev_graph  # noqa: E402
 import jev_judge as jj  # noqa: E402
 import jev_ports  # noqa: E402
 import jev_runs  # noqa: E402
-from result import Err, Ok  # noqa: E402
+from decidr_client import Err, Ok  # noqa: E402
 
 from test_graph_tree import ADR_TTL, BRANCH_TTL  # noqa: E402
 from test_graph_runs import tree_fixture  # noqa: E402

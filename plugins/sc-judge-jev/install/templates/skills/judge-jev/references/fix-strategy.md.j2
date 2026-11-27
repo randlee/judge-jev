@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-fix-strategy
-version: 0.10.0
+version: 0.11.0
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -179,4 +179,4 @@ Result: lowest <before> to <after>
 
 One table: record, accepted or unresolved, lowest median before and after, strategies and statements changed. For each failing or weak answer, quote each run's choice, confidence, criterion, runner-up, probability and criterion, plus `d_*` answers; mark missing fields unavailable. Include tried edits, results, owner facts and rule 1 changes with both texts.
 
-Leave `$W` and `.sc/judge-jev/accepted.jsonl` in place. Jev requests and answers are logged to `~/.sc-agent/logs/judge-jev.log.jsonl`; pruning follows the sc-observability retention policy.
+Leave `$W` and `.sc/judge-jev/accepted.jsonl` in place. Result events reference sc-agent session rows, which contain the requests and answers; pruning follows the sc-observability retention policy.

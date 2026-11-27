@@ -94,7 +94,6 @@ class TreeSweep(unittest.TestCase):
         environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": log_dir.name})
         environment.start()
         self.addCleanup(environment.stop)
-        self.enterContext(mock.patch.object(jj.decidr_client, "_logger_handle", None))
         logger = jj.open_run_log()
         self.assertIsInstance(logger, jj.Ok)
         self.logger = logger.value

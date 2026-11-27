@@ -20,7 +20,7 @@ from jev_support import ROOT, read_log
 from layout_support import SCRIPTS
 import jev_graph  # noqa: E402
 import jev_judge as jj  # noqa: E402
-from result import Ok  # noqa: E402
+from decidr_client import Ok  # noqa: E402
 
 from test_jev_judge import answer, write  # noqa: E402
 import test_quality  # noqa: E402 - the module, so its test classes are not collected again here

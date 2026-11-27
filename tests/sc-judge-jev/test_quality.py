@@ -124,7 +124,7 @@ class DryRun(QualityCase):
         wave = data["wave"]
         self.assertEqual(wave["node"], "wave-1")
         # REQ-JEV-0209: the request carries only the record and the ADR tree's wave-1 questions
-        self.assertEqual(set(wave["request"]), {"model", "state", "questions"})
+        self.assertEqual(set(wave["request"]), {"state", "questions"})
         self.assertEqual(wave["request"]["questions"], tree_node("quality-adr.json")["questions"])
         self.assertEqual(wave["request"]["state"], {"item": {"id": "ADR-T-0001", "title": "Use SQLite",
                                                              "text": json.dumps(INDEX["decisions"][0], indent=2, ensure_ascii=False)}})
@@ -203,49 +203,52 @@ class WaveReasons(QualityCase):
             self.assertEqual(out["data"]["results"][0]["verdict"], verdict, choices)
 
     def test_fixed_answers_compose_the_same_request_every_run(self):
-        answers = {"*": tree_answers("quality-req.json")}
-        logs = []
-        for name in ("a", "b"):
-            with env(JUDGE_JEV_LOG_ROOT=str(self.d / name)), mock.patch.object(jj.decidr_client, "call_batch_results", never_called):
-                code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index, "--answers-file", write(self.d, "answers.json", answers)])
+        requests = []
+        for _ in range(2):
+            code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
             self.assertEqual(code, 0, out)
-            logs.append([e["fields"]["request"] for e in read_log(self.d / name, action="request")])
-            self.assertTrue(logs[-1], "quality log must contain requests before comparing them")
-        self.assertEqual(logs[0], logs[1])
+            requests.append(out["data"]["results"][0]["wave"]["requests"])
+        self.assertTrue(requests[0])
+        self.assertEqual(requests[0], requests[1])
 
-    def test_the_log_holds_the_wave_with_its_request_answers_reason_verdict_tree_id_and_digest(self):
+    def test_the_log_holds_the_wave_with_ids_and_without_requests_or_answers(self):
         answers = {"ADR-T-0001/wave-1": tree_answers("quality-adr.json", consequences="missing")}
         code, out = self.quality("--adr", "ADR-T-0001", answers=answers)
         self.assertEqual(code, 0, out)
         events = read_log(self.d / "logs")
-        self.assertEqual([e["action"] for e in events], ["request", "answer", "result", "wave", "verdict"])
+        self.assertEqual([e["action"] for e in events], ["result", "wave", "verdict"])
         digest = out["data"]["results"][0]["tree"]["sha256"]
         for event in events:
-            self.assertEqual((event["fields"]["tree_id"], event["fields"]["tree_sha256"], event["fields"]["run"]),
-                             ("quality-adr", digest, "q1"), event["action"])
-        wave = events[3]["fields"]
+            fields = event["fields"]
+            self.assertEqual((fields["tree_id"], fields["tree_sha256"], fields["run"]), ("quality-adr", digest, "q1"))
+            self.assertTrue({"request", "answers", "choices", "reason", "models"}.isdisjoint(fields))
+        wave = events[1]["fields"]
         self.assertEqual((wave["node"], wave["next"], wave["verdict"]), ("wave-1", None, "no"))
-        self.assertEqual(wave["answers"], answers["ADR-T-0001/wave-1"])
-        self.assertEqual(wave["reason"], plain(out["data"]["results"][0]["waves"][0]["reason"]))  # the log's reason is unchanged
-        self.assertEqual(wave["request"]["questions"], tree_node("quality-adr.json")["questions"])
         self.assertEqual((events[-1]["fields"]["verdict"], events[-1]["fields"]["path"]), ("no", ["wave-1"]))
 
     def test_a_wave_without_an_answer_is_exit_2_with_the_path_so_far(self):
-        answers = {"ADR-T-0001/wave-1": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}]}
+        answers = {"ADR-T-0001/wave-1": {"__error__": "DECIDR.OVERLOADED"}}
         code, out = self.quality("--adr", "ADR-T-0001", answers=answers)
         self.assertEqual((code, out["success"], out["error"]["code"]), (2, False, "DECIDR.OVERLOADED"))
         self.assertEqual((out["data"]["path"], out["data"]["results"]), (["wave-1"], []))
         self.assertEqual(out["data"]["tree"]["id"], "quality-adr")
 
     def test_live_client_auth_error_is_typed(self):
-        auth = jj.ClientError("AUTH.CREDENTIALS", "no test credential", action="Check credentials.", status=401)
-        auth_record = {"ok": False, "position": None, "line": None, "attempts": None, "error": auth}
-        with env(), mock.patch.object(jj.decidr_client, "remote_preflight", return_value={"ok": True, "value": None}), \
-                mock.patch.object(jj.decidr_client, "call_batch_results", return_value=auth_record) as call:
+        from sc_agent.testing import fake_open_run
+        error = {"id": "auth.credentials", "category": "auth", "message": "no test credential",
+                 "action": "Check credentials.", "status": 401}
+        script = {"provider": "local", "run_id": "test-run", "envelopes": [{"ok": False, "error": error}]}
+        send_name = "_call_batch_results" if hasattr(jj.decidr_client, "_call_batch_results") else "call_batch_results"
+        original = getattr(jj.decidr_client, send_name)
+        with env(), fake_open_run(jj.decidr_client, script) as runs, \
+                mock.patch.object(jj.decidr_client, send_name, wraps=original):
             code, out = run_cli(["quality", "--req", "REQ-T-0001", "--index", self.index])
-        call.assert_called_once()
-        self.assertEqual((code, out["error"]["code"], out["error"]["message"], out["error"]["suggested_action"]),
-                         (2, "AUTH.CREDENTIALS", "no test credential", "Check credentials."))
+        self.assertEqual((code, out["error"]["code"], out["error"]["suggested_action"]),
+                         (2, "AUTH.CREDENTIALS", "Check credentials."))
+        self.assertIn("no test credential", out["error"]["message"])
+        self.assertEqual(len(runs), 1)
+        self.assertGreater(runs[0].cancels, 0)
+
 
 
 
@@ -363,7 +366,7 @@ class QaFindings(QualityCase):
         code, out = self.quality("--req", "REQ-T-9999", "--dry-run")
         self.assertEqual((code, out["error"]["code"], out["data"]), (2, "RECORD.NOT_FOUND", refs("REQ-T-9999")))
         refused = jj.fail("LOG.WRITE", "the sc-observability logger could not start")
-        with mock.patch.object(jj, "open_run_log", return_value=refused):
+        with mock.patch.object(jj, "open_command_run", return_value=refused):
             code, out = self.quality("--req", "REQ-T-0001", answers={"*": tree_answers("quality-req.json")})
         self.assertEqual((code, out["error"]["code"], out["data"]), (2, "LOG.WRITE", refs("REQ-T-0001")))
 
@@ -415,12 +418,15 @@ class PerStatement(QualityCase):
         return out["data"]["results"][0]
 
     def test_one_request_per_must_and_must_not_statement_each_with_every_question(self):
+        code, out = self.quality("--req", "REQ-T-0001", "--dry-run")
+        self.assertEqual(code, 0, out)
+        requests = out["data"]["results"][0]["wave"]["requests"]
+        self.assertEqual([r["statement"] for r in requests], JUDGED)
+        for entry in requests:
+            self.assertEqual(entry["request"]["questions"], tree_node("quality-req.json")["questions"])
         self.judge()
-        requests = [e["fields"] for e in read_log(self.d / "logs", action="request")]
-        self.assertEqual([r["request_id"] for r in requests], ["quality/REQ-T-0001.s1/wave-1/r1", "quality/REQ-T-0001.s3/wave-1/r1"])
-        for r in requests:
-            self.assertEqual(r["request"]["questions"], tree_node("quality-req.json")["questions"])
-        self.assertEqual(len(read_log(self.d / "logs", action="answer")), 2)
+        results = [e["fields"] for e in read_log(self.d / "logs", action="result")]
+        self.assertEqual([r["request_id"] for r in results], ["quality/REQ-T-0001.s1/wave-1/r1", "quality/REQ-T-0001.s3/wave-1/r1"])
 
     def test_the_reason_lists_each_statement_with_every_questions_choice_criterion_and_confidence(self):
         result = self.judge(s3={"obligations": "2", "joined_by": "and-list"})
@@ -479,29 +485,27 @@ class PerStatement(QualityCase):
         self.assertEqual((result["verdict"], result["path"]), ("no", ["wave-1", "no"]))
         self.assertEqual([e["id"] for e in wave["reason"][0]["answers"]], list(tree_node("quality-nfr.json")["questions"]))
 
-    def test_the_log_holds_every_statements_request_and_answers(self):
+    def test_the_log_holds_statement_ids_without_requests_or_answers(self):
         answers = {"REQ-T-0001.s1/wave-1": tree_answers("quality-req.json"),
                    "REQ-T-0001.s3/wave-1": tree_answers("quality-req.json", checkable="no")}
         code, out = self.quality("--req", "REQ-T-0001", answers=answers)
         self.assertEqual(code, 0, out)
         events = read_log(self.d / "logs")
-        self.assertEqual([e["action"] for e in events], ["request", "answer", "result"] * 2 + ["statement"] * 2 + ["wave", "verdict"])
+        self.assertEqual([e["action"] for e in events], ["result"] * 2 + ["statement"] * 2 + ["wave", "verdict"])
         result_wave = out["data"]["results"][0]["waves"][0]
-        statements = [e["fields"] for e in events[6:8]]
+        statements = [e["fields"] for e in events[2:4]]
         self.assertEqual([s["statement"] for s in statements], JUDGED)
-        self.assertEqual([s["answers"] for s in statements], [answers["REQ-T-0001.s1/wave-1"], answers["REQ-T-0001.s3/wave-1"]])
         self.assertEqual([s["request_id"] for s in statements], result_wave["request_ids"])
-        self.assertEqual([e["fields"]["request_id"] for e in events if e["action"] == "request"], result_wave["request_ids"])
-        self.assertEqual([{"statement": s["statement"], "answers": s["reason"]} for s in statements],
-                         [{"statement": r["statement"], "answers": plain(r["answers"])} for r in result_wave["reason"]])
-        wave = events[8]["fields"]
+        for event in events:
+            self.assertTrue({"request", "answers", "choices", "reason", "models"}.isdisjoint(event["fields"]))
+        wave = events[4]["fields"]
         self.assertEqual((wave["request_ids"], wave["matched_statements"], wave["next"], wave["verdict"]),
                          (result_wave["request_ids"], [3], "no", None))
-        self.assertEqual((events[9]["fields"]["verdict"], events[9]["fields"]["path"]), ("no", ["wave-1", "no"]))
+        self.assertEqual((events[5]["fields"]["verdict"], events[5]["fields"]["path"]), ("no", ["wave-1", "no"]))
 
     def test_a_statement_without_an_answer_names_the_statement(self):
         answers = {"REQ-T-0001.s1/wave-1": tree_answers("quality-req.json"),
-                   "REQ-T-0001.s3/wave-1": [{"__error__": "DECIDR.OVERLOADED"}, {"__error__": "DECIDR.OVERLOADED"}]}
+                   "REQ-T-0001.s3/wave-1": {"__error__": "DECIDR.OVERLOADED"}}
         code, out = self.quality("--req", "REQ-T-0001", answers=answers)
         self.assertEqual((code, out["error"]["code"]), (2, "DECIDR.OVERLOADED"))
         self.assertIn("statement 3", out["error"]["message"])
@@ -575,11 +579,18 @@ class ShippedTrees(unittest.TestCase):
         line = jj.wave_line(record, "wave-1", node, JUDGED[1])  # a per-statement line is a plain anchorless batch line
         settings = jj.quality_settings(False)
         job = jj.batch_jobs(line, 1, settings, {}).value[0]
-        result = jj.run_batch_job(job, settings, {"*": tree_answers("quality-req.json")})
-        self.assertEqual((result["request_id"], result["anchor_id"], result["verdict"]), ("quality/REQ-T-0001.s3/wave-1/r1", None, None))
+        from sc_agent.testing import FakeRun
+        import importlib.resources
+        run = FakeRun({"provider": "local", "run_id": "test-run"})
+        result = jj.judge_batch(run, [line], settings, fixture={"*": tree_answers("quality-req.json")}, echo=False)
+        self.assertTrue(result.ok, result)
+        (result_line, _), = result.value
+        self.assertEqual((result_line.request_id, result_line.verdict), ("quality/REQ-T-0001.s3/wave-1/r1", None))
         schemas = SKILL / "assets" / "schemas"
-        for name, value in (("jev-batch-request", line), ("jev-batch-result", result)):
-            jsonschema.Draft202012Validator(json.loads((schemas / f"{name}.schema.json").read_text(encoding="utf-8"))).validate(value)
+        request_schema = json.loads((schemas / "jev-batch-request.schema.json").read_text(encoding="utf-8"))
+        result_schema = json.loads((importlib.resources.files("sc_agent") / "templates" / "jev-batch-result.schema.json").read_text(encoding="utf-8"))
+        jsonschema.Draft202012Validator(request_schema).validate(line)
+        jsonschema.Draft202012Validator(result_schema).validate(json.loads(jj.decidr_client.encode_result_line(result_line)))
 
 
 if __name__ == "__main__":

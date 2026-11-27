@@ -145,7 +145,15 @@ def render_skill_cli(dest: Path) -> None:
     for rel in package.value.skill:
         src = HARNESS / "claude" / rel if rel == "registry.yaml" else SKILL_SRC / rel
         out = dest / rel
-        if rel in package.value.rendered:
+        if rel == "scripts/decidr_client.py":
+            renderer = inst.Renderer(sc_compose(), package.value)
+            rendered = renderer.skill_file(rel, "claude")
+            if isinstance(rendered, inst.Err):
+                raise RuntimeError(rendered.error.message)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(rendered.value)
+            src = renderer.skill_source(rel, "claude")
+        elif rel in package.value.rendered:
             src = SKILL_SRC / f"{rel}.j2"
             render_cli(src, out)
         else:
