@@ -61,8 +61,8 @@ def judge_batch(run: Run | None, lines: list, settings: BatchSettings, *, fixtur
     # run None only for a dry run (no line, no event); returns (line, answers) in index order; answers are what the walk and drift need, never logged
 
 def open_command_run(args: argparse.Namespace, *, timeout_secs: float | None, workers: int | None,
-                     cache: bool | None = None, repeat: int = 1) -> Result[Run, ClientError]
-    # decidr_client.open_run(model=args.model, cache=cache, repeat=repeat, timeout_secs=..., workers=...)
+                     cache: bool | None = None) -> Result[Run, ClientError]
+    # decidr_client.open_run(model=args.model, cache=cache, timeout_secs=..., workers=...)
 
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, fields: dict,
               definitions=(), location=None, *, run: Run, repository_root=".") -> Result[tuple, ClientError]
