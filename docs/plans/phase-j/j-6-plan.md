@@ -21,7 +21,7 @@ Rand (ANC-015, ANC-016, ANC-010, ANC-002/003, rule 0): "judge-jev and plan-ancho
 ## Library pattern (rule 0)
 
 - Config: judge-jev passes `--model` (or `None`) and its timeout/workers to `open_run`; the wheel's layered config resolves model, provider, cache, project and limits. No model literal, no worker cap, no provider name in judge-jev.
-- Logging: the Run's default logger (`tool=CLIENT_NAME`) writes sends; judge-jev's own result/wave/verdict events go to `sc_agent.logger(decidr_client.CLIENT_NAME)` — the wheel's default logger by tool name (default root/folder/file, ANC-005), opened once per command. Injection exists only in tests (`open_run(seams={"general_log": ...})`, ANC-016); tests otherwise set `JUDGE_JEV_LOG_ROOT`.
+- Logging: the Run's default logger (`tool=CLIENT_NAME`) writes sends; judge-jev's own result/wave/verdict/compare/drift events go through the same Run: `decidr_client.log_event(run, ...)` (j-4 addition, see Plan decision 1), so they land in the Run's default logger (ANC-005). judge-jev imports no `sc_agent`. Every command that logs has a Run (fixture runs go through a real Run); a dry run logs nothing (REQ-JEV-0208), so no Run-less logging path exists. Injection exists only in tests (`open_run(seams={"general_log": ...})`, ANC-016); tests otherwise set `JUDGE_JEV_LOG_ROOT`.
 - Limits: none of judge-jev's own (`--max-workers` is passed through to the Run unchecked; the Run returns its own error).
 - Results: every client call returns `Ok`/`Err` from the template; judge-jev uses `isinstance(x, Err)` / `x.value` / `x.error` and has no `["ok"]` dict reads of client results.
 
@@ -31,7 +31,8 @@ Imports (jj:99-104 replaced):
 
 ```python
 from decidr_client import (Err, Ok, Result, ClientError, BatchSettings, BatchJob, ResultLine, StreamedResult,
-                           BATCH_FIXTURE_ERROR, BATCH_ID_RE, REPO_ROOT_HELP, batch_request_id, safe_id, utf8_stdio)
+                           BATCH_FIXTURE_ERROR, BATCH_ID_RE, REPO_ROOT_HELP, batch_request_id, safe_id, utf8_stdio, log_event)
+Run = Any   # the wheel's sc_agent.Run, typed through the client; judge-jev never imports sc_agent
 ```
 `S/judge_jev_settings.py.j2:63` → `from decidr_client import Err, Ok, Result, ToolError, err, run_main`; `S/jev_gate.py.j2:40` → `from decidr_client import run_main`; `S/jev_ports.py.j2:38`, `S/jev_runs.py.j2:44`, `S/jev_graph.py.j2:55` → `from decidr_client import Err, Ok, Result`. The consent block's import of `judge_jev_settings` is inside the gate function (j-4 owns it), so no import cycle.
 
@@ -49,22 +50,22 @@ def result_event(line: ResultLine, job: BatchJob, fields: Mapping[str, Any]) -> 
     # {**fields, **line._asdict() minus schema/tool/tool_version/agent_role, error encoded,
     #  "item_id", "anchor_id", "candidate_id", "repeat"}  -- judge-jev's record of the line (ADR-JEV-0007 l.389-390)
 
-def log_result_line(log: Any, line: ResultLine, job: BatchJob, fields: Mapping[str, Any]) -> None
-    # one sc_agent.log(log, {"target": LOG_TARGET, "action": "result", "correlation_id": line.run_id, "fields": ...})
+def log_result_line(run: Run, line: ResultLine, job: BatchJob, fields: Mapping[str, Any]) -> Result[None, ClientError]
+    # decidr_client.log_event(run, LOG_TARGET, "result", line.run_id, result_event(line, job, fields))
 
-def judge_batch(run: Any | None, lines: list, settings: BatchSettings, *, fixture: Mapping[str, Any] | None,
-                log: Any | None, echo: bool, fields: Mapping[str, Any] | None = None, cache: bool | None = None,
+def judge_batch(run: Run | None, lines: list, settings: BatchSettings, *, fixture: Mapping[str, Any] | None,
+                echo: bool, fields: Mapping[str, Any] | None = None, cache: bool | None = None,
                 repository_root: str = ".") -> Result[list[tuple[ResultLine, Mapping[str, Any] | None]], ClientError]
     # builds jobs, calls decidr_client.run_batch(run, jobs, settings, fixture=..., verdict=batch_verdict,
     #   abort_on=frozenset({"auth"}), repository_root=..., consent_what=..., on_line=collect + log_result_line + echo)
-    # returns (line, answers) in index order; answers are what the walk and drift need, never logged
+    # run None only for a dry run (no line, no event); returns (line, answers) in index order; answers are what the walk and drift need, never logged
 
-def open_command_run(args: Any, *, timeout_secs: float | None, workers: int | None,
-                     cache: bool | None = None, repeat: int = 1) -> Result[Any, ClientError]
+def open_command_run(args: argparse.Namespace, *, timeout_secs: float | None, workers: int | None,
+                     cache: bool | None = None, repeat: int = 1) -> Result[Run, ClientError]
     # decidr_client.open_run(model=args.model, cache=cache, repeat=repeat, timeout_secs=..., workers=...)
 
-def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, log: Any, fields: dict,
-              definitions=(), location=None, *, run: Any | None, repository_root=".") -> Result[tuple, ClientError]
+def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, fields: dict,
+              definitions=(), location=None, *, run: Run, repository_root=".") -> Result[tuple, ClientError]
 
 def wave_log_events(fields: dict, node_id: str, node: Wave, statements: list, results: list, per_choices: list,
                     matched: list, nxt, verdict, rank=None) -> tuple
@@ -77,9 +78,9 @@ def quality_settings(dry_run: bool) -> BatchSettings   # BatchSettings("plan", 1
 jev_runs:
 
 ```python
-def read_run_events(run_name: str, log_file: pathlib.Path) -> Result[dict, Any]       # log_file required: no hard-coded path
+def read_run_events(run_name: str, log_file: pathlib.Path) -> Result[dict, ClientError]       # log_file required: no hard-coded path
 def rebuild_from_log(run_name: str, tree: Any, repository: Optional[str] = None, *,
-                     log_file: pathlib.Path) -> Result[list, Any]
+                     log_file: pathlib.Path) -> Result[list, ClientError]
     # result events -> decidr_client.answers_for(lines) -> {request_id: answers} -> run_triples
 def run_triples(tree: Any, run: dict, result_lines: list, walk: dict) -> list           # unchanged; lines carry "answers" merged by the caller
 ```
@@ -96,7 +97,7 @@ CLI: `--model` (default `None`, help "model selector; default from config") on `
 | `batch_verdict` (typed `verdict=` callback) | jj:851-857 `batch_verdict_fields` (dict) | the dict merge of tool keys into the line |
 | `judge_batch` over `run_batch` | jj:860-893 `_batch_result_line`, `run_batch_job`; jj:953-984 `_live_batch_results`; jj:987-1005 old `judge_batch` | fixture attempt loop, `FIXTURE_RETRYABLE_CODES` jj:807-808, `ATTEMPT_MESSAGE_LIMIT` jj:134, two pump paths, `call_batch_results(on_result=persist, general_log=log, model=, timeout_secs=, workers=)` |
 | `open_command_run` | jj:923-928 `open_run_log` (`decidr_client._logger`), `stamp` jj:231-232 (run name default) | `open_run_log`, `stamp`; run name default becomes `run.run_id` |
-| `result_event`, `log_result_line` | jj:931-950 `result_line_events` (request, answer, result events) | request and answer events (REQ-JEV-0212 owner ruling: no per-request event; ADR-JEV-0007 l.402-405) |
+| `result_event`, `log_result_line` on `log_event(run, ...)` | jj:931-950 and every `sc_agent.log`/`sc_agent.flush`/`import sc_agent` in jj (:946-950, :1503, :1593-1659, :1820-1890, :2235-2253) `result_line_events` (request, answer, result events) | request and answer events (REQ-JEV-0212 owner ruling: no per-request event; ADR-JEV-0007 l.402-405) |
 | client consent gate (inside `run_batch`) | 4 `remote_preflight` blocks jj:1042-1049, :1520-1527, :1857-1864, :2209-2213 | the 4 blocks |
 | `run_batch` fixture coverage | `check_fixture_coverage` calls jj:1035-1037, :1626-1631, :2195-2197 | 3 call sites |
 | `run_low_layer` (same signature) | jj:1008-1062 | dict `["ok"]` reads, `remote_preflight`, `streamed_result` |
@@ -149,7 +150,8 @@ Phase Rust: 0 lines from j-6 (cap 2,500 untouched). judge-jev production Python 
 
 ## Plan decisions (rule 0, no question to Rand)
 
-1. judge-jev's own events use `sc_agent.logger("judge-jev")` (the wheel's default logger by name), not the Run's injected-logger seam; tests redirect with `JUDGE_JEV_LOG_ROOT`.
+1. judge-jev's own events go through the Run it already holds (rule 0: the tool's logger comes through its client). j-4's surface has no such accessor, so j-6 needs this j-4 addition (not in j-4's plan yet):
+   `def log_event(run: Any, target: str, action: str, correlation_id: str | None, fields: Mapping[str, Any]) -> Result[None, ClientError]` -- `redact_secrets(fields)`, then `run.log({"target": target, "action": action, "correlation_id": correlation_id, "fields": ...})` and flush on the Run's own logger; Err(`DEPENDENCY.SC_DECIDR` / the wheel's `log.*` error). It needs the wheel's `PyRun.log(event: dict) -> Envelope` (the Run's logger through j-3's kept `pub fn log(logger, action, fields)`; new capability, about +8 Rust). Tests redirect with `JUDGE_JEV_LOG_ROOT`.
 2. `abort_on={"auth"}` kept (core unchanged, ADR-JEV-0001); passed to `run_batch`.
 3. Run name default = `run.run_id` (replaces `stamp()`); `--run-name` still overrides; compare-definition keeps `<run>.with`/`<run>.without` as fields under one Run.
 4. Records need no edit except rule-7 item 2: the trim on plan/phase-j already landed the old J6-16 deletions and ADR-JEV-0007's `/2` text.
