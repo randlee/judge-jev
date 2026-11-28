@@ -2,7 +2,7 @@
 name: walking-decidr-trees
 description: Walk a question tree with decidr and jq, sending one wave of questions per stage. Use when building a staged decision pipeline, routing uncertain gate answers to a which-part question, or comparing Jev and Haiku on the same request.
 metadata:
-  version: "0.9.0"
+  version: "0.9.1"
 ---
 
 # Walking decidr question trees

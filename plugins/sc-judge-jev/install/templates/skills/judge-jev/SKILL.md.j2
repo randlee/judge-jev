@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-SKILL
-version: 0.9.0
+version: 0.9.1
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -26,6 +26,7 @@ which uv && uv --version
 which jq && jq --version
 J="<this skill's directory>/scripts/jev_judge.py"
 uv run --script "$J" --help >/dev/null && echo "judge-jev ok"
+uv run --script "$J" check-project
 if [ -f .env ]; then
   echo "repository .env present (key not verified)"
 elif [ -n "${TYPESAFE_API_KEY:-}" ]; then
@@ -37,6 +38,14 @@ uv run -q --no-project --with pyyaml python "<this skill's directory>/scripts/ju
 ```
 
 Run `jev_judge.py` only with `uv run --script "$J"`: its inline metadata supplies its dependencies, and plain `python3` fails with `DEPENDENCY.*`. Shell variables do not persist between tool calls; set `J` (and `RAPTOR`, below) in every shell.
+
+Every live command (`quality`, `batch`, `drift`, [compare-definition](references/definitions.md)) needs a project:
+pass `--project <name>`, export `SC_PROJECT=<name>`, or configure sc-agent's project.
+Precedence is `--project`, then `SC_PROJECT`, then sc-agent's local/global config files
+(paths in `references/installation-and-troubleshooting.md`). There is no default.
+`check-project` reports the resolved project or exits 2 with `DECIDR.CONFIG`; it
+calls nothing. If unset, supply the repository's project before a live run.
+`--dry-run` and `--answers-file` work without one.
 
 `allow_remote_judge` in the committed `.sc/judge-jev/settings.yaml` is the user's answer to whether record text may be sent to TypeSafe (Jev). `true`: continue. `false`: live calls are refused with `POLICY.REMOTE_JUDGE_DISABLED`; tell the user and work offline only (`--dry-run`, `validate`, `doctor`). `null`: ask the user once, record the answer with the same command and `set allow_remote_judge true|false`, and commit the file. Never infer consent from run files or other repositories.
 

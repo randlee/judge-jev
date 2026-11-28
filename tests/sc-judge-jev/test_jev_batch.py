@@ -47,7 +47,7 @@ class BatchCase(unittest.TestCase):
     def setUp(self):
         self.td = tempfile.TemporaryDirectory()
         self.d = Path(self.td.name)
-        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs")})
+        _log_environment = mock.patch.dict(os.environ, {"JUDGE_JEV_LOG_ROOT": str(self.d / "logs"), "SC_PROJECT": "unit-tests"})
         _log_environment.start()
         self.addCleanup(_log_environment.stop)
         self.addCleanup(self.td.cleanup)

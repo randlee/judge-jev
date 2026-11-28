@@ -355,6 +355,7 @@ class BatchSettings(NamedTuple):
     max_workers: int
     max_request_bytes: int
     dry_run: bool
+    project: str | None = None
 
 
 class BatchJob(NamedTuple):
@@ -497,7 +498,7 @@ def batch_settings(args: Any, prefix: str, *, check_threshold: Callable[[Any], A
     if not cap.ok:
         return _failed(from_tool_error(cap.error))
     return {"ok": True, "value": BatchSettings(gate, args.model, repeat, prefix, threshold.value, args.timeout,
-                                               args.max_workers, cap.value, bool(args.dry_run))}
+                                               args.max_workers, cap.value, bool(args.dry_run), getattr(args, "project", None))}
 
 
 def result_line(

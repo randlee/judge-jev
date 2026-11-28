@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-installation-and-troubleshooting
-version: 0.9.0
+version: 0.9.1
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -29,6 +29,32 @@ fi
 ```
 
 These messages are informational: an existing `.env` does not prove it contains a key, and a documented local platform credential can also satisfy live Jev authentication.
+
+## Project for live calls
+
+`quality`, `batch`, `drift`, and [compare-definition](definitions.md) require a project. Pass
+`--project <name>` on the command, or export `SC_PROJECT=<name>`. There is no
+default project. Precedence is the flag, then `SC_PROJECT`, then sc-agent's
+config files. Check without a model call or credential lookup:
+
+```bash
+J="<this skill's directory>/scripts/jev_judge.py"
+uv run --script "$J" check-project
+# Or: uv run --script "$J" check-project --project <name>
+```
+
+Missing, empty or invalid project: `DECIDR.CONFIG`, exit 2, before any live
+client call. The error names `--project` and `SC_PROJECT`. Offline
+`--dry-run` and `--answers-file` do not require a project.
+
+sc-decidr 0.4.1 has no public Python config resolver, so judge-jev checks its
+file layers. Within each folder, `decidr.local.json` overrides `decidr.json`,
+which overrides `sc-agent.json`; a top-level `"project": "<name>"` supplies it.
+Local files in the current Git worktree's `.sc/sc-agent/` override global files
+in `SC_AGENT_HOME` (when set), otherwise `~/.sc-agent/`. This also works from a
+subdirectory of the worktree. A higher-priority empty or null project does
+not fall back to a lower layer. These settings are separate from judge-jev's
+remote-consent YAML and the API key.
 
 ## Install judge-jev into a folder
 
@@ -130,6 +156,7 @@ Use the full path, or `export PATH="/opt/homebrew/bin:$PATH"` for the session.
 
 ## Known issues
 
+- `DECIDR.CONFIG` naming a missing project: pass `--project <name>` or export `SC_PROJECT=<name>`; run `check-project` from the consumer worktree to check file configuration too.
 - `POLICY.REMOTE_JUDGE_DISABLED` on a live run: `allow_remote_judge` is `false` or absent in `.sc/judge-jev/settings.yaml`. If absent, ask the user once, record the answer with `judge_jev_settings.py set allow_remote_judge true|false`, and commit it. Never infer consent from earlier runs.
 - `AUTH.CREDENTIALS` with the key set: it contains whitespace or a control character (usually a pasted trailing newline), or TypeSafe rejected it.
 - `SETTINGS.UNKNOWN_KEY`, `SETTINGS.SCHEMA_VERSION`, `SETTINGS.MALFORMED`: fix `.sc/judge-jev/settings.yaml` to the form above.

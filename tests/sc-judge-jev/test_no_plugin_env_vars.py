@@ -1,4 +1,4 @@
-"""TYPESAFE_API_KEY is the plugin's only configuration variable.
+"""Credentials and sc-agent's project/config location use upstream variables.
 
 The shipped tree reads no other environment variable as configuration, and
 names no plugin-prefixed variable.
@@ -35,9 +35,9 @@ class ShippedTreeNamesNoPluginVariable(unittest.TestCase):
                 found.setdefault(name, []).append(path.relative_to(PLUGIN).as_posix())
         return found
 
-    def test_only_typesafe_key_is_read_from_the_environment(self):
+    def test_only_credentials_and_sc_agent_config_are_read_from_the_environment(self):
         # USER is the operating system's login name, not plugin configuration.
-        allowed = {"TYPESAFE_API_KEY", "USER"}
+        allowed = {"TYPESAFE_API_KEY", "USER", "SC_PROJECT", "SC_AGENT_HOME"}
         found = self.found()
         self.assertEqual(sorted(set(found) - allowed), [], found)
 

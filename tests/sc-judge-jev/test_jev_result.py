@@ -193,14 +193,14 @@ class JevPropagationTests(unittest.TestCase):
         return code, json.loads(buf.getvalue())
 
     def test_main_emits_an_err_as_the_envelope_and_exits_2(self):
-        code, out = self.run_main(["batch", "--input", "/nonexistent/in.jsonl"])
+        code, out = self.run_main(["batch", "--input", "/nonexistent/in.jsonl", "--project", "unit-tests"])
         self.assertEqual(code, 2)
         self.assertEqual(set(out), {"success", "data", "error"})
         self.assertEqual((out["success"], out["error"]["code"]), (False, "INPUT.MISSING"))
 
     def test_main_reports_an_unexpected_exception_as_script_internal(self):
         with mock.patch.object(jj, "read_request_lines", side_effect=RuntimeError("boom")):
-            code, out = self.run_main(["batch", "--input", "x"])
+            code, out = self.run_main(["batch", "--input", "x", "--project", "unit-tests"])
         self.assertEqual((code, out["error"]["code"], out["error"]["message"]), (2, "SCRIPT.INTERNAL", "RuntimeError: boom"))
 
 
