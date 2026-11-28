@@ -11,7 +11,7 @@ from test_jev_judge import plan_answers, request_line, wheel_record  # noqa: E40
 
 class ConsumerErrorContracts(unittest.TestCase):
     def test_batch_uses_records_default_credentials_and_attempt_count(self):
-        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False, "controlled-project")
+        settings = jj.BatchSettings("plan", "jev-latest", 1, "p", 0.6, 42.0, 2, 24000, False)
         detail = {"id": "http.provider_busy", "category": "busy", "message": "busy", "sends": 4}
         record = wheel_record((json.dumps({"error": detail, "sends": 4}), "DECIDR.OVERLOADED"))
         log = mock.Mock()
@@ -24,7 +24,7 @@ class ConsumerErrorContracts(unittest.TestCase):
 
         with                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)) as log_line, \
                 mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result) as call:
-            got = jj._live_batch_results([request_line()], settings, log, False)
+            got = jj._live_batch_results([request_line()], settings, log, False, project="controlled-project")
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
                           got.value[0]["attempts"]), ("DECIDR.OVERLOADED", 3, []))
         log_line.assert_called_once_with(log, got.value[0], {})

@@ -98,7 +98,7 @@ from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, utf8_stdio  # noqa: E402
 from jev_errors import redact_sensitive
-from decidr_client import (ClientError, BatchJob, StreamedResult,
+from decidr_client import (ClientError, BatchSettings, BatchJob, StreamedResult,
                            BATCH_MAX_WORKERS, BATCH_FIXTURE_ERROR, BATCH_ID_RE,
                            BATCH_RETRIES as BATCH_FIXTURE_RETRY_LIMIT,
                            REPO_ROOT_HELP, CANCELED_EXIT, canceled_envelope,
@@ -135,20 +135,6 @@ MAX_PROBLEMS = 5                    # pydantic errors named in one refusal messa
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
 ATTEMPT_MESSAGE_LIMIT = 500         # characters of an error message recorded in a result line: bounds its log events
 FIXTURE_CODE_LIMIT = 64             # characters of an answers-file {"__error__": code}: the code is logged unclipped, so it is bounded at load
-
-
-class BatchSettings(NamedTuple):
-    """Consumer settings, including the project passed to the shared client."""
-    gate: str
-    model: str
-    repeat: int
-    prefix: str
-    threshold: float
-    timeout: float
-    max_workers: int
-    max_request_bytes: int
-    dry_run: bool
-    project: Optional[str] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -987,7 +973,7 @@ def missing_project_error(error: ClientError) -> Optional[ClientError]:
 
 
 def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bool,
-                        fields=None, *, repository_root=".") -> Result[list, ClientError]:
+                        fields=None, *, repository_root=".", project: Optional[str] = None) -> Result[list, ClientError]:
     """Send validated jobs through sc-agent's batch API and persist each result as it arrives."""
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
@@ -1020,7 +1006,7 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
 
     batch = decidr_client.call_batch_results(
         [job.body for job in jobs],
-        model=settings.model, project=settings.project,
+        model=settings.model, project=project,
         abort_on=frozenset({"auth"}), cancel=cancel, general_log=log, timeout_secs=settings.timeout,
         workers=settings.max_workers, on_result=persist, repository_root=repository_root,
     )
@@ -1031,10 +1017,10 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
     return Ok([result_lines[position] for position in range(len(jobs))])
 
 
-def judge_batch(lines, settings, fixture, log, echo, fields=None, *, repository_root="."):
+def judge_batch(lines, settings, fixture, log, echo, fields=None, *, repository_root=".", project: Optional[str] = None):
     """Compose consumer job authoring with the shared stream and durable result pump."""
     if fixture is None and not settings.dry_run:
-        return _live_batch_results(lines, settings, log, echo, fields, repository_root=repository_root)
+        return _live_batch_results(lines, settings, log, echo, fields, repository_root=repository_root, project=project)
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base
@@ -1059,7 +1045,7 @@ def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
     if not _checked["ok"]:
         return Err(_checked["error"])
     else:
-        settings = BatchSettings(*_checked["value"], project=args.project)
+        settings = _checked["value"]
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base
@@ -1098,7 +1084,7 @@ def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
         return log
     import sc_agent
     try:
-        pumped = judge_batch(lines, settings, fixture, log.value, echo=True, fields={"run": run_name}, repository_root=args.repository_root)
+        pumped = judge_batch(lines, settings, fixture, log.value, echo=True, fields={"run": run_name}, repository_root=args.repository_root, project=args.project)
     except KeyboardInterrupt:
         sc_agent.flush(log.value)
         raise
@@ -1432,8 +1418,8 @@ def wave_lines(record: dict, node_id: str, node: Wave, definitions=(), location=
     return Ok(([wave_line(record, node_id, node, s, definitions, location) for s in kept], kept))
 
 
-def quality_settings(dry_run: bool, project: Optional[str] = None) -> BatchSettings:
-    return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, DEFAULT_MAX_REQUEST_BYTES, dry_run, project)
+def quality_settings(dry_run: bool) -> BatchSettings:
+    return BatchSettings("plan", DEFAULT_MODEL, 1, QUALITY_PREFIX, DEFAULT_THRESHOLD, 30.0, 1, DEFAULT_MAX_REQUEST_BYTES, dry_run)
 
 
 def _with_refs(failed: Err, refs: dict) -> Err:
@@ -1534,7 +1520,7 @@ def cmd_quality(args) -> Result[Any, ClientError]:
     path_error = trusted_install_error(args)
     if path_error is not None:
         return Err(path_error)
-    settings = quality_settings(args.dry_run, args.project)
+    settings = quality_settings(args.dry_run)
     loaded_definitions = definitions_for_args(args)
     if isinstance(loaded_definitions, Err):
         return loaded_definitions
@@ -1581,7 +1567,7 @@ def cmd_quality(args) -> Result[Any, ClientError]:
         try:
             walked = walk_tree(tree, record, settings, fixture, log.value,
                                { "run": run_name, **quality_fields(tree, record["id"], refs["record"]["kind"], carried,
-                                             index_record_iri(args.index, record["id"]))}, carried, repository_root=args.repository_root)
+                                             index_record_iri(args.index, record["id"]))}, carried, repository_root=args.repository_root, project=args.project)
         except KeyboardInterrupt:
             sc_agent.flush(log.value)
             raise
@@ -1639,7 +1625,7 @@ def _position(rules: list, rule) -> int:
 
 
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, log: Any,
-              fields: dict, definitions=(), location=None, *, repository_root=".") -> Result[tuple, ClientError]:
+              fields: dict, definitions=(), location=None, *, repository_root=".", project: Optional[str] = None) -> Result[tuple, ClientError]:
     """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
     Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
     request, answers and selected branch or verdict; the verdict is logged with the path."""
@@ -1668,7 +1654,7 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture,
                 return Err(_checked["error"])
         except ClientError as exc:
             return Err(exc)
-        pumped = judge_batch(lines, settings, fixture, log, echo=False, fields={**fields, "node": node_id}, repository_root=repository_root)
+        pumped = judge_batch(lines, settings, fixture, log, echo=False, fields={**fields, "node": node_id}, repository_root=repository_root, project=project)
         if isinstance(pumped, Err):
             return pumped
         for result, statement in zip(pumped.value, statements):
@@ -1864,7 +1850,7 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
     drop = {c.iri for c in candidates}
     with_set = loaded.value
     without_set = jev_definitions.DefinitionSet(tuple(d for d in with_set.definitions if d.iri not in drop), with_set.files)
-    settings = quality_settings(args.dry_run, args.project)
+    settings = quality_settings(args.dry_run)
     trees, prepared = {}, {}
     for arm, arm_set in (("with", with_set), ("without", without_set)):
         got = _prepare_record(args, kind, rid, trees, settings, arm_set, location, {"arm": arm})
@@ -1921,7 +1907,7 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
         tree, record, _refs, _jobs, arm_carried = prepared[arm]
         try:
             walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
-                               {"run": runs[arm], **quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location, repository_root=args.repository_root)
+                               {"run": runs[arm], **quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location, repository_root=args.repository_root, project=args.project)
         except KeyboardInterrupt:
             sc_agent.flush(log.value)
             raise
@@ -2233,7 +2219,7 @@ def cmd_drift(args) -> Result[Any, ClientError]:
             questions = drift_questions(m["obligations"], m["table"], args.form, drift_verbatim(m["obligations"], cand), args.question_set)
             lines.append(drift_line(f"{rid}.ctl-drop-{k}", "", m["original"], cand, questions, args.form))
             controls.append({"item": f"{rid}.ctl-drop-{k}", "record": rid, "expect": "drift", "drops": k, "obligations": m["obligations"]})
-    settings = BatchSettings("plan", DEFAULT_MODEL, 1, DRIFT_PREFIX, threshold, 60.0, BATCH_MAX_WORKERS, DRIFT_MAX_REQUEST_BYTES, args.dry_run, args.project)
+    settings = BatchSettings("plan", DEFAULT_MODEL, 1, DRIFT_PREFIX, threshold, 60.0, BATCH_MAX_WORKERS, DRIFT_MAX_REQUEST_BYTES, args.dry_run)
     total = 0
     for number, line in enumerate(lines, 1):
         jobs = batch_jobs(line, number, settings, {})
@@ -2272,7 +2258,7 @@ def cmd_drift(args) -> Result[Any, ClientError]:
     try:
         pumped = judge_batch(lines, settings, fixture, log.value, echo=False,
                              fields={"run": run_name, "old_index": args.old_index, "new_index": args.new_index},
-                             repository_root=args.repository_root) if lines else Ok([])
+                             repository_root=args.repository_root, project=args.project) if lines else Ok([])
     except KeyboardInterrupt:
         sc_agent.flush(log.value)
         raise
