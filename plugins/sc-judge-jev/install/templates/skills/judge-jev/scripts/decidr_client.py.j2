@@ -49,6 +49,7 @@ DECIDR_CATEGORY_CODES = {
 }
 _CLIENT_IDS = {"DEPENDENCY.SC_DECIDR", "DECIDR.INVALID_OPTION"}  # failures made here keep their id as the code
 _ALLOWED_ABORT_ON = (frozenset[str](), frozenset({"auth"}), frozenset({"auth", "quota"}))
+_ALLOWED_ABORT_ON += tuple(categories | {"config.missing_project"} for categories in _ALLOWED_ABORT_ON)
 
 
 class ClientError(RuntimeError):
@@ -215,7 +216,8 @@ def _invalid_result(reason: object) -> Record:
 
 def _abort_if_selected(line: object, abort_on: frozenset[str], cancel: Cancel) -> None:
     error = cast(Record, line).get("error") if isinstance(line, dict) else None
-    if isinstance(error, dict) and cast(Record, error).get("category") in abort_on:
+    if isinstance(error, dict) and (cast(Record, error).get("category") in abort_on
+                                    or cast(Record, error).get("id") in abort_on):
         cancel.cancel()
 
 
@@ -230,7 +232,7 @@ def _start(abort_on: frozenset[str], category_codes: Mapping[str, str] | None, r
     except (TypeError, ValueError):
         valid_abort = False
     if not valid_abort:
-        invalid = _failure("DECIDR.INVALID_OPTION", "abort_on must be {}, {'auth'}, or {'auth', 'quota'}", "validation")
+        invalid = _failure("DECIDR.INVALID_OPTION", "abort_on must be {}, {'auth'}, or {'auth', 'quota'}, optionally with 'config.missing_project'", "validation")
         return decode_result(invalid, category_codes=category_codes)
     allowed = remote_preflight(repository_root, consent_what)
     if not allowed["ok"]:

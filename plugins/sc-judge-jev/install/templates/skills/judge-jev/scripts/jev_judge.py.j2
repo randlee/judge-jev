@@ -963,6 +963,15 @@ def log_result_line(log, line: dict, fields: dict) -> None:
     sc_agent.flush(log)
 
 
+def missing_project_error(error: ClientError) -> Optional[ClientError]:
+    """Give the upstream project refusal the consumer's actionable CLI recovery."""
+    if isinstance(error.data, dict) and error.data.get("id") == "config.missing_project":
+        return ClientError("DECIDR.CONFIG", "A live run needs a project: pass --project <name> or set SC_PROJECT=<name>.",
+                           action="Pass --project <name> to this command or export SC_PROJECT=<name> and rerun.",
+                           data=error.data, attempts=error.attempts)
+    return None
+
+
 def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bool,
                         fields=None, *, repository_root=".") -> Result[list, ClientError]:
     """Send validated jobs through sc-agent's batch API and persist each result as it arrives."""
@@ -976,8 +985,14 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
             return built
         jobs.extend(built.value)
     result_lines = {}
+    project_refusal = []
 
     def persist(record):
+        if not record["ok"] and (error := missing_project_error(record["error"])) is not None:
+            if not project_refusal:
+                project_refusal.append(error)
+        if project_refusal:
+            return
         position = record["position"]
         job = jobs[position]
         result_line = _batch_result_line(job, settings, record)
@@ -989,11 +1004,13 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
     batch = decidr_client.call_batch_results(
         [job.body for job in jobs],
         model=settings.model, project=settings.project,
-        abort_on=frozenset({"auth"}), general_log=log, timeout_secs=settings.timeout,
+        abort_on=frozenset({"auth", "config.missing_project"}), general_log=log, timeout_secs=settings.timeout,
         workers=settings.max_workers, on_result=persist, repository_root=repository_root,
     )
+    if project_refusal:
+        return Err(project_refusal[0])
     if not batch["ok"]:
-        return Err(batch["error"])
+        return Err(missing_project_error(batch["error"]) or batch["error"])
     return Ok([result_lines[position] for position in range(len(jobs))])
 
 
@@ -2525,54 +2542,6 @@ DEFINITIONS_HELP = ("a definitions file (Turtle, ADR-JEV-0008); repeat it for se
                     "definitions attached to its record (and location); with none attached it is exactly as without definitions")
 
 
-PROJECT_ACTION = "Set --project <name> on the live command or export SC_PROJECT=<name>; no default project is supplied."
-LIVE_COMMANDS = ("batch", "quality", "drift", "compare-definition")
-
-
-def resolve_project(project: Optional[str]) -> Result[str, ClientError]:
-    """sc-agent 0.4.1 exposes no Python config resolver. Read its project file
-    layers (global then local; sc-agent.json, decidr.json, decidr.local.json),
-    beneath SC_PROJECT and --project. No credential lookup or model call.
-    Local config is <git root>/.sc/sc-agent; global is SC_AGENT_HOME or ~/.sc-agent.
-    """
-    if project is None:
-        project = os.environ.get("SC_PROJECT")
-    if project is None:
-        home = judge_jev_paths.home_dir()
-        global_dir = os.environ.get("SC_AGENT_HOME")
-        folders = [pathlib.Path(global_dir)] if global_dir else ([home / ".sc-agent"] if home else [])
-        cwd = pathlib.Path.cwd()
-        root = next((path for path in (cwd, *cwd.parents) if (path / ".git").exists()), None)
-        if root is not None:
-            folders.append(root / ".sc" / "sc-agent")
-        for folder in folders:
-            for name in ("sc-agent.json", "decidr.json", "decidr.local.json"):
-                path = folder / name
-                try:
-                    data = json.loads(path.read_text(encoding="utf-8"))
-                except FileNotFoundError:
-                    continue
-                except (OSError, UnicodeError, ValueError) as exc:
-                    return fail("DECIDR.CONFIG", f"Cannot read project configuration {path}: {exc}",
-                                action=f"Fix {path}. {PROJECT_ACTION}")
-                if not isinstance(data, dict):
-                    return fail("DECIDR.CONFIG", f"Project configuration {path} must be a JSON object.",
-                                action=f"Fix {path}. {PROJECT_ACTION}")
-                if "project" in data:
-                    project = data["project"]
-    if not isinstance(project, str) or not project.strip():
-        return fail("DECIDR.CONFIG", "No non-empty project is configured through --project, SC_PROJECT, or sc-agent's config files.",
-                    action=PROJECT_ACTION)
-    return Ok(project)
-
-
-def cmd_check_project(args) -> Result[Any, ClientError]:
-    project = resolve_project(args.project)
-    if isinstance(project, Err):
-        return project
-    return Ok({"success": True, "error": None, "data": {"project": project.value}})
-
-
 def build_parser() -> argparse.ArgumentParser:
     p = _JsonArgumentParser(prog="jev_judge.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True, parser_class=_JsonArgumentParser)
@@ -2638,11 +2607,9 @@ def build_parser() -> argparse.ArgumentParser:
     dr.add_argument("--index", default="", help="a Raptor import index: attachments to records it does not hold are warnings; without it that check is skipped and doctor says so")
     dr.add_argument("--repository-root", default=".", help="the repository: its .sc/judge-jev/ holds the trees and definitions, and attachment locations and source paths are relative to it (default .)")
     dr.set_defaults(func=cmd_doctor)
-    cp = sub.add_parser("check-project", help="resolve the live project without calling Jev or reading credentials; exit 2 when unset")
-    cp.set_defaults(func=cmd_check_project)
-    for command in (bt, q, cd, df, cp):
-        command.add_argument("--project", default=None,
-                             help="project/phase for live calls; overrides SC_PROJECT, then sc-agent config files; no default")
+    for command in (bt, q, cd, df):
+        command.add_argument("--project", default=None, type=lambda value: value or None,
+                             help="project/phase for live calls; otherwise sc-agent resolves SC_PROJECT or its configuration; no default")
     return p
 
 
@@ -2668,12 +2635,6 @@ def _main(argv=None) -> int:
         return 2
     fmt = getattr(args, "format", "json")
     try:
-        if args.cmd in LIVE_COMMANDS and not args.dry_run and not args.answers_file:
-            project = resolve_project(args.project)
-            if isinstance(project, Err):
-                emit(project.error.to_json())
-                return 2
-            args.project = project.value
         outcome = args.func(args)
     except ClientError as exc:
         emit(exc.to_json())

@@ -4,8 +4,8 @@
 
 ## 0.9.1 — 2026-11-27
 
-- Fix #133: every live subcommand accepts `--project` and carries it to decidr. Resolve the flag before `SC_PROJECT` and sc-agent's config files; refuse an unset project with `DECIDR.CONFIG` before any client call. No default is invented; offline dry runs and answers files remain usable without a project.
-- Add the read-only `check-project` dependency check and document the project requirement and config paths in the installed skill and troubleshooting reference.
+- Fix #133: every live subcommand accepts `--project` and carries it to decidr. An omitted or empty flag leaves resolution to sc-agent. Stop on its first `config.missing_project` refusal with an actionable `DECIDR.CONFIG` error and exit 2; cancel pending requests for that id without treating all config errors as fatal. Offline dry runs and answers files remain usable without a project.
+- Document `--project` and `SC_PROJECT` in the CLI reference, installed skill and troubleshooting reference. No default project or consumer-side config loader is added.
 
 ## 0.9.0 — 2026-11-25
 

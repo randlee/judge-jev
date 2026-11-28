@@ -32,29 +32,16 @@ These messages are informational: an existing `.env` does not prove it contains 
 
 ## Project for live calls
 
-`quality`, `batch`, `drift`, and [compare-definition](definitions.md) require a project. Pass
-`--project <name>` on the command, or export `SC_PROJECT=<name>`. There is no
-default project. Precedence is the flag, then `SC_PROJECT`, then sc-agent's
-config files. Check without a model call or credential lookup:
+`quality`, `batch`, `drift`, and [compare-definition](definitions.md) require a project.
+Pass `--project <name>` on the command, or export `SC_PROJECT=<name>` in its environment.
+A missing or empty flag is passed as `None`: sc-agent resolves the project from
+`SC_PROJECT` or its own configuration. judge-jev supplies no default and does not
+read sc-agent's configuration.
 
-```bash
-J="<this skill's directory>/scripts/jev_judge.py"
-uv run --script "$J" check-project
-# Or: uv run --script "$J" check-project --project <name>
-```
-
-Missing, empty or invalid project: `DECIDR.CONFIG`, exit 2, before any live
-client call. The error names `--project` and `SC_PROJECT`. Offline
-`--dry-run` and `--answers-file` do not require a project.
-
-sc-decidr 0.4.1 has no public Python config resolver, so judge-jev checks its
-file layers. Within each folder, `decidr.local.json` overrides `decidr.json`,
-which overrides `sc-agent.json`; a top-level `"project": "<name>"` supplies it.
-Local files in the current Git worktree's `.sc/sc-agent/` override global files
-in `SC_AGENT_HOME` (when set), otherwise `~/.sc-agent/`. This also works from a
-subdirectory of the worktree. A higher-priority empty or null project does
-not fall back to a lower layer. These settings are separate from judge-jev's
-remote-consent YAML and the API key.
+When sc-agent returns `config.missing_project`, the command stops at that first
+refusal, exits 2 with `DECIDR.CONFIG`, and names `--project` and `SC_PROJECT` in
+the message and suggested action. sc-agent refuses before sending to Jev.
+Offline `--dry-run` and `--answers-file` do not require a project.
 
 ## Install judge-jev into a folder
 
@@ -156,7 +143,7 @@ Use the full path, or `export PATH="/opt/homebrew/bin:$PATH"` for the session.
 
 ## Known issues
 
-- `DECIDR.CONFIG` naming a missing project: pass `--project <name>` or export `SC_PROJECT=<name>`; run `check-project` from the consumer worktree to check file configuration too.
+- `DECIDR.CONFIG` naming a missing project: pass `--project <name>` or export `SC_PROJECT=<name>` in the command's environment, then rerun.
 - `POLICY.REMOTE_JUDGE_DISABLED` on a live run: `allow_remote_judge` is `false` or absent in `.sc/judge-jev/settings.yaml`. If absent, ask the user once, record the answer with `judge_jev_settings.py set allow_remote_judge true|false`, and commit it. Never infer consent from earlier runs.
 - `AUTH.CREDENTIALS` with the key set: it contains whitespace or a control character (usually a pasted trailing newline), or TypeSafe rejected it.
 - `SETTINGS.UNKNOWN_KEY`, `SETTINGS.SCHEMA_VERSION`, `SETTINGS.MALFORMED`: fix `.sc/judge-jev/settings.yaml` to the form above.

@@ -78,7 +78,6 @@ def run_cli(argv):
 def env(**values):
     # Unit fixtures control the environment; sc-agent owns credential resolution.
     values.setdefault("JUDGE_JEV_LOG_ROOT", os.environ["JUDGE_JEV_LOG_ROOT"])
-    values.setdefault("SC_PROJECT", "unit-tests")
     with mock.patch.dict(os.environ, values, clear=True):
         yield
 
@@ -299,10 +298,10 @@ class ErrorHandlingTests(unittest.TestCase):
 
     def test_unexpected_exceptions_become_script_internal(self):
         with mock.patch.object(jj, "cmd_batch", side_effect=RuntimeError("boom")):
-            code, out = run_cli(["batch", "--input", "x", "--project", "unit-tests"])
+            code, out = run_cli(["batch", "--input", "x"])
         self.assertEqual((code, out["error"]["code"], out["error"]["message"]), (2, "SCRIPT.INTERNAL", "RuntimeError: boom"))
         with mock.patch.object(jj, "cmd_batch", side_effect=KeyboardInterrupt):
-            code, out = run_cli(["batch", "--input", "x", "--project", "unit-tests"])
+            code, out = run_cli(["batch", "--input", "x"])
         self.assertEqual((code, out["canceled"]), (130, True))
 
     def test_numeric_flags_are_checked(self):
@@ -364,7 +363,7 @@ class ErrorHandlingTests(unittest.TestCase):
     def test_batch_and_quality_are_the_subcommands(self):
         parser = jj.build_parser()
         sub = next(a for a in parser._actions if a.dest == "cmd")
-        self.assertEqual(sorted(sub.choices), ["batch", "check-project", "compare-definition", "doctor", "drift", "quality", "validate"])
+        self.assertEqual(sorted(sub.choices), ["batch", "compare-definition", "doctor", "drift", "quality", "validate"])
 
 
 if __name__ == "__main__":

@@ -1,10 +1,11 @@
-"""Project selection for live commands; temporary configuration and a controlled client only."""
+"""Project forwarding and upstream refusal handling; controlled clients, no live calls."""
 import contextlib
 import io
 import json
 import os
 from pathlib import Path
-import subprocess
+from types import SimpleNamespace
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -21,25 +22,17 @@ class ProjectTests(unittest.TestCase):
         scratch = tempfile.TemporaryDirectory()
         self.addCleanup(scratch.cleanup)
         self.root = Path(scratch.name)
-        self.repo = self.root / "repo"
-        self.repo.mkdir()
-        subprocess.run(["git", "init", "--quiet", str(self.repo)], check=True, capture_output=True)
-        self.global_dir = self.root / "global"
-        self.local_dir = self.repo / ".sc/sc-agent"
-        self.home = self.root / "home"
-        self.home.mkdir()
-        environment = {"HOME": str(self.home), "USERPROFILE": str(self.home),
-                       "SC_AGENT_HOME": str(self.global_dir), "JUDGE_JEV_LOG_ROOT": str(self.root / "logs"),
-                       "PATH": os.environ.get("PATH", "")}
+        environment = {"HOME": str(self.root), "USERPROFILE": str(self.root),
+                       "JUDGE_JEV_LOG_ROOT": str(self.root / "logs"), "PATH": os.environ.get("PATH", "")}
         patcher = mock.patch.dict(os.environ, environment, clear=True)
         patcher.start()
         self.addCleanup(patcher.stop)
         previous = Path.cwd()
-        os.chdir(self.repo)
+        os.chdir(self.root)
         self.addCleanup(os.chdir, previous)
-        index = write(self.repo, "index.json", INDEX)
-        stream = write(self.repo, "requests.jsonl", json.dumps(request_line()) + "\n")
-        definitions = write(self.repo, "terms.ttl", ttl(definition("fast", "fast", "Under 5 s.", "docs/r.md", (ADR, None))))
+        index = write(self.root, "index.json", INDEX)
+        stream = write(self.root, "requests.jsonl", json.dumps(request_line()) + "\n")
+        definitions = write(self.root, "terms.ttl", ttl(definition("fast", "fast", "Under 5 s.", "docs/r.md", (ADR, None))))
         self.commands = [
             ["quality", "--index", index, "--adr", "ADR-T-0001"],
             ["batch", "--input", stream],
@@ -49,15 +42,15 @@ class ProjectTests(unittest.TestCase):
              "--definitions", definitions, "--definition", iri("fast")],
         ]
 
-    def config(self, folder, name, project):
-        folder.mkdir(parents=True, exist_ok=True)
-        return write(folder, name, {"project": project})
-
     @staticmethod
     def answers(questions):
         return {qid: {"type": "choice", "choice": next(iter(q["criteria"])), "confidence": 1.,
                       "probabilities": {choice: float(i == 0) for i, choice in enumerate(q["criteria"])}}
                 for qid, q in questions.items()}
+
+    @staticmethod
+    def refusal():
+        return jj.ClientError("DECIDR.CONFIG", "Set the upstream project", data={"id": "config.missing_project"})
 
     def transport(self, requests, **kwargs):
         self.projects.append(kwargs["project"])
@@ -75,18 +68,12 @@ class ProjectTests(unittest.TestCase):
                 self.assertEqual(stopped.exception.code, 0)
                 self.assertIn("--project", output.getvalue())
 
-    def test_flag_environment_and_file_projects_reach_the_client_for_all_commands(self):
-        self.config(self.global_dir, "sc-agent.json", "global")
-        self.config(self.local_dir, "decidr.local.json", "local")
-        for source, extra, expected in (("flag", ["--project", "chosen"], "chosen"),
-                                        ("environment", [], "environment"), ("file", [], "local")):
-            if source == "file":
-                os.environ.pop("SC_PROJECT", None)
-            else:
-                os.environ["SC_PROJECT"] = "environment"
+    def test_explicit_project_and_none_reach_the_client_for_all_commands(self):
+        os.environ["SC_PROJECT"] = "upstream-environment"
+        for extra, expected in ((["--project", "chosen"], "chosen"), ([], None), (["--project", ""], None)):
             for command in self.commands:
                 self.projects = []
-                with self.subTest(source=source, command=command[0]), \
+                with self.subTest(extra=extra, command=command[0]), \
                         mock.patch.object(jj.decidr_client, "remote_preflight", return_value={"ok": True, "value": None}), \
                         mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=self.transport) as batch, \
                         mock.patch.object(jj.decidr_client, "call_result") as single:
@@ -97,61 +84,64 @@ class ProjectTests(unittest.TestCase):
                     self.assertTrue(self.projects)
                     self.assertEqual(set(self.projects), {expected})
 
-    def test_missing_project_exits_two_before_any_client_or_log_call(self):
-        for command in self.commands:
-            with self.subTest(command=command[0]), \
-                    mock.patch.object(jj.decidr_client, "call_batch_results") as batch, \
-                    mock.patch.object(jj.decidr_client, "call_result") as single, \
-                    mock.patch.object(jj, "open_run_log") as log:
-                code, output = run_cli(command)
-                self.assertEqual(code, 2, output)
-                self.assertEqual(output["error"]["code"], "DECIDR.CONFIG")
-                for field in ("message", "suggested_action"):
-                    self.assertIn("--project", output["error"][field])
-                    self.assertIn("SC_PROJECT", output["error"][field])
-                batch.assert_not_called()
-                single.assert_not_called()
-                log.assert_not_called()
+    def test_first_missing_project_refusal_stops_every_command_with_one_client_call(self):
+        commands = [list(command) for command in self.commands]
+        commands[0] += ["--req", "REQ-T-0001"]  # Multiple statements and a later record must not continue.
+        commands[2] += ["--controls", "3"]
+        for form in ("batch-error", "callback-error"):
+            def refuse(requests, **kwargs):
+                self.assertIsNone(kwargs["project"])
+                self.assertIn("config.missing_project", kwargs["abort_on"])
+                error = self.refusal()
+                if form == "batch-error":
+                    return {"ok": False, "error": error}
+                record = {"ok": False, "error": error, "position": 0}
+                kwargs["on_result"](record)
+                return {"ok": True, "value": [record]}
+            for command in commands:
+                with self.subTest(form=form, command=command[0]), \
+                        mock.patch.object(jj.decidr_client, "remote_preflight", return_value={"ok": True, "value": None}), \
+                        mock.patch.object(jj.decidr_client, "call_batch_results", side_effect=refuse) as batch, \
+                        mock.patch.object(jj.decidr_client, "call_result") as single:
+                    code, output = run_cli(command)
+                    self.assertEqual(code, 2, output)
+                    self.assertEqual(output["error"]["code"], "DECIDR.CONFIG")
+                    for field in ("message", "suggested_action"):
+                        self.assertIn("--project", output["error"][field])
+                        self.assertIn("SC_PROJECT", output["error"][field])
+                    batch.assert_called_once()
+                    single.assert_not_called()
 
-    def test_all_file_layers_and_nested_worktree_resolution(self):
-        for folder in (self.global_dir, self.local_dir):
-            for name in ("sc-agent.json", "decidr.json", "decidr.local.json"):
-                project = folder.name + ":" + name
-                self.config(folder, name, project)
-                code, output = run_cli(["check-project"])
-                self.assertEqual((code, output["data"]["project"]), (0, project))
-        nested = self.repo / "nested"
-        nested.mkdir()
-        os.chdir(nested)
-        self.assertEqual(run_cli(["check-project"])[1]["data"]["project"], project)
+    def test_only_missing_project_cancels_the_controlled_pending_queue(self):
+        class Cancel:
+            canceled = False
+            def cancel(self):
+                self.canceled = True
+        for identifier in ("config.missing_project", "config.invalid"):
+            attempted = []
+            def send_batch(requests, *, cancel, on_result, **kwargs):
+                rows = []
+                for i, _request in enumerate(requests):
+                    if cancel.canceled:
+                        detail = {"id": "decision.cancelled", "category": "cancelled", "message": "canceled"}
+                    else:
+                        attempted.append(i)
+                        detail = {"id": identifier, "category": "config", "message": "controlled refusal"}
+                    result = {"ok": False, "error": detail}
+                    rows.append({"index": i, "result": result})
+                    on_result(i, result)
+                return {"ok": True, "value": rows}
+            wheel = SimpleNamespace(Cancel=Cancel, logger=mock.Mock(), send_batch=mock.Mock(side_effect=send_batch))
+            with self.subTest(identifier=identifier), mock.patch.dict(sys.modules, {"sc_agent": wheel}), \
+                    mock.patch.object(jj.decidr_client, "remote_preflight", return_value={"ok": True, "value": None}):
+                result = jj.decidr_client.call_batch_results(["one", "two", "three"], model="jev-latest",
+                    project=None, general_log=object(), abort_on=frozenset({"auth", "config.missing_project"}))
+                self.assertTrue(result["ok"])
+                self.assertEqual(attempted, [0] if identifier == "config.missing_project" else [0, 1, 2])
+                wheel.send_batch.assert_called_once()
+                wheel.logger.assert_not_called()
 
-    def test_default_global_folder_is_under_the_isolated_home(self):
-        os.environ.pop("SC_AGENT_HOME")
-        self.config(self.home / ".sc-agent", "decidr.json", "home-project")
-        self.assertEqual(run_cli(["check-project"])[1]["data"]["project"], "home-project")
-
-    def test_empty_and_invalid_projects_do_not_fall_back(self):
-        self.config(self.global_dir, "sc-agent.json", "global")
-        for project in (None, "", " ", 7):
-            with self.subTest(project=project):
-                self.config(self.local_dir, "decidr.local.json", project)
-                self.assertEqual(run_cli(["check-project"])[0], 2)
-        os.environ["SC_PROJECT"] = ""
-        self.assertEqual(run_cli(["check-project"])[0], 2)
-        os.environ["SC_PROJECT"] = "environment"
-        self.assertEqual(run_cli(["check-project", "--project", ""])[0], 2)
-
-    def test_malformed_config_is_a_typed_error(self):
-        self.local_dir.mkdir(parents=True)
-        write(self.local_dir, "decidr.local.json", "{invalid")
-        code, output = run_cli(["check-project"])
-        self.assertEqual(code, 2)
-        self.assertEqual(output["error"]["code"], "DECIDR.CONFIG")
-        self.assertIn("decidr.local.json", output["error"]["message"])
-
-    def test_offline_commands_need_no_project_and_ignore_project_config(self):
-        self.local_dir.mkdir(parents=True)
-        write(self.local_dir, "decidr.json", "{invalid")
+    def test_offline_commands_need_no_project(self):
         def questions(value):
             if isinstance(value, dict):
                 candidate = value.get("questions")
@@ -169,7 +159,7 @@ class ProjectTests(unittest.TestCase):
                     mock.patch.object(jj.decidr_client, "call_result") as single:
                 code, output = run_cli([*command, "--dry-run"])
                 self.assertEqual(code, 0, output)
-                answers = write(self.repo, "answers.json", {"*": self.answers(questions(output))})
+                answers = write(self.root, "answers.json", {"*": self.answers(questions(output))})
                 code, output = run_cli([*command, "--answers-file", answers])
                 self.assertEqual(code, 0, output)
                 batch.assert_not_called()
