@@ -3,7 +3,7 @@
 **ID Range:** REQ-JEV-0101 through REQ-JEV-0101  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-08  
+**Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
 **Version:** 0.2.1  
 
@@ -34,7 +34,9 @@ and MUST NOT statement. A verdict rule is a rule in the tree file that turns
 a wave's answers into a verdict (`yes` or `no`). The walk is the sequence of
 waves from the first to the one that gives the verdict; its decision-tree
 path is the list of those waves' ids. A consumer is a repository that uses
-judge-jev.
+judge-jev. The session log is sc-agent's log of every Jev query: one row
+per query, keyed by the query's `session_id`, holding the request and Jev's
+answers.
 
 **MUST statements:**
 
@@ -60,16 +62,16 @@ judge-jev.
 - A per-statement request that gets no answer MUST fail with an error that
   names its statement.
 - A wave after the first MUST refine the answers of the wave before it.
-- A wave after the first MUST be designed from the observed live results
-  of the wave before it.
 - A wave with no next wave MUST end the walk, with its verdict given by a
   rule in the tree file over that wave's answers.
 - The tree MUST ship with the tool as a data file a consumer can override
   (REQ-JEV-0205); answers select the branch and the verdict, never a model
   choosing the next questions.
 - A failing answer MUST report the decision-tree path that failed.
-- A live run MUST log every wave as output: its composed request, Jev's
-  answers, its reason and the branch or verdict they selected.
+- A live run MUST log every wave as output: the `session_id` of each of
+  its requests and the branch or verdict its answers selected.
+- Each log event of a per-statement wave MUST carry the `session_id` of
+  every statement request it covers.
 
 **MUST NOT statements:**
 
@@ -99,6 +101,11 @@ Rand (2026-11-08) approved per-statement waves: one request per MUST / MUST
 NOT statement, with that statement plus the whole record as context, so a
 failure names the statement to fix.
 
+Owner ruling (2026-11-24, phase j): sc-agent's session log holds every Jev
+query and its answers, keyed by `session_id`; wave records reference the
+`session_id`s and keep only what judge-jev derived (branch, verdict); a
+wave's reason is rebuilt from the rows it references.
+
 ### Success Criteria
 
 **Acceptance Criteria:**
@@ -106,8 +113,8 @@ failure names the statement to fix.
 - [ ] Fixed answers to a wave select the same next wave every run.
 - [ ] Every wave's result lists each of its questions with id, text,
   choice and confidence.
-- [ ] A live run's log holds each wave's request, answers, reason and
-  selected branch or verdict.
+- [ ] A live run's log holds each wave's `session_id`s and selected
+  branch or verdict.
 - [ ] A REQ with two MUST statements and one SHOULD statement sends two
   wave-1 requests, one per MUST statement.
 - [ ] A REQ whose third statement answers `check: none` reports `no`, names
@@ -117,7 +124,7 @@ failure names the statement to fix.
 
 ### Implementation Notes
 
-Logging goes through the sc-observability logger (REQ-JEV-0008). A
+A
 per-statement node sets `"per": "statement"`, `statements` (the record
 field holding the statements) and `modals` (the modals judged); each
 statement is one request whose item text is `{statement, record}`. The

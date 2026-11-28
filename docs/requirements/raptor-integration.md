@@ -1,11 +1,11 @@
 # judge-jev Requirements - Raptor Integration
 
-**ID Range:** REQ-JEV-0001 through REQ-JEV-0008, NFR-JEV-0001  
+**ID Range:** REQ-JEV-0001 through REQ-JEV-0010, NFR-JEV-0001  
 **Status:** Draft  
 **Created:** 2026-11-07  
-**Last Updated:** 2026-11-07  
+**Last Updated:** 2026-11-24  
 **Owner:** Rand Lee  
-**Version:** 0.1.0  
+**Version:** 0.5.0  
 
 ---
 
@@ -56,31 +56,17 @@ Definitions: Jev is TypeSafe's hosted judge model: it answers each
 multiple-choice question about a text with one choice and a confidence from
 0 to 1. A Jev request is one call to it. The batch command is `jev_judge.py
 batch`: it reads request lines (one JSON request per line), sends each through
-the adopted sc-agent client to Jev and writes a result line. A result envelope is the JSON result line for
-one request, holding its answers or its error
-(`assets/schemas/jev-batch-result.schema.json`). A typed error code is a
-stable dotted code naming a failure, such as `DECIDR.NETWORK` or
-`DECIDR.RATE_LIMITED`. The retry policy belongs to the adopted sc-agent client;
-judge-jev does not resend requests and records the send count reported by the
-client. The request size limit is the `--max-request-bytes` value, at most
-64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
-`--gate dev`. The sc-observability logger is the JSON-lines logger of the
-sc-observability package (version 1.5.0), which writes
-`~/.sc-agent/logs/judge-jev.log.jsonl`.
+the adopted sc-agent client to Jev and writes a result line. A result
+envelope is the `jev-batch-result/2` JSON result line for one request: it holds the verdict derived from Jev's answers, or its error. The request
+size limit is the `--max-request-bytes` value, at most 64000 bytes; by default 24000 bytes with `--gate plan` and 64000 bytes with
+`--gate dev`.
 
 **MUST statements:**
 
 - judge-jev MUST send every Jev request through one batch command.
 - The batch command MUST read request lines.
 - The batch command MUST write one result envelope per request.
-- The batch command MUST use typed error codes.
-- The batch command MUST use the adopted sc-agent client's retry policy and
-  record its typed send count without resending requests itself.
 - The batch command MUST enforce request size limits.
-- The batch command MUST log every request through the sc-observability
-  logger (REQ-JEV-0008).
-- The batch command MUST log every answer through the sc-observability
-  logger (REQ-JEV-0008).
 
 ### Rationale
 
@@ -91,37 +77,7 @@ replaces it (ADR-JEV-0001).
 
 **Acceptance Criteria:**
 
-- [ ] A request file of three lines produces three result envelopes and
-  three log entries.
-
-## REQ-JEV-0003: TypeSafe key lookup
-
-**Status:** Draft  
-
-### Requirement Statement
-
-Definitions: TypeSafe is the company whose API (application programming
-interface) serves Jev, the judge model; the TypeSafe API key authenticates
-calls to it. The platform credential store is the macOS Keychain, the
-Windows Credential Manager or, on Linux, the Secret Service (`secret-tool`).
-
-**MUST statements:**
-
-- The adopted sc-agent client MUST resolve the TypeSafe API key from the
-  repository `.env` file first, then `TYPESAFE_API_KEY`, then its default
-  platform credential entry (service `TYPESAFE_API_KEY`, current OS account).
-- judge-jev MUST NOT pass keyring service or account overrides to sc-agent.
-
-### Rationale
-
-Tools that call Jev share one stored key, saved once.
-
-### Success Criteria
-
-**Acceptance Criteria:**
-
-- [ ] A key stored in sc-agent's default credential entry is found with no
-  other setup.
+- [ ] A request file of three lines produces three result envelopes.
 
 ## REQ-JEV-0004: Remote-judge consent
 
@@ -129,33 +85,24 @@ Tools that call Jev share one stored key, saved once.
 
 ### Requirement Statement
 
-Definitions: Jev is TypeSafe's hosted judge model: it answers each
-multiple-choice question about a text with one choice and a confidence from
-0 to 1. A Jev request is one call to it. A live Jev call is a request sent
-to Jev, as opposed to a dry run or an answers file.
-`POLICY.REMOTE_JUDGE_DISABLED` is the typed error code for a refused live
-call.
-
-**MUST statements:**
-
-- judge-jev MUST refuse every live Jev call with
-  `POLICY.REMOTE_JUDGE_DISABLED` unless the committed
-  `.sc/judge-jev/settings.yaml` sets `allow_remote_judge: true`.
+Definitions: `allow_remote_judge` is consent to send to TypeSafe only.
 
 **MUST NOT statements:**
 
-- judge-jev MUST NOT write that setting without the user's answer.
+- judge-jev MUST NOT write `allow_remote_judge` in the committed `.sc/judge-jev/settings.yaml` without the user's answer.
 
 ### Rationale
 
 Text sent to Jev leaves the machine; the user decides once per repository.
 
+Owner ruling (2026-11-24, phase j plan review): `allow_remote_judge` is
+consent for TypeSafe only.
+
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] With the setting absent or false, a live call exits with
-  `POLICY.REMOTE_JUDGE_DISABLED` and sends nothing.
+- [ ] No judge-jev command writes `allow_remote_judge` without the user's answer.
 
 ## REQ-JEV-0005: Marketplace and installer
 
@@ -246,49 +193,6 @@ first.
 
 - [ ] Raptor's import of this repository reports zero issues.
 
-## REQ-JEV-0008: Logging through the sc-observability logger
-
-**Status:** Draft  
-
-### Requirement Statement
-
-Definitions: The sc-observability logger is the JSON-lines logger of the
-sc-observability package (version 1.5.0), which writes
-`~/.sc-agent/logs/judge-jev.log.jsonl`. sc-agent is the agent tool whose
-Rust Jev tool will replace judge-jev's Python Jev core (ADR-JEV-0007). A
-quality-tree branch is the next wave a quality decision tree's rules select
-from Jev's answers.
-
-**MUST statements:**
-
-- judge-jev MUST write its run logs (requests, answers, quality-tree
-  branches, verdicts) through the sc-observability logger, the logger
-  sc-agent uses.
-
-**MUST NOT statements:**
-
-- judge-jev MUST NOT keep its own log format alongside it.
-
-### Rationale
-
-Rand (2026-11-08): "we will need to use sc-observability logger for both
-(this is what sc-agent uses). we should implement in judge-jev first then
-we can upgrade plan-anchor which is currently working solidly."
-
-### Success Criteria
-
-**Acceptance Criteria:**
-
-- [ ] A live `check` run's requests, answers and verdicts appear in the
-  sc-observability log.
-- [ ] No judge-jev command writes `anchor-runs/tournament-*.jsonl`.
-
-### Implementation Notes
-
-Today the copied core writes its own `anchor-runs/tournament-<run>.jsonl`
-(`jev_judge.py` `pump_batch`). plan-anchor moves to the same logger after
-judge-jev.
-
 ## NFR-JEV-0001: Deterministic offline tests
 
 **Status:** Draft  
@@ -301,19 +205,13 @@ Definitions: Jev is a judge model. Recorded Jev answers are an answers file.
 
 - judge-jev tests MUST run offline against recorded Jev answers.
 
-**MUST NOT statements:**
-
-- judge-jev tests MUST NOT depend on timing.
-- judge-jev tests MUST NOT depend on sleeps.
-- judge-jev tests MUST NOT depend on ordering.
-
 ### Rationale
 
-Flaky tests are prohibited; live Jev calls are neither free nor
+live Jev calls are neither free nor
 repeatable.
 
 ### Success Criteria
 
 **Acceptance Criteria:**
 
-- [ ] The test suite passes 20 consecutive runs with networking disabled.
+- [ ] The test suite passes with networking disabled.

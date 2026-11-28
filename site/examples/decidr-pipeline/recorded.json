@@ -1,9 +1,9 @@
 {
   "example": "decidr-pipeline",
   "mode": "live",
-  "captured_at": "2026-11-25T21:21:07.064411+00:00",
-  "revision": "bcf229e969ede8d22f4c6bb497501e393bf31b85",
-  "index_sha256": "5607a7faf968689166f0d27241534479942d113f2cad89839c78c09d4a84c923",
+  "captured_at": "2026-11-26T04:24:07.265922+00:00",
+  "revision": "707cfd8b65c5bafebee14600b0f0c3b2fda66918",
+  "index_sha256": "7dbd848ef34f539f4f8b7789f51444f438245c9fc8535a28b0413551dc0eb0d4",
   "diagnostics": [
     {
       "file": "docs/requirements/raptor-integration.md",
@@ -41,7 +41,7 @@
       "{run}/index.json"
     ],
     "exit_code": 1,
-    "stdout": "{\"index\": \"{run}/index.json\", \"files\": 4, \"records\": 33, \"issues\": 1}\n",
+    "stdout": "{\"index\": \"{run}/index.json\", \"files\": 7, \"records\": 36, \"issues\": 1}\n",
     "stderr": "docs/requirements/raptor-integration.md:113:13: error[MODAL_MISMATCH]: Found 'MUST NOT' in a statement under 'MUST statements'; expected 'MUST' or no keyword. The label's modal is kept.\n   --> docs/requirements/raptor-integration.md:113:13\n    |\n113 | - judge-jev MUST NOT pass keyring service or account overrides to sc-agent.\n    |             ^\n    = note: record REQ-JEV-0003, field Requirement Statement\n    = help: replace `MUST NOT` at line 113, column 13 with `MUST`, or reword the statement without a modal keyword\n\n"
   },
   "bar": 0.8,
@@ -137,15 +137,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "obtain": "The literal term `obtain` accounts for the answer or uncertainty.",
-                  "records": "The literal term `records` accounts for the answer or uncertainty.",
-                  "through": "The literal term `through` accounts for the answer or uncertainty.",
-                  "Raptor's": "The literal term `Raptor's` accounts for the answer or uncertainty.",
-                  "query": "The literal term `query` accounts for the answer or uncertainty.",
-                  "interface": "The literal term `interface` accounts for the answer or uncertainty.",
+                  "judge-jev": "The phrase `judge-jev` accounts for the answer or uncertainty.",
+                  "obtain records": "The phrase `obtain records` accounts for the answer or uncertainty.",
+                  "Raptor's query interface": "The phrase `Raptor's query interface` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -194,7 +190,7 @@
           "item": "REQ-JEV-0001.s1",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.96,
+          "confidence": 0.94,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "accepted"
         },
@@ -212,7 +208,7 @@
           "item": "REQ-JEV-0001.s1",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.38,
+          "confidence": 0.48,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -220,8 +216,8 @@
           "wave": "which-part",
           "item": "REQ-JEV-0001.s1",
           "question": "which_part",
-          "choice": "none",
-          "confidence": 0.29,
+          "choice": "Raptor's query interface",
+          "confidence": 0.27,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -272,11 +268,11 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.96,
+                  "confidence": 0.94,
                   "probabilities": {
-                    "needs a measure": 0.02,
+                    "needs a measure": 0.03,
                     "no": 0.01,
-                    "yes": 0.97
+                    "yes": 0.96
                   },
                   "type": "choice"
                 },
@@ -293,10 +289,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.38,
+                  "confidence": 0.48,
                   "probabilities": {
-                    "no": 0.31,
-                    "yes": 0.69
+                    "no": 0.26,
+                    "yes": 0.74
                   },
                   "type": "choice"
                 }
@@ -308,7 +304,7 @@
                 "obligations": "5d3387a15f1c5dd832e0d0e4bb050357c47b3a0c713c422a48111b9a374821c4",
                 "term": "d85fa2bc485781008bdcbf9bb145b013669873dee6ea016ca011e41776be091a"
               },
-              "session_id": "01M8A9AVGFVWWVHRGVQ25PHWRT",
+              "session_id": "01M8B1HCVQQ2QT5QH9RD2H340D",
               "usage": {
                 "input_tokens": 1105,
                 "output_tokens": 114
@@ -326,10 +322,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.38,
+                  "confidence": 0.48,
                   "probabilities": {
-                    "no": 0.31,
-                    "yes": 0.69
+                    "no": 0.26,
+                    "yes": 0.74
                   },
                   "type": "choice"
                 },
@@ -340,15 +336,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "obtain": "The literal term `obtain` accounts for the answer or uncertainty.",
-                  "records": "The literal term `records` accounts for the answer or uncertainty.",
-                  "through": "The literal term `through` accounts for the answer or uncertainty.",
-                  "Raptor's": "The literal term `Raptor's` accounts for the answer or uncertainty.",
-                  "query": "The literal term `query` accounts for the answer or uncertainty.",
-                  "interface": "The literal term `interface` accounts for the answer or uncertainty.",
+                  "judge-jev": "The phrase `judge-jev` accounts for the answer or uncertainty.",
+                  "obtain records": "The phrase `obtain records` accounts for the answer or uncertainty.",
+                  "Raptor's query interface": "The phrase `Raptor's query interface` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -359,17 +351,13 @@
             "value": {
               "answers": {
                 "which_part": {
-                  "choice": "none",
-                  "confidence": 0.29,
+                  "choice": "Raptor's query interface",
+                  "confidence": 0.27,
                   "probabilities": {
-                    "Raptor's": 0.05,
-                    "interface": 0.21,
+                    "Raptor's query interface": 0.45,
                     "judge-jev": 0.03,
-                    "none": 0.38,
-                    "obtain": 0.09,
-                    "query": 0.18,
-                    "records": 0.03,
-                    "through": 0.03
+                    "none": 0.4,
+                    "obtain records": 0.12
                   },
                   "type": "choice"
                 }
@@ -377,22 +365,22 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "328a54ae8a4a140b9e073534fdf63ba9322279425af6ccac598b39ee2efa6275"
+                "which_part": "68f39f79f92f1f59812c61ada7636a71d2fdd684fd70946e0b9d1fc13e440c00"
               },
-              "session_id": "01M8A9AVNQ7RFYX8WGKY2S65VC",
+              "session_id": "01M8B1HD1C5PC7PWRRVCC52PC1",
               "usage": {
-                "input_tokens": 1082,
-                "output_tokens": 80
+                "input_tokens": 988,
+                "output_tokens": 60
               }
             }
           },
           "verdict": {
             "verdict": "review",
             "stage": "which-part",
-            "which_part": "none",
-            "model_choice": "none",
+            "which_part": "Raptor's query interface",
+            "model_choice": "Raptor's query interface",
             "tied_with_none": false,
-            "confidence": 0.29,
+            "confidence": 0.27,
             "model": "jev-1.14.0"
           }
         },
@@ -507,14 +495,10 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "parse": "The literal term `parse` accounts for the answer or uncertainty.",
-                  "record": "The literal term `record` accounts for the answer or uncertainty.",
-                  "Markdown": "The literal term `Markdown` accounts for the answer or uncertainty.",
-                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "judge-jev": "The phrase `judge-jev` accounts for the answer or uncertainty.",
+                  "NOT parse record Markdown itself": "The phrase `NOT parse record Markdown itself` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -581,7 +565,7 @@
           "item": "REQ-JEV-0001.s2",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.3,
+          "confidence": 0.4,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -589,8 +573,8 @@
           "wave": "which-part",
           "item": "REQ-JEV-0001.s2",
           "question": "which_part",
-          "choice": "none",
-          "confidence": 0.37,
+          "choice": "NOT parse record Markdown itself",
+          "confidence": 0.48,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -662,10 +646,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.3,
+                  "confidence": 0.4,
                   "probabilities": {
-                    "no": 0.35,
-                    "yes": 0.65
+                    "no": 0.3,
+                    "yes": 0.7
                   },
                   "type": "choice"
                 }
@@ -677,7 +661,7 @@
                 "obligations": "2e12b05d09f7bccfc5c1673813d5e15bdbf41e575f8d6d02f1aa2109a501d89c",
                 "term": "99116159cb04fe2a500e9f92786fd803dbd520cbe9c3eda4f307898280782f46"
               },
-              "session_id": "01M8A9AVTMNNG1G5Q2R9RHRFYT",
+              "session_id": "01M8B1HD6XDRWG7YH4FVZ6ZX74",
               "usage": {
                 "input_tokens": 1102,
                 "output_tokens": 114
@@ -695,10 +679,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.3,
+                  "confidence": 0.4,
                   "probabilities": {
-                    "no": 0.35,
-                    "yes": 0.65
+                    "no": 0.3,
+                    "yes": 0.7
                   },
                   "type": "choice"
                 },
@@ -709,14 +693,10 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "parse": "The literal term `parse` accounts for the answer or uncertainty.",
-                  "record": "The literal term `record` accounts for the answer or uncertainty.",
-                  "Markdown": "The literal term `Markdown` accounts for the answer or uncertainty.",
-                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "judge-jev": "The phrase `judge-jev` accounts for the answer or uncertainty.",
+                  "NOT parse record Markdown itself": "The phrase `NOT parse record Markdown itself` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -727,16 +707,12 @@
             "value": {
               "answers": {
                 "which_part": {
-                  "choice": "none",
-                  "confidence": 0.37,
+                  "choice": "NOT parse record Markdown itself",
+                  "confidence": 0.48,
                   "probabilities": {
-                    "Markdown": 0.15,
-                    "NOT": 0.14,
-                    "itself": 0.09,
-                    "judge-jev": 0.03,
-                    "none": 0.46,
-                    "parse": 0.11,
-                    "record": 0.02
+                    "NOT parse record Markdown itself": 0.65,
+                    "judge-jev": 0.02,
+                    "none": 0.33
                   },
                   "type": "choice"
                 }
@@ -744,22 +720,22 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "58432deffd4579d4a73974da28efa2b2fcba8dfdde9d80cc19c1fe6d44c8c917"
+                "which_part": "8afacc60916d9e398d85d7866750d0242cb0cdb2500411dc7455fc01a5e5d4a2"
               },
-              "session_id": "01M8A9AVZD288B33G3BYZJM236",
+              "session_id": "01M8B1HDBBVFJMEWGSP3BC9R0C",
               "usage": {
-                "input_tokens": 1048,
-                "output_tokens": 70
+                "input_tokens": 953,
+                "output_tokens": 49
               }
             }
           },
           "verdict": {
             "verdict": "review",
             "stage": "which-part",
-            "which_part": "none",
-            "model_choice": "none",
+            "which_part": "NOT parse record Markdown itself",
+            "model_choice": "NOT parse record Markdown itself",
             "tied_with_none": false,
-            "confidence": 0.37,
+            "confidence": 0.48,
             "model": "jev-1.14.0"
           }
         },
@@ -874,19 +850,12 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "run": "The literal term `run` accounts for the answer or uncertainty.",
-                  "SQL": "The literal term `SQL` accounts for the answer or uncertainty.",
-                  "Structured": "The literal term `Structured` accounts for the answer or uncertainty.",
-                  "Query": "The literal term `Query` accounts for the answer or uncertainty.",
-                  "Language": "The literal term `Language` accounts for the answer or uncertainty.",
-                  "against": "The literal term `against` accounts for the answer or uncertainty.",
-                  "record": "The literal term `record` accounts for the answer or uncertainty.",
-                  "store": "The literal term `store` accounts for the answer or uncertainty.",
-                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "judge-jev": "The phrase `judge-jev` accounts for the answer or uncertainty.",
+                  "NOT run SQL": "The phrase `NOT run SQL` accounts for the answer or uncertainty.",
+                  "Structured Query Language": "The phrase `Structured Query Language` accounts for the answer or uncertainty.",
+                  "record store itself": "The phrase `record store itself` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -953,7 +922,7 @@
           "item": "REQ-JEV-0001.s3",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.46,
+          "confidence": 0.34,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -961,8 +930,8 @@
           "wave": "which-part",
           "item": "REQ-JEV-0001.s3",
           "question": "which_part",
-          "choice": "SQL",
-          "confidence": 0.3,
+          "choice": "NOT run SQL",
+          "confidence": 0.35,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -1034,10 +1003,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.46,
+                  "confidence": 0.34,
                   "probabilities": {
-                    "no": 0.27,
-                    "yes": 0.73
+                    "no": 0.33,
+                    "yes": 0.67
                   },
                   "type": "choice"
                 }
@@ -1049,7 +1018,7 @@
                 "obligations": "eae6bc96dcf649ad8210cf3e32d9ee84ad302b8e1558fad2374c08ac18da572d",
                 "term": "6bacf679e2e3bbfd7ccaab3de86311ed2de53995057d01dcaaa41a22afee8f6d"
               },
-              "session_id": "01M8A9AW3PDPSAAGGQQ1QVBA33",
+              "session_id": "01M8B1HDFDAVENB3F5WVPBA7GK",
               "usage": {
                 "input_tokens": 1111,
                 "output_tokens": 114
@@ -1067,10 +1036,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.46,
+                  "confidence": 0.34,
                   "probabilities": {
-                    "no": 0.27,
-                    "yes": 0.73
+                    "no": 0.33,
+                    "yes": 0.67
                   },
                   "type": "choice"
                 },
@@ -1081,19 +1050,12 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "run": "The literal term `run` accounts for the answer or uncertainty.",
-                  "SQL": "The literal term `SQL` accounts for the answer or uncertainty.",
-                  "Structured": "The literal term `Structured` accounts for the answer or uncertainty.",
-                  "Query": "The literal term `Query` accounts for the answer or uncertainty.",
-                  "Language": "The literal term `Language` accounts for the answer or uncertainty.",
-                  "against": "The literal term `against` accounts for the answer or uncertainty.",
-                  "record": "The literal term `record` accounts for the answer or uncertainty.",
-                  "store": "The literal term `store` accounts for the answer or uncertainty.",
-                  "itself": "The literal term `itself` accounts for the answer or uncertainty.",
+                  "judge-jev": "The phrase `judge-jev` accounts for the answer or uncertainty.",
+                  "NOT run SQL": "The phrase `NOT run SQL` accounts for the answer or uncertainty.",
+                  "Structured Query Language": "The phrase `Structured Query Language` accounts for the answer or uncertainty.",
+                  "record store itself": "The phrase `record store itself` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -1104,21 +1066,14 @@
             "value": {
               "answers": {
                 "which_part": {
-                  "choice": "SQL",
-                  "confidence": 0.3,
+                  "choice": "NOT run SQL",
+                  "confidence": 0.35,
                   "probabilities": {
-                    "Language": 0.01,
-                    "NOT": 0.15,
-                    "Query": 0.01,
-                    "SQL": 0.36,
-                    "Structured": 0.0,
-                    "against": 0.01,
-                    "itself": 0.07,
+                    "NOT run SQL": 0.48,
+                    "Structured Query Language": 0.02,
                     "judge-jev": 0.02,
-                    "none": 0.32,
-                    "record": 0.01,
-                    "run": 0.03,
-                    "store": 0.01
+                    "none": 0.45,
+                    "record store itself": 0.03
                   },
                   "type": "choice"
                 }
@@ -1126,22 +1081,22 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "6c4f4fe541e46e77cb967ac4a6415de9049531eef84ab468f1a0a5f28fcf0296"
+                "which_part": "d34773a05819a703dd7ef5126b59e652e53229f842ddd22e9461f8e9a2098e11"
               },
-              "session_id": "01M8A9AW7SB682D4KS4HCJK73W",
+              "session_id": "01M8B1HDKJAQYW0KE7D9XMJE10",
               "usage": {
-                "input_tokens": 1178,
-                "output_tokens": 105
+                "input_tokens": 1015,
+                "output_tokens": 63
               }
             }
           },
           "verdict": {
             "verdict": "review",
             "stage": "which-part",
-            "which_part": "SQL",
-            "model_choice": "SQL",
+            "which_part": "NOT run SQL",
+            "model_choice": "NOT run SQL",
             "tied_with_none": false,
-            "confidence": 0.3,
+            "confidence": 0.35,
             "model": "jev-1.14.0"
           }
         },
@@ -1313,7 +1268,7 @@
           "item": "ADR-JEV-0001",
           "question": "consequences",
           "choice": "positive and negative",
-          "confidence": 0.97,
+          "confidence": 0.98,
           "criterion": "Names benefits and costs.",
           "status": "accepted"
         },
@@ -1322,7 +1277,7 @@
           "item": "ADR-JEV-0001",
           "question": "context",
           "choice": "problem and forces",
-          "confidence": 0.97,
+          "confidence": 0.98,
           "criterion": "Names the problem and the forces or constraints that shaped the decision.",
           "status": "accepted"
         }
@@ -1383,21 +1338,21 @@
                 },
                 "consequences": {
                   "choice": "positive and negative",
-                  "confidence": 0.97,
+                  "confidence": 0.98,
                   "probabilities": {
-                    "missing": 0.02,
-                    "positive and negative": 0.98,
+                    "missing": 0.01,
+                    "positive and negative": 0.99,
                     "positive only": 0.0
                   },
                   "type": "choice"
                 },
                 "context": {
                   "choice": "problem and forces",
-                  "confidence": 0.97,
+                  "confidence": 0.98,
                   "probabilities": {
-                    "background only": 0.02,
+                    "background only": 0.01,
                     "missing": 0.0,
-                    "problem and forces": 0.98
+                    "problem and forces": 0.99
                   },
                   "type": "choice"
                 }
@@ -1409,7 +1364,7 @@
                 "consequences": "df0e706b2a2d32963b95e9f04e1ce8064daa8bfcceb24da54c90b0b9237cf398",
                 "context": "9b16f0fca4afd322f3420f9dd2e4a8c1e41c33f8c61a8fec7d63b357e61672b6"
               },
-              "session_id": "01M8A9AWCF2MTQJVPV83A3GN6D",
+              "session_id": "01M8B1HDR8GEW3PYNTNC7NW8YA",
               "usage": {
                 "input_tokens": 1182,
                 "output_tokens": 129
@@ -1543,16 +1498,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "run": "The literal term `run` accounts for the answer or uncertainty.",
-                  "offline": "The literal term `offline` accounts for the answer or uncertainty.",
-                  "against": "The literal term `against` accounts for the answer or uncertainty.",
-                  "recorded": "The literal term `recorded` accounts for the answer or uncertainty.",
-                  "Jev": "The literal term `Jev` accounts for the answer or uncertainty.",
-                  "answers": "The literal term `answers` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "run offline": "The phrase `run offline` accounts for the answer or uncertainty.",
+                  "recorded Jev answers": "The phrase `recorded Jev answers` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -1601,7 +1551,7 @@
           "item": "NFR-JEV-0001.s1",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.96,
+          "confidence": 0.97,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "accepted"
         },
@@ -1610,7 +1560,7 @@
           "item": "NFR-JEV-0001.s1",
           "question": "obligations",
           "choice": "1",
-          "confidence": 0.48,
+          "confidence": 0.59,
           "criterion": "One obligation.",
           "status": "under bar"
         },
@@ -1619,7 +1569,7 @@
           "item": "NFR-JEV-0001.s1",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.62,
+          "confidence": 0.66,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -1628,7 +1578,7 @@
           "item": "NFR-JEV-0001.s1",
           "question": "which_part",
           "choice": "none",
-          "confidence": 0.35,
+          "confidence": 0.27,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -1679,31 +1629,31 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.96,
+                  "confidence": 0.97,
                   "probabilities": {
-                    "needs a measure": 0.03,
+                    "needs a measure": 0.02,
                     "no": 0.0,
-                    "yes": 0.97
+                    "yes": 0.98
                   },
                   "type": "choice"
                 },
                 "obligations": {
                   "choice": "1",
-                  "confidence": 0.48,
+                  "confidence": 0.59,
                   "probabilities": {
-                    "1": 0.61,
-                    "2": 0.36,
-                    "3": 0.03,
+                    "1": 0.69,
+                    "2": 0.3,
+                    "3": 0.01,
                     "4+": 0.0
                   },
                   "type": "choice"
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.62,
+                  "confidence": 0.66,
                   "probabilities": {
-                    "no": 0.19,
-                    "yes": 0.81
+                    "no": 0.17,
+                    "yes": 0.83
                   },
                   "type": "choice"
                 }
@@ -1715,7 +1665,7 @@
                 "obligations": "6e80fd062efaeab8c79892dd502a7e39aed7aa82d464b2dbffb694978b384761",
                 "term": "6c4eee3f73e2e895112de65620152fe8235944c12302048cb65f7c5fcf4a72c5"
               },
-              "session_id": "01M8A9AWGP8PNPG8XZEB4Q1NPV",
+              "session_id": "01M8B1HDX4KWVQGTVZ0STYF33H",
               "usage": {
                 "input_tokens": 1121,
                 "output_tokens": 114
@@ -1733,11 +1683,11 @@
                 "question": "obligations",
                 "answer": {
                   "choice": "1",
-                  "confidence": 0.48,
+                  "confidence": 0.59,
                   "probabilities": {
-                    "1": 0.61,
-                    "2": 0.36,
-                    "3": 0.03,
+                    "1": 0.69,
+                    "2": 0.3,
+                    "3": 0.01,
                     "4+": 0.0
                   },
                   "type": "choice"
@@ -1749,16 +1699,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "run": "The literal term `run` accounts for the answer or uncertainty.",
-                  "offline": "The literal term `offline` accounts for the answer or uncertainty.",
-                  "against": "The literal term `against` accounts for the answer or uncertainty.",
-                  "recorded": "The literal term `recorded` accounts for the answer or uncertainty.",
-                  "Jev": "The literal term `Jev` accounts for the answer or uncertainty.",
-                  "answers": "The literal term `answers` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "run offline": "The phrase `run offline` accounts for the answer or uncertainty.",
+                  "recorded Jev answers": "The phrase `recorded Jev answers` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -1770,17 +1715,12 @@
               "answers": {
                 "which_part": {
                   "choice": "none",
-                  "confidence": 0.35,
+                  "confidence": 0.27,
                   "probabilities": {
-                    "Jev": 0.03,
-                    "against": 0.01,
-                    "answers": 0.07,
-                    "judge-jev": 0.07,
-                    "none": 0.42,
-                    "offline": 0.19,
-                    "recorded": 0.08,
-                    "run": 0.05,
-                    "tests": 0.08
+                    "judge-jev tests": 0.07,
+                    "none": 0.45,
+                    "recorded Jev answers": 0.12,
+                    "run offline": 0.36
                   },
                   "type": "choice"
                 }
@@ -1788,12 +1728,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "331b6545153ce56422824a476c497b60b1947da4d28b0bc023f909ac7631eef9"
+                "which_part": "666528a19ba85985b021dfc64aff560fd587b1d376f04e58d10d56f38dbfb23f"
               },
-              "session_id": "01M8A9AWMK270EF7V0J9DX4RJ3",
+              "session_id": "01M8B1HE1T8G077KF3X83ZQ95N",
               "usage": {
-                "input_tokens": 1134,
-                "output_tokens": 86
+                "input_tokens": 1017,
+                "output_tokens": 55
               }
             }
           },
@@ -1803,7 +1743,7 @@
             "which_part": "none",
             "model_choice": "none",
             "tied_with_none": false,
-            "confidence": 0.35,
+            "confidence": 0.27,
             "model": "jev-1.14.0"
           }
         },
@@ -1918,13 +1858,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "timing": "The literal term `timing` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "NOT depend": "The phrase `NOT depend` accounts for the answer or uncertainty.",
+                  "timing": "The phrase `timing` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -1973,7 +1911,7 @@
           "item": "NFR-JEV-0001.s2",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.62,
+          "confidence": 0.68,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "under bar"
         },
@@ -1991,7 +1929,7 @@
           "item": "NFR-JEV-0001.s2",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.6,
+          "confidence": 0.56,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -1999,8 +1937,8 @@
           "wave": "which-part",
           "item": "NFR-JEV-0001.s2",
           "question": "which_part",
-          "choice": "timing",
-          "confidence": 0.54,
+          "choice": "none",
+          "confidence": 0.28,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -2051,11 +1989,11 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.62,
+                  "confidence": 0.68,
                   "probabilities": {
-                    "needs a measure": 0.23,
+                    "needs a measure": 0.19,
                     "no": 0.02,
-                    "yes": 0.75
+                    "yes": 0.79
                   },
                   "type": "choice"
                 },
@@ -2072,10 +2010,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.6,
+                  "confidence": 0.56,
                   "probabilities": {
-                    "no": 0.2,
-                    "yes": 0.8
+                    "no": 0.22,
+                    "yes": 0.78
                   },
                   "type": "choice"
                 }
@@ -2087,7 +2025,7 @@
                 "obligations": "8c3c02d3d68c92210d876032166822b11397b465d6582583c503d3bfa6ee0e2d",
                 "term": "04844d2ee3d59346e3923dc12c9e2fc2a35037cf862fcfd6332be9bf315a63bf"
               },
-              "session_id": "01M8A9AWRZBYVWN495PTZ0D2R0",
+              "session_id": "01M8B1HE6YBB31SMDKWY1F6AWT",
               "usage": {
                 "input_tokens": 1119,
                 "output_tokens": 114
@@ -2105,10 +2043,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.6,
+                  "confidence": 0.56,
                   "probabilities": {
-                    "no": 0.2,
-                    "yes": 0.8
+                    "no": 0.22,
+                    "yes": 0.78
                   },
                   "type": "choice"
                 },
@@ -2119,13 +2057,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "timing": "The literal term `timing` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "NOT depend": "The phrase `NOT depend` accounts for the answer or uncertainty.",
+                  "timing": "The phrase `timing` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -2136,15 +2072,13 @@
             "value": {
               "answers": {
                 "which_part": {
-                  "choice": "timing",
-                  "confidence": 0.54,
+                  "choice": "none",
+                  "confidence": 0.28,
                   "probabilities": {
-                    "NOT": 0.02,
-                    "depend": 0.04,
-                    "judge-jev": 0.01,
-                    "none": 0.3,
-                    "tests": 0.01,
-                    "timing": 0.62
+                    "NOT depend": 0.1,
+                    "judge-jev tests": 0.04,
+                    "none": 0.46,
+                    "timing": 0.4
                   },
                   "type": "choice"
                 }
@@ -2152,22 +2086,22 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "bee4bec068dae89c35a40dc259960c9946931332ce6ff6ef8e67f7d05afea183"
+                "which_part": "61b98c2c519e1bd11bd6a29706a3bbf69e6bba956f26aabd64f378631abfac64"
               },
-              "session_id": "01M8A9AWXQCSWV2J0MT226KTMR",
+              "session_id": "01M8B1HECF2WT5N5FFXGHAKTQD",
               "usage": {
-                "input_tokens": 1033,
-                "output_tokens": 64
+                "input_tokens": 988,
+                "output_tokens": 51
               }
             }
           },
           "verdict": {
             "verdict": "review",
             "stage": "which-part",
-            "which_part": "timing",
-            "model_choice": "timing",
+            "which_part": "none",
+            "model_choice": "none",
             "tied_with_none": false,
-            "confidence": 0.54,
+            "confidence": 0.28,
             "model": "jev-1.14.0"
           }
         },
@@ -2282,13 +2216,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "sleeps": "The literal term `sleeps` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "NOT depend": "The phrase `NOT depend` accounts for the answer or uncertainty.",
+                  "sleeps": "The phrase `sleeps` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -2337,7 +2269,7 @@
           "item": "NFR-JEV-0001.s3",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.89,
+          "confidence": 0.91,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "accepted"
         },
@@ -2355,7 +2287,7 @@
           "item": "NFR-JEV-0001.s3",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.54,
+          "confidence": 0.6,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -2364,7 +2296,7 @@
           "item": "NFR-JEV-0001.s3",
           "question": "which_part",
           "choice": "sleeps",
-          "confidence": 0.4,
+          "confidence": 0.32,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -2415,11 +2347,11 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.89,
+                  "confidence": 0.91,
                   "probabilities": {
-                    "needs a measure": 0.06,
+                    "needs a measure": 0.05,
                     "no": 0.01,
-                    "yes": 0.93
+                    "yes": 0.94
                   },
                   "type": "choice"
                 },
@@ -2436,10 +2368,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.54,
+                  "confidence": 0.6,
                   "probabilities": {
-                    "no": 0.23,
-                    "yes": 0.77
+                    "no": 0.2,
+                    "yes": 0.8
                   },
                   "type": "choice"
                 }
@@ -2451,7 +2383,7 @@
                 "obligations": "e5dd99cf5dbf192855ed15f98cdc32d787dada0f689e98d95a88cdcae1ffbfb3",
                 "term": "a75f61691be619e6f94d67c6575db8be5380e70bbbb747c101de94837a56f325"
               },
-              "session_id": "01M8A9AX1ZTP1GP0MF64S3T1PX",
+              "session_id": "01M8B1HEJ2DFWS075A8GAC1BYJ",
               "usage": {
                 "input_tokens": 1119,
                 "output_tokens": 114
@@ -2469,10 +2401,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.54,
+                  "confidence": 0.6,
                   "probabilities": {
-                    "no": 0.23,
-                    "yes": 0.77
+                    "no": 0.2,
+                    "yes": 0.8
                   },
                   "type": "choice"
                 },
@@ -2483,13 +2415,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "sleeps": "The literal term `sleeps` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "NOT depend": "The phrase `NOT depend` accounts for the answer or uncertainty.",
+                  "sleeps": "The phrase `sleeps` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -2501,14 +2431,12 @@
               "answers": {
                 "which_part": {
                   "choice": "sleeps",
-                  "confidence": 0.4,
+                  "confidence": 0.32,
                   "probabilities": {
-                    "NOT": 0.03,
-                    "depend": 0.06,
-                    "judge-jev": 0.01,
-                    "none": 0.37,
-                    "sleeps": 0.5,
-                    "tests": 0.03
+                    "NOT depend": 0.08,
+                    "judge-jev tests": 0.03,
+                    "none": 0.4,
+                    "sleeps": 0.49
                   },
                   "type": "choice"
                 }
@@ -2516,12 +2444,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "e08a09b3e995de79bf57a0454ecea96786e0ab480cff2c63e8e6b0edd8686ef8"
+                "which_part": "b678f688f2f9661b5daa1f76bf61cb9a8228f06e445af804e806b4aeff09d01f"
               },
-              "session_id": "01M8A9AX60ZA50G9Q2RWHD3F7G",
+              "session_id": "01M8B1HEQGRKMHBN4K3DSMK06V",
               "usage": {
-                "input_tokens": 1038,
-                "output_tokens": 66
+                "input_tokens": 987,
+                "output_tokens": 54
               }
             }
           },
@@ -2531,7 +2459,7 @@
             "which_part": "sleeps",
             "model_choice": "sleeps",
             "tied_with_none": false,
-            "confidence": 0.4,
+            "confidence": 0.32,
             "model": "jev-1.14.0"
           }
         },
@@ -2646,13 +2574,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "ordering": "The literal term `ordering` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "NOT depend": "The phrase `NOT depend` accounts for the answer or uncertainty.",
+                  "ordering": "The phrase `ordering` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -2701,7 +2627,7 @@
           "item": "NFR-JEV-0001.s4",
           "question": "checkable",
           "choice": "yes",
-          "confidence": 0.83,
+          "confidence": 0.89,
           "criterion": "Yes, by a test, a command run, or reading files.",
           "status": "accepted"
         },
@@ -2719,7 +2645,7 @@
           "item": "NFR-JEV-0001.s4",
           "question": "term",
           "choice": "yes",
-          "confidence": 0.6,
+          "confidence": 0.62,
           "criterion": "Every term is common usage, defined in this record, or defined in a linked record.",
           "status": "under bar"
         },
@@ -2728,7 +2654,7 @@
           "item": "NFR-JEV-0001.s4",
           "question": "which_part",
           "choice": "ordering",
-          "confidence": 0.4,
+          "confidence": 0.31,
           "criterion": "",
           "status": "diagnostic"
         }
@@ -2779,11 +2705,11 @@
               "answers": {
                 "checkable": {
                   "choice": "yes",
-                  "confidence": 0.83,
+                  "confidence": 0.89,
                   "probabilities": {
-                    "needs a measure": 0.09,
-                    "no": 0.02,
-                    "yes": 0.89
+                    "needs a measure": 0.06,
+                    "no": 0.01,
+                    "yes": 0.93
                   },
                   "type": "choice"
                 },
@@ -2800,10 +2726,10 @@
                 },
                 "term": {
                   "choice": "yes",
-                  "confidence": 0.6,
+                  "confidence": 0.62,
                   "probabilities": {
-                    "no": 0.2,
-                    "yes": 0.8
+                    "no": 0.19,
+                    "yes": 0.81
                   },
                   "type": "choice"
                 }
@@ -2815,7 +2741,7 @@
                 "obligations": "106242727f68742f62c3a216c6d041a1a4c1e44477418bbfd6c7c210766c88e2",
                 "term": "2d88d9fa593779e49bf97a0c6657b03c8f02ddfcffb82f599c6ae408f848bba3"
               },
-              "session_id": "01M8A9AXA27P5QEQRX1N5W48ZM",
+              "session_id": "01M8B1HEX72VDPFRDFXCD8Q9MK",
               "usage": {
                 "input_tokens": 1119,
                 "output_tokens": 114
@@ -2833,10 +2759,10 @@
                 "question": "term",
                 "answer": {
                   "choice": "yes",
-                  "confidence": 0.6,
+                  "confidence": 0.62,
                   "probabilities": {
-                    "no": 0.2,
-                    "yes": 0.8
+                    "no": 0.19,
+                    "yes": 0.81
                   },
                   "type": "choice"
                 },
@@ -2847,13 +2773,11 @@
             "questions": {
               "which_part": {
                 "type": "choice",
-                "instructions": "The failed gate and its answer are in state.gate. Which literal term of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
+                "instructions": "The failed gate and its answer are in state.gate. Which phrase of the item accounts for that answer or uncertainty? Use the whole record as context. Choose none if no listed part accounts for it; do not invent an explanation.",
                 "criteria": {
-                  "judge-jev": "The literal term `judge-jev` accounts for the answer or uncertainty.",
-                  "tests": "The literal term `tests` accounts for the answer or uncertainty.",
-                  "NOT": "The literal term `NOT` accounts for the answer or uncertainty.",
-                  "depend": "The literal term `depend` accounts for the answer or uncertainty.",
-                  "ordering": "The literal term `ordering` accounts for the answer or uncertainty.",
+                  "judge-jev tests": "The phrase `judge-jev tests` accounts for the answer or uncertainty.",
+                  "NOT depend": "The phrase `NOT depend` accounts for the answer or uncertainty.",
+                  "ordering": "The phrase `ordering` accounts for the answer or uncertainty.",
                   "none": "No listed part accounts for the answer or uncertainty."
                 }
               }
@@ -2865,14 +2789,12 @@
               "answers": {
                 "which_part": {
                   "choice": "ordering",
-                  "confidence": 0.4,
+                  "confidence": 0.31,
                   "probabilities": {
-                    "NOT": 0.03,
-                    "depend": 0.05,
-                    "judge-jev": 0.02,
-                    "none": 0.38,
-                    "ordering": 0.5,
-                    "tests": 0.02
+                    "NOT depend": 0.08,
+                    "judge-jev tests": 0.02,
+                    "none": 0.42,
+                    "ordering": 0.48
                   },
                   "type": "choice"
                 }
@@ -2880,12 +2802,12 @@
               "attempts": 1,
               "model": "jev-1.14.0",
               "question_digests": {
-                "which_part": "7121b49f816764f032262e30a73f3bf6213c1a28f7dc88afca282628e0c38e04"
+                "which_part": "6ade3aa25b2faa181621ddb3c329a201cfb518c98200623e0b6f76d17e4063d2"
               },
-              "session_id": "01M8A9AXEFX89Q21V1TGQ4PPKX",
+              "session_id": "01M8B1HF2YBX59D3JYGZK33NJG",
               "usage": {
-                "input_tokens": 1031,
-                "output_tokens": 62
+                "input_tokens": 986,
+                "output_tokens": 50
               }
             }
           },
@@ -2895,7 +2817,7 @@
             "which_part": "ordering",
             "model_choice": "ordering",
             "tied_with_none": false,
-            "confidence": 0.4,
+            "confidence": 0.31,
             "model": "jev-1.14.0"
           }
         },

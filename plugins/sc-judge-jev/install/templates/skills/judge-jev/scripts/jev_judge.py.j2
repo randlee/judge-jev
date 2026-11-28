@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-script-jev_judge
-version: 0.9.0
+version: 0.9.1
 format: python
 description: sc-judge-jev install-time script, rendered by install.py.
 required_variables:
@@ -963,8 +963,17 @@ def log_result_line(log, line: dict, fields: dict) -> None:
     sc_agent.flush(log)
 
 
+def missing_project_error(error: ClientError) -> Optional[ClientError]:
+    """Give the upstream project refusal the consumer's actionable CLI recovery."""
+    if isinstance(error.data, dict) and error.data.get("id") == "config.missing_project":
+        return ClientError("DECIDR.CONFIG", "A live run needs a project: pass --project <name> or set SC_PROJECT=<name>.",
+                           action="Pass --project <name> to this command or export SC_PROJECT=<name> and rerun.",
+                           data=error.data, attempts=error.attempts)
+    return None
+
+
 def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bool,
-                        fields=None, *, repository_root=".") -> Result[list, ClientError]:
+                        fields=None, *, repository_root=".", project: Optional[str] = None) -> Result[list, ClientError]:
     """Send validated jobs through sc-agent's batch API and persist each result as it arrives."""
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
@@ -976,8 +985,17 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
             return built
         jobs.extend(built.value)
     result_lines = {}
+    project_refusal = []
+    import sc_agent
+    cancel = sc_agent.Cancel()
 
     def persist(record):
+        if not record["ok"] and (error := missing_project_error(record["error"])) is not None:
+            if not project_refusal:
+                project_refusal.append(error)
+                cancel.cancel()
+        if project_refusal:
+            return
         position = record["position"]
         job = jobs[position]
         result_line = _batch_result_line(job, settings, record)
@@ -988,19 +1006,21 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
 
     batch = decidr_client.call_batch_results(
         [job.body for job in jobs],
-        model=settings.model,
-        abort_on=frozenset({"auth"}), general_log=log, timeout_secs=settings.timeout,
+        model=settings.model, project=project,
+        abort_on=frozenset({"auth"}), cancel=cancel, general_log=log, timeout_secs=settings.timeout,
         workers=settings.max_workers, on_result=persist, repository_root=repository_root,
     )
+    if project_refusal:
+        return Err(project_refusal[0])
     if not batch["ok"]:
-        return Err(batch["error"])
+        return Err(missing_project_error(batch["error"]) or batch["error"])
     return Ok([result_lines[position] for position in range(len(jobs))])
 
 
-def judge_batch(lines, settings, fixture, log, echo, fields=None, *, repository_root="."):
+def judge_batch(lines, settings, fixture, log, echo, fields=None, *, repository_root=".", project: Optional[str] = None):
     """Compose consumer job authoring with the shared stream and durable result pump."""
     if fixture is None and not settings.dry_run:
-        return _live_batch_results(lines, settings, log, echo, fields, repository_root=repository_root)
+        return _live_batch_results(lines, settings, log, echo, fields, repository_root=repository_root, project=project)
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base
@@ -1064,7 +1084,7 @@ def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
         return log
     import sc_agent
     try:
-        pumped = judge_batch(lines, settings, fixture, log.value, echo=True, fields={"run": run_name}, repository_root=args.repository_root)
+        pumped = judge_batch(lines, settings, fixture, log.value, echo=True, fields={"run": run_name}, repository_root=args.repository_root, project=args.project)
     except KeyboardInterrupt:
         sc_agent.flush(log.value)
         raise
@@ -1547,7 +1567,7 @@ def cmd_quality(args) -> Result[Any, ClientError]:
         try:
             walked = walk_tree(tree, record, settings, fixture, log.value,
                                { "run": run_name, **quality_fields(tree, record["id"], refs["record"]["kind"], carried,
-                                             index_record_iri(args.index, record["id"]))}, carried, repository_root=args.repository_root)
+                                             index_record_iri(args.index, record["id"]))}, carried, repository_root=args.repository_root, project=args.project)
         except KeyboardInterrupt:
             sc_agent.flush(log.value)
             raise
@@ -1605,7 +1625,7 @@ def _position(rules: list, rule) -> int:
 
 
 def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture, log: Any,
-              fields: dict, definitions=(), location=None, *, repository_root=".") -> Result[tuple, ClientError]:
+              fields: dict, definitions=(), location=None, *, repository_root=".", project: Optional[str] = None) -> Result[tuple, ClientError]:
     """Send one wave per node from the start until a leaf or a wave with verdict_rules; answers pick each next node.
     Every wave reports its reason (each question with Jev's choice and confidence) and is logged with its composed
     request, answers and selected branch or verdict; the verdict is logged with the path."""
@@ -1634,7 +1654,7 @@ def walk_tree(tree: QualityTree, record: dict, settings: BatchSettings, fixture,
                 return Err(_checked["error"])
         except ClientError as exc:
             return Err(exc)
-        pumped = judge_batch(lines, settings, fixture, log, echo=False, fields={**fields, "node": node_id}, repository_root=repository_root)
+        pumped = judge_batch(lines, settings, fixture, log, echo=False, fields={**fields, "node": node_id}, repository_root=repository_root, project=project)
         if isinstance(pumped, Err):
             return pumped
         for result, statement in zip(pumped.value, statements):
@@ -1887,7 +1907,7 @@ def cmd_compare_definition(args) -> Result[Any, ClientError]:
         tree, record, _refs, _jobs, arm_carried = prepared[arm]
         try:
             walked = walk_tree(tree, record, settings, arm_fixture(fixture, arm), log.value,
-                               {"run": runs[arm], **quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location, repository_root=args.repository_root)
+                               {"run": runs[arm], **quality_fields(tree, rid, kind, arm_carried, index_record_iri(args.index, rid)), "arm": arm}, arm_carried, location, repository_root=args.repository_root, project=args.project)
         except KeyboardInterrupt:
             sc_agent.flush(log.value)
             raise
@@ -2238,7 +2258,7 @@ def cmd_drift(args) -> Result[Any, ClientError]:
     try:
         pumped = judge_batch(lines, settings, fixture, log.value, echo=False,
                              fields={"run": run_name, "old_index": args.old_index, "new_index": args.new_index},
-                             repository_root=args.repository_root) if lines else Ok([])
+                             repository_root=args.repository_root, project=args.project) if lines else Ok([])
     except KeyboardInterrupt:
         sc_agent.flush(log.value)
         raise
@@ -2590,6 +2610,9 @@ def build_parser() -> argparse.ArgumentParser:
     dr.add_argument("--index", default="", help="a Raptor import index: attachments to records it does not hold are warnings; without it that check is skipped and doctor says so")
     dr.add_argument("--repository-root", default=".", help="the repository: its .sc/judge-jev/ holds the trees and definitions, and attachment locations and source paths are relative to it (default .)")
     dr.set_defaults(func=cmd_doctor)
+    for command in (bt, q, cd, df):
+        command.add_argument("--project", default=None, type=lambda value: value or None,
+                             help="project/phase for live calls; otherwise sc-agent resolves SC_PROJECT or its configuration; no default")
     return p
 
 

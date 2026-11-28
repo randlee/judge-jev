@@ -2,6 +2,11 @@
 
 `VERSION` is the single source of truth: every version in shipped metadata (plugin and marketplace manifests, `SKILL.md`, each reference, each agent, each registry) and every template's own header `version:` equals it exactly. Every PR raises it by at least a patch and adds its entry here. Integer versions (question sets, trees, `schema_version`) stay `1`. `scripts/check_version_sync.py` and `tests/sc-judge-jev/test_version_ssot.py` check that every declaration agrees (see CONTRIBUTING.md).
 
+## 0.9.1 — 2026-11-27
+
+- Fix #133: every live subcommand accepts `--project` and carries it to decidr. An omitted or empty flag leaves resolution to sc-agent. Stop on its first `config.missing_project` refusal with an actionable `DECIDR.CONFIG` error and exit 2; cancel pending requests for that id without treating all config errors as fatal. Offline dry runs and answers files remain usable without a project.
+- Document `--project` and `SC_PROJECT` in the CLI reference, installed skill and troubleshooting reference. No default project or consumer-side config loader is added.
+
 ## 0.9.0 — 2026-11-25
 
 - Jev requests ask for `jev-latest` and are never pinned to a version; sc-decidr pin raised to 0.4.1, which accepts it (0.4.0 asked for `jev-1.14.0` by name, which TypeSafe now rejects).

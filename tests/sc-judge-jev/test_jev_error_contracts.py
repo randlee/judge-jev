@@ -24,20 +24,21 @@ class ConsumerErrorContracts(unittest.TestCase):
 
         with                mock.patch.object(jj, "log_result_line", return_value=jj.Ok(None)) as log_line, \
                 mock.patch.object(decidr_client, "call_batch_results", side_effect=batch_result) as call:
-            got = jj._live_batch_results([request_line()], settings, log, False)
+            got = jj._live_batch_results([request_line()], settings, log, False, project="controlled-project")
         self.assertEqual((got.value[0]["error"]["code"], got.value[0]["retry_count"],
                           got.value[0]["attempts"]), ("DECIDR.OVERLOADED", 3, []))
         log_line.assert_called_once_with(log, got.value[0], {})
         log.event.assert_not_called()  # Native general events are not forwarded through Python.
 
         self.assertNotIn("category_codes", call.call_args.kwargs)
-        self.assertNotIn("project", call.call_args.kwargs)
+        self.assertEqual(call.call_args.kwargs["project"], "controlled-project")
         self.assertNotIn("agent_role", call.call_args.kwargs)
         self.assertEqual(call.call_args.kwargs["timeout_secs"], 42.0)
         self.assertEqual(call.call_args.kwargs["workers"], 2)
         self.assertIs(call.call_args.kwargs["general_log"], log)
         self.assertTrue(call.call_args.kwargs["on_result"])
-        for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
+        self.assertIsNotNone(call.call_args.kwargs["cancel"])
+        for name in ("keyring_service", "keyring_account", "session_log"):
             self.assertNotIn(name, call.call_args.kwargs)
 
     def test_callback_persists_completion_order_and_returns_input_order(self):
