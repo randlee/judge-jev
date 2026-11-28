@@ -98,7 +98,7 @@ from typing import Annotated, Any, Literal, NamedTuple, Optional, Union
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from result import Err, Ok, Result, utf8_stdio  # noqa: E402
 from jev_errors import redact_sensitive
-from decidr_client import (ClientError, BatchSettings, BatchJob, StreamedResult,
+from decidr_client import (ClientError, BatchJob, StreamedResult,
                            BATCH_MAX_WORKERS, BATCH_FIXTURE_ERROR, BATCH_ID_RE,
                            BATCH_RETRIES as BATCH_FIXTURE_RETRY_LIMIT,
                            REPO_ROOT_HELP, CANCELED_EXIT, canceled_envelope,
@@ -135,6 +135,20 @@ MAX_PROBLEMS = 5                    # pydantic errors named in one refusal messa
 MAX_MESSAGE = 300                   # characters of one problem in a refusal message
 ATTEMPT_MESSAGE_LIMIT = 500         # characters of an error message recorded in a result line: bounds its log events
 FIXTURE_CODE_LIMIT = 64             # characters of an answers-file {"__error__": code}: the code is logged unclipped, so it is bounded at load
+
+
+class BatchSettings(NamedTuple):
+    """Consumer settings, including the project passed to the shared client."""
+    gate: str
+    model: str
+    repeat: int
+    prefix: str
+    threshold: float
+    timeout: float
+    max_workers: int
+    max_request_bytes: int
+    dry_run: bool
+    project: Optional[str] = None
 
 
 # --------------------------------------------------------------------------- #
@@ -986,11 +1000,14 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
         jobs.extend(built.value)
     result_lines = {}
     project_refusal = []
+    import sc_agent
+    cancel = sc_agent.Cancel()
 
     def persist(record):
         if not record["ok"] and (error := missing_project_error(record["error"])) is not None:
             if not project_refusal:
                 project_refusal.append(error)
+                cancel.cancel()
         if project_refusal:
             return
         position = record["position"]
@@ -1004,7 +1021,7 @@ def _live_batch_results(lines: list, settings: BatchSettings, log: Any, echo: bo
     batch = decidr_client.call_batch_results(
         [job.body for job in jobs],
         model=settings.model, project=settings.project,
-        abort_on=frozenset({"auth", "config.missing_project"}), general_log=log, timeout_secs=settings.timeout,
+        abort_on=frozenset({"auth"}), cancel=cancel, general_log=log, timeout_secs=settings.timeout,
         workers=settings.max_workers, on_result=persist, repository_root=repository_root,
     )
     if project_refusal:
@@ -1042,7 +1059,7 @@ def run_low_layer(args, lines: list) -> Result[Any, ClientError]:
     if not _checked["ok"]:
         return Err(_checked["error"])
     else:
-        settings = _checked["value"]
+        settings = BatchSettings(*_checked["value"], project=args.project)
     base = load_question_set(settings.gate)
     if isinstance(base, Err):
         return base

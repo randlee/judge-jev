@@ -37,7 +37,8 @@ class ConsumerErrorContracts(unittest.TestCase):
         self.assertEqual(call.call_args.kwargs["workers"], 2)
         self.assertIs(call.call_args.kwargs["general_log"], log)
         self.assertTrue(call.call_args.kwargs["on_result"])
-        for name in ("keyring_service", "keyring_account", "session_log", "cancel"):
+        self.assertIsNotNone(call.call_args.kwargs["cancel"])
+        for name in ("keyring_service", "keyring_account", "session_log"):
             self.assertNotIn(name, call.call_args.kwargs)
 
     def test_callback_persists_completion_order_and_returns_input_order(self):

@@ -199,7 +199,7 @@ Diagram: [diagrams/definitions.md](diagrams/definitions.md)
 
 ```
 judge-jev compare-definition (--req|--adr|--nfr <id>) --index <file> --definition <iri>...
-    [--definitions <file>]... [--location <loc>] [--threshold <p>] [--questions <file>]
+    [--project <name>] [--definitions <file>]... [--location <loc>] [--threshold <p>] [--questions <file>]
     [--dry-run | --answers-file <file>] [--run-name <name>]
 ```
 
@@ -235,7 +235,7 @@ Diagram: [diagrams/compare.md](diagrams/compare.md)
 
 ```
 judge-jev drift --old-index <file> --new-index <file> (--req|--adr|--nfr <id>... | --changed)
-    [--form diff|full] [--question-set orthogonal|brief|sixteen] [--controls <n>] [--threshold <p>]
+    [--project <name>] [--form diff|full] [--question-set orthogonal|brief|sixteen] [--controls <n>] [--threshold <p>]
     [--dry-run | --answers-file <file>] [--run-name <name>]
 ```
 

@@ -91,7 +91,8 @@ class ProjectTests(unittest.TestCase):
         for form in ("batch-error", "callback-error"):
             def refuse(requests, **kwargs):
                 self.assertIsNone(kwargs["project"])
-                self.assertIn("config.missing_project", kwargs["abort_on"])
+                self.assertEqual(kwargs["abort_on"], frozenset({"auth"}))
+                self.assertIsNotNone(kwargs["cancel"])
                 error = self.refusal()
                 if form == "batch-error":
                     return {"ok": False, "error": error}
@@ -131,12 +132,27 @@ class ProjectTests(unittest.TestCase):
                     rows.append({"index": i, "result": result})
                     on_result(i, result)
                 return {"ok": True, "value": rows}
-            wheel = SimpleNamespace(Cancel=Cancel, logger=mock.Mock(), send_batch=mock.Mock(side_effect=send_batch))
+            wheel = SimpleNamespace(Cancel=Cancel, logger=mock.Mock(), flush=mock.Mock(),
+                                    send_batch=mock.Mock(side_effect=send_batch))
             with self.subTest(identifier=identifier), mock.patch.dict(sys.modules, {"sc_agent": wheel}), \
                     mock.patch.object(jj.decidr_client, "remote_preflight", return_value={"ok": True, "value": None}):
-                result = jj.decidr_client.call_batch_results(["one", "two", "three"], model="jev-latest",
-                    project=None, general_log=object(), abort_on=frozenset({"auth", "config.missing_project"}))
-                self.assertTrue(result["ok"])
+                settings = jj.quality_settings(False)
+                source = [request_line(str(i)) for i in range(3)]
+                if identifier == "config.missing_project":
+                    stream = write(self.root, "queue.jsonl", "".join(json.dumps(line) + "\n" for line in source))
+                    with mock.patch.object(jj, "open_run_log", return_value=jj.Ok(object())), \
+                            mock.patch.object(jj, "log_result_line") as log_line:
+                        code, output = run_cli(["batch", "--input", stream])
+                    self.assertEqual(code, 2)
+                    # run_cli parses the entire stdout as one JSON value: duplicate
+                    # refusal envelopes or queued result lines would leave raw text.
+                    self.assertIsInstance(output, dict)
+                    self.assertEqual(output["error"]["code"], "DECIDR.CONFIG")
+                    log_line.assert_not_called()
+                else:
+                    with mock.patch.object(jj, "log_result_line"):
+                        result = jj._live_batch_results(source, settings, object(), False)
+                    self.assertIsInstance(result, jj.Ok)
                 self.assertEqual(attempted, [0] if identifier == "config.missing_project" else [0, 1, 2])
                 wheel.send_batch.assert_called_once()
                 wheel.logger.assert_not_called()
