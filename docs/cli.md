@@ -4,10 +4,19 @@ Draft. Two primitive commands each compose single Jev requests; the profile
 run calls the second primitive once per pair and aggregates the results.
 Every command takes `--dry-run`.
 
+The live commands `quality`, `batch`, `drift`, and `compare-definition` accept
+`--project <name>` for the run's project/phase. With an omitted or empty flag,
+judge-jev passes `None` and sc-agent resolves `SC_PROJECT` or its own configuration.
+There is no default project. If sc-agent returns `config.missing_project`,
+the command stops at that refusal, cancels pending requests, and exits 2 with
+`DECIDR.CONFIG`; its message and suggested action name `--project` and
+`SC_PROJECT`. sc-agent refuses before sending to Jev. `--dry-run` and
+`--answers-file` work without a project.
+
 ## `judge-jev quality`
 
 ```
-judge-jev quality (--req|--adr|--nfr <id>)... [--questions <file>] [--definitions <file>]... [--dry-run]
+judge-jev quality (--req|--adr|--nfr <id>)... [--project <name>] [--questions <file>] [--definitions <file>]... [--dry-run]
 ```
 
 Judges whether each named record is well written (REQ-JEV-0101,
@@ -190,7 +199,7 @@ Diagram: [diagrams/definitions.md](diagrams/definitions.md)
 
 ```
 judge-jev compare-definition (--req|--adr|--nfr <id>) --index <file> --definition <iri>...
-    [--definitions <file>]... [--location <loc>] [--threshold <p>] [--questions <file>]
+    [--project <name>] [--definitions <file>]... [--location <loc>] [--threshold <p>] [--questions <file>]
     [--dry-run | --answers-file <file>] [--run-name <name>]
 ```
 
@@ -226,7 +235,7 @@ Diagram: [diagrams/compare.md](diagrams/compare.md)
 
 ```
 judge-jev drift --old-index <file> --new-index <file> (--req|--adr|--nfr <id>... | --changed)
-    [--form diff|full] [--question-set orthogonal|brief|sixteen] [--controls <n>] [--threshold <p>]
+    [--project <name>] [--form diff|full] [--question-set orthogonal|brief|sixteen] [--controls <n>] [--threshold <p>]
     [--dry-run | --answers-file <file>] [--run-name <name>]
 ```
 

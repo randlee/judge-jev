@@ -1,6 +1,6 @@
 ---
 name: sc-judge-jev-installation-and-troubleshooting
-version: 0.9.0
+version: 0.9.1
 format: markdown
 description: sc-judge-jev install-time text, rendered by install.py.
 required_variables:
@@ -29,6 +29,19 @@ fi
 ```
 
 These messages are informational: an existing `.env` does not prove it contains a key, and a documented local platform credential can also satisfy live Jev authentication.
+
+## Project for live calls
+
+`quality`, `batch`, `drift`, and [compare-definition](definitions.md) require a project.
+Pass `--project <name>` on the command, or export `SC_PROJECT=<name>` in its environment.
+A missing or empty flag is passed as `None`: sc-agent resolves the project from
+`SC_PROJECT` or its own configuration. judge-jev supplies no default and does not
+read sc-agent's configuration.
+
+When sc-agent returns `config.missing_project`, the command stops at that first
+refusal, exits 2 with `DECIDR.CONFIG`, and names `--project` and `SC_PROJECT` in
+the message and suggested action. sc-agent refuses before sending to Jev.
+Offline `--dry-run` and `--answers-file` do not require a project.
 
 ## Install judge-jev into a folder
 
@@ -130,6 +143,7 @@ Use the full path, or `export PATH="/opt/homebrew/bin:$PATH"` for the session.
 
 ## Known issues
 
+- `DECIDR.CONFIG` naming a missing project: pass `--project <name>` or export `SC_PROJECT=<name>` in the command's environment, then rerun.
 - `POLICY.REMOTE_JUDGE_DISABLED` on a live run: `allow_remote_judge` is `false` or absent in `.sc/judge-jev/settings.yaml`. If absent, ask the user once, record the answer with `judge_jev_settings.py set allow_remote_judge true|false`, and commit it. Never infer consent from earlier runs.
 - `AUTH.CREDENTIALS` with the key set: it contains whitespace or a control character (usually a pasted trailing newline), or TypeSafe rejected it.
 - `SETTINGS.UNKNOWN_KEY`, `SETTINGS.SCHEMA_VERSION`, `SETTINGS.MALFORMED`: fix `.sc/judge-jev/settings.yaml` to the form above.

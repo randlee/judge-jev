@@ -2,15 +2,15 @@
 # Paths are relative to the install root (the folder install.py --dest named).
 agents:
   req-author:
-    version: 0.9.0
+    version: 0.9.1
     path: .codex/agents/req-author.md
   jev-fix-proposer:
-    version: 0.9.0
+    version: 0.9.1
     path: .codex/agents/jev-fix-proposer.md
 
 skills:
   judge-jev:
-    version: 0.9.0
+    version: 0.9.1
     path: .codex/skills/judge-jev/SKILL.md
     depends_on:
       jev-fix-proposer: "0.x"
